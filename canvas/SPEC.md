@@ -37,7 +37,8 @@ OK (DPAD_CENTER or ENTER, acted on release) opens or presses the row under
 the d-pad; Menu (MENU or SOFT_LEFT) opens Options; Back goes back one
 screen, and on Home leaves the app; Clear does Back except in a text
 field, where it deletes a character. Where Options would be empty, Menu
-does nothing. Every loading state is one spinner filling the screen.
+does nothing. Every loading state fills the screen: a spinner, or at
+launch a bar that fills as the sync's requests finish.
 
 ### Options and sheets
 
@@ -82,7 +83,9 @@ open tab is large ink text, the others small and muted.
   Turned in ("Turned in Oct 20", "Not graded" if it has points, "Marked
   done" for check marks). Empty: "Nothing turned in yet".
 - Not set up: "Canvas isn't set up". No cache and the sync failed:
-  "Couldn't reach Canvas" and why. No cache yet, syncing: the spinner.
+  "Couldn't reach Canvas" and why. Launch while Canvas is set up: a loading bar until the sync finishes, then
+  the real state (never the cache first). The cache is shown only if that
+  sync fails.
 
 ### Classes
 
@@ -281,9 +284,11 @@ Home.
   settings (owner-only, with the token), prefs, the work cache, details,
   class pages, notifications, drafts and their files, downloaded teacher
   files. No backup.
-- Launch draws the last cache at once (this semester's classes only, by
-  term name) and syncs if it is over 10 minutes old, as does returning to
-  the app. Refresh syncs now: "Up to date", "Updated. Some classes
+- Launch always syncs, behind a loading bar, and draws only the result;
+  if Canvas can't be reached it falls back to the last cache (this
+  semester's classes only, by term name). Returning to the app syncs
+  silently if the data is over 10 minutes old. A sync asks for the class
+  list, the check marks and the last-known classes' work all at once. Refresh syncs now: "Up to date", "Updated. Some classes
   couldn't be read." or why; with no setup, "Canvas isn't set up. See
   Settings, then Account." One unreadable class never blanks the rest.
 - The session cookie comes from the cookie service, is held only in

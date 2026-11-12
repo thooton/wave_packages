@@ -21,7 +21,7 @@ import java.util.concurrent.Future;
 public final class Parallel {
 
     /** At most this many requests in flight. */
-    public static final int WIDTH = 6;
+    public static final int WIDTH = 10;
 
     public interface Task<T> {
         T run() throws Exception;

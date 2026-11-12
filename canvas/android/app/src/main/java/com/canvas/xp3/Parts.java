@@ -252,6 +252,34 @@ final class Parts {
         return box;
     }
 
+    /**
+     * The launch loading state: a bar that fills as the sync's requests
+     * finish. It says how far along the real fetch is, nothing about what
+     * the answer will be. Until the first request count is known it is
+     * indeterminate.
+     */
+    View loadingBar(int done, int total) {
+        android.widget.FrameLayout box = new android.widget.FrameLayout(app);
+        box.setBackgroundColor(look.bg);
+        android.widget.ProgressBar bar = new android.widget.ProgressBar(app, null,
+            android.R.attr.progressBarStyleHorizontal);
+        if (total > 0) {
+            bar.setIndeterminate(false);
+            bar.setMax(total);
+            bar.setProgress(done);
+        } else {
+            bar.setIndeterminate(true);
+        }
+        android.content.res.ColorStateList ink = android.content.res.ColorStateList.valueOf(look.ink);
+        bar.setProgressTintList(ink);
+        bar.setIndeterminateTintList(ink);
+        bar.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(look.paper));
+        box.addView(bar, new android.widget.FrameLayout.LayoutParams(v.dp(120), v.dp(6), Gravity.CENTER));
+        box.setFocusable(true);
+        box.setDefaultFocusHighlightEnabled(false);
+        return box;
+    }
+
     /** The thin paper banner for being offline: what still works, and that work is safe. */
     View offline(String strong, String rest) {
         LinearLayout box = v.row();

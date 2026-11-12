@@ -93,13 +93,17 @@ final class HomeScreen extends Screen {
     @Override
     View build() {
         long now = System.currentTimeMillis();
+        // Launch: the screen waits for Canvas, so what it first shows is the
+        // real state and never a stand-in for it. The cache only appears if
+        // Canvas could not be reached.
+        if (app.backend.canvasReady() && (app.opening || app.snapshot == null && app.syncing)) {
+            return new Parts(app).loadingBar(app.openDone, app.openTotal);
+        }
         if (!chosen) {
             selected = app.todos.openingDay(now);
             weekStart = Dates.weekOf(selected);
             chosen = app.snapshot != null;
         }
-        // First launch, nothing saved yet: the whole screen waits.
-        if (app.backend.canvasReady() && app.snapshot == null && app.syncing) return new Parts(app).spinner();
         Built tabView = built[tab];
         String key = key(tab, now);
         if (tabView == null || !key.equals(tabView.key)) {

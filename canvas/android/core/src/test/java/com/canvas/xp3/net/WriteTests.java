@@ -219,6 +219,16 @@ public final class WriteTests {
             check.same("every readable class's work", 3, result.work.size());
             check.same("in the classes' order", "1", result.work.get(0).courseId);
             check.same("the unreadable one is named", "C", result.unavailable.get(0));
+
+            // Second sync: the known classes' work is asked for alongside the
+            // class list, and the answer is the same as the first time.
+            final int[] steps = new int[2];
+            com.canvas.xp3.data.Sync.Result again = new com.canvas.xp3.data.Sync(canvas(server))
+                .run(result, (done, total) -> { steps[0] = done; steps[1] = total; });
+            check.same("a repeat sync gives the same work", 3, again.work.size());
+            check.same("and the same unreadable class", "C", again.unavailable.get(0));
+            check.same("progress ends complete", steps[1], steps[0]);
+            check.ok("and counted every request", steps[1] >= 6);
         } finally {
             server.close();
         }

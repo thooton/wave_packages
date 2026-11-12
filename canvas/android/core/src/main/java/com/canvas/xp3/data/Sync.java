@@ -82,25 +82,60 @@ public final class Sync {
         }
     }
 
+    /** Told how far a sync has got: requests finished, and how many are known so far (0 when none are). */
+    public interface Progress {
+        void step(int done, int total);
+    }
+
     public Result run() throws IOException, InterruptedException {
-        return run(System.currentTimeMillis());
+        return run(System.currentTimeMillis(), null, null);
+    }
+
+    public Result run(Result previous, Progress progress) throws IOException, InterruptedException {
+        return run(System.currentTimeMillis(), previous, progress);
     }
 
     /**
-     * The classes of this semester and their work, fetched a few classes at
-     * a time, with the planner's check marks fetched alongside them.
+     * The classes of this semester and their work, with the planner's check
+     * marks, all fetched at once.
+     *
+     * The class list is what says which classes to ask about, so asked in
+     * order it was a full round trip spent before anything else could start.
+     * The last sync already knows the classes, so their work is requested
+     * in the same breath as the class list and the check marks; only a class
+     * that is new since then costs a second round. A guess that was wrong
+     * (a class that has ended) is simply dropped, never shown.
      */
-    Result run(long now) throws IOException, InterruptedException {
+    Result run(long now, Result previous, Progress progress) throws IOException, InterruptedException {
+        final Counter counter = new Counter(progress);
+        final List<String> guessed = new ArrayList<>();
+        List<Parallel.Task<Object>> first = new ArrayList<>();
+        first.add(counter.task(() -> canvas.courses(true)));
+        first.add(counter.task(() -> canvas.plannerOverrides()));
+        if (previous != null) {
+            for (Course known : previous.courses) {
+                final String id = known.id;
+                guessed.add(id);
+                first.add(counter.task(() -> canvas.assignments(id)));
+            }
+        }
+        counter.add(first.size());
+        List<Parallel.Outcome<Object>> opening = Parallel.all(first);
+        if (!opening.get(0).ok()) throw failure(opening.get(0).error);
+
         List<Assignment> work = new ArrayList<>();
         List<String> unavailable = new ArrayList<>();
         List<Map<String, Object>> all = new ArrayList<>();
-        for (Object entry : canvas.courses(true)) all.add(Json.object(entry));
+        for (Object entry : castList(opening.get(0).value)) all.add(Json.object(entry));
         List<Map<String, Object>> records = Terms.current(all, now);
         List<Course> courses = courses(records);
 
-        List<Parallel.Task<List<Object>>> tasks = new ArrayList<>();
+        // Each class's list of work: the guess if it arrived, else asked for now.
         final List<String> ids = new ArrayList<>();
         final List<String> names = new ArrayList<>();
+        final List<List<Object>> lists = new ArrayList<>();
+        final List<Parallel.Task<Object>> late = new ArrayList<>();
+        final List<Integer> lateAt = new ArrayList<>();
         for (Map<String, Object> course : records) {
             String name = courseName(course);
             final String id;
@@ -113,21 +148,32 @@ public final class Sync {
             for (Course candidate : courses) {
                 if (candidate.id.equals(id)) name = candidate.title;
             }
+            List<Object> got = null;
+            int at = guessed.indexOf(id);
+            if (at >= 0 && opening.get(2 + at).ok()) got = castList(opening.get(2 + at).value);
+            if (got == null) {
+                lateAt.add(ids.size());
+                late.add(counter.task(() -> canvas.assignments(id)));
+            }
             ids.add(id);
             names.add(name);
-            tasks.add(() -> canvas.assignments(id));
+            lists.add(got);
         }
-        tasks.add(() -> canvas.plannerOverrides());
-        List<Parallel.Outcome<List<Object>>> results = Parallel.all(tasks);
+        counter.add(late.size());
+        List<Parallel.Outcome<Object>> second = Parallel.all(late);
+        for (int i = 0; i < lateAt.size(); i++) {
+            Parallel.Outcome<Object> outcome = second.get(i);
+            if (outcome.ok()) lists.set(lateAt.get(i), castList(outcome.value));
+        }
 
         for (int i = 0; i < ids.size(); i++) {
-            Parallel.Outcome<List<Object>> result = results.get(i);
-            if (!result.ok()) {
+            List<Object> result = lists.get(i);
+            if (result == null) {
                 unavailable.add(names.get(i));
                 continue;
             }
             try {
-                for (Object item : result.value) {
+                for (Object item : result) {
                     if (work.size() >= MAX_WORK) break;
                     Assignment mapped = map(ids.get(i), names.get(i), Json.object(item));
                     if (mapped != null) work.add(mapped);
@@ -140,9 +186,9 @@ public final class Sync {
         java.util.Set<String> checked = new java.util.HashSet<>();
         // Check marks are a convenience; the work itself is what this sync
         // is for, and it is complete without them.
-        Parallel.Outcome<List<Object>> marks = results.get(results.size() - 1);
+        Parallel.Outcome<Object> marks = opening.get(1);
         if (marks.ok()) {
-            for (Object entry : marks.value) {
+            for (Object entry : castList(marks.value)) {
                 Map<String, Object> override = Json.object(entry);
                 if (!"assignment".equals(Json.text(override, "plannable_type"))) continue;
                 String assignment = optionalId(override, "plannable_id");
@@ -153,6 +199,46 @@ public final class Sync {
             }
         }
         return new Result(work, courses, unavailable, System.currentTimeMillis(), overrides, checked);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Object> castList(Object value) {
+        return (List<Object>) value;
+    }
+
+    /** Counts requests as they finish, from any thread, for the loading bar. */
+    private static final class Counter {
+        private final Progress progress;
+        private int done;
+        private int total;
+
+        Counter(Progress progress) {
+            this.progress = progress;
+        }
+
+        synchronized void add(int more) {
+            total += more;
+            tell();
+        }
+
+        private synchronized void finished() {
+            done++;
+            tell();
+        }
+
+        private void tell() {
+            if (progress != null) progress.step(done, total);
+        }
+
+        Parallel.Task<Object> task(final Parallel.Task<List<Object>> inner) {
+            return () -> {
+                try {
+                    return inner.run();
+                } finally {
+                    finished();
+                }
+            };
+        }
     }
 
     /**

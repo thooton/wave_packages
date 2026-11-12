@@ -119,13 +119,19 @@ generation/version check).
 - Only this semester's classes exist for the app. Canvas keeps old
   enrolments active and leaves term dates empty, so `Terms` decides from term
   names ("2026 Fall C"); a saved cache is filtered the same way on launch.
-- A screen is either loading (a spinner, `Parts.spinner`, filling the screen)
-  or whole. No "Loading…" text, no skeletons, and no page drawn with one part
-  still waiting. Cached content counts as whole and is replaced silently.
+- A screen is either loading (a spinner, `Parts.spinner`, or at launch the
+  bar `Parts.loadingBar`, filling the screen) or whole. No "Loading…" text,
+  no skeletons, and no page drawn with one part still waiting. Cache is
+  never shown as if it were the current state on launch: the home screen
+  waits for the sync (`MainActivity.opening`) and falls back to the cache
+  only when the sync fails.
 - Requests that do not depend on each other run at once through
   `net/Parallel` (a sync's classes, a class's three parts, a page's
   assignment and submission, a class's long modules).
-- Startup shows the last good cache before fetching. One unreadable course is
+- Startup syncs before showing anything (see above). A sync requests the
+  class list, the planner's check marks and the previous sync's classes'
+  work all at once (`Sync.run`); only a new class costs a second round.
+  One unreadable course is
   a partial sync with an `unavailable` entry, not a reason to discard all other
   courses.
 - Store reads are intentionally defensive. Missing, truncated, oversized, or

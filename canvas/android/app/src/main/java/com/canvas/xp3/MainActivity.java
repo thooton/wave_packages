@@ -76,6 +76,16 @@ public final class MainActivity extends BaseActivity {
     int version;
     Sync.Result snapshot;
     boolean syncing;
+    /**
+     * True from launch until the first sync has finished or failed. The home
+     * screen waits behind a loading bar for it rather than drawing the cache
+     * and swapping in the real state a moment later; the cache is what is
+     * shown only if Canvas cannot be reached.
+     */
+    boolean opening;
+    /** How far that first sync has got: requests finished, and how many are known (0: not yet). */
+    int openDone;
+    int openTotal;
     String syncError;
     /** Pieces of work being turned in right now, and how far each has got. */
     final Map<String, long[]> progress = new HashMap<>();
@@ -105,9 +115,11 @@ public final class MainActivity extends BaseActivity {
             todos.replace(snapshot.work);
             todos.check(snapshot.checked);
         }
+        opening = backend.canvasReady();
         theme();
         push(new HomeScreen(this));
-        refreshIfStale();
+        if (opening) refresh(false);
+        else refreshIfStale();
         listenForSignal();
         Alarms.schedule(this, backend);
     }
@@ -593,8 +605,16 @@ public final class MainActivity extends BaseActivity {
         syncing = true;
         syncError = null;
         redraw();
-        background(() -> backend.refresh(), (result, problem) -> {
+        final boolean launch = opening;
+        final Sync.Result before = snapshot;
+        background(() -> backend.refresh(launch ? (done, total) -> main.post(() -> {
+            if (!opening) return;
+            openDone = done;
+            openTotal = total;
+            redraw();
+        }) : null, before), (result, problem) -> {
             syncing = false;
+            opening = false;
             if (result != null) {
                 version++;
                 snapshot = result;

@@ -170,10 +170,10 @@ final class Backend {
         return store.cache();
     }
 
-    Sync.Result refresh() throws IOException, InterruptedException {
+    Sync.Result refresh(Sync.Progress progress, Sync.Result previous) throws IOException, InterruptedException {
         Sync current = sync;
         if (current == null) throw new IOException("Canvas is not set up yet");
-        Sync.Result result = current.run();
+        Sync.Result result = current.run(previous, progress);
         save(result);
         return result;
     }
