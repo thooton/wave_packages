@@ -134,7 +134,8 @@ queued). Top line "‹ <where you came from>", class dot and code. Then:
   haven't downloaded yet." (or "…couldn't be loaded." and why).
 - "From your teacher": file boxes; OK opens the viewer.
 - "Your work": what was turned in (typed answer with word count, link,
-  files that open), the draft's pieces, then the dashed "Add work" box
+  files), each opening to read it again: OK on the typed answer shows its
+  full text, on the link shows the link (its own stop), on a file the viewer, the draft's pieces, then the dashed "Add work" box
   ("Write, take photos, record, attach or add a link", as allowed), or
   "Add more work" / "Turn in again"; then "Turn in" when the draft has
   pieces, "Mark as done" / "Mark as not done" for work with nothing to

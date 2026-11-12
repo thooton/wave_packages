@@ -415,10 +415,14 @@ final class AssignmentScreen extends Screen {
         if (submitted && draft.isEmpty()) {
             if (detail.submittedText != null) {
                 stack.addView(submittedRow("sub:text", "text", "Typed answer",
-                    words(detail.submittedText) + " words", null), Views.wide());
+                    words(detail.submittedText) + " words",
+                    () -> app.push(new SubmissionScreen(app, "Back", work.title, "Your answer",
+                        detail.submittedText))), Views.wide());
             }
             if (detail.submittedUrl != null) {
-                stack.addView(submittedRow("sub:url", "link", detail.submittedUrl, "Link", null), Views.wide());
+                stack.addView(submittedRow("sub:url", "link", detail.submittedUrl, "Link",
+                    () -> app.push(new SubmissionScreen(app, "Back", work.title, "Your link",
+                        "[" + detail.submittedUrl + "](" + detail.submittedUrl + ")"))), Views.wide());
             }
             for (final Detail.FileRef file : detail.submittedFiles) {
                 stack.addView(submittedRow("sub:" + file.id, file.kind(), file.name, parts.fileMeta(file),
