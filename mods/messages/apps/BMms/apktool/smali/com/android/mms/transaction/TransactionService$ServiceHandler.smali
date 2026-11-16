@@ -486,6 +486,13 @@
     invoke-virtual {v3, v0}, Lcom/android/mms/transaction/TransactionService;->beginMmsConnectivity(I)V
 
     .line 1312
+    # FEAT(mms testnet): the default route counts as MMS connectivity on the test network
+    invoke-static {}, Lcom/android/mms/transaction/ArgonMmsReceive;->testNet()Z
+
+    move-result v0
+
+    if-nez v0, :cond_4
+
     iget-object v0, p0, Lcom/android/mms/transaction/TransactionService$ServiceHandler;->this$0:Lcom/android/mms/transaction/TransactionService;
 
     invoke-static {v0}, Lcom/android/mms/transaction/TransactionService;->-get0(Lcom/android/mms/transaction/TransactionService;)[Z

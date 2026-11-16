@@ -727,6 +727,11 @@
     .line 285
     sget v0, Lcom/android/mms/MmsConfig;->mRecipientLimit:I
 
+    # FEAT(recipients): no app-side cap on group size (stock mms_config.xml said 10)
+    invoke-static {v0}, Lcom/android/mms/argon/ArgonConfig;->recipientLimit(I)I
+
+    move-result v0
+
     return v0
 .end method
 

@@ -8,3 +8,4 @@ out/
 *.dex
 *.class
 apps/*/apktool/build/
+__pycache__/

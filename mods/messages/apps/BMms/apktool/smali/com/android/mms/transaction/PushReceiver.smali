@@ -46,6 +46,11 @@
     .locals 8
 
     .prologue
+    # FEAT(receipts): incoming M-Delivery.ind / M-Read-Orig.ind are dropped (never stored or shown)
+    const-wide/16 v0, -0x1
+
+    return-wide v0
+
     const/16 v2, 0x3d
 
     const/4 v7, 0x1
@@ -410,7 +415,10 @@
 
     aput-object p2, v1, v2
 
-    invoke-virtual {v0, v1}, Lcom/android/mms/transaction/PushReceiver$ReceivePushTask;->execute([Ljava/lang/Object;)Landroid/os/AsyncTask;
+    # PERF(mms push): own serial executor instead of the app-wide AsyncTask one
+    sget-object v3, Lcom/android/mms/transaction/ArgonPerf;->PUSH_EXECUTOR:Ljava/util/concurrent/Executor;
+
+    invoke-virtual {v0, v3, v1}, Lcom/android/mms/transaction/PushReceiver$ReceivePushTask;->executeOnExecutor(Ljava/util/concurrent/Executor;[Ljava/lang/Object;)Landroid/os/AsyncTask;
 
     .line 284
     :cond_2

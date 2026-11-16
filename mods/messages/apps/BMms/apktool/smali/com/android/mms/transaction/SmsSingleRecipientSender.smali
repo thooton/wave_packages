@@ -770,6 +770,26 @@
 
     .line 155
     :cond_4
+    # FEAT(rcs): RCS chat instead of SMS when the peer has RCS (falls back to SMS on failure)
+    iget-object v1, p0, Lcom/android/mms/transaction/SmsSingleRecipientSender;->mUri:Landroid/net/Uri;
+
+    iget-object v2, p0, Lcom/android/mms/transaction/SmsSingleRecipientSender;->mDest:Ljava/lang/String;
+
+    iget-object v4, p0, Lcom/android/mms/transaction/SmsSingleRecipientSender;->mMessageText:Ljava/lang/String;
+
+    iget v5, p0, Lcom/android/mms/transaction/SmsSingleRecipientSender;->mSubId:I
+
+    invoke-static {p0, v1, v2, v4, v5}, Lcom/android/mms/transaction/ArgonRcsSend;->interceptSms(Lcom/android/mms/transaction/SmsSingleRecipientSender;Landroid/net/Uri;Ljava/lang/String;Ljava/lang/String;I)Z
+
+    move-result v1
+
+    if-eqz v1, :argon_sms
+
+    const/4 v1, 0x0
+
+    return v1
+
+    :argon_sms
     iget-object v1, p0, Lcom/android/mms/transaction/SmsSingleRecipientSender;->mContext:Landroid/content/Context;
 
     iget-object v2, p0, Lcom/android/mms/transaction/SmsSingleRecipientSender;->mUri:Landroid/net/Uri;

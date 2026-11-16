@@ -416,6 +416,9 @@
 
     .line 122
     :goto_2
+    # FEAT(receipts): never request SMS delivery (status) reports
+    const/4 v9, 0x0
+
     const/4 v0, -0x1
 
     .line 124

@@ -443,18 +443,8 @@
     :try_start_0
     iget-object v0, p0, Lcom/android/mms/util/DownloadManager;->mContext:Landroid/content/Context;
 
-    invoke-static {v0}, Lcom/google/android/mms/pdu/PduPersister;->getPduPersister(Landroid/content/Context;)Lcom/google/android/mms/pdu/PduPersister;
-
-    move-result-object v0
-
-    invoke-virtual {v0, p1}, Lcom/google/android/mms/pdu/PduPersister;->load(Landroid/net/Uri;)Lcom/google/android/mms/pdu/GenericPdu;
-
-    move-result-object v0
-
-    check-cast v0, Lcom/google/android/mms/pdu/NotificationInd;
-
-    .line 200
-    invoke-virtual {v0}, Lcom/google/android/mms/pdu/NotificationInd;->getExpiry()J
+    # PERF(mms download): one column query instead of PduPersister.load
+    invoke-static {v0, p1}, Lcom/android/mms/transaction/ArgonPerf;->expiry(Landroid/content/Context;Landroid/net/Uri;)J
 
     move-result-wide v0
 

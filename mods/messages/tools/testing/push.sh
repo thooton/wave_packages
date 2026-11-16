@@ -1,6 +1,7 @@
 #!/bin/bash
 # tools/testing/push.sh : builds the on-device test helpers and pushes them to /data/local/tmp
-#   smsinject.dex  -> SmsInject (fake incoming SMS), ProviderHammer (concurrent provider writes)
+#   smsinject.dex  -> SmsInject (fake incoming SMS), WapPushInject (fake WAP push, e.g. MMS
+#                     notifications; used by mms_inject.sh), ProviderHammer (concurrent provider writes)
 #   race.sh        -> orphaned-thread race reproducer
 # Usage on device afterwards:
 #   adb shell su -c 'CLASSPATH=/data/local/tmp/smsinject.dex app_process /system/bin SmsInject 22000 "hello" [count] [delayMs]'

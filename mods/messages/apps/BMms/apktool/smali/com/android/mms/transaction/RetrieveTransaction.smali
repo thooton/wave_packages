@@ -536,10 +536,8 @@
     move-result v0
 
     .line 334
-    if-nez v0, :cond_0
-
-    .line 335
-    return-void
+    # FIX(mms ack): M-Acknowledge.ind is always sent; the pref only sets X-Mms-Report-Allowed.
+    goto :cond_0
 
     .line 343
     :cond_0
@@ -558,6 +556,11 @@
 
     .line 346
     invoke-direct {v1, v2, v0}, Lcom/google/android/mms/pdu/AcknowledgeInd;-><init>(I[B)V
+
+    # FIX(mms ack)
+    iget-object v2, p0, Lcom/android/mms/transaction/RetrieveTransaction;->mContext:Landroid/content/Context;
+
+    invoke-static {v1, v2}, Lcom/android/mms/transaction/ArgonMmsReceive;->setReportAllowed(Lcom/google/android/mms/pdu/GenericPdu;Landroid/content/Context;)V
 
     .line 350
     invoke-static {}, Lcom/android/mms/ui/MessageUtils;->getLocalNumber()Ljava/lang/String;
@@ -1192,10 +1195,19 @@
     .line 179
     const/4 v5, 0x0
 
+    # FEAT(self number): learn our own number from 1:1 MMS when the SIM has none; v3 =
+    # createThreadId (false when ArgonSelf.afterPersist picks the group thread itself)
+    invoke-static {v1, v4}, Lcom/android/mms/argon/ArgonSelf;->beforePersist(Lcom/google/android/mms/pdu/GenericPdu;Z)Z
+
+    move-result v3
+
     .line 178
     invoke-virtual/range {v0 .. v5}, Lcom/google/android/mms/pdu/PduPersister;->persist(Lcom/google/android/mms/pdu/GenericPdu;Landroid/net/Uri;ZZLjava/util/HashMap;)Landroid/net/Uri;
 
     move-result-object v0
+
+    # FEAT(self number): file under the right group thread when the SIM has no number
+    invoke-static {v0, v4}, Lcom/android/mms/argon/ArgonSelf;->afterPersist(Landroid/net/Uri;Z)V
 
     .line 182
     new-instance v9, Landroid/content/ContentValues;

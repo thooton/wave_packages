@@ -163,6 +163,9 @@
     .locals 7
 
     .prologue
+    # FEAT(receipts): never send MMS read reports
+    return-void
+
     const/4 v3, 0x0
 
     const/4 v2, 0x1
@@ -453,6 +456,9 @@
     move v0, v1
 
     :goto_2
+    # FEAT(receipts): never request MMS delivery reports (X-Mms-Delivery-Report: No)
+    const/16 v0, 0x81
+
     invoke-virtual {p1, v0}, Lcom/google/android/mms/pdu/SendReq;->setDeliveryReport(I)V
 
     .line 178
@@ -479,6 +485,9 @@
     if-eqz v0, :cond_6
 
     :goto_5
+    # FEAT(receipts): never request MMS read reports (X-Mms-Read-Report: No)
+    const/16 v1, 0x81
+
     invoke-virtual {p1, v1}, Lcom/google/android/mms/pdu/SendReq;->setReadReport(I)V
 
     .line 188

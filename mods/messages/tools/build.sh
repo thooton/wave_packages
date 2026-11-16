@@ -21,8 +21,9 @@ for app in "${apps[@]}"; do
             javac -nowarn -source 8 -target 8 -cp "$ANDROID_JAR" -d "$B/stubs" \
                 $(find "$A/stubs" -name '*.java') 2>&1 | grep -vE "$filter" || true
         fi
+        # JAVA_EXCLUDE: optional path glob to leave out (e.g. '*/org/argon/*' while it's mid-edit)
         javac -nowarn -source 8 -target 8 -cp "$ANDROID_JAR:$B/stubs" -d "$B/classes" \
-            $(find "$A/java" -name '*.java') 2>&1 | grep -vE "$filter" || true
+            $(find "$A/java" -name '*.java' ${JAVA_EXCLUDE:+-not -path "$JAVA_EXCLUDE"}) 2>&1 | grep -vE "$filter" || true
         [ -n "$(find "$B/classes" -name '*.class')" ] || { echo "$app: javac failed"; exit 1; }
         "$BT/d8" --release --min-api $MIN_API --lib "$ANDROID_JAR" --classpath "$B/stubs" \
             --output "$B/d8" $(find "$B/classes" -name '*.class')

@@ -7,6 +7,7 @@ fp=$(grep '^ro.build.fingerprint=' "$FIRMWARE/system/build.prop" | cut -d= -f2)
 [ -d "$ROOT/out/system" ] || { echo "nothing in out/system: run tools/build.sh"; exit 1; }
 Z="$ROOT/build/zip"; rm -rf "$Z"; mkdir -p "$Z/META-INF/com/google/android"
 cp -r "$ROOT/out/system" "$Z/"
+cp "$ROOT/module/service.sh" "$Z/"
 cat > "$Z/META-INF/com/google/android/update-binary" <<'EOF'
 #!/sbin/sh
 umask 022
@@ -40,6 +41,7 @@ if [ "\$ACTUAL" != "\$EXPECTED" ]; then
 fi
 for old in $LEGACY_MODULE_IDS; do [ -d /data/adb/modules/\$old ] && touch /data/adb/modules/\$old/remove; done
 set_perm_recursive \$MODPATH/system 0 0 0755 0644 u:object_r:system_file:s0
+set_perm \$MODPATH/service.sh 0 0 0755
 for a in \$(ls \$MODPATH/system/*/); do rm -f /data/dalvik-cache/*/system@*@\$a@*; done
 rm -rf /data/system/package_cache/*
 ui_print "- Installed. Reboot to apply."

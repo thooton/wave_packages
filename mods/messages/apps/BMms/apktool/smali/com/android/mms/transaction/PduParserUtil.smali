@@ -32,6 +32,14 @@
 
     const/4 v2, 0x1
 
+    # FIX(mms crash): carrier config is null while the SIM isn't loaded (e.g. MMS push at boot);
+    # stock code then crashed PushReceiver and lost the notification. Default to true.
+    if-nez v0, :argon_has_config
+
+    return v2
+
+    :argon_has_config
+
     .line 32
     invoke-virtual {v0, v1, v2}, Landroid/os/Bundle;->getBoolean(Ljava/lang/String;Z)Z
 

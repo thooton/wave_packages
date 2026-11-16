@@ -574,6 +574,9 @@
 
     invoke-virtual {v2, v3, v0, v1}, Landroid/content/pm/PackageManager;->setComponentEnabledSetting(Landroid/content/ComponentName;II)V
 
+    # FEAT(argon): Messages Argon startup (pref migration, held-MMS sweep, RCS)
+    invoke-static {p0}, Lcom/android/mms/argon/ArgonInit;->onAppCreate(Landroid/app/Application;)V
+
     .line 126
     return-void
 

@@ -300,10 +300,9 @@
     move-result v0
 
     .line 311
-    if-nez v0, :cond_0
-
-    .line 312
-    return-void
+    # FIX(mms ack): M-NotifyResp.ind is mandatory (without it the MMSC may re-push the same
+    # message). The "send delivery report" pref now only sets X-Mms-Report-Allowed.
+    goto :cond_0
 
     .line 318
     :cond_0
@@ -340,6 +339,13 @@
 
     move-result-object v0
 
+    # FIX(mms ack): the framework composer drops X-Mms-Report-Allowed from M-NotifyResp.ind
+    iget-object v1, p0, Lcom/android/mms/transaction/NotificationTransaction;->mContext:Landroid/content/Context;
+
+    invoke-static {v0, v1}, Lcom/android/mms/transaction/ArgonMmsReceive;->withReportAllowed([BLandroid/content/Context;)[B
+
+    move-result-object v0
+
     iget-object v1, p0, Lcom/android/mms/transaction/NotificationTransaction;->mContentLocation:Ljava/lang/String;
 
     invoke-virtual {p0, v0, v1}, Lcom/android/mms/transaction/NotificationTransaction;->sendPdu([BLjava/lang/String;)[B
@@ -357,6 +363,13 @@
     invoke-direct {v1, v2, v0}, Lcom/google/android/mms/pdu/PduComposer;-><init>(Landroid/content/Context;Lcom/google/android/mms/pdu/GenericPdu;)V
 
     invoke-virtual {v1}, Lcom/google/android/mms/pdu/PduComposer;->make()[B
+
+    move-result-object v0
+
+    # FIX(mms ack): the framework composer drops X-Mms-Report-Allowed from M-NotifyResp.ind
+    iget-object v1, p0, Lcom/android/mms/transaction/NotificationTransaction;->mContext:Landroid/content/Context;
+
+    invoke-static {v0, v1}, Lcom/android/mms/transaction/ArgonMmsReceive;->withReportAllowed([BLandroid/content/Context;)[B
 
     move-result-object v0
 
@@ -945,10 +958,19 @@
     .line 209
     const/4 v5, 0x0
 
+    # FEAT(self number): learn our own number from 1:1 MMS when the SIM has none; v3 =
+    # createThreadId (false when ArgonSelf.afterPersist picks the group thread itself)
+    invoke-static {v1, v4}, Lcom/android/mms/argon/ArgonSelf;->beforePersist(Lcom/google/android/mms/pdu/GenericPdu;Z)Z
+
+    move-result v3
+
     .line 208
     invoke-virtual/range {v0 .. v5}, Lcom/google/android/mms/pdu/PduPersister;->persist(Lcom/google/android/mms/pdu/GenericPdu;Landroid/net/Uri;ZZLjava/util/HashMap;)Landroid/net/Uri;
 
     move-result-object v10
+
+    # FEAT(self number): file under the right group thread when the SIM has no number
+    invoke-static {v10, v4}, Lcom/android/mms/argon/ArgonSelf;->afterPersist(Landroid/net/Uri;Z)V
 
     .line 212
     new-instance v11, Landroid/content/ContentValues;
@@ -1144,6 +1166,9 @@
 
     .line 254
     iput-object v10, p0, Lcom/android/mms/transaction/NotificationTransaction;->mUri:Landroid/net/Uri;
+
+    # PERF(mms notification): notify now, not after the NotifyResp round trip
+    invoke-static {v10}, Lcom/android/mms/transaction/ArgonPerf;->notifyEarly(Landroid/net/Uri;)V
 
     move v0, v6
 

@@ -13,7 +13,7 @@ with `--show-bad-code` or read the smali). Edit the smali in `apps/<App>/apktool
 | Conversation list | `ui.ConversationList`, `ConversationListAdapter/Item`, `NotificationConversationList` (China-only filter, disabled) |
 | Conversation view / compose | `ui.ComposeMessageActivity` (~7k lines), `MessageListAdapter`, `MessageItem`, `MessageListItem`, `data.WorkingMessage` |
 | Data model / caches | `data.Conversation` (+ in-memory `Cache` keyed by thread id / recipients), `data.Contact`, `ContactList`, `util.DraftCache`, `util.Recycler` (message limits) |
-| Misc | `ui.MessageUtils` (grab-bag helpers), `ui.MessagingPreferenceActivity` (settings), `MmsConfig`, `widget.*`, `rcs.*` (RCS, likely unused) |
+| Misc | `ui.MessageUtils` (grab-bag helpers), `ui.MessagingPreferenceActivity` (settings), `MmsConfig`, `widget.*`, `rcs.*` (stock RCS stubs, unused; `RcsMessageStatusService` now hosts our engine) |
 
 Config booleans in `apktool/res/values/bools.xml` (read-only for now; resources can't be rebuilt yet).
 
@@ -34,3 +34,21 @@ Config booleans in `apktool/res/values/bools.xml` (read-only for now; resources 
 * Framework SMS path: `InboundSmsHandler` (telephony-common.jar) writes `raw`, then broadcasts
   SMS_DELIVER to the default SMS app.
 * An outer-display component logs `ExtDisplay: getMissMmsCount` (owner not identified yet).
+
+## Our code (Messages Argon)
+`rg '# (FIX|FEAT|PERF)\(' apps/` lists every smali hook. Java:
+
+| File (`apps/BMms/java/com/android/mms/…`) | What |
+|---|---|
+| `argon/ArgonInit` (`MmsApp.onCreate`), `argon/ArgonHooks` | app start: receipt prefs, held-MMS sweep, RCS start |
+| `argon/Argon` | dev switches (`debug.argon.*` props) |
+| `argon/ArgonConfig` (`MmsConfig`) | recipient limit |
+| `argon/ArgonSelf` (`MessageUtils.getLocalNumber`, persist call sites) | own number, group thread filing |
+| `transaction/ArgonMmsReceive` (`PushReceiver`, `TransactionService`, ack composers) | held placeholder, reveal/sweep, Report-Allowed, MMS test network |
+| `transaction/ArgonPerf` (`MessagingNotification`, `NotificationTransaction`, `TransactionService`, `PushReceiver`, `DownloadManager`) | receive latency |
+| `argon/RcsHost` (`RcsMessageStatusService`, `MessageUtils.getActivatedIccCardCount`) | RCS engine host, platform, config import |
+| `transaction/ArgonRcsStore`, `transaction/ArgonRcsSend` (`SmsSingleRecipientSender`, `SendTransaction`, `SmsReceiverService`) | RCS storage and routing |
+| `org/argon/rcs/…` | RCS engine (pure Java, docs/rcs/engine.md) |
+
+TelephonyProvider: `apps/TelephonyProvider/java/…/ThreadIntegrity` (docs/fixes/sms-orphaned-threads).
+Magisk module extras: `module/service.sh` (boot-time `speed` dexopt, docs/fixes/performance).

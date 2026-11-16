@@ -415,7 +415,8 @@
 
     move-object/from16 v1, v16
 
-    invoke-static {v0, v1}, Lcom/android/mms/util/AddressUtils;->getFrom(Landroid/content/Context;Landroid/net/Uri;)Ljava/lang/String;
+    # PERF(mms notification): sender cached per message
+    invoke-static {v0, v1, v15}, Lcom/android/mms/transaction/ArgonPerf;->mmsFrom(Landroid/content/Context;Landroid/net/Uri;Landroid/database/Cursor;)Ljava/lang/String;
 
     move-result-object v4
 
@@ -594,6 +595,32 @@
     .line 854
     const/4 v14, 0x0
 
+    # PERF(mms notification): content of already seen-by-us messages comes from a cache;
+    # rows past the newest few are not loaded at all (mode 0 = load, 1 = cached, 2 = skip)
+    move-object/from16 v2, p0
+
+    invoke-static {v2, v15}, Lcom/android/mms/transaction/ArgonPerf;->mmsNotificationMode(Landroid/content/Context;Landroid/database/Cursor;)I
+
+    move-result v2
+
+    if-eqz v2, :argon_load
+
+    const/4 v3, 0x1
+
+    if-ne v2, v3, :cond_4
+
+    invoke-static {v15}, Lcom/android/mms/transaction/ArgonPerf;->mmsCachedText(Landroid/database/Cursor;)Ljava/lang/String;
+
+    move-result-object v5
+
+    invoke-static {v15}, Lcom/android/mms/transaction/ArgonPerf;->mmsCachedType(Landroid/database/Cursor;)I
+
+    move-result v14
+
+    goto :cond_4
+
+    :argon_load
+
     .line 856
     :try_start_1
     sget-object v2, Lcom/android/mms/transaction/MessagingNotification;->sPduPersister:Lcom/google/android/mms/pdu/PduPersister;
@@ -647,6 +674,13 @@
 
     if-eqz v3, :cond_3
 
+    # PERF(mms notification): only the newest message's picture is ever shown
+    invoke-static {v15}, Lcom/android/mms/transaction/ArgonPerf;->skipMmsNotificationPicture(Landroid/database/Cursor;)Z
+
+    move-result v3
+
+    if-nez v3, :cond_3
+
     .line 864
     const/16 v3, 0x168
 
@@ -685,6 +719,9 @@
 
     .line 878
     :cond_4
+    # PERF(mms notification): remember what was loaded
+    invoke-static {v15, v5, v14}, Lcom/android/mms/transaction/ArgonPerf;->mmsRemember(Landroid/database/Cursor;Ljava/lang/String;I)V
+
     const/4 v3, 0x0
 
     move-object/from16 v2, p0

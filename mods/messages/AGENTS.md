@@ -12,7 +12,8 @@ apps/<App>/stubs/     compile-only Java declarations of stock classes that java/
 decompiled/<App>/     jadx Java of the STOCK apk: read-only reference for understanding code (ignored)
 firmware/system/      stock /system dump (priv-app, app, framework, build.prop) (ignored)
 tools/                build/deploy/test scripts (below)
-docs/                 code map, per-fix write-ups (docs/fixes/<name>/README.md)
+docs/                 code map, testing, per-fix write-ups (docs/fixes/<name>/README.md), RCS (docs/rcs/)
+module/               extra Magisk module files (service.sh: boot-time dexopt of the patched APKs)
 build/, out/          build output (ignored); out/system/... mirrors device paths
 ```
 `<App>` is the APK's directory name on the device: `BMms` (Messages, pkg `com.android.mms`),
@@ -51,7 +52,9 @@ After deploy, wait for boot: `adb wait-for-device; until [ "$(adb shell getprop 
   class if you need package-private access) and make the smali change a single `invoke-static`.
   Add tiny package-private bridge methods in smali when Java needs private stock members
   (example: `ti_*` methods in `MmsSmsProvider.smali`, declared for javac in `stubs/`).
-* Mark every smali edit with a `# FIX(<topic>)` or `# FEAT(<topic>)` comment so `rg` finds it.
+* Mark every smali edit with a `# FIX(<topic>)`, `# FEAT(<topic>)` or `# PERF(<topic>)` comment so
+  `rg` finds it. Edit smali with `tools/lib/smalipatch.py` (`patch(path, old, new)`: each anchor
+  must match exactly once) from a script, so the edit is reviewable and fails loudly on drift.
 * smali gotchas: non-range `invoke-*` only reach registers v0..v15. Check `.locals` and use
   `invoke-*/range` or move registers otherwise. Respect existing `try_start/catch` ranges and
   `monitor-enter/exit` pairing.
@@ -64,19 +67,23 @@ After deploy, wait for boot: `adb wait-for-device; until [ "$(adb shell getprop 
   KEYCODE_DPAD_UP/DOWN/LEFT/RIGHT/CENTER/BACK/HOME`). Screenshot: `adb exec-out screencap -p > x.png`.
   The screen sleeps quickly: `adb shell svc power stayon usb` (resets on reboot).
 * Launcher home: Left = Quick Settings, Right = Missed Events (`UnreadMessageInfoLoader`).
-* Root: Magisk. `adb shell su -c '...'` (adbd itself isn't root). No `sqlite3` on device: query
-  through the providers (`tools/testing/dumpdb.sh`) or pull
-  `/data/user_de/0/com.android.providers.telephony/databases/mmssms.db` via su.
-* No SIM inserted: sending fails and subId is invalid; use `SmsInject` for incoming SMS.
+* Root: Magisk. `adb shell su -c '...'` (adbd itself isn't root). If it says "Permission denied"
+  the Shell grant expired or was reset: re-grant in Magisk, then make it permanent (docs/testing.md).
+  No `sqlite3` on device: `tools/testing/db.sh "<sql>"` (pulls a copy) or the providers
+  (`tools/testing/dumpdb.sh`).
+* No SIM inserted: sending fails and subId is invalid; use `SmsInject` for incoming SMS, the fake
+  MMSC for MMS and the RCS mock for RCS (docs/testing.md).
 * Shell writes to SMS providers are **silently ignored** unless
   `adb shell appops set com.android.shell WRITE_SMS allow` (reset with `default` afterwards).
 * Clock is unset (1970); harmless so far.
 
 ## Testing
+Full guide: docs/testing.md. Regression suites: `tools/testing/mms_suite.sh` (MMS receive),
+`tools/rcs/device_suite.sh` (RCS on the phone), `tools/rcs/run_tests.sh` (RCS engine on the host).
 * `tools/testing/push.sh` pushes `smsinject.dex` + `race.sh` to `/data/local/tmp`.
 * Fake incoming SMS (real PDU through `SMS_DELIVER`):
   `adb shell su -c 'CLASSPATH=/data/local/tmp/smsinject.dex app_process /system/bin SmsInject 22000 "text" [count] [delayMs]'`
 * `tools/testing/dumpdb.sh | tools/testing/orphans.py`: DB state and orphaned SMS.
-* Logs: `adb logcat -s Mms MmsSmsProvider SmsProvider ThreadIntegrity`.
+* Logs: `adb logcat -s Mms Argon ArgonMms ArgonSelf ArgonRcs ArgonPerf MmsSmsProvider SmsProvider ThreadIntegrity`.
 * Always verify on the device after deploy (build, deploy, exercise the flow, check logcat for
   `FATAL`/`ANR`). Leave the device clean: delete test messages, reset appops, remove temp files.
