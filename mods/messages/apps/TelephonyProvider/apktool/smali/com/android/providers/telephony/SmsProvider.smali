@@ -2831,7 +2831,8 @@
 
     move-object/from16 v0, p2
 
-    invoke-virtual {v10, v8, v2, v0}, Landroid/database/sqlite/SQLiteDatabase;->insert(Ljava/lang/String;Ljava/lang/String;Landroid/content/ContentValues;)J
+    # FIX(orphaned sms): insert only into a thread that exists at insert time
+    invoke-static {p0, v10, v8, v2, v0}, Lcom/android/providers/telephony/ThreadIntegrity;->insertSms(Lcom/android/providers/telephony/SmsProvider;Landroid/database/sqlite/SQLiteDatabase;Ljava/lang/String;Ljava/lang/String;Landroid/content/ContentValues;)J
 
     move-result-wide v2
 
@@ -4359,6 +4360,9 @@
     move-result-object v0
 
     invoke-static {v0}, Lcom/android/providers/telephony/TelephonyBackupAgent$DeferredSmsMmsRestoreService;->startIfFilesExist(Landroid/content/Context;)V
+
+    # FIX(orphaned sms): re-home sms rows orphaned before this fix
+    invoke-static {p0}, Lcom/android/providers/telephony/ThreadIntegrity;->scheduleRepair(Lcom/android/providers/telephony/SmsProvider;)V
 
     .line 133
     const/4 v0, 0x1

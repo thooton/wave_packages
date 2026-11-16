@@ -3037,6 +3037,24 @@
 
     move-result-object v2
 
+    # FIX(orphaned sms): use the thread the provider actually stored the message in
+    if-eqz v2, :ti_skip
+
+    invoke-static {p1, v2}, Lcom/android/mms/transaction/MessagingNotification;->getSmsThreadId(Landroid/content/Context;Landroid/net/Uri;)J
+
+    move-result-wide v4
+
+    const-wide/16 v6, 0x0
+
+    cmp-long v3, v4, v6
+
+    if-lez v3, :ti_skip
+
+    invoke-static {v4, v5}, Ljava/lang/Long;->valueOf(J)Ljava/lang/Long;
+
+    move-result-object v0
+
+    :ti_skip
     .line 956
     invoke-virtual {v0}, Ljava/lang/Long;->longValue()J
 

@@ -12,7 +12,7 @@ fi
 STAGE=/data/local/tmp/$MODULE_ID
 cat > "$ROOT/build/module.prop" <<EOF
 id=$MODULE_ID
-name=XP3800 messaging
+name=Messages Argon
 version=dev
 versionCode=1
 author=local

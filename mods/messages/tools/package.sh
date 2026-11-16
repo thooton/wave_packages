@@ -1,5 +1,5 @@
 #!/bin/bash
-# tools/package.sh [version]  -> out/xp3800_messaging-<version>.zip (flash in the Magisk app)
+# tools/package.sh [version]  -> out/messages_argon-<version>.zip (flash in the Magisk app)
 # The zip refuses to install on any firmware other than firmware/system/build.prop's fingerprint.
 source "$(dirname "$0")/lib/env.sh"
 ver=${1:-$(git -C "$ROOT" describe --always --dirty 2>/dev/null || echo dev)}
@@ -23,7 +23,7 @@ EOF
 echo "#MAGISK" > "$Z/META-INF/com/google/android/updater-script"
 cat > "$Z/module.prop" <<EOF
 id=$MODULE_ID
-name=XP3800 messaging
+name=Messages Argon
 version=$ver
 versionCode=$(date +%s)
 author=local

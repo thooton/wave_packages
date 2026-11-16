@@ -4539,7 +4539,7 @@
 .end method
 
 .method private declared-synchronized getThreadId(Ljava/util/List;)Landroid/database/Cursor;
-    .locals 7
+    .locals 1
     .annotation system Ldalvik/annotation/Signature;
         value = {
             "(",
@@ -4551,276 +4551,53 @@
         }
     .end annotation
 
-    .prologue
-    const/4 v1, 0x0
-
-    const/4 v6, 0x1
-
+    # FIX(orphaned sms): whole lookup/creation in one transaction, result materialized.
     monitor-enter p0
 
-    .line 691
-    :try_start_0
-    invoke-direct {p0, p1}, Lcom/android/providers/telephony/MmsSmsProvider;->getAddressIds(Ljava/util/List;)Ljava/util/Set;
+    :try_start_ti
+    invoke-static {p0, p1}, Lcom/android/providers/telephony/ThreadIntegrity;->getThreadId(Lcom/android/providers/telephony/MmsSmsProvider;Ljava/util/List;)Landroid/database/Cursor;
 
-    move-result-object v2
-
-    .line 692
-    const-string/jumbo v0, ""
-
-    .line 694
-    invoke-interface {v2}, Ljava/util/Set;->size()I
-
-    move-result v3
-
-    if-nez v3, :cond_0
-
-    .line 695
-    const-string/jumbo v0, "MmsSmsProvider"
-
-    const-string/jumbo v2, "getThreadId: NO receipients specified -- NOT creating thread"
-
-    .line 696
-    new-instance v3, Ljava/lang/Exception;
-
-    invoke-direct {v3}, Ljava/lang/Exception;-><init>()V
-
-    .line 695
-    invoke-static {v0, v2, v3}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
-    :try_end_0
-    .catchall {:try_start_0 .. :try_end_0} :catchall_0
+    move-result-object v0
+    :try_end_ti
+    .catchall {:try_start_ti .. :try_end_ti} :catchall_ti
 
     monitor-exit p0
 
-    .line 697
-    return-object v1
+    return-object v0
 
-    .line 698
-    :cond_0
-    :try_start_1
-    invoke-interface {v2}, Ljava/util/Set;->size()I
-
-    move-result v3
-
-    if-ne v3, v6, :cond_1
-
-    .line 700
-    invoke-interface {v2}, Ljava/lang/Iterable;->iterator()Ljava/util/Iterator;
-
-    move-result-object v2
-
-    :goto_0
-    invoke-interface {v2}, Ljava/util/Iterator;->hasNext()Z
-
-    move-result v3
-
-    if-eqz v3, :cond_2
-
-    invoke-interface {v2}, Ljava/util/Iterator;->next()Ljava/lang/Object;
-
-    move-result-object v0
-
-    check-cast v0, Ljava/lang/Long;
-
-    .line 701
-    invoke-virtual {v0}, Ljava/lang/Long;->longValue()J
-
-    move-result-wide v4
-
-    invoke-static {v4, v5}, Ljava/lang/Long;->toString(J)Ljava/lang/String;
-
-    move-result-object v0
-
-    goto :goto_0
-
-    .line 704
-    :cond_1
-    invoke-direct {p0, v2}, Lcom/android/providers/telephony/MmsSmsProvider;->getSortedSet(Ljava/util/Set;)[J
-
-    move-result-object v0
-
-    invoke-direct {p0, v0}, Lcom/android/providers/telephony/MmsSmsProvider;->getSpaceSeparatedNumbers([J)Ljava/lang/String;
-
-    move-result-object v0
-
-    .line 707
-    :cond_2
-    const-string/jumbo v2, "MmsSmsProvider"
-
-    const/4 v3, 0x2
-
-    invoke-static {v2, v3}, Landroid/util/Log;->isLoggable(Ljava/lang/String;I)Z
-
-    move-result v2
-
-    if-eqz v2, :cond_3
-
-    .line 708
-    const-string/jumbo v2, "MmsSmsProvider"
-
-    const-string/jumbo v3, "getThreadId: recipientIds (selectionArgs) =xxxxxxx"
-
-    invoke-static {v2, v3}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
-
-    .line 712
-    :cond_3
-    const/4 v2, 0x1
-
-    new-array v2, v2, [Ljava/lang/String;
-
-    const/4 v3, 0x0
-
-    aput-object v0, v2, v3
-
-    .line 714
-    iget-object v3, p0, Lcom/android/providers/telephony/MmsSmsProvider;->mOpenHelper:Landroid/database/sqlite/SQLiteOpenHelper;
-
-    invoke-virtual {v3}, Landroid/database/sqlite/SQLiteOpenHelper;->getReadableDatabase()Landroid/database/sqlite/SQLiteDatabase;
-
-    move-result-object v3
-
-    .line 715
-    invoke-virtual {v3}, Landroid/database/sqlite/SQLiteDatabase;->beginTransaction()V
-    :try_end_1
-    .catchall {:try_start_1 .. :try_end_1} :catchall_0
-
-    .line 719
-    :try_start_2
-    const-string/jumbo v4, "SELECT _id FROM threads WHERE recipient_ids=?"
-
-    invoke-virtual {v3, v4, v2}, Landroid/database/sqlite/SQLiteDatabase;->rawQuery(Ljava/lang/String;[Ljava/lang/String;)Landroid/database/Cursor;
-
-    move-result-object v1
-
-    .line 721
-    invoke-interface {v1}, Landroid/database/Cursor;->getCount()I
-
-    move-result v4
-
-    if-nez v4, :cond_4
-
-    .line 723
-    invoke-interface {v1}, Landroid/database/Cursor;->close()V
-
-    .line 725
-    const-string/jumbo v4, "MmsSmsProvider"
-
-    const-string/jumbo v5, "getThreadId: create new thread_id for recipients xxxxxxxx"
-
-    invoke-static {v4, v5}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
-
-    .line 727
-    invoke-interface {p1}, Ljava/util/List;->size()I
-
-    move-result v4
-
-    invoke-direct {p0, v0, v4}, Lcom/android/providers/telephony/MmsSmsProvider;->insertThread(Ljava/lang/String;I)V
-
-    .line 730
-    const-string/jumbo v0, "SELECT _id FROM threads WHERE recipient_ids=?"
-
-    invoke-virtual {v3, v0, v2}, Landroid/database/sqlite/SQLiteDatabase;->rawQuery(Ljava/lang/String;[Ljava/lang/String;)Landroid/database/Cursor;
-
-    move-result-object v1
-
-    .line 732
-    :cond_4
-    invoke-virtual {v3}, Landroid/database/sqlite/SQLiteDatabase;->setTransactionSuccessful()V
-    :try_end_2
-    .catch Ljava/lang/Throwable; {:try_start_2 .. :try_end_2} :catch_0
-    .catchall {:try_start_2 .. :try_end_2} :catchall_1
-
-    .line 736
-    :try_start_3
-    invoke-virtual {v3}, Landroid/database/sqlite/SQLiteDatabase;->endTransaction()V
-
-    .line 739
-    :goto_1
-    if-eqz v1, :cond_5
-
-    invoke-interface {v1}, Landroid/database/Cursor;->getCount()I
-
-    move-result v0
-
-    if-le v0, v6, :cond_5
-
-    .line 740
-    const-string/jumbo v0, "MmsSmsProvider"
-
-    new-instance v2, Ljava/lang/StringBuilder;
-
-    invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
-
-    const-string/jumbo v3, "getThreadId: why is cursorCount="
-
-    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v2
-
-    invoke-interface {v1}, Landroid/database/Cursor;->getCount()I
-
-    move-result v3
-
-    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
-
-    move-result-object v2
-
-    invoke-virtual {v2}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-
-    move-result-object v2
-
-    invoke-static {v0, v2}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
-    :try_end_3
-    .catchall {:try_start_3 .. :try_end_3} :catchall_0
-
-    :cond_5
-    monitor-exit p0
-
-    .line 742
-    return-object v1
-
-    .line 733
-    :catch_0
-    move-exception v0
-
-    .line 734
-    :try_start_4
-    const-string/jumbo v2, "MmsSmsProvider"
-
-    invoke-virtual {v0}, Ljava/lang/Throwable;->getMessage()Ljava/lang/String;
-
-    move-result-object v4
-
-    invoke-static {v2, v4, v0}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
-    :try_end_4
-    .catchall {:try_start_4 .. :try_end_4} :catchall_1
-
-    .line 736
-    :try_start_5
-    invoke-virtual {v3}, Landroid/database/sqlite/SQLiteDatabase;->endTransaction()V
-    :try_end_5
-    .catchall {:try_start_5 .. :try_end_5} :catchall_0
-
-    goto :goto_1
-
-    :catchall_0
+    :catchall_ti
     move-exception v0
 
     monitor-exit p0
 
     throw v0
+.end method
 
-    .line 735
-    :catchall_1
-    move-exception v0
+# FIX(orphaned sms): package-private bridges used by ThreadIntegrity
+.method ti_getOpenHelper()Landroid/database/sqlite/SQLiteOpenHelper;
+    .locals 1
 
-    .line 736
-    :try_start_6
-    invoke-virtual {v3}, Landroid/database/sqlite/SQLiteDatabase;->endTransaction()V
+    iget-object v0, p0, Lcom/android/providers/telephony/MmsSmsProvider;->mOpenHelper:Landroid/database/sqlite/SQLiteOpenHelper;
 
-    .line 735
-    throw v0
-    :try_end_6
-    .catchall {:try_start_6 .. :try_end_6} :catchall_0
+    return-object v0
+.end method
+
+.method ti_getSingleAddressId(Ljava/lang/String;)J
+    .locals 2
+
+    invoke-direct {p0, p1}, Lcom/android/providers/telephony/MmsSmsProvider;->getSingleAddressId(Ljava/lang/String;)J
+
+    move-result-wide v0
+
+    return-wide v0
+.end method
+
+.method ti_insertThread(Ljava/lang/String;I)V
+    .locals 0
+
+    invoke-direct {p0, p1, p2}, Lcom/android/providers/telephony/MmsSmsProvider;->insertThread(Ljava/lang/String;I)V
+
+    return-void
 .end method
 
 .method private getThreadIdByAddress(Ljava/lang/String;)Ljava/lang/String;
