@@ -1,0 +1,27 @@
+Manifest-Version: 1.0
+Created-By: 1.8.0_191 (Oracle Corporation)
+
+Name: AndroidManifest.xml
+SHA-256-Digest: NTGGOGKwk5RrmqDPeiLMo8LqWlgIun5aR6/iHeFC7HI=
+
+Name: classes.dex
+SHA-256-Digest: cFSojSF4Sm8s8E7rTk44cJzUedBgjsbDhNYQ8nWSCXM=
+
+Name: res/mipmap-hdpi-v4/ic_launcher_phone.png
+SHA-256-Digest: wugSOqI3R3ec8QJNtPVQQQuZeDUY9yAIznwA6lTAHkQ=
+
+Name: res/mipmap-mdpi-v4/ic_launcher_phone.png
+SHA-256-Digest: aHE78vV44oq+nvtw8tJOl5t0jw0LsZ1nPC/P5ivdjNo=
+
+Name: res/mipmap-xhdpi-v4/ic_launcher_phone.png
+SHA-256-Digest: Xn9XNl/z2Ndd0Yn5AtYvYQREmwivLDMoO0I3PNs1DMQ=
+
+Name: res/mipmap-xxhdpi-v4/ic_launcher_phone.png
+SHA-256-Digest: wO/8kTYLU1FG2yjrgCnH2lApIBpd4gcVPRwlhxl3rxM=
+
+Name: res/xml/hbpcd_lookup_tables.xml
+SHA-256-Digest: K0cTR1xNHD/3t+Jw5gSs9sGedBbIrkj7/UriF7rJjEk=
+
+Name: resources.arsc
+SHA-256-Digest: vlsvoENegrpt3CtMvoSrWKN0CMtUoNX31DqAcVKpvZw=
+

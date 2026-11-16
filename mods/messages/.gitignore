@@ -1,0 +1,10 @@
+# regenerable / large
+firmware/
+decompiled/
+build/
+out/
+.tools/
+.oak/
+*.dex
+*.class
+apps/*/apktool/build/
