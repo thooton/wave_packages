@@ -13,7 +13,8 @@ What it changes (the UI stays as it is):
 * **RCS chat** (GSMA Universal Profile): 1:1 and group chat, file transfer, delivery receipts sent but
   never requested, no read receipts or typing notices. Falls back to SMS/MMS whenever RCS can't
   deliver. Needs an imported configuration because Bell's Jibe can't provision a phone without
-  Google services. [Design](docs/rcs/design.md), [engine](docs/rcs/engine.md),
+  Google services. On/off, delivery reports and status under Settings > Advanced settings.
+  [Design](docs/rcs/design.md), [engine](docs/rcs/engine.md),
   [on the phone](docs/rcs/android.md)
 * **Group MMS appears once, in the right conversation** (no 1:1 "Downloading..." first):
   [mms-receive-placeholder](docs/fixes/mms-receive-placeholder/README.md),

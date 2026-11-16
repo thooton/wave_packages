@@ -47,6 +47,7 @@ Config booleans in `apktool/res/values/bools.xml` (read-only for now; resources 
 | `transaction/ArgonMmsReceive` (`PushReceiver`, `TransactionService`, ack composers) | held placeholder, reveal/sweep, Report-Allowed, MMS test network |
 | `transaction/ArgonPerf` (`MessagingNotification`, `NotificationTransaction`, `TransactionService`, `PushReceiver`, `DownloadManager`) | receive latency |
 | `argon/RcsHost` (`RcsMessageStatusService`, `MessageUtils.getActivatedIccCardCount`) | RCS engine host, platform, config import |
+| `argon/ArgonRcsSettings` (`MessagingPreferenceActivity`, `MessagingReportsPreferenceActivity`) | RCS settings screen |
 | `transaction/ArgonRcsStore`, `transaction/ArgonRcsSend` (`SmsSingleRecipientSender`, `SendTransaction`, `SmsReceiverService`) | RCS storage and routing |
 | `org/argon/rcs/…` | RCS engine (pure Java, docs/rcs/engine.md) |
 

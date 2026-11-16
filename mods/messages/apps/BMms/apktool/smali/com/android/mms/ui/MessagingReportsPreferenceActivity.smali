@@ -164,6 +164,11 @@
     .line 65
     invoke-direct {p0}, Lcom/android/mms/ui/MessagingReportsPreferenceActivity;->createResource()V
 
+    # FEAT(rcs settings): this activity also hosts the RCS settings screen (msg_type argon_rcs)
+    iget-object v0, p0, Lcom/android/mms/ui/MessagingReportsPreferenceActivity;->mMsgType:Ljava/lang/String;
+
+    invoke-static {p0, v0}, Lcom/android/mms/argon/ArgonRcsSettings;->onCreate(Landroid/preference/PreferenceActivity;Ljava/lang/String;)V
+
     .line 66
     invoke-virtual {p0}, Lcom/android/mms/ui/MessagingReportsPreferenceActivity;->getActionBar()Landroid/app/ActionBar;
 

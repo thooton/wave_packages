@@ -12,6 +12,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.PowerManager;
+import android.os.SystemClock;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -167,7 +168,7 @@ public final class RcsHost implements RcsListener {
     /** Must run on the host handler. */
     private void ensureEngine(boolean start) {
         if (engine == null) {
-            engine = new RcsEngine(platform, this, new RcsConfig.Policy());
+            engine = new RcsEngine(platform, this, policy());
             Log.i(TAG, "engine created");
         }
         if (start) {
@@ -287,6 +288,80 @@ public final class RcsHost implements RcsListener {
             }
         } catch (Throwable ignored) {
         }
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // settings screen (ArgonRcsSettings)
+
+    private static final String K_SEND_DELIVERY = "send_delivery_reports";
+
+    public boolean isEnabled() { return enabled(); }
+
+    /** An account exists (imported or provisioned configuration). */
+    public boolean configured() {
+        return !TextUtils.isEmpty(sp.getString(STATE_PREFIX + "config_xml", ""));
+    }
+
+    public RcsEngine.State state() { return state; }
+
+    public String stateDetail() { return stateDetail; }
+
+    public void setEnabled(boolean on) {
+        sp.edit().putBoolean(K_ENABLED, on).commit();
+        handler.post(new Runnable() {
+            @Override public void run() {
+                if (enabled()) startHostService();
+                else { stopEngine(); writeStatus(); }
+            }
+        });
+    }
+
+    public boolean sendDeliveryReports() { return sp.getBoolean(K_SEND_DELIVERY, true); }
+
+    public void setSendDeliveryReports(boolean on) {
+        sp.edit().putBoolean(K_SEND_DELIVERY, on).commit();
+        RcsEngine e = engine;
+        if (e != null) e.core().policy.sendDeliveryReports = on;
+    }
+
+    private RcsConfig.Policy policy() {
+        RcsConfig.Policy p = new RcsConfig.Policy();
+        p.sendDeliveryReports = sendDeliveryReports();
+        return p;
+    }
+
+    public interface CheckCallback { void onChecked(RcsEngine.State s, String detail); }
+
+    /**
+     * Registers again from scratch and reports the outcome (REGISTERED, ERROR, OFFLINE, or the
+     * state after 30 s). cb runs on the host thread.
+     */
+    public void check(final CheckCallback cb) {
+        handler.post(new Runnable() {
+            @Override public void run() {
+                if (!enabled()) { cb.onChecked(RcsEngine.State.DISABLED, "off"); return; }
+                stopEngine();
+                ensureEngine(true);
+                final RcsEngine e = engine;
+                final long end = SystemClock.elapsedRealtime() + 30_000;
+                handler.post(new Runnable() {
+                    @Override public void run() {
+                        RcsEngine.State s = e.state();
+                        String d = e.stateDetail();
+                        boolean done = s == RcsEngine.State.REGISTERED || s == RcsEngine.State.ERROR
+                                || (s == RcsEngine.State.OFFLINE && !TextUtils.isEmpty(d))
+                                || (d != null && d.contains("retry in")) // attempt failed
+                                || engine != e;
+                        if (done || SystemClock.elapsedRealtime() > end) {
+                            writeStatus();
+                            cb.onChecked(s, d == null ? "" : d);
+                        } else {
+                            handler.postDelayed(this, 250);
+                        }
+                    }
+                });
+            }
+        });
     }
 
     // ---------------------------------------------------------------------------------------

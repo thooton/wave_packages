@@ -213,6 +213,87 @@ public final class ArgonRcsSend {
      * when possible. @return the message's URI in the Sent box, or null to let MMS send it.
      */
     public static Uri interceptMms(Context c, SendReq req, Uri uri) {
+        synchronized (BYPASSED) {
+            if (uri != null && RCS_FAILED.remove(uri)) return null; // RCS already failed: MMS
+        }
+        Uri sent = interceptMmsInner(c, req, uri);
+        if (sent != null) {
+            synchronized (BYPASSED) { BYPASSED.remove(uri); }
+            return sent;
+        }
+        boolean bypassed;
+        synchronized (BYPASSED) { bypassed = BYPASSED.remove(uri); }
+        if (bypassed) {
+            // started without MMS connectivity (rcsReadyForMms): fail this attempt; the stock retry
+            // then goes through MMS connectivity as usual (no RCS for this message again)
+            synchronized (BYPASSED) { RCS_FAILED.add(uri); }
+            throw new IllegalStateException("rcs send failed, retry as MMS: " + uri);
+        }
+        return null;
+    }
+
+    /** Message URIs started without MMS connectivity because RCS could take them. */
+    private static final Set<Uri> BYPASSED = new java.util.HashSet<>();
+    /** Messages whose RCS attempt failed in this process: MMS only from now on. */
+    private static final Set<Uri> RCS_FAILED = new java.util.HashSet<>();
+    private static final long READY_CAPS_WAIT_MS = 3000;
+
+    /**
+     * TransactionService.ServiceHandler.processTransaction, before beginMmsConnectivity: true when
+     * this is an MMS send that RCS can take (registered, every recipient has the capability). The
+     * transaction then runs without the MMS network (no SIM, no mobile data, Wi-Fi only) and
+     * SendTransaction's intercept sends it over RCS. Waits at most 3 s for unknown capabilities.
+     */
+    public static boolean rcsReadyForMms(Transaction t) {
+        try {
+            if (t == null || t.getType() != 2) return false;
+            RcsHost h = RcsHost.registered();
+            if (h == null || h.engine() == null) return false;
+            java.lang.reflect.Field f = t.getClass().getDeclaredField("mSendReqURI");
+            f.setAccessible(true);
+            Uri uri = (Uri) f.get(t);
+            if (uri == null) return false;
+            synchronized (BYPASSED) {
+                if (RCS_FAILED.contains(uri)) return false;
+                if (BYPASSED.contains(uri)) return true;
+            }
+            Context c = MmsApp.getApplication();
+            SendReq req = (SendReq) PduPersister.getPduPersister(c).load(uri);
+            Set<String> rcpt = new LinkedHashSet<>();
+            String self = h.self();
+            if (!addAll(c, rcpt, req.getTo(), self) || !addAll(c, rcpt, req.getCc(), self)
+                    || !addAll(c, rcpt, req.getBcc(), self) || rcpt.isEmpty()) {
+                return false;
+            }
+            boolean group = rcpt.size() > 1;
+            boolean files = false;
+            PduBody body = req.getBody();
+            int n = body == null ? 0 : body.getPartsNum();
+            for (int i = 0; i < n; i++) {
+                byte[] ctb = body.getPart(i).getContentType();
+                String ct = ctb == null ? "" : new String(ctb, StandardCharsets.UTF_8).toLowerCase();
+                if (!ct.equals("application/smil") && !ct.equals("text/plain")) files = true;
+            }
+            RcsEngine e = h.engine();
+            for (String r : rcpt) if (e.cachedCapabilities(r) == null) e.refreshCapabilities(r);
+            long end = System.currentTimeMillis() + READY_CAPS_WAIT_MS;
+            for (String r : rcpt) {
+                RcsCapabilities caps = h.capabilities(r, Math.max(0, end - System.currentTimeMillis()));
+                if (caps == null || !caps.chat || (group && !caps.groupChat)
+                        || (files && !caps.fileTransferHttp)) {
+                    return false;
+                }
+            }
+            synchronized (BYPASSED) { BYPASSED.add(uri); }
+            Log.i(TAG, "mms " + uri + ": RCS can take it, not waiting for MMS connectivity");
+            return true;
+        } catch (Throwable th) {
+            Log.w(TAG, "rcsReadyForMms", th);
+            return false;
+        }
+    }
+
+    private static Uri interceptMmsInner(Context c, SendReq req, Uri uri) {
         List<File> temp = new ArrayList<>();
         try {
             RcsHost h = RcsHost.registered();

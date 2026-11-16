@@ -480,6 +480,13 @@
 
     invoke-static {v3}, Lcom/android/mms/LogTag;->debugD(Ljava/lang/String;)V
 
+    # FEAT(rcs): a send RCS can take doesn't need the MMS network
+    invoke-static {p1}, Lcom/android/mms/transaction/ArgonRcsSend;->rcsReadyForMms(Lcom/android/mms/transaction/Transaction;)Z
+
+    move-result v3
+
+    if-nez v3, :cond_4
+
     .line 1310
     iget-object v3, p0, Lcom/android/mms/transaction/TransactionService$ServiceHandler;->this$0:Lcom/android/mms/transaction/TransactionService;
 

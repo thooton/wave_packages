@@ -964,6 +964,9 @@
 
     iput-object v0, p0, Lcom/android/mms/ui/MessagingPreferenceActivity;->mAdvancedPrefCategory:Landroid/preference/PreferenceCategory;
 
+    # FEAT(rcs settings): "Chat (RCS) messages settings" entry under Advanced settings
+    invoke-static {p0, v0}, Lcom/android/mms/argon/ArgonRcsSettings;->addEntry(Landroid/preference/PreferenceActivity;Landroid/preference/PreferenceCategory;)V
+
     .line 396
     const-string/jumbo v0, "pref_key_memory_status"
 
