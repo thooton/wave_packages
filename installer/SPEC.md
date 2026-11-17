@@ -23,6 +23,11 @@ It must stay tiny and inert:
   owner is only safe because of this.
 - It holds no device-admin policies and must never take any (no locking,
   wiping, restrictions, hidden apps).
+- The one thing it does with the role besides installing: it keeps
+  Android's backup service on. Android 8 turns that service off whenever a
+  device owner exists, which makes `adb backup` and `adb restore` silently
+  do nothing (no confirmation ever appears). Installer switches it back on
+  when it becomes the owner and each time the status page opens as Ready.
 
 ## Not wanted
 

@@ -72,6 +72,7 @@ public final class MainActivity extends Activity {
 
     private void show() {
         boolean owner = owner();
+        if (owner) Admin.allowBackup(this);
         heading.setText(owner ? "Ready" : "Not set up");
         heading.setTextColor(owner ? 0xFF1F4037 : 0xFFB00020);
         // Not set up: the one command that sets it up, and nothing else.
