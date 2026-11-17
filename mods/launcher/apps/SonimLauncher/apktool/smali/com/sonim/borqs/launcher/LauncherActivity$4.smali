@@ -39,6 +39,18 @@
     .locals 13
 
     .prologue
+    # FEAT(tray): ArgonTray handles package changes (true = done)
+    iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity$4;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
+
+    invoke-static {v0, p2}, Lcom/sonim/borqs/launcher/ArgonTray;->onPackageEvent(Lcom/sonim/borqs/launcher/LauncherActivity;Landroid/content/Intent;)Z
+
+    move-result v0
+
+    if-eqz v0, :argon_stock_receiver
+
+    return-void
+
+    :argon_stock_receiver
     .line 2597
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity$4;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 

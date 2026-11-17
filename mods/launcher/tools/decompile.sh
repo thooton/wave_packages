@@ -2,7 +2,7 @@
 # tools/decompile.sh <App> [--force]
 #   decompiled/<App>/      jadx Java of the STOCK apk (read-only reference, regenerable)
 #   apps/<App>/apktool/    editable apktool (smali) project, created only if it doesn't exist
-# <App> is the APK directory name on the device, e.g. BMms, TelephonyProvider, SonimLauncher.
+# <App> is the APK directory name on the device, e.g. SonimLauncher.
 source "$(dirname "$0")/lib/env.sh"
 app=${1:?usage: decompile.sh <App> [--force]}
 apk=$(stock_apk "$app")

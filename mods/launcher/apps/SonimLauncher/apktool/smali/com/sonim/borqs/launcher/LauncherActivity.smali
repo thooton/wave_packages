@@ -1294,6 +1294,16 @@
     .locals 4
 
     .prologue
+    # FEAT(tray): ArgonTray's icon for the user's folders (null = stock folder: stock icon)
+    invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/ArgonTray;->folderIconHook(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
+
+    move-result-object v0
+
+    if-eqz v0, :argon_icon
+
+    return-object v0
+
+    :argon_icon
     const/4 v3, 0x0
 
     .line 2204
@@ -4559,6 +4569,16 @@
     .locals 6
 
     .prologue
+    # FEAT(tray): while an app or folder is being moved, the d-pad carries it
+    invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/ArgonTray;->dispatchKey(Lcom/sonim/borqs/launcher/LauncherActivity;Landroid/view/KeyEvent;)Z
+
+    move-result v0
+
+    if-eqz v0, :argon_keys
+
+    return v0
+
+    :argon_keys
     const v3, 0x7f0b004d
 
     const/4 v5, 0x0
@@ -6206,6 +6226,9 @@
     .line 972
     invoke-super {p0, p1}, Landroid/app/Activity;->onCreateOptionsMenu(Landroid/view/Menu;)Z
 
+    # FEAT(tray): Move, Move to folder, Hide, Rename/Remove folder, Hidden apps, Reset layout
+    invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/ArgonTray;->onCreateMenu(Lcom/sonim/borqs/launcher/LauncherActivity;Landroid/view/Menu;)V
+
     .line 974
     const/4 v0, 0x7
 
@@ -7555,12 +7578,14 @@
     .line 935
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDrawerFolderGrid:Landroid/widget/GridView;
 
-    invoke-virtual {v0, v5}, Landroid/widget/GridView;->setSelection(I)V
+    # FEAT(tray): open on the first entry (v4 = 0)
+    invoke-virtual {v0, v4}, Landroid/widget/GridView;->setSelection(I)V
 
     .line 936
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDrawerFolderGrid:Landroid/widget/GridView;
 
-    invoke-virtual {v0, v5}, Landroid/widget/GridView;->smoothScrollToPosition(I)V
+    # FEAT(tray): open on the first entry (v4 = 0)
+    invoke-virtual {v0, v4}, Landroid/widget/GridView;->smoothScrollToPosition(I)V
 
     .line 937
     iput-boolean v4, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mGoToWorkspace:Z
@@ -7638,6 +7663,16 @@
     .locals 4
 
     .prologue
+    # FEAT(tray): our menu items
+    invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/ArgonTray;->onMenuItem(Lcom/sonim/borqs/launcher/LauncherActivity;Landroid/view/MenuItem;)Z
+
+    move-result v0
+
+    if-eqz v0, :argon_menu
+
+    return v0
+
+    :argon_menu
     const/4 v3, 0x1
 
     .line 1020
@@ -7776,6 +7811,9 @@
     .prologue
     .line 849
     invoke-super {p0}, Landroid/app/Activity;->onPause()V
+
+    # FEAT(tray): a move in progress is put down where it is
+    invoke-static {p0}, Lcom/sonim/borqs/launcher/ArgonTray;->onPause(Lcom/sonim/borqs/launcher/LauncherActivity;)V
 
     .line 850
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->isAppTrayVisible()Z
@@ -8387,6 +8425,16 @@
 .end method
 
 .method public setAppsAndFolderList()V
+    .locals 0
+
+    # FEAT(tray): the tray as the user arranged it (ArgonTray), not the stock list
+    invoke-static {p0}, Lcom/sonim/borqs/launcher/ArgonTray;->rebuild(Lcom/sonim/borqs/launcher/LauncherActivity;)V
+
+    return-void
+.end method
+
+# FEAT(tray): the stock builder, renamed; ArgonTray falls back to it (argonStockTray) if ours fails
+.method public argonStockSetAppsAndFolderList()V
     .locals 13
 
     .prologue
@@ -11030,3 +11078,114 @@
     :cond_0
     return-void
 .end method
+
+# FEAT(tray): bridges for ArgonTray (package-private, Java can't name the synthetic -getN)
+
+.method static argonList(Lcom/sonim/borqs/launcher/LauncherActivity;)Ljava/util/ArrayList;
+    .locals 1
+
+    iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
+
+    return-object v0
+.end method
+
+.method static argonGrid(Lcom/sonim/borqs/launcher/LauncherActivity;)Landroid/widget/GridView;
+    .locals 1
+
+    iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDrawerFolderGrid:Landroid/widget/GridView;
+
+    return-object v0
+.end method
+
+.method static argonAdapter(Lcom/sonim/borqs/launcher/LauncherActivity;)Lcom/sonim/borqs/launcher/DrawerAdapter;
+    .locals 1
+
+    iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDrawerAdapterObject:Lcom/sonim/borqs/launcher/DrawerAdapter;
+
+    return-object v0
+.end method
+
+.method static argonPrefs(Lcom/sonim/borqs/launcher/LauncherActivity;)Landroid/content/SharedPreferences;
+    .locals 1
+
+    iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
+
+    return-object v0
+.end method
+
+.method static argonCursor(Lcom/sonim/borqs/launcher/LauncherActivity;)Landroid/database/Cursor;
+    .locals 1
+
+    iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderCursor:Landroid/database/Cursor;
+
+    return-object v0
+.end method
+
+.method static argonDb(Lcom/sonim/borqs/launcher/LauncherActivity;)Lcom/sonim/borqs/launcher/helper/DatabaseHelper;
+    .locals 1
+
+    iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDataBaseHelpler:Lcom/sonim/borqs/launcher/helper/DatabaseHelper;
+
+    return-object v0
+.end method
+
+.method static argonLock()Ljava/lang/Object;
+    .locals 1
+
+    sget-object v0, Lcom/sonim/borqs/launcher/LauncherActivity;->sLock:Ljava/lang/Object;
+
+    return-object v0
+.end method
+
+.method static argonTrayVisible(Lcom/sonim/borqs/launcher/LauncherActivity;)Z
+    .locals 1
+
+    invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->isAppTrayVisible()Z
+
+    move-result v0
+
+    return v0
+.end method
+
+.method static argonStockFolderIcon(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
+    .locals 1
+
+    invoke-direct {p0, p1}, Lcom/sonim/borqs/launcher/LauncherActivity;->getFolderIcon(Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
+
+    move-result-object v0
+
+    return-object v0
+.end method
+
+.method static argonCheckNavKey(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)V
+    .locals 0
+
+    invoke-direct {p0, p1}, Lcom/sonim/borqs/launcher/LauncherActivity;->checkNavigationKeyAndSetDefault(Ljava/lang/String;)V
+
+    return-void
+.end method
+
+.method static argonUpdateNavKey(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)V
+    .locals 0
+
+    invoke-direct {p0, p1}, Lcom/sonim/borqs/launcher/LauncherActivity;->updateNavigationKey(Ljava/lang/String;)V
+
+    return-void
+.end method
+
+.method static argonStockTray(Lcom/sonim/borqs/launcher/LauncherActivity;)V
+    .locals 1
+
+    iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDataBaseHelpler:Lcom/sonim/borqs/launcher/helper/DatabaseHelper;
+
+    invoke-virtual {v0}, Lcom/sonim/borqs/launcher/helper/DatabaseHelper;->getAppAndFolderCursor()Landroid/database/Cursor;
+
+    move-result-object v0
+
+    iput-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderCursor:Landroid/database/Cursor;
+
+    invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->argonStockSetAppsAndFolderList()V
+
+    return-void
+.end method
+# END FEAT(tray)

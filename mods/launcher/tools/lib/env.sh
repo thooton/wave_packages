@@ -10,7 +10,7 @@ MODULE_ID=launcher_argon                     # Magisk module used for deployment
 LEGACY_MODULE_IDS=""
 FIRMWARE="$ROOT/firmware"
 
-# stock_apk <App>  -> path of the stock APK in firmware/, e.g. firmware/system/priv-app/BMms/BMms.apk
+# stock_apk <App>  -> path of the stock APK in firmware/, e.g. firmware/system/priv-app/SonimLauncher/SonimLauncher.apk
 stock_apk() {
     local f
     f=$(find "$FIRMWARE/system" -path "*/$1/$1.apk" | head -1)
@@ -18,7 +18,7 @@ stock_apk() {
     echo "$f"
 }
 
-# system_path <App> -> path on the device, e.g. system/priv-app/BMms/BMms.apk
+# system_path <App> -> path on the device, e.g. system/priv-app/SonimLauncher/SonimLauncher.apk
 system_path() { local f; f=$(stock_apk "$1"); echo "${f#"$FIRMWARE"/}"; }
 
 all_apps() { ls "$ROOT/apps"; }

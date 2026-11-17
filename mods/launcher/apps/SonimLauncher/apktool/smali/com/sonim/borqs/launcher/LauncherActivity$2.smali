@@ -155,7 +155,8 @@
 
     move-result-object v0
 
-    const/4 v2, 0x4
+    # FEAT(tray): open on the first entry
+    const/4 v2, 0x0
 
     invoke-virtual {v0, v2}, Landroid/widget/GridView;->setSelection(I)V
 
@@ -166,7 +167,8 @@
 
     move-result-object v0
 
-    const/4 v2, 0x4
+    # FEAT(tray): open on the first entry
+    const/4 v2, 0x0
 
     invoke-virtual {v0, v2}, Landroid/widget/GridView;->smoothScrollToPosition(I)V
     :try_end_0

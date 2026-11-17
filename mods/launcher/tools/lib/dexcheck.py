@@ -40,7 +40,7 @@ for root, _, files in os.walk(cdir):
         if f.endswith(".class"):
             compiled.add("L" + os.path.relpath(os.path.join(root, f), cdir)[:-6] + ";")
 for c, f in seen.items():
-    if f == last and c not in compiled: bad.append(f"{c} in {f} but not compiled from java/")
+    if f == last and c not in compiled and "$$ExternalSynthetic" not in c: bad.append(f"{c} in {f} but not compiled from java/")
 if bad:
     sys.exit("dexcheck failed:\n  " + "\n  ".join(sorted(bad)))
 print(f"dexcheck OK ({len(seen)} classes, {len(compiled)} from java/ in {last})")

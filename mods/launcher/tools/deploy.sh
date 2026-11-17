@@ -12,11 +12,11 @@ fi
 STAGE=/data/local/tmp/$MODULE_ID
 cat > "$ROOT/build/module.prop" <<EOF
 id=$MODULE_ID
-name=Messages Argon
+name=Launcher Argon
 version=dev
 versionCode=1
 author=local
-description=Modified Messages/TelephonyProvider for the Sonim XP3800 (dev build)
+description=Sonim XP3800 launcher with an arranged apps tray: folders, Move, Hide (dev build)
 EOF
 adb shell "rm -rf $STAGE; mkdir -p $STAGE"
 adb push "$ROOT/build/module.prop" "$ROOT/module/service.sh" "$ROOT/out/system" $STAGE/ >/dev/null

@@ -19,7 +19,7 @@ for app in "${apps[@]}"; do
     if [ -d "$A/java" ]; then
         mkdir -p "$B/stubs" "$B/classes" "$B/d8"
         if [ -d "$A/stubs" ]; then
-            javac -nowarn -Xlint:-options -source 8 -target 8 -cp "$ANDROID_JAR" -d "$B/stubs" \
+            javac -nowarn -Xlint:-options -source 8 -target 8 -cp "$ANDROID_JAR" -sourcepath "$A/java" -implicit:none -d "$B/stubs" \
                 $(find "$A/stubs" -name '*.java')
         fi
         javac -nowarn -Xlint:-options -source 8 -target 8 -cp "$ANDROID_JAR:$B/stubs" -d "$B/classes" \
@@ -35,5 +35,6 @@ for app in "${apps[@]}"; do
     python3 "$ROOT/tools/lib/splice_apk.py" "$(stock_apk "$app")" "$B/unaligned.apk" "${args[@]}" >/dev/null
     "$BT/zipalign" -f -p 4 "$B/unaligned.apk" "$out"
     "$BT/zipalign" -c -p 4 "$out"
+    ANDROID_JAR="$ANDROID_JAR" python3 "$ROOT/tools/lib/linkcheck.py" "$out"
     echo "built ${out#"$ROOT"/} ($(ls "$B/dex" | tr '\n' ' '))"
 done
