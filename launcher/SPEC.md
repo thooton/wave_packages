@@ -143,8 +143,8 @@ Move program lifts the selected app: its cell gets a solid lavender card
 - **Speed**: icons and labels are read once per process and cached; the
   cache empties on any package change. Opening from PTT should show the
   grid with no visible delay beyond the window animation.
-- **No network, no permissions, nothing timed.** Backups are off
-  (`allowBackup="false"`). Portrait only; it does not restart on keyboard
+- **No network, no permissions, nothing timed.** Backups are on
+  (`allowBackup="true"`), so `adb backup` can move it to another phone. Portrait only; it does not restart on keyboard
   or orientation changes. One instance (`singleTask`): pressing PTT while
   it is open reselects the first app.
 - **Versioning**: `android:versionName` and `android:versionCode` in

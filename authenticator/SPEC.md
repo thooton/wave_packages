@@ -226,7 +226,8 @@ when one is saved), Save and Cancel.
   camera app writes its photo to a file the app lends it for that one
   request, which is deleted after reading.
 - **Secrets** never show on screen once saved, are never logged, and the
-  app is excluded from Android backup.
+  app is included in Android backup (`allowBackup="true"`), so `adb backup`
+  on an unlocked phone can copy them to another phone.
 - **Timed.** Codes and rings update four times a second while the app is in
   front, and stop when it isn't.
 

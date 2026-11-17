@@ -283,7 +283,7 @@ Home.
 - Everything lives in the app's private files and survives a restart:
   settings (owner-only, with the token), prefs, the work cache, details,
   class pages, notifications, drafts and their files, downloaded teacher
-  files. No backup.
+  files. Android backup is on, so `adb backup` can move them to another phone.
 - Launch always syncs, behind a loading bar, and draws only the result;
   if Canvas can't be reached it falls back to the last cache (this
   semester's classes only, by term name). Returning to the app syncs

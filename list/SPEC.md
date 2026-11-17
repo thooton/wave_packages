@@ -143,7 +143,8 @@ prediction is on. The field shows up to four lines and wraps long text.
 
 - **Data**: one file, `list.json`, in the app's private storage
   (`{"items":[{"text":…,"done":…}]}`), in list order with open and finished
-  tasks interleaved. Nothing goes on the SD card; backups are off.
+  tasks interleaved. Nothing goes on the SD card; Android backup is on (`adb backup` can move
+  it to another phone).
 - **Saving**: every change (tick, add, insert, edit, move, delete) is saved
   at once, in order, on a background thread, by writing a temporary file and
   renaming it. Killing the app or pulling the battery right after a change

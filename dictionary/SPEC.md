@@ -171,7 +171,8 @@ and capitals on.
 - **Survives a restart:** only Recent Searches (the app's own preferences,
   key `recent`). The app always opens on home with an empty Back history,
   also when launched from its icon while it is still running.
-  Not backed up (`allowBackup="false"`).
+  Included in Android backup (`allowBackup="true"`), so `adb backup`
+  can carry it to another phone.
 - **Network:** none. **Permissions:** none.
 - **Timed:** the Word of the Day follows the local date.
 - **Text-to-speech:** started at launch; Pronounce greys out until it is

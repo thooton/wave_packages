@@ -119,7 +119,7 @@ refused with a permission error (the shell lacks the signature permission).
 
 ## Behaviour
 
-- **Data**: none. Nothing is saved; `allowBackup` is off. The only state is
+- **Data**: none. Nothing is saved; `allowBackup` is on, like every app here. The only state is
   the device-owner role, kept by Android across restarts and reboots until
   Stop is chosen (or a factory reset).
 - **Network**: none.

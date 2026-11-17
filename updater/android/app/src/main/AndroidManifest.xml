@@ -14,7 +14,7 @@
 
     <!-- Cleartext is off: GitHub is https, and nothing else is fetched. -->
     <application
-        android:allowBackup="false"
+        android:allowBackup="true"
         android:usesCleartextTraffic="false"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"

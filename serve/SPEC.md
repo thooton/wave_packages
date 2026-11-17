@@ -138,8 +138,8 @@ Low-importance, ongoing (can't be swiped away), no time shown, teal accent.
 
 - **Port**: always 28413, on every interface.
 - **Data**: only the chosen folder's path, in the app's private
-  preferences. It survives restarts and app updates. Nothing else is stored;
-  no backup.
+  preferences. It survives restarts and app updates. Nothing else is stored.
+  Android backup is on (`adb backup` can copy it to another phone).
 - **Restarts**: if Android kills the service for memory it comes back
   serving the same folder. After a reboot, or after the app is
   force-stopped, it is not serving until OK is pressed.
