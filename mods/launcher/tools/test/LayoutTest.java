@@ -70,7 +70,7 @@ public final class LayoutTest {
                         + "app x\napp s/Browser\nfolder Applications\n    s/Music\n    s/FM\napp s/Settings\n"
                         + "folder Tools\n    s/Clock\napp s/Gallery\nfolder Z\n    z\n",
                 "withStock");
-        check(d.top.get(d.top.size() - 1).isStock(), "defaults end with stock");
+        eq(d.top.size(), 12, "defaults: one 4x3 screen");
 
         // Resolve: exact, package expansion, renamed activity, missing, new installs, system apps.
         ArgonLayout lay = ArgonLayout.parse(""
@@ -126,10 +126,11 @@ public final class LayoutTest {
                 "!com.android.deskclock/com.android.deskclock.DeskClock",
                 "com.other.app/com.other.app.Main"), ArgonDefaults.INBOX);
         eq(show(r.tree), "com.todo.xp3/com.canvas.xp3.MainActivity | com.list.xp3/com.list.xp3.MainActivity | "
+                + "Media[com.android.music/com.android.music.MusicBrowserActivity] | "
+                + "Tools[com.android.deskclock/com.android.deskclock.DeskClock] | "
                 + "Files[nextapp.fx/nextapp.fx.ui.ExplorerActivity, nextapp.fx/nextapp.fx.ui.textedit.TextEditorActivity] | "
-                + "com.android.browser/com.android.browser.BrowserActivity | "
-                + "Applications[com.android.music/com.android.music.MusicBrowserActivity, com.other.app/com.other.app.Main] | "
-                + "Tools[com.android.deskclock/com.android.deskclock.DeskClock]", "defaults on the phone");
+                + "Applications[com.android.browser/com.android.browser.BrowserActivity, com.other.app/com.other.app.Main]",
+                "defaults on the phone");
 
         System.out.println(failures == 0 ? "LayoutTest: all " + checks + " checks passed"
                 : "LayoutTest: " + failures + " of " + checks + " checks FAILED");
