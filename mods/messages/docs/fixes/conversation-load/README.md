@@ -52,7 +52,9 @@ batch. Neither the miss query nor the background warm-up holds the cache lock
 while reading the provider cursor. A background warm-up cannot overwrite a
 newer cached number. Disabled compose diagnostics no longer capture Java stack
 traces or stringify conversation state on launch. Row-bind and attachment-view
-verbose logs build their strings only when verbose logging is enabled.
+verbose logs build their strings only when verbose logging is enabled. Recipient
+setup skips the email matcher for addresses without `@`; addresses that could
+be email still use the framework validator.
 
 ## Lightweight text rows
 
