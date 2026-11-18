@@ -26,6 +26,8 @@
 
 .field mArgonTextReady:Z
 
+.field mArgonPduPending:Z
+
 .field mArgonTimestampPending:Z
 
 .field mArgonTimestampMillis:J
@@ -906,6 +908,9 @@
     move-result v3
     iput-boolean v3, p0, Lcom/android/mms/ui/MessageItem;->mArgonTextReady:Z
     if-nez v3, :argon_mms_ready
+    # FIX(conversation reveal): cached PDU callbacks can run inline, so set this first.
+    const/4 v3, 0x1
+    iput-boolean v3, p0, Lcom/android/mms/ui/MessageItem;->mArgonPduPending:Z
 
     invoke-static {}, Lcom/android/mms/MmsApp;->getApplication()Lcom/android/mms/MmsApp;
 

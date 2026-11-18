@@ -63,6 +63,10 @@
     invoke-static {v0, v1, p2}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
 
     .line 567
+    # FIX(conversation reveal): both success and failure end the initial wait.
+    iget-object v0, p0, Lcom/android/mms/ui/MessageItem$PduLoadedMessageItemCallback;->this$0:Lcom/android/mms/ui/MessageItem;
+    const/4 v1, 0x0
+    iput-boolean v1, v0, Lcom/android/mms/ui/MessageItem;->mArgonPduPending:Z
     return-void
 
     .line 569
@@ -241,6 +245,10 @@
 
     .line 636
     :cond_4
+    # FIX(conversation reveal): both success and failure end the initial wait.
+    iget-object v0, p0, Lcom/android/mms/ui/MessageItem$PduLoadedMessageItemCallback;->this$0:Lcom/android/mms/ui/MessageItem;
+    const/4 v1, 0x0
+    iput-boolean v1, v0, Lcom/android/mms/ui/MessageItem;->mArgonPduPending:Z
     return-void
 
     .line 570

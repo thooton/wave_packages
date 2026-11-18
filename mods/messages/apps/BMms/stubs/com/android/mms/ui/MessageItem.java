@@ -8,7 +8,7 @@ import com.android.mms.model.SlideshowModel;
 public class MessageItem {
     String mAddress, mContact, mBody, mTextContentType;
     int mAttachmentType, mMessageSize, mMessageType;
-    boolean mArgonTextReady, mArgonTimestampPending;
+    boolean mArgonTextReady, mArgonTimestampPending, mArgonPduPending;
     long mArgonTimestampMillis;
     Context mContext;
     Uri mMessageUri;

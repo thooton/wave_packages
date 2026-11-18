@@ -20,6 +20,7 @@ public final class ArgonHistory {
     private long thread;
     private boolean keepFocus, firstRowsMeasured, opened;
     private BottomAlignment bottomAlignment;
+    private ArgonConversationReveal reveal;
     private Intent selectedIntent;
     private long selectedId = -1;
 
@@ -31,6 +32,21 @@ public final class ArgonHistory {
     public static void attach(ComposeMessageActivity activity, ListView list) {
         ArgonHistory h = new ArgonHistory(activity, list);
         activity.mArgonHistory = h;
+    }
+
+    public static void beginReveal(ComposeMessageActivity activity, long threadId) {
+        ArgonHistory h = (ArgonHistory) activity.mArgonHistory;
+        if (h == null) return;
+        endReveal(activity);
+        if (threadId > 0) h.reveal = new ArgonConversationReveal(h.list);
+    }
+
+    public static void endReveal(ComposeMessageActivity activity) {
+        ArgonHistory h = (ArgonHistory) activity.mArgonHistory;
+        if (h != null && h.reveal != null) {
+            h.reveal.close();
+            h.reveal = null;
+        }
     }
 
     public static Uri queryUri(ComposeMessageActivity activity, int token, Uri uri) {
@@ -86,6 +102,7 @@ public final class ArgonHistory {
         h.keepFocus = false;
         int position = anchor == null ? -1 : anchor.find(next);
         adapter.changeCursor(next);
+        if (h.reveal != null) h.reveal.historyDelivered();
         if (!h.opened && next != null && next.getCount() > 0) {
             h.opened = true;
             if (selected == -1 && selection == -1 && position < 0) {

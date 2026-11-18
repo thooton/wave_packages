@@ -24715,6 +24715,25 @@
     .line 3179
     invoke-direct {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->initMessageList()V
 
+    # FIX(conversation reveal): wait only on a real thread that will query history.
+    iget-boolean v2, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mSendReplyMode:Z
+    if-nez v2, :argon_no_reveal
+    iget-boolean v2, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mSendDiscreetMode:Z
+    if-nez v2, :argon_no_reveal
+    invoke-static {}, Lcom/android/mms/ui/MessageUtils;->isMailboxMode()Z
+    move-result v2
+    if-nez v2, :argon_no_reveal
+    iget-object v2, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mConversation:Lcom/android/mms/data/Conversation;
+    invoke-virtual {v2}, Lcom/android/mms/data/Conversation;->getThreadId()J
+    move-result-wide v2
+    invoke-static {p0, v2, v3}, Lcom/android/mms/ui/ArgonHistory;->beginReveal(Lcom/android/mms/ui/ComposeMessageActivity;J)V
+    goto :argon_reveal_armed
+
+    :argon_no_reveal
+    invoke-static {p0}, Lcom/android/mms/ui/ArgonHistory;->endReveal(Lcom/android/mms/ui/ComposeMessageActivity;)V
+
+    :argon_reveal_armed
+
     .line 3181
     iput-boolean v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mShouldLoadDraft:Z
 
@@ -30937,6 +30956,8 @@
 
     .line 3675
     invoke-super {p0}, Landroid/app/Activity;->onStop()V
+
+    invoke-static {p0}, Lcom/android/mms/ui/ArgonHistory;->endReveal(Lcom/android/mms/ui/ComposeMessageActivity;)V
 
     .line 3678
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mBackgroundQueryHandler:Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;
