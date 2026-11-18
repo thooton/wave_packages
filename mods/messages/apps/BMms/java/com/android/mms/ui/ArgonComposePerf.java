@@ -25,6 +25,7 @@ import com.android.mms.util.ArgonLaunch;
 import com.android.mms.util.PduLoaderManager;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.WeakHashMap;
 import java.util.regex.Matcher;
 
@@ -82,29 +83,55 @@ public final class ArgonComposePerf {
         if (token != MESSAGE_LIST_QUERY_TOKEN) return;
         ArgonLaunch.mark("history_received");
         if (c == null || c.isClosed()) return;
+        try {
+            warmPdus(collectPduWarmups(c, PREFETCH));
+        } catch (RuntimeException e) {
+            Log.w("Mms", "prefetch", e);
+        }
+    }
+
+    static final class PduWarmup {
+        final long id;
+        final boolean slideshow;
+        PduWarmup(long id, boolean slideshow) {
+            this.id = id;
+            this.slideshow = slideshow;
+        }
+    }
+
+    /** Safe on a worker with a private cursor; never retain a cursor or message body. */
+    static List<PduWarmup> collectPduWarmups(Cursor c, int limit) {
+        List<PduWarmup> result = new ArrayList<>();
+        int iType = c.getColumnIndex("transport_type");
+        int iId = c.getColumnIndex("_id");
+        int iMType = c.getColumnIndex("m_type");
+        if (iType < 0 || iId < 0 || iMType < 0) return result;
+        int iText = c.getColumnIndex("argon_text");
+        int iFrom = c.getColumnIndex("argon_from");
         int pos = c.getPosition();
         try {
-            int iType = c.getColumnIndex("transport_type");
-            int iId = c.getColumnIndex("_id");
-            int iMType = c.getColumnIndex("m_type");
-            int iText = c.getColumnIndex("argon_text");
-            int iFrom = c.getColumnIndex("argon_from");
-            if (iType < 0 || iId < 0 || iMType < 0) return;
-            PduLoaderManager loader = MmsApp.getApplication().getPduLoaderManager();
-            if (loader == null) return;
             int count = c.getCount();
-            for (int i = count - 1; i >= Math.max(0, count - PREFETCH); i--) {
+            for (int i = count - 1; i >= Math.max(0, count - PREFETCH) && result.size() < limit; i--) {
                 if (!c.moveToPosition(i)) break;
                 if (!"mms".equals(c.getString(iType))) continue;
                 int mType = c.getInt(iMType);
                 if (ArgonTextMms.ready(c, iText, iFrom, mType)) continue;
-                Uri uri = ContentUris.withAppendedId(Telephony.Mms.CONTENT_URI, c.getLong(iId));
-                loader.getPdu(uri, mType != 130, null); // 130 = notification: no slideshow
+                result.add(new PduWarmup(c.getLong(iId), mType != 130));
             }
-        } catch (RuntimeException e) {
-            Log.w("Mms", "prefetch", e);
         } finally {
             c.moveToPosition(pos);
+        }
+        return result;
+    }
+
+    /** PduLoaderManager owns an unsynchronized callback queue; call only on the UI thread. */
+    static void warmPdus(List<PduWarmup> requests) {
+        if (requests.isEmpty()) return;
+        PduLoaderManager loader = MmsApp.getApplication().getPduLoaderManager();
+        if (loader == null) return;
+        for (PduWarmup request : requests) {
+            Uri uri = ContentUris.withAppendedId(Telephony.Mms.CONTENT_URI, request.id);
+            loader.getPdu(uri, request.slideshow, null);
         }
     }
 

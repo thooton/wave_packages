@@ -38,6 +38,8 @@
 
 
 # instance fields
+.field private mArgonThreadPrefetch:Lcom/android/mms/ui/ArgonThreadPrefetch;
+
 .field private groupReceiver:Lcom/suntek/rcs/ui/common/mms/GroupChatManagerReceiver;
 
 .field private mComposeClickHandler:Landroid/view/View$OnClickListener;
@@ -910,6 +912,11 @@
     iget-object v1, p0, Lcom/android/mms/ui/ConversationList;->mListAdapter:Lcom/android/mms/ui/ConversationListAdapter;
 
     invoke-virtual {v0, v1}, Landroid/widget/ListView;->setRecyclerListener(Landroid/widget/AbsListView$RecyclerListener;)V
+
+    # PERF(focus prefetch): warm only the cursor row the keypad rests on.
+    invoke-static {v0}, Lcom/android/mms/ui/ArgonThreadPrefetch;->attach(Landroid/widget/ListView;)Lcom/android/mms/ui/ArgonThreadPrefetch;
+    move-result-object v0
+    iput-object v0, p0, Lcom/android/mms/ui/ConversationList;->mArgonThreadPrefetch:Lcom/android/mms/ui/ArgonThreadPrefetch;
 
     .line 547
     return-void
@@ -3618,12 +3625,26 @@
     return-void
 .end method
 
+# PERF(focus prefetch): handle returning to the same selected row or losing focus.
+.method public onWindowFocusChanged(Z)V
+    .locals 1
+
+    invoke-super {p0, p1}, Landroid/app/ListActivity;->onWindowFocusChanged(Z)V
+    iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mArgonThreadPrefetch:Lcom/android/mms/ui/ArgonThreadPrefetch;
+    invoke-static {v0, p1}, Lcom/android/mms/ui/ArgonThreadPrefetch;->windowFocus(Lcom/android/mms/ui/ArgonThreadPrefetch;Z)V
+    return-void
+.end method
+
 .method protected onStop()V
     .locals 1
 
     .prologue
     .line 700
     invoke-super {p0}, Landroid/app/ListActivity;->onStop()V
+
+    # PERF(focus prefetch): discard work when the inbox stops.
+    iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mArgonThreadPrefetch:Lcom/android/mms/ui/ArgonThreadPrefetch;
+    invoke-static {v0}, Lcom/android/mms/ui/ArgonThreadPrefetch;->stop(Lcom/android/mms/ui/ArgonThreadPrefetch;)V
 
     .line 702
     invoke-direct {p0}, Lcom/android/mms/ui/ConversationList;->stopAsyncQuery()V
