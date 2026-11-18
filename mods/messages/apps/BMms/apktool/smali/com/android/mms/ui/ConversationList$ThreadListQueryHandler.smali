@@ -301,6 +301,10 @@
 
     .line 1463
     :sswitch_0
+    # PERF(inbox timing): primary inbox cursor delivery, before binding.
+    const-string v0, "inbox_cursor"
+    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+
     iget-object v0, p0, Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;->this$0:Lcom/android/mms/ui/ConversationList;
 
     invoke-static {v0}, Lcom/android/mms/ui/ConversationList;->-get11(Lcom/android/mms/ui/ConversationList;)Lcom/android/mms/ui/ConversationListAdapter;
@@ -340,6 +344,19 @@
 
     .line 1470
     :goto_1
+    sget-boolean v0, Lcom/android/mms/util/ArgonLaunch;->ENABLED:Z
+    if-eqz v0, :argon_inbox_timed
+    if-eqz p3, :argon_inbox_timed
+    invoke-interface {p3}, Landroid/database/Cursor;->getCount()I
+    move-result v0
+    if-eqz v0, :argon_inbox_timed
+    iget-object v0, p0, Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;->this$0:Lcom/android/mms/ui/ConversationList;
+    invoke-virtual {v0}, Lcom/android/mms/ui/ConversationList;->getListView()Landroid/widget/ListView;
+    move-result-object v0
+    const-string v5, "inbox_rows"
+    invoke-static {v0, v5}, Lcom/android/mms/util/ArgonLaunch;->awaitRows(Landroid/widget/ListView;Ljava/lang/String;)V
+
+    :argon_inbox_timed
     iget-object v0, p0, Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;->this$0:Lcom/android/mms/ui/ConversationList;
 
     invoke-static {v0}, Lcom/android/mms/ui/ConversationList;->-wrap10(Lcom/android/mms/ui/ConversationList;)V

@@ -17,12 +17,16 @@ public final class ArgonLaunch {
 
     /** Layout is ready to draw, not necessarily presented on screen yet. */
     public static void awaitRows(ListView list) {
+        awaitRows(list, "rows_ready");
+    }
+
+    public static void awaitRows(ListView list, String stage) {
         ViewTreeObserver observer = list.getViewTreeObserver();
         observer.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
             @Override public boolean onPreDraw() {
                 if (!list.isShown() || list.getChildCount() == 0) return true;
                 list.getViewTreeObserver().removeOnPreDrawListener(this);
-                mark("rows_ready");
+                mark(stage);
                 return true;
             }
         });

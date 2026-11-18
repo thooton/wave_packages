@@ -1936,6 +1936,10 @@
 
     const/4 v3, -0x1
 
+    # PERF(inbox timing): opt-in launch milestone.
+    const-string v0, "inbox_start"
+    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+
     .line 287
     invoke-super {p0, p1}, Landroid/app/ListActivity;->onCreate(Landroid/os/Bundle;)V
 
@@ -2142,6 +2146,10 @@
     .line 339
     :cond_4
     invoke-direct {p0}, Lcom/android/mms/ui/ConversationList;->initListAdapter()V
+
+    # PERF(inbox timing): opt-in launch milestone.
+    const-string v0, "inbox_views"
+    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
 
     .line 341
     invoke-direct {p0}, Lcom/android/mms/ui/ConversationList;->setupActionBar()V
@@ -3582,8 +3590,16 @@
 
     iput-boolean v0, p0, Lcom/android/mms/ui/ConversationList;->mDoOnceAfterFirstQuery:Z
 
+    # PERF(inbox timing): opt-in launch milestone.
+    const-string v0, "inbox_query"
+    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+
     .line 678
     invoke-virtual {p0}, Lcom/android/mms/ui/ConversationList;->startAsyncQuery()V
+
+    # PERF(inbox timing): opt-in launch milestone.
+    const-string v0, "inbox_wait_threads"
+    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
 
     .line 693
     invoke-static {}, Lcom/android/mms/data/Conversation;->loadingThreads()Z
@@ -3597,6 +3613,8 @@
 
     .line 696
     :cond_0
+    const-string v0, "inbox_started"
+    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
     return-void
 .end method
 

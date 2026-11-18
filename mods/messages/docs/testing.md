@@ -33,6 +33,10 @@ system properties that reset on reboot, and nothing changes behaviour unless the
 * `tools/testing/conversation_index_test.py [--db SNAPSHOT]`: index triggers, paging, eligibility
   and address detection; the optional database is opened read-only and copied into memory.
 * `tools/testing/recipient_cache_test.py`: batched canonical-address reads, ordering and cache races.
+* `tools/testing/inbox_filter_test.py [--db SNAPSHOT]`: stock-equivalent inbox selection with
+  and without the optional MMS thread index.
+* `tools/testing/inbox_open.sh [samples]`: cold inbox window, contact map, query and first
+  nonempty list layout timings. The phone must be unlocked. The script resets its log flags.
 * `tools/testing/conversation_open.sh THREAD [--cold]`: launch markers, row binds, PDU loads and
   WebView startup. Set `adb shell setprop log.tag.ArgonLaunch DEBUG` before a cold launch to time
   app init, conversation view setup, history, and the first nonempty list layout. `rows_ready` is
