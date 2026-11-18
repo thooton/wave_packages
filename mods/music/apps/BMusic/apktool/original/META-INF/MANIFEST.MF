@@ -1,0 +1,320 @@
+Manifest-Version: 1.0
+Created-By: 1.8.0_191 (Oracle Corporation)
+
+Name: AndroidManifest.xml
+SHA-256-Digest: dZ5VCAGE3U/+kqkjHtbi5SptjbrfzHl+xcKbSLV8AaE=
+
+Name: classes.dex
+SHA-256-Digest: YlSfqAwLMLEOs/XeWtmH1dgjvfSXJxCZiplDtAgVYVg=
+
+Name: res/drawable-hdpi-v4/album_cover.png
+SHA-256-Digest: KgHWIMzwd4Wbz/CjIra3+9FFvjj6KXtY+Rh0gtljq8c=
+
+Name: res/drawable-hdpi-v4/apptheme_list_focused_holo.9.png
+SHA-256-Digest: UsrhHPTTaIBkuY3MU3F+9Buye+hQitykEUqLcRtDNh4=
+
+Name: res/drawable-hdpi-v4/apptheme_list_longpressed_holo.9.png
+SHA-256-Digest: 8P4InyJf0uwqmq5SuF/It758EWMDKdQOjQl4KkbPWR0=
+
+Name: res/drawable-hdpi-v4/apptheme_list_pressed_holo_light.9.png
+SHA-256-Digest: UG/hrBs63eZQYXvG3x84BWpYVQ/oThyCt0bvbnSl2Sw=
+
+Name: res/drawable-hdpi-v4/apptheme_list_selector_disabled_holo_light.
+ 9.png
+SHA-256-Digest: 4Wfq4Q+gUPBgU9jDumqhtC8UwflPfQEaLKEkiXiZaDk=
+
+Name: res/drawable-tvdpi-v4/app_music.png
+SHA-256-Digest: IKunykq7MD6RO59vM1L48WLuIs2psaars22ZDEvALsU=
+
+Name: res/drawable-tvdpi-v4/apptheme_scrubber_primary_holo.9.png
+SHA-256-Digest: sCzEuM587CoEsGxjijng2F0nWoC8kwsVznBvU/zhOsc=
+
+Name: res/drawable-tvdpi-v4/apptheme_scrubber_secondary_holo.9.png
+SHA-256-Digest: +9k1SRi6j+Ds5bG0NkErJb40vvGaY17Bzo6Um7fWuVM=
+
+Name: res/drawable-tvdpi-v4/apptheme_scrubber_track_holo_light.9.png
+SHA-256-Digest: d4+WaHW3cbaNb+a7y7N7/qhze3Iax3EITSUbe2pBFaw=
+
+Name: res/drawable-tvdpi-v4/appwidget_bg.9.png
+SHA-256-Digest: axhpigrHWiAti3QC53a4xVU6d6nUU0A8uuoM5lmX8L4=
+
+Name: res/drawable-tvdpi-v4/appwidget_divider.9.png
+SHA-256-Digest: 29gSiq7n8Ll0PAOpo9xmDKKA3Egt/oela5JrRAsoexY=
+
+Name: res/drawable-tvdpi-v4/appwidget_inner_focus_c.9.png
+SHA-256-Digest: ebIgQWt0ccMD74+SwVPJZcZ/zIP5j3qpf/52uuWuwaU=
+
+Name: res/drawable-tvdpi-v4/appwidget_inner_focus_l.9.png
+SHA-256-Digest: KSqjQRshd5Ooqg/Gj5pDLhHFLVTiKYN6595ElAllOAE=
+
+Name: res/drawable-tvdpi-v4/appwidget_inner_focus_r.9.png
+SHA-256-Digest: cZZw1w6YyJHrAsjo458aLu/1dllfKXgH9cipbePQeDk=
+
+Name: res/drawable-tvdpi-v4/appwidget_inner_press_c.9.png
+SHA-256-Digest: fI5BOL7Do5isqxHRUyeoWLKFbt6JLap9YnKXzY365Zw=
+
+Name: res/drawable-tvdpi-v4/appwidget_inner_press_l.9.png
+SHA-256-Digest: EaHmlkpEf7AK9YX5cUKbpnVybdAl3M+FNkXSPt9Kum4=
+
+Name: res/drawable-tvdpi-v4/appwidget_inner_press_r.9.png
+SHA-256-Digest: fGztcpTZgvlsM/HEHQr/mHXaD8iBPLEEcy8qw3/lakg=
+
+Name: res/drawable-tvdpi-v4/btn_default_normal.9.png
+SHA-256-Digest: TAN9XuvQCQ4ocnpZh5L7TSTyatwF/Fksp8t5IQ6rctg=
+
+Name: res/drawable-tvdpi-v4/btn_default_normal_disable.9.png
+SHA-256-Digest: 4kGdXGyFR9g0yj4ROBLGhvOnM9qLlZhTIovvalpX0Jo=
+
+Name: res/drawable-tvdpi-v4/btn_default_normal_disable_focused.9.png
+SHA-256-Digest: klkhnpDBHsgBH3CNLjKeyobsXynapbo9XA3EfV681CY=
+
+Name: res/drawable-tvdpi-v4/btn_default_normal_pressed_centered.9.png
+SHA-256-Digest: fbtrFf8suJRpE3rNEMfySa+3RQJ3xF/dJdNypi7dwjY=
+
+Name: res/drawable-tvdpi-v4/drm_image.png
+SHA-256-Digest: WeqW/z2d3uMTVeU1pz4UA083n/TOT3cmFXAUQipUNr0=
+
+Name: res/drawable-tvdpi-v4/ic_appwidget_music_next.png
+SHA-256-Digest: cY7BVaNPrxvX842QN/S6moxwzOpEhlbBpZjM2IsDXU8=
+
+Name: res/drawable-tvdpi-v4/ic_appwidget_music_pause.png
+SHA-256-Digest: KXUofbevskeRCyQtSpKDL3mErQAQIr2gQpV7YZEA9dk=
+
+Name: res/drawable-tvdpi-v4/ic_appwidget_music_play.png
+SHA-256-Digest: mnmUWGoSQQ3xXliRVzEADjO7JG4ASoCPCNglYupYNxk=
+
+Name: res/drawable-tvdpi-v4/ic_launcher_shortcut_music_playlist.png
+SHA-256-Digest: Jp4d4zyX6JTQEAqRiNO3vfQfX2ijm7aVa1DvpxiOhfw=
+
+Name: res/drawable-tvdpi-v4/ic_mp_artist_list.png
+SHA-256-Digest: NbrgqjJjxL6NyABJZgURw+UK7wn0CFV66QItf+NCTMs=
+
+Name: res/drawable-tvdpi-v4/ic_mp_partyshuffle_on_btn.png
+SHA-256-Digest: lcbaLSqnTR80VzpDwcZuDEiwuyEc0ymG7wlzeI0AAmI=
+
+Name: res/drawable-tvdpi-v4/ic_mp_sd_card.png
+SHA-256-Digest: YmvxO3PPWoNudmL1tGjJIvU3uJTI3fdUrRKn7hanbhs=
+
+Name: res/drawable-tvdpi-v4/ic_mp_song_list.png
+SHA-256-Digest: 6UwdyUG0o155TixVkDE9d0q6Wey4LWxP+n2yhd9mI8Y=
+
+Name: res/drawable-tvdpi-v4/ic_music_albumart_bg_default.png
+SHA-256-Digest: 4/TMdRPsi9sHZ0gz8GI5YgI/hAp8P9clzxISNIZMaLs=
+
+Name: res/drawable-tvdpi-v4/ic_music_albumart_default.png
+SHA-256-Digest: IPFg0V10Lgd8+yhC21aEw8r7vdkoBB2lg7euzPYrYWo=
+
+Name: res/drawable-tvdpi-v4/ic_music_level.png
+SHA-256-Digest: zcyWcdl/jdyJvd3L8kLwpSR0eV/0SE3vmEcLX2nXVPI=
+
+Name: res/drawable-tvdpi-v4/ic_music_next.png
+SHA-256-Digest: u0feLDRbSki3r2EOH0w7t64LNfD0LsFaSJqsRfKLj58=
+
+Name: res/drawable-tvdpi-v4/ic_music_pause.png
+SHA-256-Digest: UOXGXV/ivckgMtCDCPjeH1sNy+fmF/p0Th3zH3kFbvU=
+
+Name: res/drawable-tvdpi-v4/ic_music_play.png
+SHA-256-Digest: dD0xpfvYxwhmn1EVXpmt8Q6O5gkvR03JUTIcXf7H5xw=
+
+Name: res/drawable-tvdpi-v4/ic_music_playlist_internal.png
+SHA-256-Digest: XuH0QseZMNIdEvdyeHr54vzEyD7m+Fm6JCNi2QcGN+0=
+
+Name: res/drawable-tvdpi-v4/ic_music_previous.png
+SHA-256-Digest: 6a0zh80CGMb24b+Uusv0IwZP9c/CUQiPRaCvNnsX0d8=
+
+Name: res/drawable-tvdpi-v4/ic_music_recently_added.png
+SHA-256-Digest: kPHqEAdt/SoTUj1e203fDMZLU0WAX1UzpNNiIMaHRGY=
+
+Name: res/drawable-tvdpi-v4/ic_music_repeat_all.png
+SHA-256-Digest: J6SRmCgG27akkwr/8l1ySD45UN9YRw1WJmfm/OtqHsU=
+
+Name: res/drawable-tvdpi-v4/ic_music_repeat_off.png
+SHA-256-Digest: EkB39w9mFbx0BOASZPZaqIYXrvxapaac8fIXruDnkm8=
+
+Name: res/drawable-tvdpi-v4/ic_music_repeat_once.png
+SHA-256-Digest: Us6tdR6z1KM7cYdHLkLJR1dusqQERHyDCFtd9GxCTsU=
+
+Name: res/drawable-tvdpi-v4/ic_music_ring.png
+SHA-256-Digest: taXnjoJEDfiXkXgVS092FxIfch8C4KoowHbLqrH9r0Q=
+
+Name: res/drawable-tvdpi-v4/ic_music_seekbar_glow.png
+SHA-256-Digest: aGRwCb61oLveBC5V1FRk44kj5GEEGf+SVkrjihO/VGQ=
+
+Name: res/drawable-tvdpi-v4/ic_music_seekbar_slider.png
+SHA-256-Digest: H9XXBFdzE9w8bCqH5/PBPMWXUxprHhPW77DGW/cepNM=
+
+Name: res/drawable-tvdpi-v4/ic_music_shuffle_off.png
+SHA-256-Digest: pqItMDPFHkInfLhIODS+w1Ov6RkbHLFwnMSbGRpXIRY=
+
+Name: res/drawable-tvdpi-v4/ic_music_shuffle_on.png
+SHA-256-Digest: yqxwzHXS/UltO5AEuvhk7DZT+9sj97jrUYxQyNFwNHE=
+
+Name: res/drawable-tvdpi-v4/ic_search_category_music_song.png
+SHA-256-Digest: EMaLHjZaIjvNyZxKXqdXYEpCVY4dkTU6LhXE08kmU4g=
+
+Name: res/drawable-tvdpi-v4/ic_status_music.png
+SHA-256-Digest: NcW/Xyl96fTBRQoZYgB6wyaCkPTdp/5BNvn65HYGt4I=
+
+Name: res/drawable-tvdpi-v4/icon_external.png
+SHA-256-Digest: nEzS9c1RF2iYRSHyr/VS4g6ccIGHZD4EsQ1RYGkomBs=
+
+Name: res/drawable-tvdpi-v4/midi.png
+SHA-256-Digest: VzbCu3zZCKK8V8IsG0JZEpRZ35s5qqecRqY850dM8yE=
+
+Name: res/drawable-tvdpi-v4/movie.png
+SHA-256-Digest: MgPO0Usw7nkqaUtG0Uh10sJ6UsmWGEo3JDx2QsRbwg0=
+
+Name: res/drawable-tvdpi-v4/notify_panel_notification_icon_bg.png
+SHA-256-Digest: q3fhWHcOqdv7Yu+OPyVHvGCNz8ZCa09EE9eCBeEmS3k=
+
+Name: res/drawable-tvdpi-v4/pickerbox_background.9.png
+SHA-256-Digest: liYChD+VuYKkKz/slPxaherDsHulF33pzUdea5bUWcg=
+
+Name: res/drawable-tvdpi-v4/pickerbox_selected.9.png
+SHA-256-Digest: 2gc/+UIP5Ag0ns3RuvUXt0TXQA2rrd4xXsaqapyaGd8=
+
+Name: res/drawable-tvdpi-v4/pickerbox_unselected.9.png
+SHA-256-Digest: g7zxe+zIicSPxsUL/leGmsWFuUmhvh67RcYiV+wQ/EY=
+
+Name: res/drawable-tvdpi-v4/playlist_tile_drag.9.png
+SHA-256-Digest: wf6kbtmlHhQZIBjy6DmSZsIk2wUDWSw9B6LOYcTwBeY=
+
+Name: res/drawable/apptheme_list_selector_background_transition_holo_l
+ ight.xml
+SHA-256-Digest: 0PcvLpUTYaWHYwGnH1korOr2Rc5lrNFUM7nzPN+A8Gc=
+
+Name: res/drawable/appwidget_button_center.xml
+SHA-256-Digest: 0GVPNx3hYU4CDJaXx+llR/vGo8qVls4zScpqRUT4dmk=
+
+Name: res/drawable/appwidget_button_left.xml
+SHA-256-Digest: q9Ng1bDcV0weoGSoFJ9RrPuzV/jIrmjIHzhXSJabaDc=
+
+Name: res/drawable/appwidget_button_right.xml
+SHA-256-Digest: vIKhUVXJeKs0YMTuGvLsQ46blw7wWZxfLOZv8kQE/2c=
+
+Name: res/drawable/button_selector.xml
+SHA-256-Digest: peerf90iGk1NK/H3aNOHgoB4k/xRb1JLXCBgbytNMmY=
+
+Name: res/drawable/list_selector.xml
+SHA-256-Digest: DkezmMV5YjD0wRCtQTanqnH8aopTDcHDpJjVr1zu/9s=
+
+Name: res/drawable/media_normal.xml
+SHA-256-Digest: EtmElJl++TzJjn23UytcDBA/2163/2XsQFrDT6kGHsc=
+
+Name: res/drawable/media_pressed.xml
+SHA-256-Digest: HsdTcOW0u5ii8GwFRdES9GJ1JeTttc9G/V2fUas+Gzc=
+
+Name: res/drawable/media_selector.xml
+SHA-256-Digest: +C14lp7x54s6wITrJmrYCpDdvL5HKIWchQKHPzGyB0o=
+
+Name: res/drawable/notify_panel_notification_icon_bg_tile.xml
+SHA-256-Digest: WYks292Ds/wvapgenMNWea+5CZn38RpE4wtqW81+VdA=
+
+Name: res/drawable/nowplaying_background.xml
+SHA-256-Digest: GBds/tU2SVBcUihU70qau2ZxT+swqeFRfxMtsbs+wWE=
+
+Name: res/drawable/play_selector.xml
+SHA-256-Digest: 6HkeuMp+vBkGo7MhTudAMqKPiD9iv4IOqJNdH58I+Dg=
+
+Name: res/drawable/progress_horizontal.xml
+SHA-256-Digest: wJZb3AhIGzAV0aboRBcgW3DE75GwsQEnuVaaXf2g+fk=
+
+Name: res/drawable/progress_primary.xml
+SHA-256-Digest: 9TVMWLEQ8Md+6puckaxrZopV5MRNK53v2T6tO7/qiyE=
+
+Name: res/drawable/seekbar_normal.xml
+SHA-256-Digest: 21G1BLw744Rpu8z1AlWJkIheJpPqdp2QZcjSOujmNSQ=
+
+Name: res/drawable/seekbar_pressed.xml
+SHA-256-Digest: t8fqr50aYFsIXPSP9lHF2OmaQ0dqKQYd747uZG62jQU=
+
+Name: res/drawable/tab_selected.xml
+SHA-256-Digest: RE+yPkmbSj80ivUvTmGdGudyu0tHsUwRVTNEDFfmoyI=
+
+Name: res/drawable/tab_selector.xml
+SHA-256-Digest: yQsZGzqw0E6okL0X3siZnoesMAvdt03OEU8bJkIoGH0=
+
+Name: res/drawable/tab_unselected.xml
+SHA-256-Digest: 16/6ohzQkNgloI9hL5moadedwhUGVr4Y021E80KeQtk=
+
+Name: res/layout/album_appwidget.xml
+SHA-256-Digest: Ap/gupDSKm8sWkSECN03YorZt9D7bcYDGpHk5tGXJrY=
+
+Name: res/layout/audio_player.xml
+SHA-256-Digest: mP51qWswQfg6ki6Jq6WaXAV4RVzGhikyXJ7na1hkDqI=
+
+Name: res/layout/audiopreview.xml
+SHA-256-Digest: k35Q5Sf4EQpSenZreAO8Hhu2N2ajYmLNon7rwIxEW60=
+
+Name: res/layout/buttonbar.xml
+SHA-256-Digest: TyfR2lOp97ltXud8sTXxIkio52QVw571WlJEsKKgVjk=
+
+Name: res/layout/confirm_delete.xml
+SHA-256-Digest: Gznwo/+FyDDsoKfTziqFQNjqg/33YjZi19UdqGOx5nI=
+
+Name: res/layout/create_playlist.xml
+SHA-256-Digest: 9Qgt/PWNbnP65lHRuYXhmpTtFnpLsx/X0HZX3/a4ohw=
+
+Name: res/layout/edit_track_list_item.xml
+SHA-256-Digest: KHBzpa+Knl85/oa/dMfsAdUf4+NG/PQrX9RfUdZnbOM=
+
+Name: res/layout/media_picker_activity.xml
+SHA-256-Digest: B3zHRbdhGbKGDDGhmR8tesr9Jbx9KTHo6nlqEml3oiM=
+
+Name: res/layout/media_picker_activity_expanding.xml
+SHA-256-Digest: si7dB8zwc11mr31mHB+OYthdQx0uMyr2zqkwmA5Dtpk=
+
+Name: res/layout/music_picker.xml
+SHA-256-Digest: yYp2MYbTxS3GJ0R6MrtOMjaSqKr3jN6QgwIhB1xSfO8=
+
+Name: res/layout/music_picker_item.xml
+SHA-256-Digest: 2j2kpkNi5qLWfvMlr1tF8t6Qhe0stHO804HanQ3oVCg=
+
+Name: res/layout/nowplaying.xml
+SHA-256-Digest: pCsLDGIRANr1cfanx2kOT4/Q7mJB+Iu9OgkEBiuE9ao=
+
+Name: res/layout/query_activity.xml
+SHA-256-Digest: M9oy8beewFiKOJXs+Z/tLxk/IP1pIDzADqYurTsIxLY=
+
+Name: res/layout/rename_dialog.xml
+SHA-256-Digest: u8PO5xXJpv1YK8/xJvFn6TI4nRv00R1JpPO/o1i9ZK8=
+
+Name: res/layout/scanning.xml
+SHA-256-Digest: ZviRC6Q8hZfj43+cGkVXxKm8Vu9NaFDVm7GPSZvlXXo=
+
+Name: res/layout/scanning_nosdcard.xml
+SHA-256-Digest: rNb+8Ks9xPjzZ6FKUsYM26O844tbufAlzogQGRzQVHc=
+
+Name: res/layout/sd_error.xml
+SHA-256-Digest: xpCn08KW+IhdiwHQ8RKmDTS0L9Ppnbx6GgVmbibkvzM=
+
+Name: res/layout/status_bar_info.xml
+SHA-256-Digest: Di2dQoHqiYZSKMfcBs3R4XriKwRC4NmcHjstgTHH4Nk=
+
+Name: res/layout/statusbar.xml
+SHA-256-Digest: xolm9ugsKWuRJb9NLpiBztQ5Dt5xSvdmdQl8WM+C3UQ=
+
+Name: res/layout/track_list_item.xml
+SHA-256-Digest: Yn539twhXxMEtPZQu3OH7vMLkMwvfQWgBvHIH4ORhVw=
+
+Name: res/layout/track_list_item_child.xml
+SHA-256-Digest: cQTQjcRuiPAtzIc63PeiA93MRKWKiTEPRsiQIEAi+Dk=
+
+Name: res/layout/track_list_item_common.xml
+SHA-256-Digest: /mQnII8yhZ4jug5gpHRorKdDTPPuGHYAf+bA8zATyN4=
+
+Name: res/layout/track_list_item_group.xml
+SHA-256-Digest: PPAlJc+Xb1V9pmceH0CACGFLmjLHP9ZGe2OGA5ZIT38=
+
+Name: res/layout/weekpicker.xml
+SHA-256-Digest: 8fDK/NDRSODtmScZlr8B0jIfCkBvAl1LjzTGDTVuvuE=
+
+Name: res/xml/appwidget_info.xml
+SHA-256-Digest: iPEF5tuC9Gin/SnMNIGCC7hHa+lhZrtxdxln8jnbaVE=
+
+Name: res/xml/searchable.xml
+SHA-256-Digest: /GzbQ495EMSRmtkFE/MCo9FlM9ghYFm4cfowC0stitU=
+
+Name: resources.arsc
+SHA-256-Digest: WTQhv/8mWPCoxRDJIf+CSQYBhavzNYwNWF296Drhy6M=
+
