@@ -91,7 +91,8 @@
 
     move-result-object v0
 
-    iget-object v0, v0, Lcom/android/mms/ui/MessageItem;->mTimestamp:Ljava/lang/String;
+    invoke-virtual {v0}, Lcom/android/mms/ui/MessageItem;->getTimestamp()Ljava/lang/String;
+    move-result-object v0
 
     .line 431
     invoke-static {v0}, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z

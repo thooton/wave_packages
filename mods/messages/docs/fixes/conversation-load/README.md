@@ -63,7 +63,10 @@ applies the original bubble tint without looking up or constructing the avatar.
 Visible avatars, checked rows, and media still take the stock path. Nonempty
 inline MMS also skip a preparatory text bind that the stock binder overwrote
 immediately. The final `TextView` bind still supplies all links, and search
-highlights still use spans.
+highlights still use spans. Clustered inline MMS defer date formatting until a
+row actually needs the timestamp. Row inflation no longer queries an unused
+country code or loads burn-message icons. Touch gestures use the stock handlers,
+but the detector is allocated only when a row receives a touch.
 
 ## Verification
 

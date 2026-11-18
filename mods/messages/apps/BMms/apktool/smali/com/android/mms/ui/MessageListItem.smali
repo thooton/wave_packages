@@ -1305,7 +1305,8 @@
     :cond_1b
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
 
-    iget-object v0, v0, Lcom/android/mms/ui/MessageItem;->mTimestamp:Ljava/lang/String;
+    invoke-virtual {v0}, Lcom/android/mms/ui/MessageItem;->getTimestamp()Ljava/lang/String;
+    move-result-object v0
 
     goto/16 :goto_6
 
@@ -1348,7 +1349,8 @@
     :cond_1d
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
 
-    iget-object v0, v0, Lcom/android/mms/ui/MessageItem;->mTimestamp:Ljava/lang/String;
+    invoke-virtual {v0}, Lcom/android/mms/ui/MessageItem;->getTimestamp()Ljava/lang/String;
+    move-result-object v0
 
     goto :goto_a
 
@@ -2044,7 +2046,8 @@
     .line 417
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
 
-    iget-object v0, v0, Lcom/android/mms/ui/MessageItem;->mTimestamp:Ljava/lang/String;
+    invoke-virtual {v0}, Lcom/android/mms/ui/MessageItem;->getTimestamp()Ljava/lang/String;
+    move-result-object v0
 
     invoke-static {v0}, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
 
@@ -2259,7 +2262,8 @@
     .line 447
     iget-object v2, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
 
-    iget-object v2, v2, Lcom/android/mms/ui/MessageItem;->mTimestamp:Ljava/lang/String;
+    invoke-virtual {v2}, Lcom/android/mms/ui/MessageItem;->getTimestamp()Ljava/lang/String;
+    move-result-object v2
 
     .line 446
     invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;

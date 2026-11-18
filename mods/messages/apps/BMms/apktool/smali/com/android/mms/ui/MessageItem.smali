@@ -26,6 +26,10 @@
 
 .field mArgonTextReady:Z
 
+.field mArgonTimestampPending:Z
+
+.field mArgonTimestampMillis:J
+
 .field mBody:Ljava/lang/String;
 
 .field final mBoxId:I
@@ -2359,9 +2363,18 @@
 .end method
 
 .method public getTimestamp()Ljava/lang/String;
-    .locals 1
+    .locals 3
 
-    .prologue
+    # PERF(inline text): clustered rows may never display their timestamp.
+    iget-boolean v0, p0, Lcom/android/mms/ui/MessageItem;->mArgonTimestampPending:Z
+    if-eqz v0, :argon_read_timestamp
+    iget-object v0, p0, Lcom/android/mms/ui/MessageItem;->mContext:Landroid/content/Context;
+    iget-wide v1, p0, Lcom/android/mms/ui/MessageItem;->mArgonTimestampMillis:J
+    invoke-static {v0, v1, v2}, Lcom/android/mms/ui/MessageUtils;->formatTimeStampString(Landroid/content/Context;J)Ljava/lang/String;
+    move-result-object v0
+    invoke-virtual {p0, v0}, Lcom/android/mms/ui/MessageItem;->setTimestamp(Ljava/lang/String;)V
+
+    :argon_read_timestamp
     .line 702
     iget-object v0, p0, Lcom/android/mms/ui/MessageItem;->mTimestamp:Ljava/lang/String;
 
@@ -2863,9 +2876,11 @@
 .end method
 
 .method public setTimestamp(Ljava/lang/String;)V
-    .locals 0
+    .locals 1
 
     .prologue
+    const/4 v0, 0x0
+    iput-boolean v0, p0, Lcom/android/mms/ui/MessageItem;->mArgonTimestampPending:Z
     .line 706
     iput-object p1, p0, Lcom/android/mms/ui/MessageItem;->mTimestamp:Ljava/lang/String;
 

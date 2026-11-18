@@ -52,7 +52,8 @@ public final class ArgonTextMms {
         item.mTextContentType = "text/plain";
         item.mAttachmentType = 0;
         if (!item.isOutgoingMessage()) {
-            item.mTimestamp = MessageUtils.formatTimeStampString(item.mContext, date);
+            item.mArgonTimestampMillis = date;
+            item.mArgonTimestampPending = true;
         }
         return true;
     }
