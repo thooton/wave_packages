@@ -267,7 +267,8 @@
     iget-object v0, p0, Lcom/android/mms/ui/NotificationConversationList;->mQueryHandler:Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;
 
     .line 69
-    const-string/jumbo v1, "notification=1 and _id IN (SELECT DISTINCT thread_id FROM sms where thread_id NOT NULL UNION SELECT DISTINCT thread_id FROM pdu where thread_id NOT NULL)"
+    # PERF(inbox filter): seek the SMS index; scan MMS at most once on stock providers.
+    const-string/jumbo v1, "notification=1 and (EXISTS (SELECT 1 FROM sms WHERE sms.thread_id=threads._id) OR _id IN (SELECT DISTINCT thread_id FROM pdu WHERE thread_id NOT NULL))"
 
     .line 68
     const/16 v2, 0x6a5
@@ -278,7 +279,8 @@
     iget-object v0, p0, Lcom/android/mms/ui/NotificationConversationList;->mQueryHandler:Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;
 
     .line 71
-    const-string/jumbo v1, "read=0 and _id IN (SELECT DISTINCT thread_id FROM sms where thread_id NOT NULL UNION SELECT DISTINCT thread_id FROM pdu where thread_id NOT NULL)"
+    # PERF(inbox filter): seek the SMS index; scan MMS at most once on stock providers.
+    const-string/jumbo v1, "read=0 and (EXISTS (SELECT 1 FROM sms WHERE sms.thread_id=threads._id) OR _id IN (SELECT DISTINCT thread_id FROM pdu WHERE thread_id NOT NULL))"
 
     .line 70
     const/16 v2, 0x6a6
