@@ -5855,6 +5855,11 @@
     .line 1026
     const-string/jumbo v0, "Mms"
 
+    # PERF(row logging): avoid diagnostic string allocation on normal binds.
+    const/4 v3, 0x2
+    invoke-static {v0, v3}, Landroid/util/Log;->isLoggable(Ljava/lang/String;I)Z
+    move-result v3
+    if-eqz v3, :argon_attachment_log_done
     new-instance v3, Ljava/lang/StringBuilder;
 
     invoke-direct {v3}, Ljava/lang/StringBuilder;-><init>()V
@@ -5889,6 +5894,7 @@
 
     invoke-static {v0, v3}, Landroid/util/Log;->v(Ljava/lang/String;Ljava/lang/String;)I
 
+    :argon_attachment_log_done
     .line 1027
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
 
@@ -7296,6 +7302,11 @@
     .line 331
     const-string/jumbo v0, "Mms"
 
+    # PERF(row logging): avoid diagnostic string allocation on normal binds.
+    const/4 v2, 0x2
+    invoke-static {v0, v2}, Landroid/util/Log;->isLoggable(Ljava/lang/String;I)Z
+    move-result v2
+    if-eqz v2, :argon_bind_log_done
     new-instance v2, Ljava/lang/StringBuilder;
 
     invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
@@ -7316,6 +7327,7 @@
 
     invoke-static {v0, v2}, Landroid/util/Log;->v(Ljava/lang/String;Ljava/lang/String;)I
 
+    :argon_bind_log_done
     .line 337
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
 

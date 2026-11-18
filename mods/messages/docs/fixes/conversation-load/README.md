@@ -50,7 +50,9 @@ pending; this removes the work rather than moving it to a later frame.
 On a canonical recipient-cache miss, resolve just the missing IDs in an indexed
 batch. Neither the miss query nor the background warm-up holds the cache lock
 while reading the provider cursor. A background warm-up cannot overwrite a
-newer cached number.
+newer cached number. Disabled compose diagnostics no longer capture Java stack
+traces or stringify conversation state on launch. Row-bind and attachment-view
+verbose logs build their strings only when verbose logging is enabled.
 
 ## Lightweight text rows
 

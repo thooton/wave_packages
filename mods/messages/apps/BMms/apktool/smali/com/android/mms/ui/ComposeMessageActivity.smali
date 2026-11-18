@@ -15973,6 +15973,15 @@
     .locals 5
 
     .prologue
+    # PERF(launch logging): a disabled diagnostic must not capture a Java stack.
+    const-string v0, "Mms"
+    const/4 v1, 0x3
+    invoke-static {v0, v1}, Landroid/util/Log;->isLoggable(Ljava/lang/String;I)Z
+    move-result v0
+    if-nez v0, :argon_log_enabled
+    return-void
+
+    :argon_log_enabled
     .line 869
     invoke-static {}, Ljava/lang/Thread;->currentThread()Ljava/lang/Thread;
 
@@ -24611,6 +24620,12 @@
 
     .line 3167
     :cond_1
+    # Don't stringify the activity state and recipients unless the log is enabled.
+    const-string v2, "Mms"
+    const/4 v3, 0x3
+    invoke-static {v2, v3}, Landroid/util/Log;->isLoggable(Ljava/lang/String;I)Z
+    move-result v2
+    if-eqz v2, :argon_launch_log_done
     new-instance v2, Ljava/lang/StringBuilder;
 
     invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
@@ -24665,6 +24680,7 @@
 
     invoke-static {v2}, Lcom/android/mms/ui/ComposeMessageActivity;->log(Ljava/lang/String;)V
 
+    :argon_launch_log_done
     .line 3171
     invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getIntent()Landroid/content/Intent;
 
