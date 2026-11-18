@@ -1,0 +1,18 @@
+Manifest-Version: 1.0
+Created-By: 1.8.0_191 (Oracle Corporation)
+
+Name: AndroidManifest.xml
+SHA-256-Digest: rMaWL0mNxaQSeZjsGTF//1rbECYrcE8pF7vpaJKeCTA=
+
+Name: classes.dex
+SHA-256-Digest: MnLsPci+Tg6VG4QM0pA0MHWxH1w+8HTmKmhKaCH55n4=
+
+Name: res/drawable-mdpi-v4/app_icon.png
+SHA-256-Digest: 9rdk2u1bs+86JqWfB5/3fP7UDMbywg5YmHzFZLOB/7k=
+
+Name: res/layout/contact_dump_activity.xml
+SHA-256-Digest: bzLJ1IK2tnAf2zPzQK5gCPVSD4PvPlr+LxEhps2Db34=
+
+Name: resources.arsc
+SHA-256-Digest: QU7QjAy37ZbgxJnbbiKldgQik042iy0rkSSiyt0ML1U=
+
