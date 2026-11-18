@@ -313,15 +313,8 @@
     .line 7629
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 
-    invoke-virtual {v0}, Lcom/android/mms/ui/ComposeMessageActivity;->getIntent()Landroid/content/Intent;
-
-    move-result-object v0
-
-    const-string/jumbo v6, "select_id"
-
-    const-wide/16 v8, -0x1
-
-    invoke-virtual {v0, v6, v8, v9}, Landroid/content/Intent;->getLongExtra(Ljava/lang/String;J)J
+    # PERF(history paging): jump to a search result once, not on every prepend or refresh
+    invoke-static {v0}, Lcom/android/mms/ui/ArgonHistory;->selectionId(Lcom/android/mms/ui/ComposeMessageActivity;)J
 
     move-result-wide v6
 
@@ -365,9 +358,11 @@
     :goto_1
     iget-object v6, p0, Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 
-    iget-object v6, v6, Lcom/android/mms/ui/ComposeMessageActivity;->mMsgListAdapter:Lcom/android/mms/ui/MessageListAdapter;
-
-    invoke-virtual {v6, p3}, Lcom/android/mms/ui/MessageListAdapter;->changeCursor(Landroid/database/Cursor;)V
+    # PERF(history paging): swapping a wider cursor must not move the visible row
+    invoke-static {v6, p3, v0}, Lcom/android/mms/ui/ArgonHistory;->apply(Lcom/android/mms/ui/ComposeMessageActivity;Landroid/database/Cursor;I)I
+    move-result v0
+    const/4 v6, -0x2
+    if-eq v0, v6, :goto_2
 
     .line 7665
     if-eq v0, v1, :cond_9
@@ -385,6 +380,12 @@
     :goto_2
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 
+    # PERF(history paging): visible history size is not the conversation message count
+    invoke-static {v0}, Lcom/android/mms/ui/ArgonHistory;->isPartial(Lcom/android/mms/ui/ComposeMessageActivity;)Z
+    move-result v0
+    if-nez v0, :argon_message_count_done
+    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
+
     invoke-static {v0}, Lcom/android/mms/ui/ComposeMessageActivity;->-get10(Lcom/android/mms/ui/ComposeMessageActivity;)Lcom/android/mms/data/Conversation;
 
     move-result-object v0
@@ -399,6 +400,7 @@
 
     invoke-virtual {v0, v1}, Lcom/android/mms/data/Conversation;->setMessageCount(I)V
 
+    :argon_message_count_done
     .line 7694
     if-eqz p3, :cond_4
 
@@ -469,6 +471,12 @@
 
     .line 7703
     :cond_4
+    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
+
+    # PERF(history paging): keep DPAD focus on the anchored message when prepending
+    invoke-static {v0}, Lcom/android/mms/ui/ArgonHistory;->keepFocus(Lcom/android/mms/ui/ComposeMessageActivity;)Z
+    move-result v0
+    if-nez v0, :goto_3
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 
     invoke-static {v0}, Lcom/android/mms/ui/ComposeMessageActivity;->-wrap10(Lcom/android/mms/ui/ComposeMessageActivity;)Z

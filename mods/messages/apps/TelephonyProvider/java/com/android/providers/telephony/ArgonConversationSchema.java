@@ -13,9 +13,25 @@ final class ArgonConversationSchema {
     static final String[] PROJECTION = ("transport_type,_id,thread_id,address,body,sub_id,date,date_sent,"
             + "read,type,status,locked,error_code,sub,sub_cs,date,date_sent,read,m_type,msg_box,"
             + "d_rpt,rr,err_type,locked,st,text_only,sub_id,recipient_ids").split(",");
-    static final String ROW_QUERY = "SELECT " + String.join(",", PROJECTION)
-            + ",argon_text,argon_from,argon_size FROM " + TABLE
-            + " WHERE thread_id=? ORDER BY normalized_date,transport_type,_id";
+    private static final String ROW_COLUMNS = String.join(",", PROJECTION) + ",argon_text,argon_from,argon_size";
+    static final String KEY = "normalized_date,transport_type,_id";
+    static final String ASC = " ORDER BY normalized_date,transport_type,_id";
+    static final String DESC = " ORDER BY normalized_date DESC,transport_type DESC,_id DESC";
+    static final String LT = " AND (" + KEY + ")<(?,?,?)";
+    static final String GE = " AND (" + KEY + ")>=(?,?,?)";
+    private static final String FROM = " FROM " + TABLE + " WHERE thread_id=?";
+    static final String ROW_QUERY = "SELECT " + ROW_COLUMNS + FROM + ASC;
+    static final String KEY_QUERY = "SELECT " + KEY + FROM;
+    static final String FIND_KEY = KEY_QUERY + " AND transport_type=? AND _id=?";
+
+    static String floorQuery(boolean before, int rows) {
+        return KEY_QUERY + (before ? LT : "") + DESC + " LIMIT 1 OFFSET " + (rows - 1);
+    }
+
+    static String pageQuery(boolean hasFloor, boolean hasOlder) {
+        return "SELECT " + ROW_COLUMNS + ",normalized_date AS argon_date,"
+                + (hasOlder ? "1" : "0") + " AS argon_older" + FROM + (hasFloor ? GE : "") + ASC;
+    }
 
     private static final String SMS = "argon_msg_sms_source";
     private static final String MMS = "argon_msg_mms_source";

@@ -352,6 +352,9 @@
 
 .field private mScrollOnSend:Z
 
+# PERF(history paging)
+.field mArgonHistory:Ljava/lang/Object;
+
 .field private mSendAfterResize:Z
 
 .field private mSendButtonMms:Landroid/widget/ImageButton;
@@ -12544,6 +12547,9 @@
 
     invoke-virtual {v0, v1}, Lcom/android/mms/ui/MessageListView;->setAdapter(Landroid/widget/ListAdapter;)V
 
+    # PERF(history paging): load older pages near the top
+    invoke-static {p0, v0}, Lcom/android/mms/ui/ArgonHistory;->attach(Lcom/android/mms/ui/ComposeMessageActivity;Landroid/widget/ListView;)V
+
     .line 6887
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mMsgListView:Lcom/android/mms/ui/MessageListView;
 
@@ -21666,6 +21672,19 @@
     return v4
 .end method
 
+# PERF(history paging): package bridges for ArgonHistory
+.method argonStartHistory()V
+    .locals 0
+    invoke-direct {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->startMsgListQuery()V
+    return-void
+.end method
+
+.method argonScrollOnSend()Z
+    .locals 1
+    iget-boolean v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mScrollOnSend:Z
+    return v0
+.end method
+
 .method private startMsgListQuery()V
     .locals 1
 
@@ -21826,8 +21845,8 @@
 
     move v1, p1
 
-    # PERF(conversation index): opt in without changing the stock projection
-    invoke-static {v3}, Lcom/android/mms/ui/ArgonTextMms;->queryUri(Landroid/net/Uri;)Landroid/net/Uri;
+    # PERF(history paging): opt in without changing the stock projection
+    invoke-static {p0, p1, v3}, Lcom/android/mms/ui/ArgonHistory;->queryUri(Lcom/android/mms/ui/ComposeMessageActivity;ILandroid/net/Uri;)Landroid/net/Uri;
     move-result-object v3
 
     .line 6859

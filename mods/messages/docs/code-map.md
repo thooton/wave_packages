@@ -50,7 +50,7 @@ Config booleans in `apktool/res/values/bools.xml` (read-only for now; resources 
 | `argon/ArgonRcsSettings` (`MessagingPreferenceActivity`, `MessagingReportsPreferenceActivity`) | RCS settings screen |
 | `transaction/ArgonRcsStore`, `transaction/ArgonRcsSend` (`SmsSingleRecipientSender`, `SendTransaction`, `SmsReceiverService`) | RCS storage and routing |
 | `org/argon/rcs/…` | RCS engine (pure Java, docs/rcs/engine.md) |
-| `ui/ArgonComposePerf`, `ui/ArgonStreetAddress`, `ui/ArgonTextMms` | Conversation load, lightweight address links, inline text MMS |
+| `ui/ArgonComposePerf`, `ui/ArgonHistory`, `ui/ArgonStreetAddress`, `ui/ArgonTextMms` | Conversation load, lightweight address links, inline text MMS |
 
 TelephonyProvider: `apps/TelephonyProvider/java/…/ThreadIntegrity` (docs/fixes/sms-orphaned-threads)
 and `ArgonConversationSchema` / `ArgonConversationQuery` (docs/fixes/conversation-load).

@@ -37,7 +37,10 @@ public final class ArgonConversationQuery {
             // Only install after SQLiteOpenHelper and the stock autoincrement migrations have run.
             SQLiteDatabase db = provider.ti_getOpenHelper().getWritableDatabase();
             ensure(db);
-            c = db.rawQuery(ArgonConversationSchema.ROW_QUERY, new String[]{Long.toString(thread)});
+            String id = Long.toString(thread);
+            c = "1".equals(uri.getQueryParameter("argon_page"))
+                    ? page(db, id, uri)
+                    : db.rawQuery(ArgonConversationSchema.ROW_QUERY, new String[]{id});
             c.getCount(); // Fill the first window here so SQL failures still fall back to stock.
             c.setNotificationUri(provider.getContext().getContentResolver(), Telephony.MmsSms.CONTENT_URI);
             return c;
@@ -46,6 +49,92 @@ public final class ArgonConversationQuery {
             Log.w("MmsSmsProvider", "Conversation index unavailable, using stock query", e);
             return null;
         }
+    }
+
+    private static final int FIRST = 20;
+    private static final int PREPEND = 32;
+    private static final int SEARCH_CONTEXT = 10;
+
+    private static final class Key implements Comparable<Key> {
+        final long date, id;
+        final String kind;
+
+        Key(long date, String kind, long id) {
+            this.date = date;
+            this.kind = kind;
+            this.id = id;
+        }
+
+        @Override public int compareTo(Key k) {
+            int cmp = Long.compare(date, k.date);
+            if (cmp == 0) cmp = kind.compareTo(k.kind);
+            return cmp == 0 ? Long.compare(id, k.id) : cmp;
+        }
+
+        String[] args(String thread) {
+            return new String[]{thread, Long.toString(date), kind, Long.toString(id)};
+        }
+    }
+
+    private static Key key(Cursor c) {
+        return new Key(c.getLong(0), c.getString(1), c.getLong(2));
+    }
+
+    /** Seek into the clustered table; even older requests skip only one page, not the history. */
+    private static Key floor(SQLiteDatabase db, String thread, Key before, int rows) {
+        String sql = ArgonConversationSchema.floorQuery(before != null, rows);
+        try (Cursor c = db.rawQuery(sql, before == null ? new String[]{thread} : before.args(thread))) {
+            return c.moveToFirst() ? key(c) : null;
+        }
+    }
+
+    private static Key search(SQLiteDatabase db, String thread, String id) {
+        Key best = null;
+        for (String kind : new String[]{"mms", "sms"}) {
+            try (Cursor c = db.rawQuery(ArgonConversationSchema.FIND_KEY, new String[]{thread, kind, id})) {
+                if (c.moveToFirst()) {
+                    Key match = key(c);
+                    if (best == null || match.compareTo(best) < 0) best = match;
+                }
+            }
+        }
+        return best;
+    }
+
+    private static Key parseFloor(Uri uri) {
+        String kind = uri.getQueryParameter("argon_kind");
+        if (!"sms".equals(kind) && !"mms".equals(kind)) return null;
+        try {
+            return new Key(Long.parseLong(uri.getQueryParameter("argon_date")), kind,
+                    Long.parseLong(uri.getQueryParameter("argon_id")));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static Cursor page(SQLiteDatabase db, String thread, Uri uri) {
+        Key start = null;
+        if (!"1".equals(uri.getQueryParameter("argon_full"))) {
+            Key newest = floor(db, thread, null, FIRST);
+            start = newest;
+            String selected = uri.getQueryParameter("argon_select");
+            Key old = parseFloor(uri);
+            if (selected != null) {
+                Key at = search(db, thread, selected);
+                if (at != null) {
+                    Key context = floor(db, thread, at, SEARCH_CONTEXT);
+                    start = context == null || newest == null ? null :
+                            (context.compareTo(newest) < 0 ? context : newest);
+                }
+            } else if (old != null && newest != null) {
+                Key lower = "1".equals(uri.getQueryParameter("argon_prepend"))
+                        ? floor(db, thread, old, PREPEND) : old;
+                start = lower == null ? null : (lower.compareTo(newest) < 0 ? lower : newest);
+            }
+        }
+        boolean older = start != null && floor(db, thread, start, 1) != null;
+        return db.rawQuery(ArgonConversationSchema.pageQuery(start != null, older),
+                start == null ? new String[]{thread} : start.args(thread));
     }
 
     private static synchronized void ensure(SQLiteDatabase db) {

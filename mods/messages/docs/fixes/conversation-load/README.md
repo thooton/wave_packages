@@ -19,8 +19,12 @@ detect street addresses.
 * Messages opts in with `argon_index=1` on its existing history URI. The provider
   accepts only the fixed stock Messages projection with no custom filter or sort,
   checks the existing access restriction, and falls back to the stock query if the
-  index is unavailable. The whole history remains available for scroll and search
-  positioning; no new pagination or UI is introduced.
+  index is unavailable. Normal opens now request the newest 20 messages. Near the
+  top of the list the app extends the range by up to 32 messages, preserving the
+  visible row and pixel offset by message identity. A search jump starts the range
+  up to 10 messages before the hit and includes the newer history; a search into
+  an old thread may therefore read more than 20. Stock callers and the after-delete
+  existence check still get the full history.
 * Common single-slide text MMS with known SMIL and encodings bind from the cursor.
   Photos, notifications, unfamiliar layouts and MMS with receipt requests retain the
   full PDU path. Forward loads the original slideshow on demand. A provider that
@@ -49,3 +53,7 @@ use a different measurement marker from the baseline.
 
 `tools/testing/conversation_open.sh THREAD --cold` reports stock log markers. The
 `Displayed` marker is the window opening, not necessarily the first text drawn.
+
+The paging changes are built and host-tested, including mixed SMS/MMS timestamps,
+appends, deleting the range boundary, and a direct search key lookup. Scroll and
+focus checks on the handset are pending USB reconnection.

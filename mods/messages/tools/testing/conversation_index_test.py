@@ -22,6 +22,12 @@ def build_fixtures():
 public class DumpSchema {
     public static void main(String[] args) {
         System.out.println(ArgonConversationSchema.ROW_QUERY);
+        System.out.println(ArgonConversationSchema.floorQuery(false, 20));
+        System.out.println(ArgonConversationSchema.floorQuery(true, 32));
+        System.out.println(ArgonConversationSchema.floorQuery(true, 10));
+        System.out.println(ArgonConversationSchema.pageQuery(true, true));
+        System.out.println(ArgonConversationSchema.pageQuery(false, false));
+        System.out.println(ArgonConversationSchema.FIND_KEY);
         for (String stmt : ArgonConversationSchema.rebuild()) System.out.println(stmt);
     }
 }
@@ -48,9 +54,9 @@ public class CheckAddress {
         subprocess.run(['javac', '-encoding', 'UTF-8', '-d', work, str(sql), str(addr),
                         str(PROVIDER / 'ArgonConversationSchema.java'), str(UI / 'ArgonStreetAddress.java')], check=True)
         subprocess.run(['java', '-cp', work, 'com.android.mms.ui.CheckAddress'], check=True)
-        query, *schema = subprocess.check_output(
+        query, *sql = subprocess.check_output(
             ['java', '-cp', work, 'com.android.providers.telephony.DumpSchema'], text=True).splitlines()
-        return query, schema
+        return query, sql[:6], sql[6:]
 
 
 def install(db, schema):
@@ -151,6 +157,55 @@ def check_updates(query, schema):
           'pending errors, Unicode, media/SMIL/receipt fallback, rollback and clustered query')
 
 
+def check_paging(queries, schema):
+    newest_sql, prepend_sql, context_sql, page_sql, full_sql, find_sql = queries
+    db = sqlite3.connect(':memory:')
+    db.executescript("""
+        CREATE TABLE sms(_id INTEGER PRIMARY KEY,thread_id,address,body,sub_id,date,date_sent,read,
+                         type,status,locked,error_code);
+        CREATE TABLE pdu(_id INTEGER PRIMARY KEY,thread_id,sub_id,date,date_sent,read,locked,sub,
+                         sub_cs,m_type,msg_box,d_rpt,rr,st,text_only);
+        CREATE TABLE part(_id INTEGER PRIMARY KEY,mid,ct,text,chset,cl,_data);
+        CREATE TABLE addr(_id INTEGER PRIMARY KEY,msg_id,type,charset,address);
+        CREATE TABLE pending_msgs(_id INTEGER PRIMARY KEY,msg_id,err_type);
+    """)
+    db.executemany("INSERT INTO sms(_id,thread_id,date,type) VALUES (?,9,?,1)",
+                   ((i, (i // 3) * 1000) for i in range(1, 101)))
+    db.executemany("INSERT INTO pdu(_id,thread_id,date,m_type,msg_box) VALUES (?,9,?,132,1)",
+                   ((i, i // 3) for i in range(1, 101)))
+    db.execute("INSERT INTO sms(_id,thread_id,date,type) VALUES (101,10,999999,1)")
+    db.commit()
+    install(db, schema)
+
+    complete = db.execute(full_sql, (9,)).fetchall()
+    assert len(complete) == 200 and len(set((row[0], row[1]) for row in complete)) == 200
+    assert not any(row[-1] for row in complete)
+    newest = db.execute(newest_sql, ('9',)).fetchone()
+    pages = db.execute(page_sql, ('9', *map(str, newest))).fetchall()
+    assert tuple(pages[0][i] for i in (-2, 0, 1)) == newest
+    assert len(pages) == 20 and all(row[-1] for row in pages)
+    assert [row[:-1] for row in pages] == [row[:-1] for row in complete[-20:]]
+    older = db.execute(prepend_sql, ('9', *map(str, newest))).fetchone()
+    expanded = db.execute(page_sql, ('9', *map(str, older))).fetchall()
+    assert len(expanded) == 52 and expanded[-20:] == pages
+    assert db.execute(newest_sql, ('10',)).fetchone() is None
+    # A live insert or deletion doesn't turn a historical boundary into an offset.
+    db.execute("INSERT INTO sms(_id,thread_id,date,type) VALUES (102,9,999999,1)")
+    db.execute("DELETE FROM argon_msg WHERE thread_id=9 AND (normalized_date,transport_type,_id)=(?,?,?)", older)
+    changed = db.execute(page_sql, ('9', *map(str, older))).fetchall()
+    assert changed[:-1] == expanded[1:] and changed[-1][1] == 102
+    for kind in ('mms', 'sms'):
+        target = db.execute(find_sql, ('9', kind, '30')).fetchone()
+        floor = db.execute(context_sql, ('9', *map(str, target))).fetchone()
+        result = db.execute(page_sql, ('9', *map(str, floor))).fetchall()
+        assert result[10][:2] == (kind, 30)
+    for sql, params in [(newest_sql, ('9',)), (page_sql, ('9', *map(str, older))),
+                        (prepend_sql, ('9', *map(str, newest)))]:
+        plan = str(db.execute('EXPLAIN QUERY PLAN ' + sql, params).fetchall())
+        assert 'PRIMARY KEY' in plan and 'TEMP B-TREE' not in plan, plan
+    print('PASS: bounded 20-row launch, 32-row prepend, stable ties and boundaries, indexed search jump')
+
+
 def check_copy(path, query, schema):
     db = sqlite3.connect(':memory:')
     with sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True) as src:
@@ -179,7 +234,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--db', type=Path, help='also test against an in-memory copy of a read-only snapshot')
     args = parser.parse_args()
-    query, schema = build_fixtures()
+    query, pages, schema = build_fixtures()
     check_updates(query, schema)
+    check_paging(pages, schema)
     if args.db:
         check_copy(args.db, query, schema)
