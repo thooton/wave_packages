@@ -1750,6 +1750,15 @@
 
     move-result-object v7
 
+    # PERF(phone map): use the provider's actual lookup keys; fall back on ties.
+    iget-object v3, p0, Lcom/android/mms/data/Contact$ContactsCache;->mContext:Landroid/content/Context;
+    invoke-static {v3, v0, v1, v7}, Lcom/android/mms/data/ArgonPhoneSnapshot;->lookup(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Landroid/database/Cursor;
+    move-result-object v3
+    if-eqz v3, :argon_stock_phone_lookup
+    move-object v1, v3
+    goto :cond_3
+
+    :argon_stock_phone_lookup
     .line 957
     invoke-static {v7}, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
 

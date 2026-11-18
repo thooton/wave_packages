@@ -717,7 +717,7 @@
 
     const-string/jumbo v1, ", "
 
-    invoke-virtual {v0, v1}, Lcom/android/mms/data/ContactList;->formatNames(Ljava/lang/String;)Ljava/lang/String;
+    invoke-static {v0, v1}, Lcom/android/mms/data/ArgonPhoneSnapshot;->formatNames(Lcom/android/mms/data/ContactList;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 
@@ -733,7 +733,7 @@
 
     const-string/jumbo v1, ", "
 
-    invoke-virtual {v0, v1}, Lcom/android/mms/data/ContactList;->formatNames(Ljava/lang/String;)Ljava/lang/String;
+    invoke-static {v0, v1}, Lcom/android/mms/data/ArgonPhoneSnapshot;->formatNames(Lcom/android/mms/data/ContactList;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 

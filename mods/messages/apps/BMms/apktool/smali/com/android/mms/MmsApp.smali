@@ -345,6 +345,9 @@
 
     invoke-static {v0}, Lcom/android/mms/util/DraftCache;->init(Landroid/content/Context;)V
 
+    # PERF(phone map): synchronously load the compact phone index before any inbox rows.
+    invoke-static {v0}, Lcom/android/mms/data/ArgonPhoneSnapshot;->prime(Landroid/content/Context;)V
+
     # PERF(inbox warmup): resolve all conversation recipients on the stock background
     # worker so scrolling does not have to discover every name on demand.
     invoke-static {v0}, Lcom/android/mms/data/Conversation;->init(Landroid/content/Context;)V

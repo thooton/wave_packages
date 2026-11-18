@@ -33854,6 +33854,35 @@
 
     move-result-object v7
 
+    # PERF(phone map): fixed-projection fast path after user/profile routing.
+    move-object/from16 v2, p2
+    if-eqz v2, :argon_stock_local_query
+    array-length v0, v2
+    const/4 v1, 0x1
+    if-ne v0, v1, :argon_stock_local_query
+    const/4 v0, 0x0
+    aget-object v0, v2, v0
+    const-string v1, "argon_phone_map_v1"
+    invoke-virtual {v1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result v0
+    if-eqz v0, :argon_stock_local_query
+    move-object/from16 v0, p0
+    invoke-virtual {v0}, Lcom/android/providers/contacts/ContactsProvider2;->getContext()Landroid/content/Context;
+    move-result-object v0
+    move-object v1, v7
+    move-object/from16 v2, p1
+    move-object/from16 v3, p2
+    move-object/from16 v4, p3
+    move-object/from16 v5, p4
+    move-object/from16 v6, p5
+    move-object/from16 v7, p8
+    invoke-static/range {v0 .. v7}, Lcom/android/providers/contacts/ArgonPhoneMap;->maybeQuery(Landroid/content/Context;Landroid/database/sqlite/SQLiteDatabase;Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;Landroid/os/CancellationSignal;)Landroid/database/Cursor;
+    move-result-object v0
+    move-object v7, v1
+    if-eqz v0, :argon_stock_local_query
+    return-object v0
+
+    :argon_stock_local_query
     .line 5874
     new-instance v29, Landroid/database/sqlite/SQLiteQueryBuilder;
 
