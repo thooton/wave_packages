@@ -92,3 +92,7 @@ ActivityManager START (history request at 0.97 s). The before/after USB screen
 sampling intervals overlapped, so they do not establish a speedup. Both installed
 APKs matched the host builds; the database integrity check passed and all
 pre-existing message IDs were still present.
+
+At `453d34b`, the same XP3800 thread opened with all 387 rows in its first
+cursor. DPAD scrolling did not request more rows, and the older search result
+still selected row 8. The paged behavior described above is historical.

@@ -16,7 +16,7 @@ name=Messages Argon
 version=dev
 versionCode=1
 author=local
-description=Modified Messages/TelephonyProvider for the Sonim XP3800 (dev build)
+description=Modified Messages and providers for the Sonim XP3800 (dev build)
 EOF
 adb shell "rm -rf $STAGE; mkdir -p $STAGE"
 adb push "$ROOT/build/module.prop" "$ROOT/module/service.sh" "$ROOT/out/system" $STAGE/ >/dev/null

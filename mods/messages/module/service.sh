@@ -7,6 +7,10 @@
 (
   until [ "$(getprop sys.boot_completed)" = 1 ]; do sleep 5; done
   sleep 90
+  DIR="${0%/*}"
+  if [ -f "$DIR/system/priv-app/ContactsProvider/ContactsProvider.apk" ]; then
+    cmd package compile -m speed com.android.providers.contacts >/dev/null 2>&1
+  fi
   for p in com.android.mms com.android.providers.telephony; do
     cmd package compile -m speed "$p" >/dev/null 2>&1
   done
