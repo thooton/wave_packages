@@ -92,8 +92,6 @@
 
 .field private mNotificationView:Landroid/view/ViewGroup;
 
-.field private mPrefs:Landroid/content/SharedPreferences;
-
 .field private mProgressDialog:Landroid/app/ProgressDialog;
 
 .field public mQueryHandler:Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;
@@ -168,14 +166,6 @@
     .locals 1
 
     iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mNotificationView:Landroid/view/ViewGroup;
-
-    return-object v0
-.end method
-
-.method static synthetic -get16(Lcom/android/mms/ui/ConversationList;)Landroid/content/SharedPreferences;
-    .locals 1
-
-    iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mPrefs:Landroid/content/SharedPreferences;
 
     return-object v0
 .end method
@@ -362,14 +352,6 @@
     .locals 0
 
     invoke-direct {p0, p1, p2}, Lcom/android/mms/ui/ConversationList;->log(Ljava/lang/String;[Ljava/lang/Object;)V
-
-    return-void
-.end method
-
-.method static synthetic -wrap5(Lcom/android/mms/ui/ConversationList;)V
-    .locals 0
-
-    invoke-direct {p0}, Lcom/android/mms/ui/ConversationList;->markCheckedMessageLimit()V
 
     return-void
 .end method
@@ -1161,31 +1143,6 @@
     invoke-static {v1, v0}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
 
     .line 2011
-    return-void
-.end method
-
-.method private markCheckedMessageLimit()V
-    .locals 3
-
-    .prologue
-    .line 656
-    iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mPrefs:Landroid/content/SharedPreferences;
-
-    invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
-
-    move-result-object v0
-
-    .line 657
-    const-string/jumbo v1, "checked_message_limits"
-
-    const/4 v2, 0x1
-
-    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences$Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences$Editor;
-
-    .line 658
-    invoke-interface {v0}, Landroid/content/SharedPreferences$Editor;->apply()V
-
-    .line 659
     return-void
 .end method
 
@@ -2208,30 +2165,8 @@
 
     iput-object v0, p0, Lcom/android/mms/ui/ConversationList;->mHandler:Landroid/os/Handler;
 
-    .line 348
-    invoke-static {p0}, Landroid/preference/PreferenceManager;->getDefaultSharedPreferences(Landroid/content/Context;)Landroid/content/SharedPreferences;
-
-    move-result-object v0
-
-    iput-object v0, p0, Lcom/android/mms/ui/ConversationList;->mPrefs:Landroid/content/SharedPreferences;
-
-    .line 349
-    iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mPrefs:Landroid/content/SharedPreferences;
-
-    const-string/jumbo v1, "checked_message_limits"
-
-    invoke-interface {v0, v1, v4}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
-
-    move-result v0
-
-    .line 351
-    if-nez v0, :cond_5
-
-    .line 352
-    invoke-virtual {p0}, Lcom/android/mms/ui/ConversationList;->runOneTimeStorageLimitCheckForLegacyMessages()V
-
+    # FIX(retention): never scan for limits or start the old warning.
     .line 355
-    :cond_5
     if-eqz p1, :cond_7
 
     .line 356
@@ -3704,62 +3639,6 @@
 
     .line 1123
     return-void
-.end method
-
-.method public declared-synchronized runOneTimeStorageLimitCheckForLegacyMessages()V
-    .locals 3
-
-    .prologue
-    monitor-enter p0
-
-    .line 604
-    :try_start_0
-    invoke-static {p0}, Lcom/android/mms/util/Recycler;->isAutoDeleteEnabled(Landroid/content/Context;)Z
-
-    move-result v0
-
-    if-eqz v0, :cond_0
-
-    .line 608
-    invoke-direct {p0}, Lcom/android/mms/ui/ConversationList;->markCheckedMessageLimit()V
-    :try_end_0
-    .catchall {:try_start_0 .. :try_end_0} :catchall_0
-
-    monitor-exit p0
-
-    .line 609
-    return-void
-
-    .line 611
-    :cond_0
-    :try_start_1
-    new-instance v0, Ljava/lang/Thread;
-
-    new-instance v1, Lcom/android/mms/ui/ConversationList$12;
-
-    invoke-direct {v1, p0}, Lcom/android/mms/ui/ConversationList$12;-><init>(Lcom/android/mms/ui/ConversationList;)V
-
-    .line 647
-    const-string/jumbo v2, "ConversationList.runOneTimeStorageLimitCheckForLegacyMessages"
-
-    .line 611
-    invoke-direct {v0, v1, v2}, Ljava/lang/Thread;-><init>(Ljava/lang/Runnable;Ljava/lang/String;)V
-
-    invoke-virtual {v0}, Ljava/lang/Thread;->start()V
-    :try_end_1
-    .catchall {:try_start_1 .. :try_end_1} :catchall_0
-
-    monitor-exit p0
-
-    .line 648
-    return-void
-
-    :catchall_0
-    move-exception v0
-
-    monitor-exit p0
-
-    throw v0
 .end method
 
 .method public startAsyncQuery()V

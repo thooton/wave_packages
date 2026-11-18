@@ -1613,6 +1613,9 @@
     :cond_c
     invoke-direct {p0}, Lcom/android/mms/ui/MessagingPreferenceActivity;->setMessagePreferences()V
 
+    # FIX(retention): hide the old retention controls in both settings layouts.
+    invoke-static {p0}, Lcom/android/mms/ui/ArgonRetentionSettings;->hide(Landroid/preference/PreferenceActivity;)V
+
     .line 507
     return-void
 

@@ -100,27 +100,9 @@
 .end method
 
 .method public static isAutoDeleteEnabled(Landroid/content/Context;)Z
-    .locals 3
-
-    .prologue
-    .line 89
-    invoke-static {p0}, Landroid/preference/PreferenceManager;->getDefaultSharedPreferences(Landroid/content/Context;)Landroid/content/SharedPreferences;
-
-    move-result-object v0
-
-    .line 90
-    const-string/jumbo v1, "pref_key_auto_delete_by_days"
-
-    .line 91
-    invoke-static {p0}, Lcom/android/mms/MmsConfig;->isAutoDeleteByDaysEnabled(Landroid/content/Context;)Z
-
-    move-result v2
-
-    .line 90
-    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
-
-    move-result v0
-
+    .locals 1
+    # FIX(retention): never auto-delete saved messages, even with old preferences enabled.
+    const/4 v0, 0x0
     return v0
 .end method
 
