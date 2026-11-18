@@ -88,6 +88,12 @@ use a different measurement marker from the baseline.
 `tools/testing/conversation_open.sh THREAD --cold` reports stock log markers. The
 `Displayed` marker is the window opening, not necessarily the first text drawn.
 
-The paging changes are built and host-tested, including mixed SMS/MMS timestamps,
-appends, deleting the range boundary, and a direct search key lookup. Scroll and
-focus checks on the handset are pending USB reconnection.
+Host tests cover mixed SMS/MMS timestamps, appends, deleting the range boundary,
+and a direct search key lookup. XP3800 verification at `7e7f811`: the 387-message
+thread opened with 20 rows; DPAD scrolling extended the cursor to 52 rows with a
+valid visible-row anchor, and launching an older search result selected its row.
+One instrumented cold launch reached the first nonempty pre-draw at 1.45 s from
+ActivityManager START (history request at 0.97 s). The before/after USB screen
+sampling intervals overlapped, so they do not establish a speedup. Both installed
+APKs matched the host builds; the database integrity check passed and all
+pre-existing message IDs were still present.
