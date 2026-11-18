@@ -51,7 +51,6 @@ public final class ArgonConversationQuery {
         }
     }
 
-    private static final int FIRST = 20;
     private static final int PREPEND = 32;
     private static final int SEARCH_CONTEXT = 10;
 
@@ -115,10 +114,13 @@ public final class ArgonConversationQuery {
     private static Cursor page(SQLiteDatabase db, String thread, Uri uri) {
         Key start = null;
         if (!"1".equals(uri.getQueryParameter("argon_full"))) {
-            Key newest = floor(db, thread, null, FIRST);
-            start = newest;
             String selected = uri.getQueryParameter("argon_select");
             Key old = parseFloor(uri);
+            if (selected == null && old == null) {
+                return db.rawQuery(ArgonConversationSchema.FIRST_PAGE_QUERY, new String[]{thread});
+            }
+            Key newest = floor(db, thread, null, ArgonConversationSchema.FIRST_PAGE_SIZE);
+            start = newest;
             if (selected != null) {
                 Key at = search(db, thread, selected);
                 if (at != null) {

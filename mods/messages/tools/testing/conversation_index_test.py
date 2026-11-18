@@ -22,7 +22,8 @@ def build_fixtures():
 public class DumpSchema {
     public static void main(String[] args) {
         System.out.println(ArgonConversationSchema.ROW_QUERY);
-        System.out.println(ArgonConversationSchema.floorQuery(false, 20));
+        System.out.println(ArgonConversationSchema.FIRST_PAGE_QUERY);
+        System.out.println(ArgonConversationSchema.floorQuery(false, ArgonConversationSchema.FIRST_PAGE_SIZE));
         System.out.println(ArgonConversationSchema.floorQuery(true, 32));
         System.out.println(ArgonConversationSchema.floorQuery(true, 10));
         System.out.println(ArgonConversationSchema.pageQuery(true, true));
@@ -56,7 +57,7 @@ public class CheckAddress {
         subprocess.run(['java', '-cp', work, 'com.android.mms.ui.CheckAddress'], check=True)
         query, *sql = subprocess.check_output(
             ['java', '-cp', work, 'com.android.providers.telephony.DumpSchema'], text=True).splitlines()
-        return query, sql[:6], sql[6:]
+        return query, sql[:7], sql[7:]
 
 
 def install(db, schema):
@@ -158,7 +159,7 @@ def check_updates(query, schema):
 
 
 def check_paging(queries, schema):
-    newest_sql, prepend_sql, context_sql, page_sql, full_sql, find_sql = queries
+    first_sql, newest_sql, prepend_sql, context_sql, page_sql, full_sql, find_sql = queries
     db = sqlite3.connect(':memory:')
     db.executescript("""
         CREATE TABLE sms(_id INTEGER PRIMARY KEY,thread_id,address,body,sub_id,date,date_sent,read,
@@ -185,6 +186,30 @@ def check_paging(queries, schema):
     assert tuple(pages[0][i] for i in (-2, 0, 1)) == newest
     assert len(pages) == 20 and all(row[-1] for row in pages)
     assert [row[:-1] for row in pages] == [row[:-1] for row in complete[-20:]]
+    first = db.execute(first_sql, ('9',))
+    assert first.description == db.execute(page_sql, ('9', *map(str, newest))).description
+    assert first.fetchall() == pages
+    assert db.execute(first_sql, ('10',)).fetchall() == db.execute(full_sql, ('10',)).fetchall()
+    assert not db.execute(first_sql, ('11',)).fetchall()
+    # A first-page open must stay bounded, even as the older history grows.
+    def first_page_steps():
+        steps = []
+        db.set_progress_handler(lambda: steps.append(None) or 0, 100)
+        try:
+            return db.execute(first_sql, ('9',)).fetchall(), len(steps)
+        finally:
+            db.set_progress_handler(None, 0)
+    baseline, steps = first_page_steps()
+    db.execute('SAVEPOINT large_history')
+    db.executemany('INSERT INTO sms(_id,thread_id,date,type) VALUES (?,9,?,1)',
+                   ((i, -i) for i in range(1000, 11000)))
+    grown, grown_steps = first_page_steps()
+    assert grown == baseline and abs(grown_steps - steps) <= 1, (steps, grown_steps)
+    db.execute('ROLLBACK TO large_history')
+    db.execute('RELEASE large_history')
+    plan = [row[-1] for row in db.execute('EXPLAIN QUERY PLAN ' + first_sql, ('9',))]
+    assert sum('SEARCH' in step and 'argon_msg USING PRIMARY KEY' in step for step in plan) == 3, plan
+    assert not any('TEMP B-TREE' in step for step in plan), plan
     older = db.execute(prepend_sql, ('9', *map(str, newest))).fetchone()
     expanded = db.execute(page_sql, ('9', *map(str, older))).fetchall()
     assert len(expanded) == 52 and expanded[-20:] == pages

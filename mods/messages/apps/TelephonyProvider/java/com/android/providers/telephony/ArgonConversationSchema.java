@@ -23,6 +23,17 @@ final class ArgonConversationSchema {
     static final String ROW_QUERY = "SELECT " + ROW_COLUMNS + FROM + ASC;
     static final String KEY_QUERY = "SELECT " + KEY + FROM;
     static final String FIND_KEY = KEY_QUERY + " AND transport_type=? AND _id=?";
+    static final int FIRST_PAGE_SIZE = 20;
+    // The row range and older flag come from the same SQLite snapshot. If the thread
+    // has fewer than 20 messages, use a key below all real keys and read the whole range.
+    static final String FIRST_PAGE_QUERY = "SELECT " + ROW_COLUMNS + ",normalized_date AS argon_date,"
+            + "EXISTS(SELECT 1 FROM " + TABLE + " WHERE thread_id=?1 LIMIT 1 OFFSET "
+            + FIRST_PAGE_SIZE + ") AS argon_older FROM " + TABLE + " WHERE thread_id=?1"
+            + " AND (" + KEY + ")>=(SELECT coalesce(normalized_date,-9223372036854775808),"
+            + "coalesce(transport_type,''),coalesce(_id,-9223372036854775808)"
+            + " FROM (SELECT 1) LEFT JOIN (SELECT " + KEY + " FROM " + TABLE
+            + " WHERE thread_id=?1" + DESC + " LIMIT 1 OFFSET " + (FIRST_PAGE_SIZE - 1)
+            + ") ON 1)" + ASC;
 
     static String floorQuery(boolean before, int rows) {
         return KEY_QUERY + (before ? LT : "") + DESC + " LIMIT 1 OFFSET " + (rows - 1);
