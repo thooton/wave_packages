@@ -19,14 +19,10 @@ detect street addresses.
 * Messages opts in with `argon_index=1` on its existing history URI. The provider
   accepts only the fixed stock Messages projection with no custom filter or sort,
   checks the existing access restriction, and falls back to the stock query if the
-  index is unavailable. Normal opens request the newest 20 messages in a single
-  SQLite statement, so the rows and older-history flag share one snapshot. The
-  query uses the clustered key without sorting or scanning older history. Near
-  the top of the list the app extends the range by up to 32 messages, preserving the
-  visible row and pixel offset by message identity. A search jump starts the range
-  up to 10 messages before the hit and includes the newer history; a search into
-  an old thread may therefore read more than 20. Stock callers and the after-delete
-  existence check still get the full history.
+  index is unavailable. Messages requests the full ordered cursor from the start,
+  so the scrollbar reflects the entire thread. ListView still creates only the
+  rows it needs. Cursor refreshes preserve the visible message by identity, and
+  search jumps can select any row without expanding the range.
 * Common single-slide text MMS with known SMIL and encodings bind from the cursor.
   Photos, notifications, unfamiliar layouts and MMS with receipt requests retain the
   full PDU path. Forward loads the original slideshow on demand. A provider that

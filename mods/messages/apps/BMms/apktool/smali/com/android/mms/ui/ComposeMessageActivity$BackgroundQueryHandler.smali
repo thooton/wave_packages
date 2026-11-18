@@ -358,7 +358,7 @@
     :goto_1
     iget-object v6, p0, Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 
-    # PERF(history paging): swapping a wider cursor must not move the visible row
+    # PERF(history): keep the visible row in place when the full cursor refreshes
     invoke-static {v6, p3, v0}, Lcom/android/mms/ui/ArgonHistory;->apply(Lcom/android/mms/ui/ComposeMessageActivity;Landroid/database/Cursor;I)I
     move-result v0
     const/4 v6, -0x2
@@ -380,10 +380,6 @@
     :goto_2
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 
-    # PERF(history paging): visible history size is not the conversation message count
-    invoke-static {v0}, Lcom/android/mms/ui/ArgonHistory;->isPartial(Lcom/android/mms/ui/ComposeMessageActivity;)Z
-    move-result v0
-    if-nez v0, :argon_message_count_done
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 
     invoke-static {v0}, Lcom/android/mms/ui/ComposeMessageActivity;->-get10(Lcom/android/mms/ui/ComposeMessageActivity;)Lcom/android/mms/data/Conversation;
@@ -400,7 +396,6 @@
 
     invoke-virtual {v0, v1}, Lcom/android/mms/data/Conversation;->setMessageCount(I)V
 
-    :argon_message_count_done
     .line 7694
     if-eqz p3, :cond_4
 
