@@ -335,11 +335,6 @@
 
     invoke-static {v0, v1}, Landroid/util/Log;->v(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 229
-    invoke-virtual {p1}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v0
-
     # PERF(row inflation): no country query; this row never uses the result.
     .line 232
     sget-object v1, Lcom/android/mms/ui/MessageListItem;->sDefaultContactImage:Landroid/graphics/drawable/Drawable;
@@ -359,39 +354,7 @@
 
     sput-object v1, Lcom/android/mms/ui/MessageListItem;->sDefaultContactImage:Landroid/graphics/drawable/Drawable;
 
-    .line 235
     :cond_0
-    sget-object v1, Lcom/android/mms/ui/MessageListItem;->sRcsBurnFlagImage:Landroid/graphics/drawable/Drawable;
-
-    if-nez v1, :cond_1
-
-    .line 236
-    const v1, 0x7f0200e7
-
-    invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
-
-    move-result-object v1
-
-    sput-object v1, Lcom/android/mms/ui/MessageListItem;->sRcsBurnFlagImage:Landroid/graphics/drawable/Drawable;
-
-    .line 238
-    :cond_1
-    sget-object v1, Lcom/android/mms/ui/MessageListItem;->sRcsBurnMessageHasBurnImage:Landroid/graphics/drawable/Drawable;
-
-    if-nez v1, :cond_2
-
-    .line 240
-    const v1, 0x7f0200e8
-
-    .line 239
-    invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
-
-    move-result-object v0
-
-    sput-object v0, Lcom/android/mms/ui/MessageListItem;->sRcsBurnMessageHasBurnImage:Landroid/graphics/drawable/Drawable;
-
-    .line 242
-    :cond_2
     return-void
 .end method
 
@@ -494,11 +457,6 @@
     iput-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mColorSpan:Landroid/text/style/ForegroundColorSpan;
 
     # PERF(row inflation): no country query; this row never uses the result.
-    .line 254
-    invoke-virtual {p1}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v0
-
     .line 255
     sget-object v1, Lcom/android/mms/ui/MessageListItem;->sDefaultContactImage:Landroid/graphics/drawable/Drawable;
 
@@ -517,39 +475,7 @@
 
     sput-object v1, Lcom/android/mms/ui/MessageListItem;->sDefaultContactImage:Landroid/graphics/drawable/Drawable;
 
-    .line 258
     :cond_0
-    sget-object v1, Lcom/android/mms/ui/MessageListItem;->sRcsBurnFlagImage:Landroid/graphics/drawable/Drawable;
-
-    if-nez v1, :cond_1
-
-    .line 259
-    const v1, 0x7f0200e7
-
-    invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
-
-    move-result-object v1
-
-    sput-object v1, Lcom/android/mms/ui/MessageListItem;->sRcsBurnFlagImage:Landroid/graphics/drawable/Drawable;
-
-    .line 261
-    :cond_1
-    sget-object v1, Lcom/android/mms/ui/MessageListItem;->sRcsBurnMessageHasBurnImage:Landroid/graphics/drawable/Drawable;
-
-    if-nez v1, :cond_2
-
-    .line 263
-    const v1, 0x7f0200e8
-
-    .line 262
-    invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
-
-    move-result-object v0
-
-    sput-object v0, Lcom/android/mms/ui/MessageListItem;->sRcsBurnMessageHasBurnImage:Landroid/graphics/drawable/Drawable;
-
-    .line 265
-    :cond_2
     return-void
 .end method
 
@@ -2449,6 +2375,37 @@
     .end sparse-switch
 .end method
 
+# PERF(row inflation): these optional assets are only needed when a burn row binds.
+.method private argonBurnIcon(Z)Landroid/graphics/drawable/Drawable;
+    .locals 2
+
+    if-eqz p1, :flag
+    sget-object v0, Lcom/android/mms/ui/MessageListItem;->sRcsBurnMessageHasBurnImage:Landroid/graphics/drawable/Drawable;
+    if-nez v0, :done
+    const v1, 0x7f0200e8
+    goto :load
+
+    :flag
+    sget-object v0, Lcom/android/mms/ui/MessageListItem;->sRcsBurnFlagImage:Landroid/graphics/drawable/Drawable;
+    if-nez v0, :done
+    const v1, 0x7f0200e7
+
+    :load
+    invoke-virtual {p0}, Landroid/view/View;->getResources()Landroid/content/res/Resources;
+    move-result-object v0
+    invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
+    move-result-object v0
+    if-eqz p1, :save_flag
+    sput-object v0, Lcom/android/mms/ui/MessageListItem;->sRcsBurnMessageHasBurnImage:Landroid/graphics/drawable/Drawable;
+    goto :done
+
+    :save_flag
+    sput-object v0, Lcom/android/mms/ui/MessageListItem;->sRcsBurnFlagImage:Landroid/graphics/drawable/Drawable;
+
+    :done
+    return-object v0
+.end method
+
 .method private bindRcsBurnMessage()V
     .locals 3
 
@@ -2510,7 +2467,9 @@
     .line 2003
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mImageView:Landroid/widget/ImageView;
 
-    sget-object v1, Lcom/android/mms/ui/MessageListItem;->sRcsBurnMessageHasBurnImage:Landroid/graphics/drawable/Drawable;
+    const/4 v1, 0x1
+    invoke-direct {p0, v1}, Lcom/android/mms/ui/MessageListItem;->argonBurnIcon(Z)Landroid/graphics/drawable/Drawable;
+    move-result-object v1
 
     invoke-virtual {v0, v1}, Landroid/widget/ImageView;->setImageDrawable(Landroid/graphics/drawable/Drawable;)V
 
@@ -2545,7 +2504,9 @@
     :cond_2
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mImageView:Landroid/widget/ImageView;
 
-    sget-object v1, Lcom/android/mms/ui/MessageListItem;->sRcsBurnFlagImage:Landroid/graphics/drawable/Drawable;
+    const/4 v1, 0x0
+    invoke-direct {p0, v1}, Lcom/android/mms/ui/MessageListItem;->argonBurnIcon(Z)Landroid/graphics/drawable/Drawable;
+    move-result-object v1
 
     invoke-virtual {v0, v1}, Landroid/widget/ImageView;->setImageDrawable(Landroid/graphics/drawable/Drawable;)V
 
