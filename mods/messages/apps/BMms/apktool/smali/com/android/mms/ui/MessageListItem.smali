@@ -67,6 +67,8 @@
 
 .field private mGestureDetector:Landroid/view/GestureDetector;
 
+.field private mArgonTouchListener:Landroid/view/View$OnTouchListener;
+
 .field private mHandler:Landroid/os/Handler;
 
 .field private mImageLoadedCallback:Lcom/android/mms/ui/MessageListItem$ImageLoadedCallback;
@@ -178,10 +180,27 @@
 .end method
 
 .method static synthetic -get4(Lcom/android/mms/ui/MessageListItem;)Landroid/view/GestureDetector;
-    .locals 1
+    .locals 4
 
+    # PERF(row bind): allocate the detector on the first touch, not while scrolling.
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mGestureDetector:Landroid/view/GestureDetector;
+    if-nez v0, :ready
 
+    new-instance v0, Landroid/view/GestureDetector;
+
+    iget-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mContext:Landroid/content/Context;
+
+    new-instance v2, Lcom/android/mms/ui/MessageListItem$GestureListener;
+
+    const/4 v3, 0x0
+
+    invoke-direct {v2, p0, v3}, Lcom/android/mms/ui/MessageListItem$GestureListener;-><init>(Lcom/android/mms/ui/MessageListItem;Lcom/android/mms/ui/MessageListItem$GestureListener;)V
+
+    invoke-direct {v0, v1, v2}, Landroid/view/GestureDetector;-><init>(Landroid/content/Context;Landroid/view/GestureDetector$OnGestureListener;)V
+
+    iput-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mGestureDetector:Landroid/view/GestureDetector;
+
+    :ready
     return-object v0
 .end method
 
@@ -5711,34 +5730,21 @@
 .end method
 
 .method private setupOnTouchListener()V
-    .locals 4
+    .locals 2
 
-    .prologue
-    .line 873
-    new-instance v0, Landroid/view/GestureDetector;
-
-    iget-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mContext:Landroid/content/Context;
-
-    new-instance v2, Lcom/android/mms/ui/MessageListItem$GestureListener;
-
-    const/4 v3, 0x0
-
-    invoke-direct {v2, p0, v3}, Lcom/android/mms/ui/MessageListItem$GestureListener;-><init>(Lcom/android/mms/ui/MessageListItem;Lcom/android/mms/ui/MessageListItem$GestureListener;)V
-
-    invoke-direct {v0, v1, v2}, Landroid/view/GestureDetector;-><init>(Landroid/content/Context;Landroid/view/GestureDetector$OnGestureListener;)V
-
+    # Reset gesture state on a rebind just as stock does, but reuse the forwarding listener.
+    const/4 v0, 0x0
     iput-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mGestureDetector:Landroid/view/GestureDetector;
 
-    .line 874
-    iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageBlock:Landroid/view/View;
-
+    iget-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mArgonTouchListener:Landroid/view/View$OnTouchListener;
+    if-nez v1, :attach
     new-instance v1, Lcom/android/mms/ui/MessageListItem$6;
-
     invoke-direct {v1, p0}, Lcom/android/mms/ui/MessageListItem$6;-><init>(Lcom/android/mms/ui/MessageListItem;)V
+    iput-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mArgonTouchListener:Landroid/view/View$OnTouchListener;
 
+    :attach
+    iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageBlock:Landroid/view/View;
     invoke-virtual {v0, v1}, Landroid/view/View;->setOnTouchListener(Landroid/view/View$OnTouchListener;)V
-
-    .line 881
     return-void
 .end method
 
