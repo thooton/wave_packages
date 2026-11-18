@@ -55,8 +55,6 @@
 
 .field private mDateView:Landroid/widget/TextView;
 
-.field private mDefaultCountryIso:Ljava/lang/String;
-
 .field private mDeliveredIndicator:Landroid/widget/ImageView;
 
 .field private mDetailsIndicator:Landroid/widget/ImageView;
@@ -342,17 +340,7 @@
 
     move-result-object v0
 
-    .line 230
-    invoke-static {}, Lcom/android/mms/MmsApp;->getApplication()Lcom/android/mms/MmsApp;
-
-    move-result-object v1
-
-    invoke-virtual {v1}, Lcom/android/mms/MmsApp;->getCurrentCountryIso()Ljava/lang/String;
-
-    move-result-object v1
-
-    iput-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mDefaultCountryIso:Ljava/lang/String;
-
+    # PERF(row inflation): no country query; this row never uses the result.
     .line 232
     sget-object v1, Lcom/android/mms/ui/MessageListItem;->sDefaultContactImage:Landroid/graphics/drawable/Drawable;
 
@@ -505,17 +493,7 @@
 
     iput-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mColorSpan:Landroid/text/style/ForegroundColorSpan;
 
-    .line 253
-    invoke-static {}, Lcom/android/mms/MmsApp;->getApplication()Lcom/android/mms/MmsApp;
-
-    move-result-object v0
-
-    invoke-virtual {v0}, Lcom/android/mms/MmsApp;->getCurrentCountryIso()Ljava/lang/String;
-
-    move-result-object v0
-
-    iput-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mDefaultCountryIso:Ljava/lang/String;
-
+    # PERF(row inflation): no country query; this row never uses the result.
     .line 254
     invoke-virtual {p1}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
 
