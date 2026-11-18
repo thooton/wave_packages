@@ -38,7 +38,7 @@ public class DumpSchema {
 public class CheckAddress {
     private static void check(String text, String expected) {
         java.util.regex.Matcher match = ArgonStreetAddress.matches(text);
-        String found = match.find() ? match.group() : null;
+        String found = match != null && match.find() ? match.group() : null;
         if (!java.util.Objects.equals(found, expected)) throw new AssertionError(text + ": " + found);
     }
     public static void main(String[] args) {
@@ -49,6 +49,13 @@ public class CheckAddress {
         check("call 613-555-0123 or email user@example.org", null);
         check("do 5 more reps", null);
         check("4 Main\\nSt", null);
+        check("No street number here", null);
+        if (ArgonStreetAddress.matches("No street number here") != null) {
+            throw new AssertionError("ASCII without digits must bypass the matcher");
+        }
+        if (ArgonStreetAddress.matches("١ Main St") == null) {
+            throw new AssertionError("Unicode digits must reach the platform regex");
+        }
     }
 }
 ''')
