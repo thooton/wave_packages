@@ -36,6 +36,15 @@ detect street addresses.
   arbitrary international or postal addresses. Web, phone and email still use
   Android's existing link handling. No layouts, resources or manifests changed.
 
+## Cold startup
+
+Process startup no longer enumerates all conversations and resolves their
+recipients. That pass held the same cache lock used by the first conversation
+lookup, including while it queried the provider. The conversation list still
+populates its cache as rows bind, and a direct thread open loads that thread on
+demand. Explicit cache repair after deletion is unchanged. Device timing is
+pending; this removes the work rather than moving it to a later frame.
+
 ## Verification
 
 `tools/testing/conversation_index_test.py` exercises the shipped SQL and address
