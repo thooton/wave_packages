@@ -420,6 +420,10 @@
     move-object v6, v2
 
     .line 557
+    # FEAT(whitelist)
+    invoke-static {p0, v3, v5}, Lcom/android/music/ArgonLibrary;->selection(Landroid/content/Context;Landroid/net/Uri;Ljava/lang/String;)Ljava/lang/String;
+    move-result-object v5
+
     invoke-virtual/range {v0 .. v7}, Landroid/content/AsyncQueryHandler;->startQuery(ILjava/lang/Object;Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)V
 
     .line 578
@@ -493,6 +497,10 @@
     move-object v6, v2
 
     .line 571
+    # FEAT(whitelist)
+    invoke-static {p0, v3, v5}, Lcom/android/music/ArgonLibrary;->selection(Landroid/content/Context;Landroid/net/Uri;Ljava/lang/String;)Ljava/lang/String;
+    move-result-object v5
+
     invoke-virtual/range {v0 .. v7}, Landroid/content/AsyncQueryHandler;->startQuery(ILjava/lang/Object;Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)V
 
     goto :goto_0
@@ -1563,6 +1571,9 @@
     .locals 3
 
     .prologue
+    # FEAT(whitelist)
+    invoke-static {p1}, Lcom/android/music/ArgonSettings;->addMenu(Landroid/view/Menu;)V
+
     const/4 v2, 0x0
 
     .line 482
@@ -1741,14 +1752,8 @@
     .line 881
     :cond_1
     :sswitch_5
-    invoke-static {p0}, Lcom/android/music/MusicUtils;->getAllSongs(Landroid/content/Context;)[J
-
-    move-result-object v0
-
-    if-nez v0, :cond_0
-
-    .line 882
-    return v1
+    # FEAT(whitelist)
+    goto :cond_0
 
     .line 855
     nop
@@ -1813,6 +1818,13 @@
     .locals 7
 
     .prologue
+    # FEAT(whitelist)
+    invoke-static {p0, p1}, Lcom/android/music/ArgonSettings;->handleMenu(Landroid/app/Activity;Landroid/view/MenuItem;)Z
+    move-result v0
+    if-eqz v0, :argon_menu_stock
+    return v0
+    :argon_menu_stock
+
     const v1, 0x7f070046
 
     const/4 v6, 0x1
@@ -1992,6 +2004,9 @@
 
     .line 200
     invoke-super {p0}, Landroid/app/ListActivity;->onResume()V
+
+    # FEAT(whitelist)
+    invoke-static {p0}, Lcom/android/music/ArgonSettings;->onResume(Landroid/app/Activity;)V
 
     .line 201
     invoke-static {p0}, Lcom/android/music/MusicUtils;->TelephonyIsInProgress(Landroid/content/Context;)Z

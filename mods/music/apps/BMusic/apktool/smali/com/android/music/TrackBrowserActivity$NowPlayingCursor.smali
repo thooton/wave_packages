@@ -171,7 +171,8 @@
     const-string/jumbo v5, "_id"
 
     .line 1367
-    invoke-static/range {v0 .. v5}, Lcom/android/music/MusicUtils;->query(Landroid/content/Context;Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)Landroid/database/Cursor;
+    # FEAT(whitelist)
+    invoke-static/range {v0 .. v5}, Lcom/android/music/ArgonLibrary;->queryUnfiltered(Landroid/content/Context;Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)Landroid/database/Cursor;
 
     move-result-object v0
 

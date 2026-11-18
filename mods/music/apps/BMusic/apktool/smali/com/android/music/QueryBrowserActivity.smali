@@ -236,6 +236,10 @@
 
     move-result-object v2
 
+    # FEAT(whitelist)
+    invoke-static {p0, v2}, Lcom/android/music/ArgonLibrary;->filterSearch(Landroid/content/Context;Landroid/database/Cursor;)Landroid/database/Cursor;
+    move-result-object v2
+
     goto :goto_0
 .end method
 
@@ -1907,5 +1911,14 @@
 
     .prologue
     .line 304
+    return-void
+.end method
+
+# FEAT(whitelist)
+.method protected onResume()V
+    .locals 0
+
+    invoke-super {p0}, Landroid/app/ListActivity;->onResume()V
+    invoke-static {p0}, Lcom/android/music/ArgonSettings;->onResume(Landroid/app/Activity;)V
     return-void
 .end method

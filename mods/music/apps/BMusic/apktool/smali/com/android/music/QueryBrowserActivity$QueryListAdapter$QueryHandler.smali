@@ -46,6 +46,10 @@
 
     move-result-object v0
 
+    # FEAT(whitelist)
+    invoke-static {v0, p3}, Lcom/android/music/ArgonLibrary;->filterSearch(Landroid/content/Context;Landroid/database/Cursor;)Landroid/database/Cursor;
+    move-result-object p3
+
     invoke-virtual {v0, p3}, Lcom/android/music/QueryBrowserActivity;->init(Landroid/database/Cursor;)V
 
     .line 477

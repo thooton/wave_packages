@@ -1707,6 +1707,9 @@
     .locals 3
 
     .prologue
+    # FEAT(whitelist)
+    invoke-static {p1}, Lcom/android/music/ArgonSettings;->addMenu(Landroid/view/Menu;)V
+
     const/4 v2, 0x0
 
     .line 325
@@ -1731,7 +1734,8 @@
     :cond_0
     invoke-super {p0, p1}, Landroid/app/ListActivity;->onCreateOptionsMenu(Landroid/view/Menu;)Z
 
-    move-result v0
+    # FEAT(whitelist)
+    const/4 v0, 0x1
 
     return v0
 .end method
@@ -1888,14 +1892,8 @@
     .line 852
     :cond_1
     :sswitch_4
-    invoke-static {p0}, Lcom/android/music/MusicUtils;->getAllSongs(Landroid/content/Context;)[J
-
-    move-result-object v0
-
-    if-nez v0, :cond_0
-
-    .line 853
-    return v4
+    # FEAT(whitelist)
+    goto :cond_0
 
     .line 857
     :sswitch_5
@@ -2253,6 +2251,13 @@
     .locals 2
 
     .prologue
+    # FEAT(whitelist)
+    invoke-static {p0, p1}, Lcom/android/music/ArgonSettings;->handleMenu(Landroid/app/Activity;Landroid/view/MenuItem;)Z
+    move-result v0
+    if-eqz v0, :argon_menu_stock
+    return v0
+    :argon_menu_stock
+
     .line 343
     invoke-interface {p1}, Landroid/view/MenuItem;->getItemId()I
 
@@ -2386,6 +2391,9 @@
 
     .line 244
     invoke-super {p0}, Landroid/app/ListActivity;->onResume()V
+
+    # FEAT(whitelist)
+    invoke-static {p0}, Lcom/android/music/ArgonSettings;->onResume(Landroid/app/Activity;)V
 
     .line 245
     invoke-static {p0}, Lcom/android/music/MusicUtils;->TelephonyIsInProgress(Landroid/content/Context;)Z

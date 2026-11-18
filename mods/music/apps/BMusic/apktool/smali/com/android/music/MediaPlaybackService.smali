@@ -1405,6 +1405,10 @@
     .line 2079
     const-string/jumbo v3, "is_music=1"
 
+    # FEAT(whitelist)
+    invoke-static {p0, v1, v3}, Lcom/android/music/ArgonLibrary;->selection(Landroid/content/Context;Landroid/net/Uri;Ljava/lang/String;)Ljava/lang/String;
+    move-result-object v3
+
     const/4 v4, 0x0
 
     const/4 v5, 0x0
@@ -3030,7 +3034,8 @@
     move-object v0, p0
 
     .line 849
-    invoke-static/range {v0 .. v5}, Lcom/android/music/MusicUtils;->query(Landroid/content/Context;Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)Landroid/database/Cursor;
+    # FEAT(whitelist)
+    invoke-static/range {v0 .. v5}, Lcom/android/music/ArgonLibrary;->queryUnfiltered(Landroid/content/Context;Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)Landroid/database/Cursor;
 
     move-result-object v0
 
