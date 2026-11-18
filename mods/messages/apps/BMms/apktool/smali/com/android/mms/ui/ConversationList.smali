@@ -1992,13 +1992,9 @@
     .line 289
     return-void
 
-    .line 292
     :cond_0
-    invoke-virtual {p0}, Lcom/android/mms/ui/ConversationList;->getApplication()Landroid/app/Application;
-
-    move-result-object v0
-
-    invoke-static {v0}, Lcom/android/mms/data/RecipientIdCache;->init(Landroid/content/Context;)V
+    # PERF(inbox startup): checkPermissionsIfNeeded already initializes the
+    # process-wide recipient cache via MmsApp and Contact. Keep that warm cache.
 
     .line 293
     invoke-static {}, Lcom/android/mms/MmsConfig;->isRcsEnabled()Z
