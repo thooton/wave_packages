@@ -998,6 +998,19 @@
     :cond_6
     if-eqz v0, :cond_8
 
+    # PERF(inline text): a nonempty inline body is immediately set again by the stock
+    # non-RCS branch. Let that final TextView bind linkify the body once.
+    iget-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
+    iget-boolean v1, v1, Lcom/android/mms/ui/MessageItem;->mArgonTextReady:Z
+    if-eqz v1, :argon_stock_body
+    invoke-static {}, Lcom/android/mms/MmsConfig;->isRcsVersion()Z
+    move-result v1
+    if-nez v1, :argon_stock_body
+    invoke-static {v0}, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    move-result v1
+    if-eqz v1, :cond_8
+
+    :argon_stock_body
     .line 725
     new-instance v1, Landroid/text/SpannableString;
 
@@ -4035,6 +4048,20 @@
     .locals 6
 
     .prologue
+    # PERF(inline text): the body is already plain text, unless search needs style spans.
+    if-nez p5, :argon_stock_format
+    if-eqz p2, :argon_stock_format
+    iget-boolean v0, p0, Lcom/android/mms/ui/MessageListItem;->mIsMsimIccCardActived:Z
+    if-nez v0, :argon_stock_format
+    iget-boolean v0, p1, Lcom/android/mms/ui/MessageItem;->mArgonTextReady:Z
+    if-eqz v0, :argon_stock_format
+    const-string v0, "text/plain"
+    invoke-virtual {v0, p6}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result v0
+    if-eqz v0, :argon_stock_format
+    return-object p2
+
+    :argon_stock_format
     .line 1505
     new-instance v1, Landroid/text/SpannableStringBuilder;
 

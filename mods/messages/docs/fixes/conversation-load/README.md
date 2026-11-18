@@ -58,7 +58,10 @@ Inline MMS reuse the SMS row pool: those rows use the same send/receive layouts,
 but don't inflate the unused attachment stub. The normal conversation layouts
 also hide the avatar. For an inline text row with a hidden avatar, the binder
 applies the original bubble tint without looking up or constructing the avatar.
-Visible avatars, checked rows, and media still take the stock path.
+Visible avatars, checked rows, and media still take the stock path. Nonempty
+inline MMS also skip a preparatory text bind that the stock binder overwrote
+immediately. The final `TextView` bind still supplies all links, and search
+highlights still use spans.
 
 ## Verification
 
