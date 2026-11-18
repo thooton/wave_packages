@@ -21826,6 +21826,10 @@
 
     move v1, p1
 
+    # PERF(conversation index): opt in without changing the stock projection
+    invoke-static {v3}, Lcom/android/mms/ui/ArgonTextMms;->queryUri(Landroid/net/Uri;)Landroid/net/Uri;
+    move-result-object v3
+
     .line 6859
     invoke-virtual/range {v0 .. v7}, Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;->startQuery(ILjava/lang/Object;Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)V
     :try_end_0
@@ -24156,7 +24160,9 @@
     .line 11145
     :goto_0
     :try_start_0
-    iget-object v0, p1, Lcom/android/mms/ui/MessageItem;->mSlideshow:Lcom/android/mms/model/SlideshowModel;
+    # Fast text MMS has no slideshow until a carrier-restricted forward needs one.
+    invoke-static {p1}, Lcom/android/mms/ui/ArgonTextMms;->slidesForRestriction(Lcom/android/mms/ui/MessageItem;)Lcom/android/mms/model/SlideshowModel;
+    move-result-object v0
 
     invoke-interface {v0}, Ljava/lang/Iterable;->iterator()Ljava/util/Iterator;
 
@@ -30753,7 +30759,8 @@
     invoke-direct {v1, p0}, Lcom/android/mms/ui/ComposeMessageActivity$43;-><init>(Lcom/android/mms/ui/ComposeMessageActivity;)V
 
     .line 3470
-    const-wide/16 v2, 0x1f4
+    # PERF(mms rows): was 500 ms; still posted, so it runs after onStart/onResume
+    const-wide/16 v2, 0x0
 
     .line 3466
     invoke-virtual {v0, v1, v2, v3}, Landroid/os/Handler;->postDelayed(Ljava/lang/Runnable;J)Z
@@ -30974,6 +30981,16 @@
     .locals 2
 
     .prologue
+    # PERF(contact updates): one refresh posted at a time (ArgonComposePerf)
+    invoke-static {p0, p1}, Lcom/android/mms/ui/ArgonComposePerf;->queue(Ljava/lang/Object;Lcom/android/mms/data/Contact;)Z
+
+    move-result v0
+
+    if-nez v0, :argon_post
+
+    return-void
+
+    :argon_post
     .line 7832
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mMessageListItemHandler:Landroid/os/Handler;
 

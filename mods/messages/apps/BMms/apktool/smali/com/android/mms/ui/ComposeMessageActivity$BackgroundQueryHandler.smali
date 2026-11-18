@@ -203,6 +203,9 @@
     .locals 10
 
     .prologue
+    # PERF(mms rows): load the newest MMS rows while the list is being built
+    invoke-static {p1, p3}, Lcom/android/mms/ui/ArgonComposePerf;->prefetch(ILandroid/database/Cursor;)V
+
     const-wide/16 v2, 0x0
 
     const/4 v4, 0x1

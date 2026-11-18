@@ -126,6 +126,18 @@
 
     .line 7841
     :cond_0
+    # PERF(contact updates): skip the refresh when no recipient of this conversation changed
+    iget-object v1, p0, Lcom/android/mms/ui/ComposeMessageActivity$81;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
+
+    invoke-static {v1, v0}, Lcom/android/mms/ui/ArgonComposePerf;->drain(Ljava/lang/Object;Lcom/android/mms/data/ContactList;)Z
+
+    move-result v1
+
+    if-nez v1, :argon_refresh
+
+    return-void
+
+    :argon_refresh
     iget-object v1, p0, Lcom/android/mms/ui/ComposeMessageActivity$81;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 
     invoke-static {v1, v0}, Lcom/android/mms/ui/ComposeMessageActivity;->-wrap90(Lcom/android/mms/ui/ComposeMessageActivity;Lcom/android/mms/data/ContactList;)V

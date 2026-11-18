@@ -1264,6 +1264,11 @@
 
     check-cast v0, Landroid/view/LayoutInflater;
 
+    # PERF(mms rows): rows' TextViews without street-address linking (no WebView start)
+    invoke-static {v0}, Lcom/android/mms/ui/ArgonComposePerf;->rowInflater(Landroid/view/LayoutInflater;)Landroid/view/LayoutInflater;
+
+    move-result-object v0
+
     iput-object v0, p0, Lcom/android/mms/ui/MessageListAdapter;->mInflater:Landroid/view/LayoutInflater;
 
     .line 342

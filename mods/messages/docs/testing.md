@@ -28,6 +28,14 @@ system properties that reset on reboot, and nothing changes behaviour unless the
 * `tools/testing/mms_latency.sh [n] [warm|cold]`, `tools/testing/mms_trace.sh`,
   `tools/testing/trace_top.py`: latency and method traces (docs/fixes/performance).
 
+## Conversation history
+
+* `tools/testing/conversation_index_test.py [--db SNAPSHOT]`: index triggers, eligibility and
+  address detector; the optional database is opened read-only and copied into memory.
+* `tools/testing/conversation_open.sh THREAD [--cold]`: launch markers, row binds, PDU loads and
+  WebView startup. `log.tag.Mms=VERBOSE` enables more stock markers. `Displayed` is the window,
+  not the first populated row. `trace_top.py` accepts `--thread=main` and ART streaming traces.
+
 ## SMS
 * `SmsInject <from> <body> [count] [delayMs]` (root `app_process`, see `push.sh`): a real
   SMS-DELIVER through the radio's broadcast path.

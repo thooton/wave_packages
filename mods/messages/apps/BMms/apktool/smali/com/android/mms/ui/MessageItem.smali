@@ -24,6 +24,8 @@
 
 .field mAttachmentType:I
 
+.field mArgonTextReady:Z
+
 .field mBody:Ljava/lang/String;
 
 .field final mBoxId:I
@@ -895,6 +897,12 @@
 
     .line 274
     :goto_b
+    # PERF(mms rows): plain text from the cursor, no per-message PDU load
+    invoke-static {p0, p3}, Lcom/android/mms/ui/ArgonTextMms;->bind(Lcom/android/mms/ui/MessageItem;Landroid/database/Cursor;)Z
+    move-result v3
+    iput-boolean v3, p0, Lcom/android/mms/ui/MessageItem;->mArgonTextReady:Z
+    if-nez v3, :argon_mms_ready
+
     invoke-static {}, Lcom/android/mms/MmsApp;->getApplication()Lcom/android/mms/MmsApp;
 
     move-result-object v3
@@ -918,6 +926,7 @@
 
     iput-object v0, p0, Lcom/android/mms/ui/MessageItem;->mItemLoadedFuture:Lcom/android/mms/util/ItemLoadedFuture;
 
+    :argon_mms_ready
     .line 277
     iget-object v0, p0, Lcom/android/mms/ui/MessageItem;->mColumnsMap:Lcom/android/mms/ui/MessageListAdapter$ColumnsMap;
 

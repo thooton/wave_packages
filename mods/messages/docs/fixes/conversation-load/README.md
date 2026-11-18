@@ -1,0 +1,51 @@
+# Slow group MMS conversations
+
+## Cause
+
+The stock history query returns MMS headers but no MMS text. Each visible MMS then
+loads its header, parts and addresses in a background job and builds a slideshow.
+Contact lookups across the conversation list repeatedly invalidated those rows and
+cancelled their loads. The activity also waited 500 ms to start the history query,
+and the row layouts' `autoLink="all"` initialized Chromium on the main thread to
+detect street addresses.
+
+## Changes
+
+* TelephonyProvider adds `argon_msg`, a `WITHOUT ROWID` read model ordered by thread,
+  normalized date and message identity. The first eligible history request installs
+  and backfills it atomically. Triggers on `sms`, `pdu`, `part`, `addr` and
+  `pending_msgs` keep it current inside the source transaction. The stock tables,
+  URIs, schema version and journal mode are unchanged.
+* Messages opts in with `argon_index=1` on its existing history URI. The provider
+  accepts only the fixed stock Messages projection with no custom filter or sort,
+  checks the existing access restriction, and falls back to the stock query if the
+  index is unavailable. The whole history remains available for scroll and search
+  positioning; no new pagination or UI is introduced.
+* Common single-slide text MMS with known SMIL and encodings bind from the cursor.
+  Photos, notifications, unfamiliar layouts and MMS with receipt requests retain the
+  full PDU path. Forward loads the original slideshow on demand. A provider that
+  doesn't understand the opt-in parameter still returns the stock cursor.
+* The UI removes the fixed delay, coalesces recipient contact updates, keeps the
+  PDU cache on row cancellation, and prefetches only the newest fallback rows.
+  The row inflater swaps out WebView address detection for a small street-address
+  matcher with `geo:` links. It covers common North American street formats, not
+  arbitrary international or postal addresses. Web, phone and email still use
+  Android's existing link handling. No layouts, resources or manifests changed.
+
+## Verification
+
+`tools/testing/conversation_index_test.py` exercises the shipped SQL and address
+matcher on the host. `--db PATH` checks an in-memory copy of a read-only database
+snapshot. The test snapshot had 1,693 of 1,697 MMS eligible for inline rendering.
+
+Checked on the XP3800 with no SIM: received group MMS with plain text and a photo,
+confirmed both render and only the photo uses the slideshow loader. The link menu
+listed street, web and phone links together. The 387-message group was entirely
+eligible for inline rendering and did not launch Chromium or schedule PDU loads.
+The baseline for that group was 7–8.4 s to fill the visible rows (loader logs).
+After the change, USB screen sampling put the settled visible text at 2.2–2.6 s
+on three cold opens and about 1.2 s on one warm open. These are approximate and
+use a different measurement marker from the baseline.
+
+`tools/testing/conversation_open.sh THREAD --cold` reports stock log markers. The
+`Displayed` marker is the window opening, not necessarily the first text drawn.

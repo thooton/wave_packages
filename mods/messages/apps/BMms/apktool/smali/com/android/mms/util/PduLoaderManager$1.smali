@@ -55,10 +55,8 @@
 
     invoke-virtual {v0, v1}, Lcom/android/mms/util/PduLoaderManager;->cancelCallback(Lcom/android/mms/util/ItemLoadedCallback;)V
 
-    .line 117
-    iget-object v0, p0, Lcom/android/mms/util/PduLoaderManager$1;->this$0:Lcom/android/mms/util/PduLoaderManager;
-
-    invoke-virtual {v0, p1}, Lcom/android/mms/util/PduLoaderManager;->removePdu(Landroid/net/Uri;)V
+    # PERF(mms rows): keep what the load cached; the row is usually re-created right away
+    # (adapter refresh) and would load the same PDU again
 
     .line 119
     return-void

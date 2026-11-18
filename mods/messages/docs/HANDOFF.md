@@ -12,6 +12,7 @@ State at the end of the modernization work. Read `/AGENTS.md` first; feature doc
 | RCS, receipts: never send/request read receipts; send but don't request delivery receipts | Done; verified against the mock network on the phone | docs/rcs/*, docs/fixes/receipts |
 | "...and more": MMS acks / Report-Allowed, crash fixes | Done, device-verified | docs/fixes/mms-ack, docs/fixes/mms-no-subscription |
 | Faster receiving (MMS especially) | Done, measured | docs/fixes/performance |
+| Faster group MMS history, no Chromium in message rows | Done, device-verified | docs/fixes/conversation-load |
 | RCS settings and status in Settings > Advanced settings | Done, device-verified | docs/rcs/android.md "Settings screen" |
 | UI unchanged | Kept: no layout/resource changes; RCS messages look like SMS/MMS; the one addition is the RCS settings screen, in the stock settings style and wording | |
 

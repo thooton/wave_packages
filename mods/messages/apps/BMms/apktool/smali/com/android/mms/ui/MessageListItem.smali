@@ -848,6 +848,9 @@
 
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
 
+    iget-boolean v1, v0, Lcom/android/mms/ui/MessageItem;->mArgonTextReady:Z
+    if-nez v1, :cond_2
+
     iget-object v0, v0, Lcom/android/mms/ui/MessageItem;->mSlideshow:Lcom/android/mms/model/SlideshowModel;
 
     if-eqz v0, :cond_13
@@ -1444,6 +1447,10 @@
     .line 831
     :goto_b
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
+
+    # No asynchronous rebind or presenter for a row whose text is already here.
+    iget-boolean v1, v0, Lcom/android/mms/ui/MessageItem;->mArgonTextReady:Z
+    if-nez v1, :goto_9
 
     iget-object v0, v0, Lcom/android/mms/ui/MessageItem;->mSlideshow:Lcom/android/mms/model/SlideshowModel;
 

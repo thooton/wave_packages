@@ -111,17 +111,6 @@
 
     invoke-virtual {v1, v2}, Lcom/google/android/mms/pdu/SendReq;->setSubject(Lcom/google/android/mms/pdu/EncodedStringValue;)V
 
-    .line 2222
-    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$36;->val$msgItem:Lcom/android/mms/ui/MessageItem;
-
-    iget-object v0, v0, Lcom/android/mms/ui/MessageItem;->mSlideshow:Lcom/android/mms/model/SlideshowModel;
-
-    invoke-virtual {v0}, Lcom/android/mms/model/SlideshowModel;->makeCopy()Lcom/google/android/mms/pdu/PduBody;
-
-    move-result-object v0
-
-    invoke-virtual {v1, v0}, Lcom/google/android/mms/pdu/SendReq;->setBody(Lcom/google/android/mms/pdu/PduBody;)V
-
     .line 2224
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$36;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 
@@ -129,6 +118,12 @@
 
     .line 2227
     :try_start_0
+    # PERF(mms rows): reconstruct the original slideshow only for an explicit forward
+    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$36;->val$msgItem:Lcom/android/mms/ui/MessageItem;
+    invoke-static {v0}, Lcom/android/mms/ui/ArgonTextMms;->copyForForward(Lcom/android/mms/ui/MessageItem;)Lcom/google/android/mms/pdu/PduBody;
+    move-result-object v0
+    invoke-virtual {v1, v0}, Lcom/google/android/mms/pdu/SendReq;->setBody(Lcom/google/android/mms/pdu/PduBody;)V
+
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$36;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 
     invoke-static {v0}, Lcom/google/android/mms/pdu/PduPersister;->getPduPersister(Landroid/content/Context;)Lcom/google/android/mms/pdu/PduPersister;
