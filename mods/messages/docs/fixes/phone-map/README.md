@@ -11,7 +11,9 @@ resources are unchanged.
 Messages loads the map once before binding inbox rows. The index uses the
 provider's actual normalized and minimum-match keys and applies the stock E.164
 and normalized suffix predicates. Inbox rows read names directly from the map;
-photo loading is not required to show a name. A duplicate key that resolves to
+photo loading is not required to show a name. The phone-contact binder skips the
+stock thumbnail call when `photo_id` is absent; it still loads existing thumbnails
+and leaves email and profile photos on the stock path. A duplicate key that resolves to
 multiple phone data rows, a non-phone recipient, or an unavailable snapshot uses
 the stock contact path. Contact changes invalidate the map. The stock inbox-wide
 warmup is still enabled; scrolling does not wait at a frame gate.

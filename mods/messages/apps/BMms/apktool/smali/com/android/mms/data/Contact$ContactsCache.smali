@@ -799,11 +799,24 @@
     :cond_0
     monitor-exit p1
 
+    # PERF(contact thumbnails): the thumbnail URI queries data._id=photo_id.
+    # Both phone lookup projections include that ID at column 8.
+    const/16 v0, 0x8
+    invoke-interface {p2, v0}, Landroid/database/Cursor;->getLong(I)J
+    move-result-wide v2
+    const-wide/16 v0, 0x0
+    cmp-long v0, v2, v0
+    if-eqz v0, :argon_phone_no_thumbnail
+
     .line 1035
     invoke-direct {p0, p1}, Lcom/android/mms/data/Contact$ContactsCache;->loadAvatarData(Lcom/android/mms/data/Contact;)[B
-
     move-result-object v0
+    goto :argon_store_thumbnail
 
+    :argon_phone_no_thumbnail
+    const/4 v0, 0x0
+
+    :argon_store_thumbnail
     .line 1037
     monitor-enter p1
 
