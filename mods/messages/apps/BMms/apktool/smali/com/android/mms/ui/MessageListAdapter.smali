@@ -1400,6 +1400,18 @@
 
     move-result v1
 
+    # PERF(inline text rows): the SMS row pool uses the same layouts without the MMS stub.
+    invoke-static {p1}, Lcom/android/mms/ui/ArgonTextMms;->hasInlineText(Landroid/database/Cursor;)Z
+    move-result v2
+    if-eqz v2, :argon_attachment_pool
+    if-eq v1, v0, :argon_received_text
+    if-nez v1, :argon_sent_text
+    :argon_received_text
+    const/4 v0, 0x0
+    :argon_sent_text
+    return v0
+
+    :argon_attachment_pool
     .line 568
     if-eq v1, v0, :cond_4
 

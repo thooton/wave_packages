@@ -27,6 +27,14 @@ public final class ArgonTextMms {
                 && (type == 128 || (type == 132 && from >= 0 && !TextUtils.isEmpty(cursor.getString(from))));
     }
 
+    /** Same eligibility as bind(); the adapter can reuse the plain-text row pool. */
+    public static boolean hasInlineText(Cursor cursor) {
+        int text = cursor.getColumnIndex("argon_text");
+        if (text < 0 || cursor.isNull(text)) return false;
+        int type = cursor.getColumnIndex("m_type");
+        return type >= 0 && ready(cursor, text, cursor.getColumnIndex("argon_from"), cursor.getInt(type));
+    }
+
     public static boolean bind(MessageItem item, Cursor cursor) {
         int text = cursor.getColumnIndex("argon_text");
         int from = cursor.getColumnIndex("argon_from");

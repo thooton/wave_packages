@@ -6437,6 +6437,50 @@
     .locals 13
 
     .prologue
+    # PERF(hidden avatar): ordinary Sonim message rows hide the avatar. For inline text MMS,
+    # keep the stock bubble tint without fetching a contact, decoding its photo or building a tile.
+    iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
+    iget-boolean v0, v0, Lcom/android/mms/ui/MessageItem;->mArgonTextReady:Z
+    if-eqz v0, :argon_avatar_stock
+
+    iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mAvatar:Lcom/android/mms/ui/QuickContactDivot;
+    invoke-virtual {v0}, Landroid/view/View;->getVisibility()I
+    move-result v0
+    const/16 v1, 0x8
+    if-ne v0, v1, :argon_avatar_stock
+
+    invoke-virtual {p0}, Lcom/android/mms/ui/MessageListItem;->isChecked()Z
+    move-result v0
+    if-nez v0, :argon_avatar_stock
+
+    if-eqz p2, :argon_avatar_received
+    iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mContext:Landroid/content/Context;
+    invoke-virtual {v0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+    move-result-object v0
+    const v1, 0x7f080018    # R.color.white
+    invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getColor(I)I
+    move-result v0
+    goto :argon_avatar_tint
+
+    :argon_avatar_received
+    invoke-static {p1}, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    move-result v0
+    if-nez v0, :argon_avatar_stock
+    invoke-direct {p0}, Lcom/android/mms/ui/MessageListItem;->isSimCardMessage()Z
+    move-result v0
+    if-nez v0, :argon_avatar_stock
+    invoke-static {}, Lcom/android/mms/ui/ComposeMessageActivity;->getSendContactColor()I
+    move-result v0
+
+    :argon_avatar_tint
+    iput v0, p0, Lcom/android/mms/ui/MessageListItem;->mBackgroundColor:I
+    iget-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mMessageBlock:Landroid/view/View;
+    invoke-virtual {v1}, Landroid/view/View;->getBackground()Landroid/graphics/drawable/Drawable;
+    move-result-object v1
+    invoke-virtual {v1, v0}, Landroid/graphics/drawable/Drawable;->setTint(I)V
+    return-void
+
+    :argon_avatar_stock
     const-wide/16 v4, 0x0
 
     const/4 v12, 0x3

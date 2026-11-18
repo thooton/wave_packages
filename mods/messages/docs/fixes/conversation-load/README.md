@@ -45,6 +45,14 @@ populates its cache as rows bind, and a direct thread open loads that thread on
 demand. Explicit cache repair after deletion is unchanged. Device timing is
 pending; this removes the work rather than moving it to a later frame.
 
+## Lightweight text rows
+
+Inline MMS reuse the SMS row pool: those rows use the same send/receive layouts,
+but don't inflate the unused attachment stub. The normal conversation layouts
+also hide the avatar. For an inline text row with a hidden avatar, the binder
+applies the original bubble tint without looking up or constructing the avatar.
+Visible avatars, checked rows, and media still take the stock path.
+
 ## Verification
 
 `tools/testing/conversation_index_test.py` exercises the shipped SQL and address
