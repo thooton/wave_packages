@@ -21,6 +21,7 @@ import android.widget.TextView;
 import com.android.mms.MmsApp;
 import com.android.mms.data.Contact;
 import com.android.mms.data.ContactList;
+import com.android.mms.util.ArgonLaunch;
 import com.android.mms.util.PduLoaderManager;
 
 import java.util.ArrayList;
@@ -78,8 +79,9 @@ public final class ArgonComposePerf {
      * so a row that binds later just picks up the result.
      */
     public static void prefetch(int token, Cursor c) {
-        if (token != MESSAGE_LIST_QUERY_TOKEN || c == null) return;
-        if (c.isClosed()) return;
+        if (token != MESSAGE_LIST_QUERY_TOKEN) return;
+        ArgonLaunch.mark("history_received");
+        if (c == null || c.isClosed()) return;
         int pos = c.getPosition();
         try {
             int iType = c.getColumnIndex("transport_type");

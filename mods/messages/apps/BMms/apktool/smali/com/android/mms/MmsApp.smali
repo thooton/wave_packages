@@ -390,6 +390,9 @@
 
     const/4 v2, 0x0
 
+    const-string v0, "app_start"
+    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+
     .line 75
     invoke-super {p0}, Landroid/app/Application;->onCreate()V
 
@@ -511,6 +514,9 @@
     .line 110
     invoke-static {p0}, Lcom/android/mms/MmsConfig;->init(Landroid/content/Context;)V
 
+    const-string v0, "app_configured"
+    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+
     .line 111
     invoke-static {p0}, Lcom/android/mms/util/DownloadManager;->init(Landroid/content/Context;)V
 
@@ -571,6 +577,9 @@
 
     # FEAT(argon): Messages Argon startup (pref migration, held-MMS sweep, RCS)
     invoke-static {p0}, Lcom/android/mms/argon/ArgonInit;->onAppCreate(Landroid/app/Application;)V
+
+    const-string v0, "app_ready"
+    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
 
     .line 126
     return-void

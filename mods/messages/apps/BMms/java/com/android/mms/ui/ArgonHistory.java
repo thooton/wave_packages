@@ -8,6 +8,8 @@ import android.view.View;
 import android.widget.AbsListView;
 import android.widget.ListView;
 
+import com.android.mms.util.ArgonLaunch;
+
 /** Keep the stock list and cursor actions; grow its contiguous history only when needed. */
 public final class ArgonHistory implements AbsListView.OnScrollListener {
     private static final int HISTORY = 9527;
@@ -18,7 +20,7 @@ public final class ArgonHistory implements AbsListView.OnScrollListener {
     private final ListView list;
     private long thread;
     private Key floor;
-    private boolean partial, full, loadingOlder, keepFocus;
+    private boolean partial, full, loadingOlder, keepFocus, firstRowsMeasured;
     private Intent selectedIntent;
     private long selectedId = -1;
 
@@ -34,6 +36,7 @@ public final class ArgonHistory implements AbsListView.OnScrollListener {
     }
 
     public static Uri queryUri(ComposeMessageActivity activity, int token, Uri uri) {
+        if (token == HISTORY) ArgonLaunch.mark("history_requested");
         Uri indexed = ArgonTextMms.queryUri(uri);
         ArgonHistory h = (ArgonHistory) activity.mArgonHistory;
         if (h == null || token != HISTORY || indexed == uri) return indexed;
@@ -117,6 +120,10 @@ public final class ArgonHistory implements AbsListView.OnScrollListener {
         }
         int position = anchor == null ? -1 : anchor.find(next);
         adapter.changeCursor(next);
+        if (ArgonLaunch.ENABLED && !h.firstRowsMeasured && next != null && next.getCount() > 0) {
+            h.firstRowsMeasured = true;
+            ArgonLaunch.awaitRows(h.list);
+        }
         if (paged && Log.isLoggable("ArgonHistory", Log.DEBUG)) {
             Log.d("ArgonHistory", "rows=" + next.getCount() + " older=" + h.partial
                     + " anchor=" + position + " selection=" + selection);

@@ -34,8 +34,11 @@ system properties that reset on reboot, and nothing changes behaviour unless the
   and address detection; the optional database is opened read-only and copied into memory.
 * `tools/testing/recipient_cache_test.py`: batched canonical-address reads, ordering and cache races.
 * `tools/testing/conversation_open.sh THREAD [--cold]`: launch markers, row binds, PDU loads and
-  WebView startup. `log.tag.Mms=VERBOSE` enables more stock markers. `Displayed` is the window,
-  not the first populated row. `trace_top.py` accepts `--thread=main` and ART streaming traces.
+  WebView startup. Set `adb shell setprop log.tag.ArgonLaunch DEBUG` before a cold launch to time
+  app init, conversation view setup, history, and the first nonempty list layout. `rows_ready` is
+  pre-draw, not GPU presentation or completion of the media loader. Clear the property after testing.
+  Use `log.tag.Mms=VERBOSE` separately for stock markers; it changes the startup workload.
+  `trace_top.py` accepts `--thread=main` and ART streaming traces.
 
 ## SMS
 * `SmsInject <from> <body> [count] [delayMs]` (root `app_process`, see `push.sh`): a real

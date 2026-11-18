@@ -24570,6 +24570,9 @@
     .line 3154
     invoke-direct {p0, p1}, Lcom/android/mms/ui/ComposeMessageActivity;->initActivityState(Landroid/os/Bundle;)V
 
+    const-string v2, "compose_thread"
+    invoke-static {v2}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+
     .line 3157
     invoke-static {}, Lcom/android/mms/MmsConfig;->isRcsVersion()Z
 
@@ -26449,6 +26452,9 @@
     .prologue
     const/4 v0, 0x0
 
+    const-string v1, "compose_start"
+    invoke-static {v1}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+
     .line 3026
     invoke-static {p0}, Lcom/android/mms/MmsConfig;->isSmsEnabled(Landroid/content/Context;)Z
 
@@ -26537,6 +26543,9 @@
 
     .line 3042
     invoke-direct {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->initResourceRefs()V
+
+    const-string v0, "compose_views"
+    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
 
     .line 3043
     invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
