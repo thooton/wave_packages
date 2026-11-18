@@ -5,6 +5,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewTreeObserver;
 import android.widget.ListView;
 
 import com.android.mms.util.ArgonLaunch;
@@ -17,7 +18,8 @@ public final class ArgonHistory {
     private final ComposeMessageActivity activity;
     private final ListView list;
     private long thread;
-    private boolean keepFocus, firstRowsMeasured;
+    private boolean keepFocus, firstRowsMeasured, opened;
+    private BottomAlignment bottomAlignment;
     private Intent selectedIntent;
     private long selectedId = -1;
 
@@ -43,8 +45,10 @@ public final class ArgonHistory {
             return indexed;
         }
         if (thread != h.thread) {
+            h.stopBottomAlignment();
             h.thread = thread;
             h.selectedIntent = null;
+            h.opened = false;
         }
         // Ask for the complete cursor with indexed sort keys for refresh anchoring.
         return indexed.buildUpon().appendQueryParameter("argon_page", "1")
@@ -82,6 +86,15 @@ public final class ArgonHistory {
         h.keepFocus = false;
         int position = anchor == null ? -1 : anchor.find(next);
         adapter.changeCursor(next);
+        if (!h.opened && next != null && next.getCount() > 0) {
+            h.opened = true;
+            if (selected == -1 && selection == -1 && position < 0) {
+                h.bottomAlignment = h.new BottomAlignment();
+                h.list.getViewTreeObserver().addOnPreDrawListener(h.bottomAlignment);
+                // PDU rows can gain height after first layout. Never hold up drawing.
+                h.list.postDelayed(h.bottomAlignment, 2200);
+            }
+        }
         if (ArgonLaunch.ENABLED && !h.firstRowsMeasured && next != null && next.getCount() > 0) {
             h.firstRowsMeasured = true;
             ArgonLaunch.awaitRows(h.list);
@@ -96,6 +109,37 @@ public final class ArgonHistory {
             return ANCHORED;
         }
         return selection;
+    }
+
+    public static void stopInitialAlignment(ComposeMessageActivity activity) {
+        ArgonHistory h = (ArgonHistory) activity.mArgonHistory;
+        if (h != null) h.stopBottomAlignment();
+    }
+
+    private void stopBottomAlignment() {
+        if (bottomAlignment == null) return;
+        list.getViewTreeObserver().removeOnPreDrawListener(bottomAlignment);
+        list.removeCallbacks(bottomAlignment);
+        bottomAlignment = null;
+    }
+
+    private final class BottomAlignment implements ViewTreeObserver.OnPreDrawListener, Runnable {
+        @Override public boolean onPreDraw() {
+            int last = list.getCount() - 1;
+            if (!list.isShown() || last < 0 || list.getLastVisiblePosition() != last) return true;
+            View row = list.getChildAt(last - list.getFirstVisiblePosition());
+            if (row == null) return true;
+            int overflow = row.getBottom() - (list.getHeight() - list.getListPaddingBottom());
+            if (overflow > 0) {
+                list.scrollListBy(overflow);
+                if (ArgonLaunch.ENABLED) ArgonLaunch.mark("history_align_bottom");
+            }
+            return true;
+        }
+
+        @Override public void run() {
+            if (bottomAlignment == this) stopBottomAlignment();
+        }
     }
 
     public static boolean keepFocus(ComposeMessageActivity activity) {

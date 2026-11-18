@@ -23369,7 +23369,8 @@
     .line 2886
     const-string/jumbo v0, ", "
 
-    invoke-virtual {p1, v0}, Lcom/android/mms/data/ContactList;->formatNames(Ljava/lang/String;)Ljava/lang/String;
+    # FIX(group first open): use the same resolved phone names as the inbox.
+    invoke-static {p1, v0}, Lcom/android/mms/data/ArgonPhoneSnapshot;->formatNames(Lcom/android/mms/data/ContactList;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 
@@ -23409,6 +23410,13 @@
     .line 2897
     if-lt v3, v8, :cond_f
 
+    # FIX(group first open): use the stock gray swatch for a group, not whichever
+    # color the first recipient's avatar happened to cache in the inbox.
+    if-eq v3, v8, :argon_single_palette
+    const v0, -0x8a8a8b    # #757575, stock neutral letter tile
+    goto :cond_8
+
+    :argon_single_palette
     .line 2898
     invoke-virtual {p1, v6}, Lcom/android/mms/data/ContactList;->get(I)Ljava/lang/Object;
 
@@ -26825,6 +26833,35 @@
     return v2
 .end method
 
+# FIX(history first open): never adjust the opening position after user input.
+.method public dispatchKeyEvent(Landroid/view/KeyEvent;)Z
+    .locals 1
+
+    invoke-virtual {p1}, Landroid/view/KeyEvent;->getAction()I
+    move-result v0
+    if-nez v0, :argon_dispatch_key
+    invoke-static {p0}, Lcom/android/mms/ui/ArgonHistory;->stopInitialAlignment(Lcom/android/mms/ui/ComposeMessageActivity;)V
+
+    :argon_dispatch_key
+    invoke-super {p0, p1}, Landroid/app/Activity;->dispatchKeyEvent(Landroid/view/KeyEvent;)Z
+    move-result v0
+    return v0
+.end method
+
+.method public dispatchTouchEvent(Landroid/view/MotionEvent;)Z
+    .locals 1
+
+    invoke-virtual {p1}, Landroid/view/MotionEvent;->getActionMasked()I
+    move-result v0
+    if-nez v0, :argon_dispatch_touch
+    invoke-static {p0}, Lcom/android/mms/ui/ArgonHistory;->stopInitialAlignment(Lcom/android/mms/ui/ComposeMessageActivity;)V
+
+    :argon_dispatch_touch
+    invoke-super {p0, p1}, Landroid/app/Activity;->dispatchTouchEvent(Landroid/view/MotionEvent;)Z
+    move-result v0
+    return v0
+.end method
+
 .method public onKeyDown(ILandroid/view/KeyEvent;)Z
     .locals 6
 
@@ -28329,6 +28366,8 @@
     .prologue
     .line 3630
     invoke-super {p0}, Landroid/app/Activity;->onPause()V
+
+    invoke-static {p0}, Lcom/android/mms/ui/ArgonHistory;->stopInitialAlignment(Lcom/android/mms/ui/ComposeMessageActivity;)V
 
     .line 3636
     const-wide/16 v0, -0x2
