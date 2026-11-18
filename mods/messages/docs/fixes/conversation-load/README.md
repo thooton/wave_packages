@@ -40,12 +40,9 @@ detect street addresses.
 
 ## Cold startup
 
-Process startup no longer enumerates all conversations and resolves their
-recipients. That pass held the same cache lock used by the first conversation
-lookup, including while it queried the provider. The conversation list still
-populates its cache as rows bind, and a direct thread open loads that thread on
-demand. Explicit cache repair after deletion is unchanged. Device timing is
-pending; this removes the work rather than moving it to a later frame.
+Process startup runs the stock inbox-wide recipient warmup. Resolving contacts
+only when an inbox row became visible made scrolling lag. A trial draw gate also
+made scrolling uneven, so the inbox no longer blocks frames on contact lookups.
 
 On a canonical recipient-cache miss, resolve just the missing IDs in an indexed
 batch. Neither the miss query nor the background warm-up holds the cache lock

@@ -345,8 +345,10 @@
 
     invoke-static {v0}, Lcom/android/mms/util/DraftCache;->init(Landroid/content/Context;)V
 
-    # PERF(cold start): don't prefill every conversation and resolve its contacts on process start.
-    # Conversation.get/from load on demand. Explicit cache repair after deletes is unchanged.
+    # PERF(inbox warmup): resolve all conversation recipients on the stock background
+    # worker so scrolling does not have to discover every name on demand.
+    invoke-static {v0}, Lcom/android/mms/data/Conversation;->init(Landroid/content/Context;)V
+
     .line 133
     invoke-static {}, Lcom/android/mms/MmsApp;->getApplication()Lcom/android/mms/MmsApp;
 

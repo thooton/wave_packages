@@ -24,6 +24,8 @@
 
 
 # instance fields
+.field volatile mArgonContactUpdates:Ljava/lang/Object;
+
 .field private isLastMessageMms:Z
 
 .field private mAttachmentInfoView:Landroid/widget/TextView;
@@ -54,11 +56,10 @@
 
 
 # direct methods
-.method static synthetic -wrap0(Lcom/android/mms/ui/ConversationListItem;)V
+.method argonRefreshRecipients()V
     .locals 0
 
     invoke-direct {p0}, Lcom/android/mms/ui/ConversationListItem;->updateFromView()V
-
     return-void
 .end method
 
@@ -1674,6 +1675,14 @@
     .line 407
     iput-object p2, p0, Lcom/android/mms/ui/ConversationListItem;->mConversation:Lcom/android/mms/data/Conversation;
 
+    # PERF(inbox recipients): subscribe before the first read, so a fast lookup
+    # can't finish between formatting the old name and adding the listener.
+    invoke-virtual {p2}, Lcom/android/mms/data/Conversation;->getRecipients()Lcom/android/mms/data/ContactList;
+    move-result-object v0
+    iget-object v5, p0, Lcom/android/mms/ui/ConversationListItem;->mHandler:Landroid/os/Handler;
+    invoke-static {p0, v5, v0}, Lcom/android/mms/ui/ArgonInboxContactUpdates;->bind(Lcom/android/mms/ui/ConversationListItem;Landroid/os/Handler;Lcom/android/mms/data/ContactList;)V
+    invoke-static {p0}, Lcom/android/mms/data/Contact;->addListener(Lcom/android/mms/data/Contact$UpdateListener;)V
+
     .line 408
     iget-object v0, p0, Lcom/android/mms/ui/ConversationListItem;->mConversation:Lcom/android/mms/data/Conversation;
 
@@ -1743,47 +1752,7 @@
 
     invoke-virtual {v0, v5}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
 
-    .line 433
-    invoke-virtual {p2}, Lcom/android/mms/data/Conversation;->getRecipients()Lcom/android/mms/data/ContactList;
-
-    .line 435
-    const-string/jumbo v0, "Mms"
-
-    const/4 v5, 0x3
-
-    invoke-static {v0, v5}, Landroid/util/Log;->isLoggable(Ljava/lang/String;I)Z
-
-    move-result v0
-
-    if-eqz v0, :cond_0
-
-    .line 436
-    const-string/jumbo v0, "Mms"
-
-    new-instance v5, Ljava/lang/StringBuilder;
-
-    invoke-direct {v5}, Ljava/lang/StringBuilder;-><init>()V
-
-    const-string/jumbo v6, "bind: contacts.addListeners "
-
-    invoke-virtual {v5, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v5
-
-    invoke-virtual {v5, p0}, Ljava/lang/StringBuilder;->append(Ljava/lang/Object;)Ljava/lang/StringBuilder;
-
-    move-result-object v5
-
-    invoke-virtual {v5}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-
-    move-result-object v5
-
-    invoke-static {v0, v5}, Landroid/util/Log;->v(Ljava/lang/String;Ljava/lang/String;)I
-
-    .line 438
     :cond_0
-    invoke-static {p0}, Lcom/android/mms/data/Contact;->addListener(Lcom/android/mms/data/Contact$UpdateListener;)V
-
     .line 439
     invoke-static {}, Lcom/android/mms/MmsConfig;->isRcsVersion()Z
 
@@ -2324,64 +2293,10 @@
 .end method
 
 .method public onUpdate(Lcom/android/mms/data/Contact;)V
-    .locals 3
+    .locals 0
 
-    .prologue
-    .line 394
-    const-string/jumbo v0, "Mms"
-
-    const/4 v1, 0x3
-
-    invoke-static {v0, v1}, Landroid/util/Log;->isLoggable(Ljava/lang/String;I)Z
-
-    move-result v0
-
-    if-eqz v0, :cond_0
-
-    .line 395
-    const-string/jumbo v0, "Mms"
-
-    new-instance v1, Ljava/lang/StringBuilder;
-
-    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
-
-    const-string/jumbo v2, "onUpdate: "
-
-    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    invoke-virtual {v1, p0}, Ljava/lang/StringBuilder;->append(Ljava/lang/Object;)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    const-string/jumbo v2, " contact: "
-
-    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    invoke-virtual {v1, p1}, Ljava/lang/StringBuilder;->append(Ljava/lang/Object;)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-
-    move-result-object v1
-
-    invoke-static {v0, v1}, Landroid/util/Log;->v(Ljava/lang/String;Ljava/lang/String;)I
-
-    .line 397
-    :cond_0
-    iget-object v0, p0, Lcom/android/mms/ui/ConversationListItem;->mHandler:Landroid/os/Handler;
-
-    new-instance v1, Lcom/android/mms/ui/ConversationListItem$1;
-
-    invoke-direct {v1, p0}, Lcom/android/mms/ui/ConversationListItem$1;-><init>(Lcom/android/mms/ui/ConversationListItem;)V
-
-    invoke-virtual {v0, v1}, Landroid/os/Handler;->post(Ljava/lang/Runnable;)Z
-
-    .line 402
+    # PERF(inbox recipients): don't redraw all visible rows for unrelated contacts.
+    invoke-static {p0, p1}, Lcom/android/mms/ui/ArgonInboxContactUpdates;->changed(Lcom/android/mms/ui/ConversationListItem;Lcom/android/mms/data/Contact;)V
     return-void
 .end method
 
@@ -2491,6 +2406,7 @@
 
     .line 597
     :cond_0
+    invoke-static {p0}, Lcom/android/mms/ui/ArgonInboxContactUpdates;->unbind(Lcom/android/mms/ui/ConversationListItem;)V
     invoke-static {p0}, Lcom/android/mms/data/Contact;->removeListener(Lcom/android/mms/data/Contact$UpdateListener;)V
 
     .line 598
