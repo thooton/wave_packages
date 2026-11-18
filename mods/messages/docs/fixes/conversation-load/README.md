@@ -45,6 +45,11 @@ populates its cache as rows bind, and a direct thread open loads that thread on
 demand. Explicit cache repair after deletion is unchanged. Device timing is
 pending; this removes the work rather than moving it to a later frame.
 
+On a canonical recipient-cache miss, resolve just the missing IDs in an indexed
+batch. Neither the miss query nor the background warm-up holds the cache lock
+while reading the provider cursor. A background warm-up cannot overwrite a
+newer cached number.
+
 ## Lightweight text rows
 
 Inline MMS reuse the SMS row pool: those rows use the same send/receive layouts,

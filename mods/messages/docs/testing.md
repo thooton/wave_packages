@@ -30,8 +30,9 @@ system properties that reset on reboot, and nothing changes behaviour unless the
 
 ## Conversation history
 
-* `tools/testing/conversation_index_test.py [--db SNAPSHOT]`: index triggers, eligibility and
-  address detector; the optional database is opened read-only and copied into memory.
+* `tools/testing/conversation_index_test.py [--db SNAPSHOT]`: index triggers, paging, eligibility
+  and address detection; the optional database is opened read-only and copied into memory.
+* `tools/testing/recipient_cache_test.py`: batched canonical-address reads, ordering and cache races.
 * `tools/testing/conversation_open.sh THREAD [--cold]`: launch markers, row binds, PDU loads and
   WebView startup. `log.tag.Mms=VERBOSE` enables more stock markers. `Displayed` is the window,
   not the first populated row. `trace_top.py` accepts `--thread=main` and ART streaming traces.
