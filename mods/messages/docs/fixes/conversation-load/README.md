@@ -54,7 +54,9 @@ newer cached number. Disabled compose diagnostics no longer capture Java stack
 traces or stringify conversation state on launch. Row-bind and attachment-view
 verbose logs build their strings only when verbose logging is enabled. Recipient
 setup skips the email matcher for addresses without `@`; addresses that could
-be email still use the framework validator.
+be email still use the framework validator. Opening the inbox keeps the
+already-initialized recipient cache, and queues just the selected thread query
+instead of starting an unfiltered query that it immediately cancels.
 
 ## Lightweight text rows
 
