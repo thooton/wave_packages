@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""linkcheck.py <apk>: every method/field reference into the app's own package
-(com/android/music) must exist in the APK's dex files, with the right static-ness.
+"""linkcheck.py <apk> <owner-prefix>...: check method/field targets.
+Matching members must exist in the APK's dex files, with the right static-ness.
 Catches a smali hook calling a Java method that was renamed, or Java calling a stock member that
 doesn't exist (the stubs only promise it). Uses apktool's baksmali on the built APK."""
 import os, re, subprocess, sys, tempfile
 
 apk = sys.argv[1]
-PKG = sys.argv[2]
+PREFIXES = tuple(sys.argv[2:])
+if not PREFIXES:
+    sys.exit("linkcheck: at least one owner prefix is required")
 temp = tempfile.TemporaryDirectory()
 tmp = temp.name
 subprocess.run(["apktool", "d", "-q", "-r", "-f", apk, "-o", tmp], check=True)
@@ -74,7 +76,7 @@ bad, n, hidden = [], 0, set()
 for name, c in classes.items():
     for m in re.finditer(r"^\s*invoke-(\w+)(?:/range)? \{[^}\n]*\}, (L[^;]+;)->(\S+)", c["text"], re.M):
         kind, owner, member = m.groups()
-        if not owner.startswith(PKG): continue
+        if not owner.startswith(PREFIXES): continue
         n += 1
         st = find(owner, "methods", member)
         if st == "hidden": hidden.add(f"{owner}->{member}"); continue
@@ -83,7 +85,7 @@ for name, c in classes.items():
         elif st != "external" and (kind == "static") != st: bad.append(f"{name}: invoke-{kind} on {'static' if st else 'instance'} {owner}->{member}")
     for m in re.finditer(r"^\s*([is])(?:get|put)(?:-[\w-]+)? [^,\n]+(?:, [^,\n]+)?, (L[^;]+;)->(\S+)", c["text"], re.M):
         kind, owner, member = m.groups()
-        if not owner.startswith(PKG): continue
+        if not owner.startswith(PREFIXES): continue
         n += 1
         st = find(owner, "fields", member)
         if st == "hidden": hidden.add(f"{owner}->{member}"); continue
@@ -92,5 +94,5 @@ for name, c in classes.items():
         elif st != "external" and (kind == "s") != st: bad.append(f"{name}: {kind}get/put on {'static' if st else 'instance'} field {owner}->{member}")
 if bad:
     sys.exit("linkcheck failed:\n  " + "\n  ".join(sorted(set(bad))))
-print(f"linkcheck OK ({n} references into {PKG[1:-1]} resolved"
+print(f"linkcheck OK ({n} references matching {len(PREFIXES)} prefixes resolved"
       + (f"; framework members not in the public android.jar: {', '.join(sorted(hidden))}" if hidden else "") + ")")

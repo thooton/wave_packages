@@ -26,5 +26,15 @@ for app in "${apps[@]}"; do
     fi
     python3 "$SHARED/unsigned.py" "$(stock_apk "$app")" "$B/dex" "$B/request.apk"
     "$BT/zipalign" -f -p 4 "$B/request.apk" "$B/unsigned.apk"
+    case "$app" in
+        BMms) prefixes=(Lcom/android/mms/wave/ Lorg/wave/ Lcom/android/mms/data/Wave
+                      Lcom/android/mms/transaction/Wave Lcom/android/mms/ui/Wave Lcom/android/mms/util/Wave) ;;
+        ContactsProvider) prefixes=(Lcom/android/providers/contacts/Wave) ;;
+        TelephonyProvider) prefixes=(Lcom/android/providers/telephony/Wave Lcom/android/providers/telephony/ThreadIntegrity) ;;
+        *) prefixes=() ;;
+    esac
+    if (( ${#prefixes[@]} )); then
+        ANDROID_JAR="$ANDROID_JAR" python3 "$SHARED/linkcheck.py" "$B/unsigned.apk" "${prefixes[@]}"
+    fi
     echo "$app: built unsigned signing request ($B/unsigned.apk)"
 done

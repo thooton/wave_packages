@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Launcher Improved: the smali hooks for the arranged apps tray (FEAT(tray)), applied once to the
-stock apktool project; the patched smali is what's committed (git diff stock -- apps/ shows it).
+stock apktool project; the patched smali is what's committed (git diff stock-launcher -- mods/launcher/apps/ shows it).
 The Java side is apps/SonimLauncher/java/com/sonim/borqs/launcher/Wave*.java.
 
 Stock classes replaced wholesale by Java are deleted here: DrawerAdapter (+ViewHolder),
