@@ -36,6 +36,8 @@
 
     <!-- The names common/ui's dialogs and lists look for. -->
     <color name="primary">#F5F5F5</color>
+    <!-- The setup screen's title, on primary (common's default is white). -->
+    <color name="on_primary">#020202</color>
     <color name="focus_rule">#3B82F6</color>
     <color name="focus_fill">#E5E5E5</color>
     <color name="divider">#E4E4E4</color>

@@ -43,6 +43,21 @@ public final class SelfTest {
             for (File file : found) described.add(file.getParentFile().getParentFile().getParentFile().getParentFile()
                 .getParentFile().getParentFile().getName());
             check.same("apps with the setup screen under " + root + " have descriptors", withScreen, described);
+            // The setup screen's title is on_primary on primary: an app that sets a light primary
+            // without its own on_primary gets common's white on it (Flashcards 1.14.2).
+            Map<String, String> common = colors(new File(root, "common/ui/src/main/res/values/defaults.xml"));
+            for (String app : withScreen) {
+                File res = new File(root, app + "/android/app/src/main/res");
+                Map<String, String> day = new java.util.HashMap<String, String>(common);
+                day.putAll(colors(new File(res, "values")));
+                Map<String, String> night = new java.util.HashMap<String, String>(day);
+                night.putAll(colors(new File(res, "values-night")));
+                for (Map<String, String> theme : java.util.Arrays.asList(day, night)) {
+                    double ratio = contrast(resolve(theme, "on_primary"), resolve(theme, "primary"));
+                    check.ok(app + (theme == day ? "" : " (night)") + ": setup title readable on its bar ("
+                        + String.format(java.util.Locale.ROOT, "%.1f", ratio) + ":1)", ratio >= 4.5);
+                }
+            }
             for (File file : found) {
                 String app = file.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile()
                     .getParentFile().getName();
@@ -325,6 +340,43 @@ public final class SelfTest {
         int count = 0;
         for (Thread thread : Thread.getAllStackTraces().keySet()) if (thread.getName().equals(name)) count++;
         return count;
+    }
+
+    /** The colours a values folder (or one file) defines, by name; none if it isn't there. */
+    static Map<String, String> colors(File where) throws Exception {
+        Map<String, String> out = new java.util.HashMap<String, String>();
+        File[] files = where.isDirectory() ? where.listFiles() : where.isFile() ? new File[] { where } : new File[0];
+        java.util.regex.Pattern color = java.util.regex.Pattern.compile("<color name=\"([a-z_0-9]+)\">\\s*([^<\\s]+)\\s*</color>");
+        for (File file : files) {
+            if (!file.getName().endsWith(".xml")) continue;
+            java.util.regex.Matcher m = color.matcher(read(file));
+            while (m.find()) out.put(m.group(1), m.group(2));
+        }
+        return out;
+    }
+
+    /** A colour's #RRGGBB, following @color/ references. */
+    static int resolve(Map<String, String> theme, String name) {
+        String value = theme.get(name);
+        for (int hops = 0; value != null && value.startsWith("@color/") && hops < 8; hops++) value = theme.get(value.substring(7));
+        if (value == null || !value.matches("#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})")) throw new IllegalArgumentException(name + " = " + value);
+        return (int) Long.parseLong(value.substring(value.length() - 6), 16);
+    }
+
+    /** WCAG contrast ratio of two opaque colours. */
+    static double contrast(int a, int b) {
+        double la = luminance(a), lb = luminance(b);
+        return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+    }
+
+    static double luminance(int rgb) {
+        double sum = 0;
+        double[] weight = { 0.2126, 0.7152, 0.0722 };
+        for (int i = 0; i < 3; i++) {
+            double c = ((rgb >> (16 - 8 * i)) & 0xFF) / 255.0;
+            sum += weight[i] * (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+        }
+        return sum;
     }
 
     /** Apps whose manifest declares common's SetupActivity, in name order. */

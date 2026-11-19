@@ -31,6 +31,7 @@
     <color name="pressed">#2E2E2E</color>
 
     <color name="primary">#000000</color>
+    <color name="on_primary">#EDEDED</color>
     <color name="focus_rule">#4F8EF7</color>
     <color name="focus_fill">#1C1C1C</color>
     <color name="divider">#262626</color>
