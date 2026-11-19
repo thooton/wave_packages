@@ -394,7 +394,7 @@ public final class ReaderActivity extends BaseActivity implements PageView.SizeL
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         stayAwake();
-        if (isOk(keyCode) || keyCode == KeyEvent.KEYCODE_MENU) {
+        if (Ui.isOk(keyCode) || keyCode == KeyEvent.KEYCODE_MENU) {
             if (event.getRepeatCount() == 0) event.startTracking();
             return true;
         }
@@ -464,7 +464,7 @@ public final class ReaderActivity extends BaseActivity implements PageView.SizeL
      */
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
-        if (isOk(keyCode) || keyCode == KeyEvent.KEYCODE_MENU) {
+        if (Ui.isOk(keyCode) || keyCode == KeyEvent.KEYCODE_MENU) {
             if (!event.isTracking() || event.isCanceled()) return true;
             if (keyCode == KeyEvent.KEYCODE_MENU) {
                 if (mode == READING) openSheet();
@@ -492,12 +492,6 @@ public final class ReaderActivity extends BaseActivity implements PageView.SizeL
             record(true);
             super.onBackPressed();
         }
-    }
-
-    private static boolean isOk(int keyCode) {
-        return keyCode == KeyEvent.KEYCODE_DPAD_CENTER
-            || keyCode == KeyEvent.KEYCODE_ENTER
-            || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER;
     }
 
     /** Keeps the screen on while reading, until the keys have been left alone for a while. */

@@ -16,6 +16,8 @@ import android.text.TextUtils;
 import android.util.TypedValue;
 import android.widget.TextView;
 
+import com.xp3.common.ui.Ui;
+
 /**
  * The Keypad Grid proposal's visual system (see AGENTS.md): its palette, its
  * one typeface in three weights, its type scale, and the focus styles it
@@ -74,7 +76,7 @@ final class Look {
     }
 
     static int dp(Context context, float value) {
-        return Math.round(value * context.getResources().getDisplayMetrics().density);
+        return Ui.dp(context, value);
     }
 
     static TextView text(Context context, CharSequence value, float size, int weight, int color) {

@@ -6,6 +6,8 @@ import android.text.TextUtils;
 import android.util.TypedValue;
 import android.widget.TextView;
 
+import com.xp3.common.ui.Ui;
+
 /**
  * The New Yorker's own type, as the site sets it.
  *
@@ -70,7 +72,7 @@ final class Look {
     }
 
     static int dp(Context context, float value) {
-        return Math.round(value * context.getResources().getDisplayMetrics().density);
+        return Ui.dp(context, value);
     }
 
     static TextView text(Context context, Typeface face, float sp, int colorRes) {

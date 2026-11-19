@@ -15,6 +15,7 @@ import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import com.xp3.common.ui.CardGrant;
+import com.xp3.common.ui.Ui;
 
 import java.util.List;
 
@@ -267,11 +268,6 @@ public class MainActivity extends Activity implements SheetView.Host {
         return key == KeyEvent.KEYCODE_MENU || key == KeyEvent.KEYCODE_SOFT_LEFT;
     }
 
-    private static boolean isOk(int key) {
-        return key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER
-            || key == KeyEvent.KEYCODE_NUMPAD_ENTER;
-    }
-
     private boolean sheetKey(int key) {
         switch (key) {
             case KeyEvent.KEYCODE_DPAD_UP: sheet.move(-1); return true;
@@ -280,7 +276,7 @@ public class MainActivity extends Activity implements SheetView.Host {
             case KeyEvent.KEYCODE_DPAD_RIGHT: sheet.step(1); return true;
             case KeyEvent.KEYCODE_BACK: sheet.close(); return true;
             default:
-                if (isOk(key)) {
+                if (Ui.isOk(key)) {
                     sheet.step(1);
                     return true;
                 }
@@ -302,7 +298,7 @@ public class MainActivity extends Activity implements SheetView.Host {
             default:
                 break;
         }
-        if (!isOk(key)) return false;
+        if (!Ui.isOk(key)) return false;
         List<Song> songs = library.songs();
         int focus = libraryView.focus();
         if (focus == LibraryView.PLAY) player.playAll(songs);
@@ -360,7 +356,7 @@ public class MainActivity extends Activity implements SheetView.Host {
             default:
                 break;
         }
-        if (isOk(key)) {
+        if (Ui.isOk(key)) {
             long from = lyrics ? playerView.takePick() : -1;
             if (from >= 0) {
                 player.seek(from);
