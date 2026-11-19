@@ -95,7 +95,7 @@ jobs:
           python3 .github/release_package.py "$PACKAGE_PATH" "apks/$asset" \
             --aapt2 "$ANDROID_SDK_ROOT/build-tools/$ANDROID_BUILD_TOOLS/aapt2" "${retry[@]}"
       - uses: thooton/wave/publish@v1
-        if: matrix.package.publish && steps.release.outputs.binary != ''
+        if: steps.release.outputs.binary != ''
         with:
           source-repository: thooton/wave_repository
           source-token: ${{ secrets.WAVE_REPOSITORY_TOKEN }}

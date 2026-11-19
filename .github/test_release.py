@@ -6,7 +6,7 @@ import tempfile
 import unittest
 import zipfile
 
-from packages import check_bundled
+from packages import RETIRED, check_bundled, matrix
 from release_package import identity, release_state
 
 
@@ -45,6 +45,13 @@ class ReleaseCheck(unittest.TestCase):
         self.git('tag', 'books-1.0.1')
         with self.assertRaisesRegex(ValueError, 'older'):
             release_state('books', 'books-1.0.0', '1.0.0')
+
+    def test_retired_packages_never_selected(self):
+        repo = Path(__file__).resolve().parents[1]
+        os.chdir(repo)
+        self.assertTrue({'installer', 'updater', 'hbsa'} <= RETIRED)
+        self.assertTrue({'books', 'launcher'} <= {m['path'] for m in matrix('apk')})
+        self.assertFalse(RETIRED & {m['path'] for m in matrix('apk')})
 
     def test_generated_credentials(self):
         file = Path('book/build/generated/bundled/pkg/Bundled.java')

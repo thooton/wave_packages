@@ -10,7 +10,7 @@ import zipfile
 from pathlib import Path
 
 from manifest import badging
-from packages import TERMINAL, metadata, release_name
+from packages import RETIRED, metadata, release_name
 
 VERSION = r'(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)'
 
@@ -49,11 +49,7 @@ def release_state(path, tag, version):
         raise ValueError(f'{path}: {version} is older than an existing release')
     if version not in matching:
         return 'new'
-    if path in TERMINAL:
-        # Updater/Installer are frozen once their last release is published.
-        # No shared-library changes are allowed to overwrite a frozen asset.
-        scope = [path]
-    elif path.startswith('mods/'):
+    if path.startswith('mods/'):
         scope = [path, 'mods/firmware', 'mods/tools']
     elif path == 'launcher':
         scope = [path]
@@ -84,6 +80,8 @@ def main():
     parser.add_argument('--check', action='store_true', help='local only; no GitHub calls')
     args = parser.parse_args()
     path, binary = args.path, args.binary
+    if path in RETIRED:
+        raise ValueError(f'{path}: retired, no new release allowed')
     data = metadata(path)
     pk, version, code = identity(binary, args.aapt2)
     if pk != data['id'] or not re.fullmatch(VERSION, version) or code < 1:
@@ -118,7 +116,7 @@ def main():
         verify_release_asset(tag, asset)
         # On explicit retry only, use the actual hosted bytes; rebuilding them
         # would produce a different digest despite having identical sources.
-        if args.retry_publish and path not in TERMINAL:
+        if args.retry_publish:
             run('gh', 'release', 'download', tag, '--pattern', asset, '--dir', str(dest.parent))
     if state == 'new' or args.retry_publish:
         if not dest.is_file():

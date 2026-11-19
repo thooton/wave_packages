@@ -16,10 +16,13 @@ dependencyResolutionManagement {
 
 rootProject.name = "sonim"
 
-// Every app, and the shared code, is one build. A directory's `app`, `core`
+// Every active app, and the shared code, is one build. A directory's `app`, `core`
 // and `ui` modules are found at <dir>/android/<module> or <dir>/<module>, and
 // included as :<dir>:<module>, so a new app needs no line here.
-rootDir.listFiles().sort().each { dir ->
+// Keep retired source in place without configuring or building its projects.
+def retired = file("gradle/retired-apps.txt").readLines()
+    .collect { it.trim() }.findAll { it && !it.startsWith("#") } as Set
+rootDir.listFiles().findAll { !retired.contains(it.name) }.sort().each { dir ->
     ["app", "core", "ui"].each { module ->
         def found = [new File(dir, "android/$module"), new File(dir, module)].find {
             new File(it, "build.gradle").isFile()

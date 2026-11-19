@@ -10,7 +10,12 @@ unset DELTA_SERVER DELTA_TOKEN
 printf '{}\n' >"$XDG_CONFIG_HOME/wave-no-login.json"
 read -ra apps <<<"$(python3 .github/packages.py gradle-apps)"
 # Optional explicit package paths for reproducing selected packages locally.
-if (( $# )); then apps=("$@"); fi
+if (( $# )); then
+    for app; do
+        [[ " ${apps[*]} " == *" $app "* ]] || { printf 'Not an active Gradle release app: %s\n' "$app" >&2; exit 2; }
+    done
+    apps=("$@")
+fi
 tasks=(:common:core:selfTest)
 for app in "${apps[@]}"; do
     [[ ! -f $app/android/core/build.gradle && ! -f $app/core/build.gradle ]] || tasks+=(":$app:core:selfTest")

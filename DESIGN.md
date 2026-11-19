@@ -169,7 +169,15 @@ What changes from Maps, for the keys and the screen:
   list of choices, each after a teal icon: Call, Copy address, Copy website
   URL. Menu's choices take icons too.
 
-## Updater: as the App Store shows it
+## Retired: Updater and Installer
+
+Wave takes over package discovery, updates and rooted installation. Updater
+and Installer are preserved in their original directories for reference but
+no longer build or ship; no new entries go into `latest` or the Wave source.
+Wave declares both package IDs in `replaces`. A managed phone must first give
+up Installer's device-owner role from its status screen before removal.
+
+### The former Updater: as the App Store shows it
 
 The Updater takes its look from the App Store's Updates page, since that is
 the screen people know for keeping apps up to date. It sets aside the family

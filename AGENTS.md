@@ -30,12 +30,10 @@ for new features, major only when asked. `versionCode` goes up by one each
 time. Never lower either, and never reuse a version that was already
 published.
 
-This is not bookkeeping. The Updater app (`updater/`) compares the
-`versionName` on the phone with the one in the latest release and only offers
-an update when the release's is higher, so a change shipped without a bump
-never reaches the phone. A change touching several apps bumps each of them,
-and so does a change to `common/` or `gradle/`: bump every app that uses what
-changed.
+Wave compares the version on the phone against the source and Android
+requires a higher versionCode for an update to be offered reliably. A change
+touching several apps bumps each of them. For a change to `common/` or
+`gradle/`, bump each shipped app whose APK changes.
 
 ## Nightly QA
 
@@ -102,17 +100,18 @@ Mail avoids the problem by falling back to its own `Android/data` folder.
 
 ## Building
 
-Every Gradle app, and the shared code, is one Gradle build at the root, run
+Every active Gradle app and the shared code are in one build at the root, run
 with JDK 21:
 
 ```bash
 JAVA_HOME=/usr/lib/jvm/java-21-openjdk ./gradlew selfTest assembleRelease
 ```
 
-builds every app and runs every self-test. One app is `:<app>:app` (and
+builds every active Gradle app and runs its self-tests. One app is `:<app>:app` (and
 `:<app>:core`), as in `./gradlew :source:core:selfTest :source:app:assembleRelease`.
 `settings.gradle` finds the modules itself: a directory's `app`, `core` and
-`ui` at `<dir>/android/<module>` or `<dir>/<module>`.
+`ui` at `<dir>/android/<module>` or `<dir>/<module>`. Retired source remains
+in place; `gradle/retired-apps.txt` excludes it from both Gradle and releases.
 
 - `gradle/app.gradle`: what every app shares (SDK levels, Java 8, lint,
   signing). An app's `build.gradle` applies it and adds only its namespace,
@@ -123,12 +122,16 @@ builds every app and runs every self-test. One app is `:<app>:app` (and
   are a plain `SelfTest` main class, `com.<app>.xp3.SelfTest`, run by
   `:core:selfTest`; there is no test framework.
 - `gradle/bundled.gradle`: bakes a deployment's login into an app as a
-  generated `Bundled` class (Canvas, Charge, Mail, Places, Source, Tablet). The files it reads are gitignored, and CI has none, so its APKs
-  carry no login.
+  generated `Bundled` class for apps that still use a private build-time
+  login. New apps use setup files. The release build refuses any APK with
+  nonempty generated `Bundled` constants.
 
 ## Shared code
 
-`common/` holds what more than one app uses. Use it rather than copying.
+`common/` is the source of truth for shared Java and Android utilities. Use
+it rather than copying. Wave vendors `common/{core,ui}` at `common/UPSTREAM`;
+from the Wave repo run `tools/sync-common.sh --check` to verify that snapshot.
+Edit shared code here first and sync Wave separately.
 
 - `common/core` (plain Java, `com.xp3.common`): `Json` (strict codec), `Http`
   (deadlines, bounded bodies, no redirects), `Disk` (whole-file reads and
@@ -170,9 +173,10 @@ The old `latest` assets and `manifest.json` (plus `versions.txt` and
 verified. HBSA is not built. Source and Tablet are on the legacy channel
 only until task 16 confirms private releases. AppDrawer stays because the
 stock tray cannot open from the programmable key. Updater and Installer
-get final immutable releases, but remain on the legacy channel for the
-transition; Wave replaces them. Give up Installer's device-owner role
-from Installer's status screen before uninstalling it.
+are retired: no Gradle targets or new release assets, including in `latest`.
+Their code and any already-versioned releases remain for reference. Wave's
+manifest replaces both. Give up Installer's device-owner role from its
+status screen before uninstalling it.
 
 The mod matrix builds and tests **unsigned** signing requests. Opt in to
 `release-mods` from master by dispatching with `signed-run-id`, the ID of
@@ -191,6 +195,5 @@ and `mods/tools/setup.sh` then `mods/<mod>/tools/{test,build}.sh`.
 - Every Gradle app is signed with the shared key in `signing/` (see
   `signing/signing.gradle`); never replace or regenerate it. The launcher has
   its own key in `launcher/signing/`.
-- Installs on the phone go through Installer (`installer/`), which installs
-  as the device owner because the XP3's own installer screen refuses apps not
-  signed by Sonim.
+- Installs on Wave-enabled phones are handled by Wave. Installer's old
+  device-owner flow is only kept in the archived source.

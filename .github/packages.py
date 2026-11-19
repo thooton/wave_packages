@@ -7,7 +7,8 @@ from pathlib import Path
 
 # Source and Tablet stay on the previous channel until task 16; never Wave here.
 PRIVATE_LEGACY = ['source', 'tablet']
-TERMINAL = {'installer', 'updater'}
+RETIRED = {line for line in map(str.strip, (Path(__file__).resolve().parents[1] /
+           'gradle/retired-apps.txt').read_text().splitlines()) if line and not line.startswith('#')}
 MODULES = ['mods/launcher', 'mods/messages', 'mods/music']
 
 
@@ -24,9 +25,9 @@ def matrix(kind):
     if kind == 'mod':
         paths = MODULES
     else:
-        paths = sorted(str(p.parent.parent) for p in Path('.').glob('*/wave/package.json'))
-    return [{'path': path, 'name': release_name(path), 'section': metadata(path)['section'],
-             'publish': path not in TERMINAL} for path in paths]
+        paths = sorted(str(p.parent.parent) for p in Path('.').glob('*/wave/package.json')
+                       if p.parent.parent.name not in RETIRED)
+    return [{'path': path, 'name': release_name(path), 'section': metadata(path)['section']} for path in paths]
 
 
 def release_name(path):
