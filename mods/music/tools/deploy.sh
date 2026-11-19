@@ -17,7 +17,7 @@ actual=$(adb shell getprop ro.build.fingerprint | tr -d '\r')
 STAGE=/data/local/tmp/$MODULE_ID
 cat > "$ROOT/build/module.prop" <<EOF
 id=$MODULE_ID
-name=Music Argon
+name=Music Improved
 version=dev
 versionCode=1
 author=local

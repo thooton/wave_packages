@@ -21,14 +21,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-public final class ArgonLibrary {
+public final class WaveLibrary {
     static final String ENABLED = "enabled";
     static final String FOLDERS = "folders";
 
-    private ArgonLibrary() {}
+    private WaveLibrary() {}
 
     static SharedPreferences prefs(Context context) {
-        return context.getSharedPreferences("argon_library", Context.MODE_PRIVATE);
+        // Migrate the whitelist from the previous release on first use.
+        return org.wave.mod.PreferenceMigration.open(context, "wave_library", "argon_library");
     }
 
     static Set<String> folders(SharedPreferences prefs) {
@@ -80,7 +81,7 @@ public final class ArgonLibrary {
         try {
             return context.getContentResolver().query(uri, projection, selection, args, sort);
         } catch (UnsupportedOperationException | SQLiteException e) {
-            Log.w("MusicArgon", "Could not read the playback queue", e);
+            Log.w("MusicWave", "Could not read the playback queue", e);
             return null;
         }
     }
@@ -129,7 +130,7 @@ public final class ArgonLibrary {
             }
             return filtered;
         } catch (RuntimeException e) {
-            Log.w("MusicArgon", "Could not filter library search", e);
+            Log.w("MusicWave", "Could not filter library search", e);
             return null;
         }
     }

@@ -1,8 +1,8 @@
-# Music Argon
+# Music Improved
 
 Read [the shared constraints](../AGENTS.md) for building, signing and testing.
 
-The whitelist is a Music-only preference (`argon_library`). Directory entries are paths relative
+The whitelist is a Music-only preference (`wave_library`). Directory entries are paths relative
 to mounted, removable, non-emulated volumes. MediaProvider on this firmware indexes removable
 volumes as `/storage/<UUID>`. The stock audio selection is ANDed with escaped directory-prefix
 conditions before the query runs, including the Songs tab's limited and unlimited queries.

@@ -1,0 +1,24 @@
+{
+  "id": "music_improved",
+  "type": "module",
+  "name": "Music Improved",
+  "summary": "Choose which microSD folders appear in Music",
+  "description": "Limit the stock Music library to folders you choose. This filters discovery, search and shuffle without deleting songs or rewriting playlists.",
+  "author": "thooton",
+  "homepage": "https://github.com/thooton/wave_packages/tree/master/mods/music",
+  "requires": {
+    "device": [
+      "XP3800"
+    ],
+    "sdk": 27,
+    "firmware": [
+      "Sonim/XP3832/XP3800:8.1.0/3A.0.0-01-8.1.0-11.17.00/1:user/release-keys"
+    ]
+  },
+  "depends": [],
+  "conflicts": [],
+  "replaces": [
+    "music_argon"
+  ],
+  "section": "system"
+}

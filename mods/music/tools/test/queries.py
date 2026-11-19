@@ -1,4 +1,4 @@
-"""Run Music Argon's WHERE clauses on the stock Oreo MediaProvider query shapes."""
+"""Run Music Improved's WHERE clauses on the stock Oreo MediaProvider query shapes."""
 import sqlite3
 import sys
 

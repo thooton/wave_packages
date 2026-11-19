@@ -1708,7 +1708,7 @@
 
     .prologue
     # FEAT(whitelist)
-    invoke-static {p1}, Lcom/android/music/ArgonSettings;->addMenu(Landroid/view/Menu;)V
+    invoke-static {p1}, Lcom/android/music/WaveSettings;->addMenu(Landroid/view/Menu;)V
 
     const/4 v2, 0x0
 
@@ -2252,11 +2252,11 @@
 
     .prologue
     # FEAT(whitelist)
-    invoke-static {p0, p1}, Lcom/android/music/ArgonSettings;->handleMenu(Landroid/app/Activity;Landroid/view/MenuItem;)Z
+    invoke-static {p0, p1}, Lcom/android/music/WaveSettings;->handleMenu(Landroid/app/Activity;Landroid/view/MenuItem;)Z
     move-result v0
-    if-eqz v0, :argon_menu_stock
+    if-eqz v0, :wave_menu_stock
     return v0
-    :argon_menu_stock
+    :wave_menu_stock
 
     .line 343
     invoke-interface {p1}, Landroid/view/MenuItem;->getItemId()I
@@ -2393,7 +2393,7 @@
     invoke-super {p0}, Landroid/app/ListActivity;->onResume()V
 
     # FEAT(whitelist)
-    invoke-static {p0}, Lcom/android/music/ArgonSettings;->onResume(Landroid/app/Activity;)V
+    invoke-static {p0}, Lcom/android/music/WaveSettings;->onResume(Landroid/app/Activity;)V
 
     .line 245
     invoke-static {p0}, Lcom/android/music/MusicUtils;->TelephonyIsInProgress(Landroid/content/Context;)Z

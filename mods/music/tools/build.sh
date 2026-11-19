@@ -14,8 +14,9 @@ for app in "${apps[@]}"; do
             javac -nowarn -Xlint:-options -source 8 -target 8 -cp "$ANDROID_JAR" -sourcepath "$A/java" -implicit:none -d "$B/stubs" \
                 $(find "$A/stubs" -name '*.java')
         fi
+        support=(); [[ $app != BMusic ]] || support+=("$SHARED/java/org/wave/mod/PreferenceMigration.java")
         javac -nowarn -Xlint:-options -source 8 -target 8 -cp "$ANDROID_JAR:$B/stubs" -d "$B/classes" \
-            $(find "$A/java" -name '*.java')
+            "${support[@]}" $(find "$A/java" -name '*.java')
         "$BT/d8" --release --min-api $MIN_API --lib "$ANDROID_JAR" --classpath "$B/stubs" \
             --output "$B/d8" $(find "$B/classes" -name '*.class')
         n=$((n + 1)); mv "$B/d8/classes.dex" "$B/dex/classes$n.dex"

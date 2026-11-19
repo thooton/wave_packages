@@ -18,12 +18,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.WeakHashMap;
 
-public final class ArgonSettings {
+public final class WaveSettings {
     private static final int MENU_SETTINGS = 0x415247;
     private static final WeakHashMap<Activity, Integer> OPEN_SCREENS = new WeakHashMap<>();
     private static int revision;
 
-    private ArgonSettings() {}
+    private WaveSettings() {}
 
     public static void addMenu(Menu menu) {
         menu.add(Menu.NONE, MENU_SETTINGS, 100, "Settings");
@@ -60,10 +60,10 @@ public final class ArgonSettings {
 
         Session(Activity activity) {
             this.activity = activity;
-            prefs = ArgonLibrary.prefs(activity);
-            folders = ArgonLibrary.folders(prefs);
+            prefs = WaveLibrary.prefs(activity);
+            folders = WaveLibrary.folders(prefs);
             originalFolders = new java.util.TreeSet<>(folders);
-            originalEnabled = enabled = prefs.getBoolean(ArgonLibrary.ENABLED, false);
+            originalEnabled = enabled = prefs.getBoolean(WaveLibrary.ENABLED, false);
         }
 
         void show() {
@@ -95,7 +95,7 @@ public final class ArgonSettings {
             new AlertDialog.Builder(activity).setTitle("microSD folders")
                     .setItems(labels.toArray(new String[0]), (dialog, item) -> {
                         if (item == 0) {
-                            List<String> roots = ArgonLibrary.cardRoots(activity);
+                            List<String> roots = WaveLibrary.cardRoots(activity);
                             if (roots.isEmpty()) {
                                 Toast.makeText(activity, "No removable microSD card is mounted", Toast.LENGTH_SHORT).show();
                                 showFolders();
@@ -165,7 +165,7 @@ public final class ArgonSettings {
 
         private void apply() {
             if (originalEnabled == enabled && originalFolders.equals(folders)) return;
-            prefs.edit().putBoolean(ArgonLibrary.ENABLED, enabled).putStringSet(ArgonLibrary.FOLDERS, folders).apply();
+            prefs.edit().putBoolean(WaveLibrary.ENABLED, enabled).putStringSet(WaveLibrary.FOLDERS, folders).apply();
             if (!enabled && !originalEnabled) return;
             // The service caches the party-shuffle pool. Stop adding from that old pool.
             // Keep the current track and any songs already in the queue.

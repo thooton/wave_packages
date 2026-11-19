@@ -5152,7 +5152,7 @@
     move-object v2, p2
 
     # FEAT(whitelist)
-    invoke-static {p0, v1, p3}, Lcom/android/music/ArgonLibrary;->selection(Landroid/content/Context;Landroid/net/Uri;Ljava/lang/String;)Ljava/lang/String;
+    invoke-static {p0, v1, p3}, Lcom/android/music/WaveLibrary;->selection(Landroid/content/Context;Landroid/net/Uri;Ljava/lang/String;)Ljava/lang/String;
     move-result-object v3
 
     move-object v4, p4

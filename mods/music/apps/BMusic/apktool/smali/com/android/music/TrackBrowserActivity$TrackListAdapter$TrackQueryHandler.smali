@@ -52,7 +52,7 @@
     iget-object v0, p0, Lcom/android/music/TrackBrowserActivity$TrackListAdapter$TrackQueryHandler;->this$1:Lcom/android/music/TrackBrowserActivity$TrackListAdapter;
     invoke-static {v0}, Lcom/android/music/TrackBrowserActivity$TrackListAdapter;->-get0(Lcom/android/music/TrackBrowserActivity$TrackListAdapter;)Lcom/android/music/TrackBrowserActivity;
     move-result-object v0
-    invoke-static {v0, p1, p3}, Lcom/android/music/ArgonLibrary;->selection(Landroid/content/Context;Landroid/net/Uri;Ljava/lang/String;)Ljava/lang/String;
+    invoke-static {v0, p1, p3}, Lcom/android/music/WaveLibrary;->selection(Landroid/content/Context;Landroid/net/Uri;Ljava/lang/String;)Ljava/lang/String;
     move-result-object p3
 
     .line 1622

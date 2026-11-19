@@ -1,4 +1,4 @@
-# Music Argon
+# Music Improved
 
 Sonim XP3800's stock Music app (`com.android.music`) with an optional folder whitelist.
 

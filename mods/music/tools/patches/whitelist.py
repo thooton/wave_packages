@@ -5,8 +5,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PKG = ROOT / 'apps/BMusic/apktool/smali/com/android/music'
-LIB = 'Lcom/android/music/ArgonLibrary;'
-UI = 'Lcom/android/music/ArgonSettings;'
+LIB = 'Lcom/android/music/WaveLibrary;'
+UI = 'Lcom/android/music/WaveSettings;'
 CONTEXT = 'Landroid/content/Context;'
 ACTIVITY = 'Landroid/app/Activity;'
 CURSOR = 'Landroid/database/Cursor;'
@@ -47,9 +47,9 @@ for cls in browsers:
     method_patch(cls, 'onCreateOptionsMenu', create)
     method_patch(cls, 'onOptionsItemSelected', lambda text: prologue(text, f'''    invoke-static {{p0, p1}}, {UI}->handleMenu({ACTIVITY}Landroid/view/MenuItem;)Z
     move-result v0
-    if-eqz v0, :argon_menu_stock
+    if-eqz v0, :wave_menu_stock
     return v0
-    :argon_menu_stock
+    :wave_menu_stock
 '''))
     # Stock swallows KEYCODE_MENU when there are no songs. Settings must still be reachable.
     def key(text):
