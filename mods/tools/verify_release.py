@@ -9,7 +9,9 @@ signer, stock, request, candidate = map(Path, sys.argv[1:])
 
 def certificates(apk):
     result = subprocess.run([signer, 'verify', '--min-sdk-version', '27', '--max-sdk-version', '27',
-                             '--print-certs', apk], check=True, capture_output=True, text=True)
+                             '--print-certs', apk], capture_output=True, text=True)
+    if result.returncode:
+        sys.exit(f'{apk}: APK signature did not verify for API 27: {result.stderr.strip()}')
     hashes = re.findall(r'^Signer #\d+ certificate SHA-256 digest: ([a-fA-F0-9]{64})$', result.stdout, re.M)
     if not hashes:
         sys.exit(f'{apk}: missing signer')
