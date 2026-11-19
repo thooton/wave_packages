@@ -11,6 +11,12 @@ KEYSTORE="$PROJECT_DIR/signing/app-drawer.p12"
 KEY_ALIAS="appdrawer"
 KEY_PASSWORD="appdrawer"
 
+# The shipped id is com.custom.appdrawer. APPDRAWER_APPLICATION_ID builds a copy
+# under another id (a side-by-side test install); the code stays in its own
+# package, so the activity is named in full and R is generated for that package.
+APPLICATION_ID="${APPDRAWER_APPLICATION_ID:-com.custom.appdrawer}"
+OUT_APK="${APPDRAWER_OUT:-$PROJECT_DIR/AppDrawer.apk}"
+
 trap 'rm -rf "$BUILD_DIR"' EXIT
 
 for tool in aapt javac zip "$TOOLS_DIR/d8" "$TOOLS_DIR/zipalign" "$TOOLS_DIR/apksigner"; do
@@ -35,9 +41,12 @@ if [[ ! -f "$KEYSTORE" ]]; then
         -dname "CN=App Drawer, OU=Local, O=Custom, C=US"
 fi
 
-aapt package -f -m \
+sed "s/package=\"com.custom.appdrawer\"/package=\"$APPLICATION_ID\"/" \
+    "$PROJECT_DIR/AndroidManifest.xml" > "$BUILD_DIR/AndroidManifest.xml"
+
+aapt package -f -m --custom-package com.custom.appdrawer \
     -J "$BUILD_DIR/gen" \
-    -M "$PROJECT_DIR/AndroidManifest.xml" \
+    -M "$BUILD_DIR/AndroidManifest.xml" \
     -S "$PROJECT_DIR/res" \
     -I "$ANDROID_JAR" \
     -F "$BUILD_DIR/resources.apk"
@@ -68,8 +77,8 @@ zip -q -j "$BUILD_DIR/AppDrawer-unsigned.apk" "$BUILD_DIR/dex/classes.dex"
     --ks-key-alias "$KEY_ALIAS" \
     --ks-pass "pass:$KEY_PASSWORD" \
     --key-pass "pass:$KEY_PASSWORD" \
-    --out "$PROJECT_DIR/AppDrawer.apk" \
+    --out "$OUT_APK" \
     "$BUILD_DIR/AppDrawer-aligned.apk"
 
-"$TOOLS_DIR/apksigner" verify --verbose "$PROJECT_DIR/AppDrawer.apk"
-echo "Built $PROJECT_DIR/AppDrawer.apk"
+"$TOOLS_DIR/apksigner" verify --verbose "$OUT_APK"
+echo "Built $OUT_APK"

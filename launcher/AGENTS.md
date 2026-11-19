@@ -45,7 +45,10 @@ The script expects `aapt`, `javac`, `zip`, `keytool`, Android platform 35, and
 Android build-tools 35.0.1. It honors `ANDROID_SDK_ROOT` (then `ANDROID_HOME`)
 and otherwise uses `/opt/android-sdk`. It compiles Java 8 source while keeping
 the app's minimum and target SDK at API 27. A successful build ends by running
-`apksigner verify --verbose` and writes `AppDrawer.apk`.
+`apksigner verify --verbose` and writes `AppDrawer.apk`. For a side-by-side test copy,
+`APPDRAWER_APPLICATION_ID=com.custom.appdrawer.qa APPDRAWER_OUT=/path/qa.apk ./build.sh`
+changes only the installed id (the manifest names the activity in full, and the code stays in
+`com.custom.appdrawer`); never ship that build.
 
 There is no automated test suite. For code or resource changes, run
 `./build.sh` at minimum. For interaction changes, also install with

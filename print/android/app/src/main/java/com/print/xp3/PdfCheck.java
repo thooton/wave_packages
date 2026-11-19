@@ -21,7 +21,11 @@ import java.io.IOException;
  */
 public final class PdfCheck extends ContentProvider {
 
-    static final Uri URI = Uri.parse("content://com.print.xp3.check");
+    /** The provider's authority is the manifest's ${applicationId}.check, so a copy under another id has its own. */
+    static Uri uri(android.content.Context context) {
+        return Uri.parse("content://" + context.getPackageName() + ".check");
+    }
+
     static final String PAGES = "pages";
 
     /** A file failed to open here: pdfium can't be trusted in this process any more. */

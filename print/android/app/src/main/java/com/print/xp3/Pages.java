@@ -98,7 +98,7 @@ final class Pages {
     private static int check(File file) {
         for (int attempt = 0; attempt < 5; attempt++) {
             if (attempt > 0) android.os.SystemClock.sleep(50);
-            ContentProviderClient client = context.getContentResolver().acquireUnstableContentProviderClient(PdfCheck.URI);
+            ContentProviderClient client = context.getContentResolver().acquireUnstableContentProviderClient(PdfCheck.uri(context));
             if (client == null) break;
             try {
                 Bundle answer = client.call(PdfCheck.PAGES, file.getPath(), null);
