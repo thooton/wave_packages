@@ -6,6 +6,21 @@ as stock Android with a coloured bar. The pieces live in `common/ui`
 (`Family`, `res/drawable/family_*`, `res/values/family*.xml`); this is why
 they look the way they do. Charge and Books keep their own looks.
 
+## Repository boundaries
+
+- [wave_packages](https://github.com/thooton/wave_packages), this repo: app
+  source and `SPEC.md` files, canonical `common/`, system overlays in `mods/`,
+  package metadata and signed releases when signing is available. Start with
+  [AGENTS.md](AGENTS.md) for build commands and [mods/AGENTS.md](mods/AGENTS.md)
+  for the stock-system mods.
+- [wave](https://github.com/thooton/wave): the on-phone package manager, site,
+  [package source format](https://github.com/thooton/wave/blob/master/docs/source-format.md),
+  and the `wavesrc` CLI under `tools/wavesrc/`, wrapped by `publish/` and `lint/`.
+  It vendors the shared modules at the commit recorded in `common/UPSTREAM`.
+- [wave_repository](https://github.com/thooton/wave_repository): the default
+  source, an index of generated manifests and icons pointing to release
+  assets, not an APK storage repo. Publishing CI writes package entries.
+
 ## What Charge and Books get right
 
 - A dark, quiet frame. The header is a deep colour and the status bar is the

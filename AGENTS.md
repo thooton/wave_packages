@@ -1,7 +1,9 @@
 # AGENTS.md
 
-Small, dependency-free Android apps for the Sonim XP3, one per directory. Each
-app has its own `AGENTS.md`; read it before changing that app.
+This is `thooton/wave_packages`: small Android apps for the Sonim XP3, shared
+app code, and the stock-system mods under `mods/`. Each app or mod has its own
+`AGENTS.md`; read it before changing it. See [the repo map in DESIGN.md](DESIGN.md)
+for the Wave app, publishing tool, and package source.
 
 ## No assistant attribution
 
@@ -22,8 +24,9 @@ raise its version in the same commit:
 - Gradle apps: `versionName` **and** `versionCode` in
   `<app>/android/app/build.gradle` (`dictionary/app/build.gradle` for
   Dictionary).
-- The launcher: `android:versionName` **and** `android:versionCode` in
-  `launcher/AndroidManifest.xml`.
+- AppDrawer: `android:versionName` **and** `android:versionCode` in
+  `launcher/AndroidManifest.xml`. This is not the stock Launcher Improved mod.
+- System mods: `version` **and** `versionCode` in `mods/<mod>/module/module.prop`.
 
 `versionName` is `major.minor.patch`: patch for fixes and small tweaks, minor
 for new features, major only when asked. `versionCode` goes up by one each
@@ -100,18 +103,27 @@ Mail avoids the problem by falling back to its own `Android/data` folder.
 
 ## Building
 
-Every active Gradle app and the shared code are in one build at the root, run
-with JDK 21:
+From this repo's root, use JDK 21 and an Android SDK with `platforms;android-35`
+and `build-tools;35.0.1`. For example, on this Linux machine:
 
 ```bash
-JAVA_HOME=/usr/lib/jvm/java-21-openjdk ./gradlew selfTest assembleRelease
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
+export PATH="$JAVA_HOME/bin:$PATH"
+export ANDROID_HOME=/opt/android-sdk
+./gradlew :books:core:selfTest :books:app:assembleRelease
 ```
 
-builds every active Gradle app and runs its self-tests. One app is `:<app>:app` (and
-`:<app>:core`), as in `./gradlew :source:core:selfTest :source:app:assembleRelease`.
-`settings.gradle` finds the modules itself: a directory's `app`, `core` and
-`ui` at `<dir>/android/<module>` or `<dir>/<module>`. Retired source remains
-in place; `gradle/retired-apps.txt` excludes it from both Gradle and releases.
+Books' signed APK is at `books/android/app/build/outputs/apk/release/app-release.apk`.
+Other Gradle apps use the same `:<app>:app:assembleRelease` target and output
+layout (Dictionary lives in `dictionary/app`, and apps with no `:core` omit
+that test target). `./gradlew selfTest assembleRelease` builds and tests all
+active Gradle apps. `gradle/retired-apps.txt` excludes archived source from
+Gradle and releases without deleting it.
+
+AppDrawer uses `launcher/build.sh`, which needs `aapt` on `PATH` from the
+same SDK's build-tools. It writes `launcher/AppDrawer.apk`. Do not confuse
+it with Launcher Improved. The mods do not use Gradle; use the commands in
+[mods/AGENTS.md](mods/AGENTS.md).
 
 - `gradle/app.gradle`: what every app shares (SDK levels, Java 8, lint,
   signing). An app's `build.gradle` applies it and adds only its namespace,
@@ -135,8 +147,8 @@ Edit shared code here first and sync Wave separately.
 
 - `common/core` (plain Java, `com.xp3.common`): `Json` (strict codec), `Http`
   (deadlines, bounded bodies, no redirects), `Disk` (whole-file reads and
-  atomic writes), `Login` (the command center address and delta token, as
-  Source, Places and Mail sign in); and, as test fixtures, `Check` (the test
+  atomic writes), `Login` (the command center address and token), `Config`
+  and `SetupSpec` (setup-file validation); and, as test fixtures, `Check` (the test
   harness) and `TestServer` (a loopback HTTP server).
 - `common/ui` (Android, `com.xp3.common.ui`): `BaseActivity` (`dp`, `color`,
   `toast`, `alert`, `vertical`, `text`, `listDialog`), `Ui` (workers, `fill`,
@@ -144,8 +156,9 @@ Edit shared code here first and sync Wave separately.
   go), `CardGrant` (Android's grant for the whole card, which Android 8.1
   wants before an app writes there, and sometimes before it reads what
   another app put there), `Tabs` (tab bar with d-pad cycling),
-  `SelectableAdapter` (rows that paint their own highlight), `Markdown`, and
-  the shared tab, focus and Markdown drawables. An app's own colors and
+  `SelectableAdapter` (rows that paint their own highlight), `Markdown`,
+  `Setup` and `SetupActivity` (see [common/SETUP.md](common/SETUP.md)), and the
+  shared tab, focus and Markdown drawables. An app's own colors and
   dimens override the defaults in its `res/values`. `Family` and the
   `family_*` resources are the look the light apps share; see `DESIGN.md`
   before restyling one.
@@ -160,16 +173,19 @@ Edit shared code here first and sync Wave separately.
 
 Push a version bump to master, rather than uploading an APK by hand. Follow
 all app `SPEC.md` behavior and version rules above. Each published package
-has fixed `wave/package.json` metadata and a 96×96 launcher icon. The Actions
-workflow builds APKs without local credentials, verifies their signatures
-and generated login constants, and creates one immutable release per package
-version, then mirrors the manifest and icon into `thooton/wave_repository`.
-A released asset is never overwritten. A source change without a version
-bump fails CI. Use the `retry-publish` dispatch input after a release was
-uploaded but mirroring failed; it uses the original asset bytes.
+has fixed `wave/package.json` metadata and a 96×96 launcher icon.
+[Build and publish XP3800 packages](.github/workflows/build-apks.yml) runs
+host tests and builds on PRs without publishing. On master it builds APKs
+without local credentials, verifies signatures and generated login constants,
+creates an immutable `<name>-<version>` release for each new version, and uses
+`thooton/wave/publish@v1` to mirror its manifest and icon into
+`thooton/wave_repository`. The mirror needs the `WAVE_REPOSITORY_TOKEN` Actions
+secret. A released asset is never overwritten. A source change without a
+version bump fails CI. After a successful immutable upload but failed mirror,
+use the `retry-publish` dispatch input to publish the original asset bytes.
 
-The old `latest` assets and `manifest.json` (plus `versions.txt` and
-`packages.txt`) stay until the legacy-device migration in Wave task 17 is
+The legacy `latest` release is the rolling exception to immutable versioned
+assets. Its `manifest.json` (plus `versions.txt` and `packages.txt`) stays until the legacy-device migration in Wave task 17 is
 verified. HBSA is not built. Source and Tablet are on the legacy channel
 only until task 16 confirms private releases. AppDrawer stays because the
 stock tray cannot open from the programmable key. Updater and Installer

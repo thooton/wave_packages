@@ -1,30 +1,74 @@
 # XP3800 mods
 
-Work in `messages/`, `launcher/` or `music/`. Each `apps/<App>` has an
-apktool smali tree, optional Java 8 code and compile-only stock declarations
-in `stubs/`. Change small smali hooks, keep the logic in Java. Check the
-corresponding `stock-<mod>` tag before changing stock symbols. The shared
-`tools/` directory is separate from each mod's entry points and tests.
-`firmware/system` holds only the pinned five APKs and build.prop, not a
-whole phone backup. Never add personal data or device dumps.
+This is not the Wave app or the standalone AppDrawer. These are overlays for
+stock system apps on the XP3800 (Android 8.1/API 27):
 
-Run `mods/tools/setup.sh` once (JDK 21, apktool 2.11.0, Android platform 35,
-build-tools 35.0.1, Python 3, zip/unzip; `--jadx` adds optional JADX 1.5.1).
-From the mod directory run `tools/build.sh` and `tools/test.sh`. The build
-writes **unsigned signing requests** to `build/<App>/unsigned.apk`, not
-installable modules. It changes dex only; keep the manifest and resources
-byte-identical. Android API 27, no new permissions or shared UIDs.
+| Mod | Stock APKs | Baseline tag |
+| --- | --- | --- |
+| Messages Improved | BMms, TelephonyProvider, ContactsProvider | `stock-messages` |
+| Launcher Improved | SonimLauncher | `stock-launcher` |
+| Music Improved | BMusic | `stock-music` |
 
-Earlier builds substituted DEX and retained stale stock signer records; that
-was not an OEM signature on the modified code. The old helper is not imported.
-These privileged stock apps require genuine OEM signing. The release
-builder never takes private keys. After an authorized signer returns the
-signed APKs named `<App>.apk`, set `OEM_SIGNED_APKS` to their directory and
-run `tools/package.sh`. Every APK must pass Android's signature verification,
-match the signer of its stock counterpart, and contain exactly the locally
-built payload. Never distribute or install an unsigned signing request.
-`tools/deploy.sh` requires the same verified inputs. Device tests require a
-reserved, recoverable test phone: no owner-device install or reboot here.
+Each mod's `apps/<App>/apktool/` is the smali source tree; `java/` adds
+Java 8 code and `stubs/` holds compile-only declarations. Keep changes in
+small smali hooks and Java. Do not change stock manifests, resources,
+permissions or shared UIDs. `firmware/system/` contains the five pinned APKs
+and `build.prop`, not a whole phone backup. The firmware fingerprint is
+advisory for module compatibility, not a substitute for device testing.
+Never add personal data or device dumps. Compare with the corresponding
+stock tag, e.g. `git diff stock-messages -- mods/messages/apps/`.
 
-The Gradle build intentionally does not discover mods. SQLite and native
-code were not in the committed upstream and are not published.
+## Build and test
+
+Install JDK 21 and SDK platform/build-tools listed in [../AGENTS.md](../AGENTS.md).
+The shared setup needs Python 3, zip/unzip and curl; it installs apktool
+2.11.0 if necessary. Use `--jadx` for the optional read-only Java reference
+(decompile with the mod's `tools/decompile.sh`). No Gradle, NDK or adb is
+needed for the host builds. From the repo root:
+
+```bash
+mods/tools/setup.sh
+mods/tools/test.sh
+mods/messages/tools/test.sh
+mods/messages/tools/build.sh
+```
+
+Swap `messages` for `launcher` or `music` to work on those mods. To build a
+single target, pass its directory name such as `BMms` to `tools/build.sh`.
+The mod build writes `.dex` files and `mods/<mod>/build/<App>/unsigned.apk`,
+an **unsigned signing request**, not an installable APK. The host checks
+catch duplicate classes, unresolved hook targets and some behavior
+regressions; they are not tests on hardware.
+
+## OEM signing and release
+
+The patched system APKs keep their stock package IDs and shared UIDs. They
+need genuine signatures from the OEM keys for the corresponding original
+APKs, not the app key in `signing/`. Earlier builds substituted DEX and left
+stale signer records, which did not sign the modified code. That helper was
+not imported; the build never takes or distributes private keys.
+
+If an authorized signer returns **all** signed APKs for a mod as `<App>.apk`
+in a directory, package them from the repo root as follows:
+
+```bash
+OEM_SIGNED_APKS=/path/to/signed/apks mods/messages/tools/package.sh
+```
+
+The packager checks API 27 signatures, the signer identities against the
+pinned originals, exact requested non-signature contents and alignment.
+It writes `mods/messages/out/messages-improved-<version>.zip`. Bump both
+`version` and `versionCode` in that mod's `module/module.prop`. Its `wave/`
+metadata records package identity, compatibility and legacy ID replacements.
+Don't install or release unsigned requests. `tools/deploy.sh` also requires
+verified inputs; only use a reserved, recoverable test device.
+
+Pull requests and pushes build and test unsigned requests in the [package
+workflow](../.github/workflows/build-apks.yml). An authorized maintainer can
+supply signed artifacts in a separate workflow run and dispatch `release-mods`
+as described in [../AGENTS.md](../AGENTS.md). Only then can CI publish the ZIP
+and refresh the package entry in `wave_repository`. The Wave-side publishing
+Action is [`thooton/wave/publish@v1`](https://github.com/thooton/wave/tree/master/publish).
+
+SQLite and native code were not in the upstream committed history and are
+not shipped. See each mod's own `AGENTS.md` for its code and tests.
