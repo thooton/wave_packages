@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- The command center, which keeps the accounts. -->
+    <!-- The command center, when the app is set up to keep the accounts on
+         one; and each service's logo. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- The camera is the phone's own camera app, asked for a photo; no
@@ -39,5 +40,11 @@
             android:authorities="com.authenticator.xp3.photos"
             android:exported="false"
             android:grantUriPermissions="true" />
+        <!-- The shared setup screen (common/ui): on this phone only, or a
+             command center, imported from a setup file. -->
+        <activity
+            android:name="com.xp3.common.ui.SetupActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
+            android:screenOrientation="portrait" />
     </application>
 </manifest>

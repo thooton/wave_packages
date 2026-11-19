@@ -37,8 +37,9 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.xp3.common.Disk;
-import com.xp3.common.Login;
+import com.xp3.common.Config;
 import com.xp3.common.ui.BaseActivity;
+import com.xp3.common.ui.Setup;
 import com.xp3.common.ui.Ui;
 
 import java.io.File;
@@ -55,9 +56,11 @@ import java.util.concurrent.ExecutorService;
  * for each, the service's logo inside a ring that runs down with the code's
  * time, the service and account, and the code.
  *
- * The accounts live on the command center. The last list it sent is kept in
- * the app's files so codes show at once and offline, and is synced on
- * launch and whenever the app comes back after a while. Menu adds an account
+ * The accounts live where the app was set up to keep them (common/ui's
+ * Setup): on the phone alone (`LocalVault`), or on a command center
+ * (`Vault`), whose last list is kept in the app's files so codes show at
+ * once and offline, and is synced on launch and whenever the app comes back
+ * after a while. Menu adds an account
  * by camera, by picture or by hand, and edits or deletes the one under the
  * d-pad; OK copies its code. Each service's logo is fetched once and kept
  * (`Logos`) for as long as an account is that service.
@@ -65,7 +68,10 @@ import java.util.concurrent.ExecutorService;
 public final class MainActivity extends BaseActivity {
 
     private static final String PREFS = "authenticator";
+    /** The command center's last list. */
     private static final String CACHE = "accounts.json";
+    /** The accounts kept on the phone alone; never touched by a command center. */
+    private static final String LOCAL = "local-accounts.json";
     private static final long STALE_MS = 10 * 60 * 1000;
     private static final long TICK_MS = 250;
 
@@ -86,7 +92,9 @@ public final class MainActivity extends BaseActivity {
     /** Made in onCreate: before it the activity has no context to read files or assets with. */
     private Logos logos;
 
-    private Login login = Login.blank();
+    /** What the app was set up with, and the stamp it had then. */
+    private Config config;
+    private String setupStamp;
     private List<Account> accounts = new ArrayList<>();
     private long synced;
     private int busy;
@@ -107,6 +115,12 @@ public final class MainActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        config = loadSetup(prefs());
+        if (config == null) {
+            Setup.require(this);
+            return;
+        }
+        setupStamp = Setup.stamp(this);
         logos = new Logos(this, () -> {
             if (adapter != null) adapter.notifyDataSetChanged();
         });
@@ -139,10 +153,8 @@ public final class MainActivity extends BaseActivity {
         setContentView(root);
 
         accounts = readCache();
-        login = loadLogin(prefs());
         show();
-        if (login.ready()) sync();
-        else askLogin();
+        sync();
     }
 
     @Override
@@ -150,7 +162,12 @@ public final class MainActivity extends BaseActivity {
         super.onResume();
         handler.removeCallbacks(tick);
         tick();
-        if (login.ready() && busy == 0 && synced > 0 && System.currentTimeMillis() - synced > STALE_MS) sync();
+        // Imported again or signed out on the setup screen: start over with it.
+        if (!setupStamp.equals(Setup.stamp(this))) {
+            recreate();
+            return;
+        }
+        if (busy == 0 && synced > 0 && System.currentTimeMillis() - synced > STALE_MS) sync();
     }
 
     @Override
@@ -184,7 +201,7 @@ public final class MainActivity extends BaseActivity {
             Ui.fill(content, empty);
             return;
         }
-        TextView title = text(login.ready() ? "No accounts" : "No command center", 14, color(R.color.ink));
+        TextView title = text("No accounts", 14, color(R.color.ink));
         title.setTypeface(Look.medium(this));
         title.setGravity(Gravity.CENTER);
         empty.addView(title);
@@ -426,7 +443,7 @@ public final class MainActivity extends BaseActivity {
 
     private void menu() {
         // The popup hangs from the top: from a card lower down, or from the +,
-        // it would run off the bottom and hide Delete and Command center.
+        // it would run off the bottom and hide Delete and Setup.
         PopupMenu popup = new PopupMenu(this, content, Gravity.END);
         Menu menu = popup.getMenu();
         menu.add(0, ADD_CAMERA, 0, "Add by camera");
@@ -435,7 +452,7 @@ public final class MainActivity extends BaseActivity {
         final Account account = selected();
         if (account != null) menu.add(0, EDIT, 3, "Edit");
         if (account != null) menu.add(0, DELETE, 4, "Delete");
-        if (!login.ready() || account == null || error != null) menu.add(0, CENTER, 5, "Command center");
+        if (account == null || error != null) menu.add(0, CENTER, 5, "Setup\u2026");
         popup.setOnMenuItemClickListener(item -> {
             switch (item.getItemId()) {
                 case ADD_CAMERA: camera(); return true;
@@ -443,7 +460,7 @@ public final class MainActivity extends BaseActivity {
                 case ADD_MANUAL: startActivityForResult(new Intent(this, EntryActivity.class), ENTRY); return true;
                 case EDIT: startActivityForResult(editing(account), ENTRY); return true;
                 case DELETE: confirmDelete(account); return true;
-                case CENTER: askLogin(); return true;
+                case CENTER: startActivity(Setup.intent(this)); return true;
                 default: return false;
             }
         });
@@ -553,7 +570,7 @@ public final class MainActivity extends BaseActivity {
         }
     }
 
-    /** The entry form again, as it was typed, when the command center didn't take it. */
+    /** The entry form again, as it was typed, when it wasn't taken. */
     private void reopen() {
         Intent typed = unsaved;
         unsaved = null;
@@ -599,18 +616,17 @@ public final class MainActivity extends BaseActivity {
         });
     }
 
-    // The command center.
+    // The accounts' backend.
 
     private void sync() {
-        if (!login.ready()) return;
         busy++;
         show();
-        final Login using = login;
+        final Store using = store();
         worker.execute(() -> {
             List<Account> fresh = null;
             String failure = null;
             try {
-                fresh = new Vault(using).list();
+                fresh = using.list();
                 writeCache(fresh);
             } catch (Exception e) {
                 failure = message(e);
@@ -635,20 +651,16 @@ public final class MainActivity extends BaseActivity {
     }
 
     private void add(final List<Account> found) {
-        if (!login.ready()) {
-            askLogin();
-            return;
-        }
         final Set<String> had = new HashSet<>();
         for (Account account : accounts) had.add(account.secret);
         busy++;
         show();
-        final Login using = login;
+        final Store using = store();
         worker.execute(() -> {
             List<Account> fresh = null;
             String failure = null;
             try {
-                fresh = new Vault(using).add(found);
+                fresh = using.add(found);
                 writeCache(fresh);
             } catch (Exception e) {
                 failure = message(e);
@@ -679,18 +691,14 @@ public final class MainActivity extends BaseActivity {
     }
 
     private void edit(final Account changed) {
-        if (!login.ready()) {
-            askLogin();
-            return;
-        }
         busy++;
         show();
-        final Login using = login;
+        final Store using = store();
         worker.execute(() -> {
             List<Account> fresh = null;
             String failure = null;
             try {
-                fresh = new Vault(using).update(changed);
+                fresh = using.update(changed);
                 writeCache(fresh);
             } catch (Exception e) {
                 failure = message(e);
@@ -732,12 +740,12 @@ public final class MainActivity extends BaseActivity {
         final int at = list.getSelectedItemPosition();
         busy++;
         show();
-        final Login using = login;
+        final Store using = store();
         worker.execute(() -> {
             List<Account> fresh = null;
             String failure = null;
             try {
-                fresh = new Vault(using).remove(account.id);
+                fresh = using.remove(account.id);
                 writeCache(fresh);
             } catch (Exception e) {
                 failure = message(e);
@@ -774,14 +782,17 @@ public final class MainActivity extends BaseActivity {
 
     private List<Account> readCache() {
         try {
+            if (!config.isDelta()) return new LocalVault(new File(getFilesDir(), LOCAL)).list();
             String json = Disk.read(new File(getFilesDir(), CACHE), 4 << 20);
             return json == null ? new ArrayList<>() : Vault.read(json);
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | IOException e) {
             return new ArrayList<>();
         }
     }
 
+    /** The command center's last list; on the phone alone, the store is the list. */
     private void writeCache(List<Account> list) throws IOException {
+        if (!config.isDelta()) return;
         Disk.write(new File(getFilesDir(), CACHE), Vault.write(list), true);
     }
 
@@ -790,85 +801,19 @@ public final class MainActivity extends BaseActivity {
     }
 
     /**
-     * The bundled login is adopted once per build that carries a new one;
-     * otherwise whatever was saved (typed in from the menu) is kept.
+     * The setup, or null. A command center login an older version saved (it
+     * used to be baked into the APK) becomes a Delta setup, once.
      */
-    private Login loadLogin(SharedPreferences prefs) {
-        String revision = Bundled.REVISION;
-        if (revision.length() > 0 && !revision.equals(prefs.getString("bundled", ""))) {
-            Login bundled;
-            try {
-                bundled = Login.of(Bundled.SERVER, Bundled.TOKEN);
-            } catch (IllegalArgumentException e) {
-                bundled = Login.blank();
-            }
-            if (bundled.ready()) {
-                prefs.edit().putString("login", bundled.toJson()).putString("bundled", revision).apply();
-                return bundled;
-            }
+    private Config loadSetup(SharedPreferences prefs) {
+        Config found = Setup.migrateDelta(this, prefs.getString("login", ""));
+        if (prefs.contains("login") || prefs.contains("bundled")) {
+            prefs.edit().remove("login").remove("bundled").apply();
         }
-        return Login.parse(prefs.getString("login", ""));
+        return found;
     }
 
-    /** The fallback for a build without a bundled login. */
-    private void askLogin() {
-        LinearLayout box = vertical();
-        int pad = dp(16);
-        box.setPadding(pad, pad / 2, pad, 0);
-        final EditText server = new EditText(this);
-        server.setHint("https://…");
-        server.setSingleLine(true);
-        server.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        server.setText(login.server() == null ? "" : login.server());
-        final EditText token = new EditText(this);
-        token.setHint(login.ready() ? "••••••••" : "Token");
-        token.setSingleLine(true);
-        token.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        box.addView(server);
-        box.addView(token);
-        // Taken by Save; otherwise what the entry form gave back goes back to it.
-        final boolean[] saved = {false};
-        AlertDialog dialog = new AlertDialog.Builder(this)
-            .setTitle("Command center")
-            .setView(box)
-            .setPositiveButton("Save", (shown, which) -> {
-                String typed = token.getText().toString();
-                if (typed.trim().length() == 0 && login.ready()) typed = login.token();
-                try {
-                    Login next = Login.of(server.getText().toString(), typed);
-                    if (!next.ready()) throw new IllegalArgumentException("Both the address and the token are needed");
-                    login = next;
-                    prefs().edit().putString("login", next.toJson()).apply();
-                    toast("Saved: " + next.host());
-                    saved[0] = true;
-                    sync();
-                    if (unsaved != null) entered();
-                } catch (IllegalArgumentException e) {
-                    toast(e.getMessage());
-                }
-            })
-            .setNegativeButton("Cancel", null)
-            .setOnDismissListener(gone -> {
-                if (!saved[0]) reopen();
-            })
-            .show();
-        // A single-line field keeps Up and Down to itself; these go between
-        // the fields and on to the buttons.
-        server.setOnKeyListener((view, keyCode, event) -> {
-            if (keyCode != KeyEvent.KEYCODE_DPAD_DOWN) return false;
-            if (event.getAction() == KeyEvent.ACTION_DOWN) token.requestFocus();
-            return true;
-        });
-        token.setOnKeyListener((view, keyCode, event) -> {
-            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                if (event.getAction() == KeyEvent.ACTION_DOWN) server.requestFocus();
-                return true;
-            }
-            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                if (event.getAction() == KeyEvent.ACTION_DOWN) dialog.getButton(AlertDialog.BUTTON_POSITIVE).requestFocus();
-                return true;
-            }
-            return false;
-        });
+    /** Where the accounts are kept, as set up. */
+    private Store store() {
+        return config.isDelta() ? new Vault(config.delta()) : new LocalVault(new File(getFilesDir(), LOCAL));
     }
 }

@@ -5,9 +5,13 @@ white pill with the service's logo inside a ring that runs down as the code's
 time passes, the service and the account, and the six-digit code. Nothing
 else is on the screen.
 
-The accounts are kept on the Delta command center, not only on the phone,
-so a lost or reset phone loses none of them. The phone keeps a copy, so the
-codes show straight away and without a connection.
+On first launch, choose where the accounts are kept: **On this phone
+only** (nothing to set up; back them up with `adb backup`), or on a Delta
+command center, so a lost or reset phone loses none of them: import a
+setup file from the Wave site (copy `wave-setup-authenticator.json` to
+`Android/data/com.authenticator.xp3/files` and choose Import a command
+center). With a command center the phone keeps a copy, so the codes show
+straight away and without a connection.
 
 | Key | |
 | --- | --- |

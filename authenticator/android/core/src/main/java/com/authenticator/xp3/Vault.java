@@ -16,7 +16,7 @@ import java.util.Map;
  * stands there, which the app keeps as its copy for when it is offline, in the
  * same JSON (`write`, `read`).
  */
-public final class Vault {
+public final class Vault implements Store {
 
     private final Http http = new Http();
     private final String center;
@@ -32,11 +32,13 @@ public final class Vault {
         this.token = token;
     }
 
+    @Override
     public List<Account> list() throws IOException, InterruptedException {
         return send(request("/otp"));
     }
 
     /** Adds the accounts; one whose secret is already there is left as it was. */
+    @Override
     public List<Account> add(List<Account> accounts) throws IOException, InterruptedException {
         List<Object> body = new ArrayList<>();
         for (Account account : accounts) body.add(account.toJson());
@@ -44,11 +46,13 @@ public final class Vault {
     }
 
     /** Changes the account with `changed`'s id to what `changed` says. */
+    @Override
     public List<Account> update(Account changed) throws IOException, InterruptedException {
         return send(request("/otp/" + changed.id).method("PUT").post(Json.write(changed.toJson()))
             .header("Content-Type", "application/json"));
     }
 
+    @Override
     public List<Account> remove(String id) throws IOException, InterruptedException {
         return send(request("/otp/" + id).method("DELETE"));
     }

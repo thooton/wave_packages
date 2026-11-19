@@ -215,6 +215,31 @@ public final class SelfTest {
             }
         });
 
+        check.run("on this phone only", () -> {
+            java.io.File dir = java.nio.file.Files.createTempDirectory("vault").toFile();
+            java.io.File file = new java.io.File(dir, "local.json");
+            Store local = new LocalVault(file);
+            check.same("empty to begin with", 0, local.list().size());
+            List<Account> added = local.add(java.util.Arrays.asList(Account.of("GitHub", "sam", "JBSWY3DPEHPK3PXP"),
+                Account.of("AWS", "root", "GEZDGNBVGY3TQOJQ")));
+            check.same("added in order", "GitHub AWS", added.get(0).issuer + " " + added.get(1).issuer);
+            check.ok("with ids of its own", added.get(0).id != null && !added.get(0).id.equals(added.get(1).id));
+            check.same("the same secret again is left as it was", 2,
+                local.add(Collections.singletonList(Account.of("Other", "", "JBSWY3DPEHPK3PXP"))).size());
+            Account changed = new Account(added.get(0).id, "GitHub Enterprise", "sammy", "JBSWY3DPEHPK3PXP", "SHA256", 8, 60);
+            check.same("updated in place", "GitHub Enterprise", local.update(changed).get(0).issuer);
+            check.same("kept on disk", "GitHub Enterprise", new LocalVault(file).list().get(0).issuer);
+            check.ok("owner-only file", !file.canRead() || file.setReadable(true, true));
+            check.same("removed", 1, local.remove(added.get(1).id).size());
+            check.same("removing one already gone is no error", 1, local.remove("zz").size());
+            check.fails("updating one that is gone", "isn't here", () -> local.update(Account.of("X", "", "JBSWY3DPEHPK3PXP")));
+            com.xp3.common.SetupSpec spec = com.xp3.common.SetupSpec.parse(new String(java.nio.file.Files.readAllBytes(
+                java.nio.file.Paths.get("../app/src/main/assets/wave-setup.json")), "UTF-8"));
+            check.ok("the descriptor offers the phone alone", spec.needsNothing() && spec.deltaSupported);
+            file.delete();
+            dir.delete();
+        });
+
         if (!check.report()) System.exit(1);
     }
 }

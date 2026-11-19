@@ -9,8 +9,9 @@ account with Up and Down, reads the code (or copies it with OK) and closes
 it. It must open straight to the codes, show them without a connection,
 and stay quick and plain.
 
-The accounts are kept on the Delta command center, so a lost or reset
-phone loses none; the phone keeps a copy so codes show at once and offline.
+The accounts are kept where the app is set up to keep them: on this phone
+only, or on a Delta command center, so a lost or reset phone loses none
+(the phone then keeps a copy so codes show at once and offline).
 Codes are worked out on the phone (RFC 6238), so the phone's clock must be
 right.
 
@@ -25,7 +26,8 @@ The user decided against these (authenticator/AGENTS.md); don't propose them:
 
 - Search, sorting, or a grid view.
 - A PIN, lock screen or any other gate before the codes.
-- Backups or exports from the app (the command center is the backup).
+- Backups or exports from the app (the command center is the backup; on
+  the phone alone, `adb backup`).
 - A header, title bar or app name above the list.
 - Counter-based (HOTP) accounts.
 - Eased or smooth scrolling.
@@ -72,15 +74,14 @@ Keys:
   list doesn't move). One that isn't is brought just into view at the edge
   it comes from, so the list moves by about one card. Repeated presses
   never make the list creep.
-- While the app talks to the command center a thin navy bar runs along the
+- While the app talks to the command center (or reads a picture) a thin navy bar runs along the
   top of the screen; the list stays usable under it.
 
 ### The empty list
 
-- With a command center set and no accounts: "No accounts", centred, and
-  under it Authy's round navy + button, which has the focus. OK on the +
-  opens the menu, as Menu does.
-- With no command center set: "No command center" instead of "No accounts".
+- With no accounts: "No accounts", centred, and under it Authy's round
+  navy + button, which has the focus. OK on the + opens the menu, as Menu
+  does.
 - If the last sync failed, a muted line under the title says why
   ("Offline", "The command center didn't answer", …).
 - On the very first launch, while the first sync runs and nothing is kept
@@ -96,8 +97,7 @@ selected, so every item shows. Items, in order:
 3. Add manually
 4. Edit (only when an account is selected)
 5. Delete (only when an account is selected)
-6. Command center (only when no command center is set, the list is empty,
-   or the last sync failed)
+6. Setup… (only when the list is empty, or the last sync failed)
 
 Up/Down move in it, OK picks, Back closes it and changes nothing.
 
@@ -112,11 +112,11 @@ Up/Down move in it, OK picks, Back closes it and changes nothing.
 - **Edit** opens the entry form for the selected account.
 - **Delete** asks "Delete <service>?" with the account name under it (no
   line when there is none), and Delete / Cancel buttons. Cancel or Back
-  changes nothing. Delete removes it on the command center, toasts
+  changes nothing. Delete removes it (on the command center, if set up with one), toasts
   "Deleted <service>" and selects the account now in the same place (the
   new last one if it was last). Deleting the only account shows the empty
   list.
-- **Command center** opens the login dialog.
+- **Setup…** opens the shared setup screen (`../common/SETUP.md`).
 
 Reading a picture shows the top bar while it works, then on failure toasts
 one of: "No QR code found", "That picture can't be read", "That isn't a
@@ -170,48 +170,44 @@ A form that passes closes, back to the list.
 
 ### Adding and saving
 
-- Added accounts go to the command center; when it answers, the list is
-  its new list and the first account added is selected.
+- Added accounts go to the phone's own list, or to the command center;
+  when it answers, the list is its new list and the first account added
+  is selected.
 - Toasts: "Added <service>", "Added 3 accounts", "<service> is already
   here" (same secret already in the list), or "These are already here".
 - A Google Authenticator "Transfer accounts" code adds every TOTP account
   in it at once.
 - After Edit: "Saved <service>", and that account stays selected.
-- With no command center set, adding or saving opens the login dialog;
-  once a login is saved there, the account is added (or saved).
 - What was typed in the form is never lost: if the command center can't
-  take it (offline, a refusal, or the login dialog cancelled), the form
-  opens again as it was typed, after the toast saying why.
+  take it (offline, a refusal), the form opens again as it was typed,
+  after the toast saying why.
 
-### The login dialog (Command center)
+### Setup
 
-Title "Command center", an address field (hint "https://…", filled with
-the saved address), a token field (masked; hint "Token", or "••••••••"
-when one is saved), Save and Cancel.
-
-- Down and Up move between the address, the token and the buttons.
-- Save with an empty token keeps the saved one.
-- Saved: toasts "Saved: <host>" and syncs at once.
-- Missing address or token: "Both the address and the token are needed".
-- Cancel or Back changes nothing.
-- It opens by itself on launch when the build carries no login and none
-  was saved.
+With nothing set up the app opens on the shared setup screen
+(`../common/SETUP.md`), which offers "On this phone only" (nothing to
+import) or a command center from a setup file (or typed in). A command
+center login saved by an earlier version becomes the setup once. A
+changed setup (imported again, signed out) starts the app over with it.
 
 ## Behaviour
 
-- **Where data lives.** The accounts are on the command center (`GET /otp`,
-  `POST /otp`, `PUT /otp/{id}`, `DELETE /otp/{id}`, with the delta token);
-  every call answers with the whole list. The last list is kept in the
-  app's files (`accounts.json`, private) and shown at once on launch. The
-  login is kept in the app's preferences. Logos are kept in `files/logos`.
-- **Survives a restart:** the accounts, the login, the logos. Not kept:
+- **Where data lives.** On this phone only: `files/local-accounts.json`
+  (private). With a command center: on it (`GET /otp`, `POST /otp`, `PUT
+  /otp/{id}`, `DELETE /otp/{id}`, with the delta token), every call
+  answering with the whole list; its last list is kept in `files/accounts.json`
+  (private) and shown at once on launch. The two lists are kept apart:
+  switching shows the other one, and nothing is copied between them;
+  signing out keeps both. The setup is `files/wave-setup.json`. Logos are
+  kept in `files/logos`.
+- **Survives a restart:** the accounts, the setup, the logos. Not kept:
   which account was selected (launch selects the first).
 - **Sync** runs on launch, and on coming back to the app more than ten
   minutes after the last successful sync. The selected account stays
   selected across a sync (matched by its secret) if it is still there.
 - **Offline.** Codes keep working from the kept list. A failed sync leaves
-  the list as it was and adds Command center to the menu. Adding, editing
-  and deleting need the command center; when one fails, a toast says why
+  the list as it was and adds Setup… to the menu. With a command center,
+  adding, editing and deleting need it; when one fails, a toast says why
   and nothing changes (an add or edit from the form reopens it). No
   connection is always "Offline", wherever it shows. Messages: "Offline", "The command center didn't
   answer", "The command center needs updating for two-factor accounts", or
@@ -249,12 +245,12 @@ it sets the family palette aside. In short, for checking:
 
 ## Open questions
 
-1. Command center is hidden from the menu while the list has accounts and
-   the last sync worked, so a changed token can't be typed in until a sync
-   fails. Is that intended, or should it always be in the menu (last)?
-2. Delete doesn't open the login dialog when no command center is set, as
-   Add and Edit do; it toasts "There is no command center login". Should it
-   match them?
+1. Setup… is hidden from the menu while the list has accounts and the last
+   sync worked, so a changed setup can't be imported until a sync fails or
+   the list is empty. Is that intended, or should it always be in the menu
+   (last)?
+2. Signing out keeps the phone's own accounts (they show again on "On this
+   phone only"). Should Sign out offer to delete them?
 3. The right soft key does nothing on the list. Should it (for example
    copy, or open the menu like the left one)?
 4. Digits "0" (and Seconds "0") on the form are taken as the defaults (6

@@ -12,14 +12,19 @@ backups. The services' logos, and Edit, were asked for later.
 
 ## Where the accounts live
 
-On the Delta command center (thooton/delta, `cmd/delta-cc/otp.go`), behind
-the delta token: `GET /otp` lists them, `POST /otp` adds one or a list (an
+Where the app is set up to keep them (common/ui's `Setup`,
+`../common/SETUP.md`), behind `Store`: **on this phone only**
+(`LocalVault`, `files/local-accounts.json`, owner-only, behaving as the
+command center does), or on the Delta command center (thooton/delta,
+`cmd/delta-cc/otp.go`), behind the delta token: `GET /otp` lists them, `POST /otp` adds one or a list (an
 account whose secret is already there is skipped), `DELETE /otp/{id}`
 removes one, `PUT /otp/{id}` changes one (the secret another account has
 is refused); each answers with the whole list. `Vault` is the client. The
 app keeps the last list it got in `files/accounts.json` (owner-only), shows
 it at once, and syncs on launch and when it comes back after ten minutes.
-Adding and deleting need the command center; the codes don't. Codes are
+With a command center, adding and deleting need it; the codes don't. The
+two lists never mix: the command center's cache is `accounts.json`, the
+phone's own is `local-accounts.json`. Codes are
 worked out on the phone (`Account.code`, RFC 6238), so the phone's clock
 must be right.
 
@@ -101,7 +106,7 @@ protocol buffer); HOTP is refused.
   level, and photo-like ones: at an angle, rotated, blurred, unevenly lit,
   noisy, JPEG, inverted, mirrored, small, in a screenshot, and none at all).
 - `android/app`: `MainActivity` (the list, its keys, the menu, adding,
-  deleting, syncing, the login dialog), `EntryActivity` (adding and
+  deleting, syncing; the setup is common/ui's `SetupActivity`), `EntryActivity` (adding and
   editing), `Logo` (the badge and its countdown ring), `Logos` (fetching
   and keeping the services' logos), `Look` (Inter, the cards, the services' colours),
   `Pictures`, `PhotoProvider`.
@@ -132,9 +137,9 @@ New Yorker's lists move a small, steady step.
 
 ## Credentials
 
-`app/build.gradle` bakes the login into a generated `Bundled.java` under
-`build/`, from the same places as Places (`deltaCenter` in
-`../gradle/bundled.gradle`); CI's APKs carry none, so the app asks for the
-command center's address and token on first launch (Menu's Command center
-later). Never print, commit or attach the config files, the generated
-source, the APK, or any account's secret.
+None in the build: the APK carries no login. On first launch the app
+opens on the setup screen: "On this phone only", or a command center
+imported from a setup file (`app/src/main/assets/wave-setup.json`
+describes it, for the setup screen and the Wave site's generator; change
+both together). Never print, commit or attach a setup file, a token, or
+any account's secret.
