@@ -67,6 +67,8 @@ public final class SetupSpec {
     public final List<Setting> settings;
     public final List<Alternative> alternatives;
     public final List<String> limits;
+    /** Whether the direct backend exists ("direct": false for an app that only works through a command center). */
+    public final boolean directSupported;
     public final boolean deltaSupported;
     public final String deltaAbout;
 
@@ -102,6 +104,11 @@ public final class SetupSpec {
         Map<String, Object> delta = Json.child(root, "delta");
         deltaSupported = Json.flag(delta, "supported");
         deltaAbout = Json.text(delta, "about");
+        Object direct = root.get("direct");
+        if (direct != null && !(direct instanceof Boolean)) throw new IllegalArgumentException("Bad direct");
+        directSupported = direct == null || (Boolean) direct;
+        if (!directSupported && !deltaSupported) throw new IllegalArgumentException("A descriptor needs a backend");
+        if (!directSupported && !settings.isEmpty()) throw new IllegalArgumentException("Settings without a direct backend");
     }
 
     /** Throws IllegalArgumentException when the descriptor is malformed. */
@@ -120,12 +127,12 @@ public final class SetupSpec {
 
     /** Whether the direct backend needs nothing imported (Authenticator, Flashcards). */
     public boolean needsNothing() {
-        return settings.isEmpty();
+        return directSupported && settings.isEmpty();
     }
 
     /** Whether every required setting can be typed on the phone, so manual entry is worth offering. */
     public boolean manualEnough() {
-        if (settings.isEmpty()) return false;
+        if (!directSupported || settings.isEmpty()) return false;
         for (Setting one : settings) if (one.required && !one.manual) return false;
         for (Alternative choice : alternatives) {
             boolean typeable = false;

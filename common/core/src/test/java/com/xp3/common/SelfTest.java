@@ -122,6 +122,19 @@ public final class SelfTest {
             check.ok("manual entry needs every required setting typeable", !SetupSpec.parse(PLACES).manualEnough());
         });
 
+        check.run("command center only", () -> {
+            SetupSpec spec = SetupSpec.parse("{\"format\":1,\"app\":\"source\",\"name\":\"Source\",\"package\":\"com.source.xp3\","
+                + "\"settings\":[],\"direct\":false,\"delta\":{\"supported\":true}}");
+            check.ok("no direct backend", !spec.directSupported);
+            check.ok("so not set up by nothing", !spec.needsNothing());
+            check.fails("settings refused", "Source needs a command center",
+                () -> Config.parse("{\"wave\":1,\"app\":\"source\",\"settings\":{}}", spec));
+            check.ok("delta taken", Config.parse("{\"wave\":1,\"app\":\"source\",\"delta\":{\"server\":\"https://cc.example.com\",\"token\":\"t\"}}", spec).isDelta());
+            check.ok("direct by default", SetupSpec.parse(PLACES).directSupported);
+            check.fails("no backend at all", "needs a backend", () -> SetupSpec.parse("{\"format\":1,\"app\":\"x\",\"name\":\"X\",\"package\":\"x.y\","
+                + "\"settings\":[],\"direct\":false,\"delta\":{\"supported\":false}}"));
+        });
+
         check.run("chunks", () -> {
             String payload = "{\"wave\":1,\"app\":\"places\",\"settings\":{\"key\":\"" + KEY + "\"}}";
             String id = Config.Chunks.sha256(payload).substring(0, 8);

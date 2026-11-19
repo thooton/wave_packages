@@ -95,6 +95,7 @@ public final class Config {
 
     /** The direct backend with these settings, checked as an imported payload would be. */
     public static Config direct(SetupSpec spec, String label, Map<String, String> given) {
+        if (!spec.directSupported) throw new IllegalArgumentException(spec.name + " needs a command center");
         Map<String, String> values = new LinkedHashMap<String, String>();
         for (Map.Entry<String, String> entry : given.entrySet()) {
             SetupSpec.Setting setting = spec.setting(entry.getKey());

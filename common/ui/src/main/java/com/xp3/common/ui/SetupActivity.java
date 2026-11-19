@@ -129,7 +129,7 @@ public class SetupActivity extends BaseActivity {
             + ".json to " + folderName() + " on the phone (over USB), and choose Import. Choose a file opens one from "
             + "anywhere else. The file is deleted once it is read.", false));
         if (!spec.limits.isEmpty()) {
-            body.addView(heading(spec.deltaSupported ? "Without a command center" : "Good to know"));
+            body.addView(heading(spec.deltaSupported && spec.directSupported ? "Without a command center" : "Good to know"));
             for (String limit : spec.limits) body.addView(line("\u2022 " + limit, false));
         }
         if (spec.deltaSupported && spec.deltaAbout != null) {
