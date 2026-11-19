@@ -69,6 +69,11 @@ public final class LocalVault implements Store {
 
     private List<Account> read() throws IOException {
         String json = Disk.read(file, 4 << 20);
+        if (json == null && file.exists() && file.length() > 0) {
+            // There but unreadable (or impossibly large): never taken as empty,
+            // or the next change would save over every account in it.
+            throw new IOException("The accounts on this phone can't be read");
+        }
         if (json == null || json.trim().length() == 0) return new ArrayList<>();
         try {
             return Vault.read(json);

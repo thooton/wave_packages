@@ -193,7 +193,9 @@ changed setup (imported again, signed out) starts the app over with it.
 ## Behaviour
 
 - **Where data lives.** On this phone only: `files/local-accounts.json`
-  (private). With a command center: on it (`GET /otp`, `POST /otp`, `PUT
+  (private); if it is there but can't be read, adding or changing an
+  account is refused ("The accounts on this phone can't be read") rather
+  than saving over it. With a command center: on it (`GET /otp`, `POST /otp`, `PUT
   /otp/{id}`, `DELETE /otp/{id}`, with the delta token), every call
   answering with the whole list; its last list is kept in `files/accounts.json`
   (private) and shown at once on launch. The two lists are kept apart:

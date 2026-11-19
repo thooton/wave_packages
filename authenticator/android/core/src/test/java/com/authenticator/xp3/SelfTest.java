@@ -215,6 +215,20 @@ public final class SelfTest {
             }
         });
 
+        check.run("an unreadable vault is never taken as empty", () -> {
+            java.io.File dir = java.nio.file.Files.createTempDirectory("vault").toFile();
+            java.io.File file = new java.io.File(dir, "local-accounts.json");
+            final LocalVault vault = new LocalVault(file);
+            vault.add(Collections.singletonList(Account.of("GitHub", "sam", "JBSWY3DPEHPK3PXP")));
+            check.ok("made unreadable", file.setReadable(false, false));
+            check.fails("a change is refused", "can't be read",
+                () -> vault.add(Collections.singletonList(Account.of("Slack", "sam", "KRSXG5CTMVRXEZLU"))));
+            file.setReadable(true, true);
+            check.same("and the account is still there", 1, vault.list().size());
+            file.delete();
+            dir.delete();
+        });
+
         check.run("a command center's kept list", () -> {
             java.io.File dir = java.nio.file.Files.createTempDirectory("cache").toFile();
             AccountCache cache = new AccountCache(dir);

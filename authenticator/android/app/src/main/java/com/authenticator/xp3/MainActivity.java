@@ -599,7 +599,7 @@ public final class MainActivity extends BaseActivity {
             }
             final String found = text;
             final String failed = failure;
-            runOnUiThread(() -> {
+            onUi(() -> {
                 busy--;
                 show();
                 if (failed != null) {
@@ -633,7 +633,7 @@ public final class MainActivity extends BaseActivity {
             }
             final List<Account> got = fresh;
             final String failed = failure;
-            runOnUiThread(() -> {
+            onUi(() -> {
                 busy--;
                 error = failed;
                 if (got != null) {
@@ -667,7 +667,7 @@ public final class MainActivity extends BaseActivity {
             }
             final List<Account> got = fresh;
             final String failed = failure;
-            runOnUiThread(() -> {
+            onUi(() -> {
                 busy--;
                 if (got == null) {
                     show();
@@ -705,7 +705,7 @@ public final class MainActivity extends BaseActivity {
             }
             final List<Account> got = fresh;
             final String failed = failure;
-            runOnUiThread(() -> {
+            onUi(() -> {
                 busy--;
                 if (got == null) {
                     show();
@@ -752,7 +752,7 @@ public final class MainActivity extends BaseActivity {
             }
             final List<Account> got = fresh;
             final String failed = failure;
-            runOnUiThread(() -> {
+            onUi(() -> {
                 busy--;
                 if (got == null) {
                     show();
@@ -818,5 +818,16 @@ public final class MainActivity extends BaseActivity {
     /** Where the accounts are kept, as set up. */
     private Store store() {
         return config.isDelta() ? new Vault(config.delta()) : new LocalVault(new File(getFilesDir(), LOCAL));
+    }
+
+    /**
+     * Back on the main thread, unless this activity has been destroyed
+     * meanwhile (closed, or started over for a new setup): work finishing
+     * late must not show dialogs on it or queue more on its stopped workers.
+     */
+    private void onUi(final Runnable work) {
+        runOnUiThread(() -> {
+            if (!isDestroyed()) work.run();
+        });
     }
 }
