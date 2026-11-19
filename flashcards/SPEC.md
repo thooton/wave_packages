@@ -8,8 +8,9 @@ press 1 to 4 to grade it, next card. It is Anki's desktop app on a flip
 phone: Anki's screens and words (deck list, overview, Study Now, reviewer,
 deck options, Statistics), Anki's queue, and Anki's scheduling with the
 FSRS4Anki scheduler (FSRS-6 defaults), so a card is due on the same day it
-would be in Anki. The decks live on the Delta command center and sync with
-Flashcards on the reMarkable tablet, as AnkiWeb syncs Anki.
+would be in Anki. Set up with a Delta command center, the decks live there
+and sync with Flashcards on the reMarkable tablet, as AnkiWeb syncs Anki;
+set up "On this phone only", they stay on the phone.
 
 It must stay quick (a key never waits on disk or network), usable offline,
 and faithful to Anki. Where it departs from Anki it does so only as written
@@ -59,20 +60,22 @@ list of `.fkv` files is the same menu, scrolling, under an `Import` heading.
   row per deck: its name (one line, ending in … if too long) and its three
   counts right-aligned. A count of 0 is faint grey; otherwise New is blue,
   Learn red, Due green.
-- Signed in: under the list, centred, `Studied N cards today.` (`1 card`
+- Signed in (or on this phone only): under the list, centred, `Studied N cards today.` (`1 card`
   when one). N counts cards whose last answer was since today's 4am
   rollover, across all decks.
-- Not signed in: under the list, the pairing panel instead (see Signing in).
+- Pairing again: under the list, the pairing panel instead (see Signing in).
 - The row under the d-pad has a rounded grey wash. Up on the first row and
   Down on the last row stay there. Returning to the list keeps the row last
   selected (or the newly imported deck after an import).
 - OK opens the deck's overview.
 - Menu on a deck row opens an Anki-style pop-up menu (see Menus) with:
-  Options, Stats, Sync, Import, Night Shift, Dark mode, Command center.
-  With no deck selected the same without Options and Stats.
+  Options, Stats, Sync (not on this phone only), Import, Night Shift, Dark
+  mode, Setup…. With no deck selected the same without Options and Stats.
+  Setup… opens the shared setup screen (`../common/SETUP.md`).
 - Back leaves the app.
-- No decks, signed in: `No decks` centred (`Syncing` while a sync runs).
-  No decks, not signed in: only the pairing panel, centred. Menu works on
+- No decks, signed in or on this phone only: `No decks` centred (`Syncing`
+  while a sync runs). No decks, pairing again: only the pairing panel,
+  centred. Menu works on
   both.
 
 ### Overview
@@ -202,7 +205,7 @@ force-stopping the app 2 s after them. An unreadable file is replaced by the
 bundled deck, with the command center's later reviews winning on the next
 sync. Studying needs no network.
 
-**Sync.** `POST /flashcards/sync` to the command center: on opening (each
+**Sync** (set up with a command center only). `POST /flashcards/sync` to the command center: on opening (each
 resume), 30 s after the last answer or removal, after an options change,
 after an import, on leaving with unsent changes, and from Menu > Sync. One
 sync at a time; a request while one runs is sent after. Incoming changes
@@ -210,13 +213,17 @@ show at once on the deck list and overview; a card being studied picks them
 up with the next card. Per record the later change wins, a removal beats
 any answer, and a card's text always comes from the command center. The
 phone's time zone is sent so the tablet rolls the day at 4am local. A 401
-forgets the login and starts pairing again.
+starts pairing again with that command center.
 
-**Signing in.** A build with a bundled login starts signed in. Otherwise the
-app asks the command center for a pairing code and shows `PAIRING CODE`,
+**Signing in.** Nothing is built into the APK. With nothing set up the app
+opens on the shared setup screen: "On this phone only" (no sync), or a
+command center from a setup file (or typed in); a login an earlier version
+kept becomes the setup once. A changed setup starts the app over. When
+the command center refuses the token (unpaired on the website), the app
+asks that command center for a pairing code and shows `PAIRING CODE`,
 the code in large letters, and `Delta, Tablet` (where to type it), or `…`
 while asking. It polls every 3 s while the app is in front; once the code
-is typed on the website it saves the token and syncs. An expired code or a
+is typed on the website the new token becomes the setup and it syncs. An expired code or a
 failed request shows the reason in red with a `Try Again` button
 (`No connection` when the network fails). The panel's lines are centred.
 
@@ -231,7 +238,8 @@ too big to be flashcards`. If the SD card refuses the read, Android's
 "allow access to SD card" is asked once; declining toasts `SD card not
 allowed`.
 
-**Permissions.** Internet; read storage, asked only at Import.
+**Permissions.** Internet (sync and pairing, with a command center); read
+storage, asked only at Import.
 
 **Timed.** Pairing poll every 3 s; save 1.5 s and sync 30 s after an
 answer; overview refresh when the next learning card comes due.
@@ -252,8 +260,10 @@ on the focused one, queue colours blue (new), red (learning), green
    intended?
 2. Options and Stats opened from the deck list's Menu return, on Back, to
    the deck's overview rather than the deck list. Intended?
-3. Menu > Command center is offered even when paired, and Save replaces the
-   pairing token with a typed one. Should it stay in the Menu once paired?
+3. A first pairing (no setup file, no token typed) is no longer offered:
+   pairing needs the command center's address, which only a setup gives.
+   Should the setup screen offer "Pair with a command center" (address,
+   then a code)?
 4. Remove from deck has no undo. Is an accidental Menu, OK on a card
    acceptable as is?
 5. `flashcards/README.md` holds only "I DON'T KNOW". Replace it with a

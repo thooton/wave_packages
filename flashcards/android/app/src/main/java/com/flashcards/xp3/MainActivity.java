@@ -35,8 +35,10 @@ import com.flashcards.xp3.data.Fkv;
 import com.flashcards.xp3.data.Store;
 import com.flashcards.xp3.sync.Center;
 import com.xp3.common.Disk;
+import com.xp3.common.Config;
 import com.xp3.common.Login;
 import com.xp3.common.ui.BaseActivity;
+import com.xp3.common.ui.Setup;
 import com.xp3.common.ui.Card;
 import com.xp3.common.ui.CardGrant;
 import com.xp3.common.ui.Ui;
@@ -69,15 +71,18 @@ import java.util.concurrent.ExecutorService;
  * with Study Now, the reviewer ({@link ReviewPane}), the deck's options
  * ({@link OptionsPane}) and its statistics ({@link StatsPane}).
  *
- * The decks are the command center's (see {@link Collection}): the app
- * studies its own copy, saved in the app's private directory, and syncs it
- * when it opens, a little after answers and when it closes. The first run of
+ * The app studies its own copy of the decks (see {@link Collection}),
+ * saved in the app's private directory. Set up with a command center
+ * (common/ui's Setup) the decks are the command center's too: it syncs them
+ * when it opens, a little after answers and when it closes. Set up "On this
+ * phone only" there is no sync. The first run of
  * this version brings the bundled Spanish deck, with the state it had here,
  * into that copy, and its first sync takes it to the command center.
  *
- * Without a login it pairs, as the tablet does: the deck list shows a code
- * to type on the website's Tablet page, and the token that brings reaches
- * only the flashcards. Menu > Command center still takes a typed login.
+ * When the command center refuses its token, it pairs again with that
+ * command center, as the tablet does: the deck list shows a code to type on
+ * the website's Tablet page, and the token that brings reaches only the
+ * flashcards and becomes the setup.
  *
  * Menu > Import makes a new deck of an FKV file ({@link Fkv}) from
  * Documents or Download, where Tablet saves Transform's flashcards.
@@ -112,6 +117,9 @@ public final class MainActivity extends BaseActivity {
     private Collection collection;
     private final Map<String, ReviewSession> sessions = new LinkedHashMap<>();
     private Login login = Login.blank();
+    /** What the app was set up with, and the stamp it had then. */
+    private Config config;
+    private String setupStamp;
     private Screen screen = Screen.DECKS;
     private Deck open;
     private int deckAt;
@@ -148,10 +156,16 @@ public final class MainActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle onIce) {
         super.onCreate(onIce);
+        config = loadSetup(prefs());
+        if (config == null) {
+            Setup.require(this);
+            return;
+        }
+        setupStamp = Setup.stamp(this);
         setContentView(R.layout.activity_main);
         content = findViewById(R.id.content);
         NightShift.apply(getWindow().getDecorView(), nightShift());
-        login = loadLogin(prefs());
+        login = config.isDelta() ? config.delta() : Login.blank();
         collection = load();
         collection.zone = zone.getId();
         showDecks();
@@ -161,6 +175,12 @@ public final class MainActivity extends BaseActivity {
     protected void onResume() {
         super.onResume();
         resumed = true;
+        // Imported again or signed out on the setup screen: start over with it.
+        if (!setupStamp.equals(Setup.stamp(this))) {
+            recreate();
+            return;
+        }
+        if (local()) return;
         if (login.ready()) sync();
         else if (pairing != null) later(pollSoon, 1000);
         else pair();
@@ -279,8 +299,8 @@ public final class MainActivity extends BaseActivity {
         syncing = false;
         if (unpaired) {
             unpaired = false;
+            // The token is no good: pair again with the same command center.
             login = Login.blank();
-            prefs().edit().remove("login").apply();
             error = null;
             pair();
         }
@@ -308,13 +328,19 @@ public final class MainActivity extends BaseActivity {
 
     private final Runnable pollSoon = this::poll;
 
+    /** The command center the app was set up with. */
     private String server() {
-        return login.server() != null ? login.server() : Center.DEFAULT_SERVER;
+        return config.delta().server();
+    }
+
+    /** Set up "On this phone only": no sync, no pairing. */
+    private boolean local() {
+        return !config.isDelta();
     }
 
     /** Asks for a code to type on the website. */
     private void pair() {
-        if (login.ready() || pairingBusy) return;
+        if (local() || login.ready() || pairingBusy) return;
         pairingBusy = true;
         pairError = null;
         final String server = server();
@@ -375,7 +401,13 @@ public final class MainActivity extends BaseActivity {
         }
         if (login.ready()) {
             pairing = null;
-            prefs().edit().putString("login", login.toJson()).apply();
+            try {
+                Setup.save(this, Config.delta(Setup.spec(this), login));
+                config = Setup.load(this);
+                setupStamp = Setup.stamp(this);
+            } catch (java.io.IOException | IllegalArgumentException e) {
+                // Kept for this run; the setup still has the old token.
+            }
             if (screen == Screen.DECKS) showDecks();
             sync();
         } else if (expired != null) {
@@ -433,7 +465,7 @@ public final class MainActivity extends BaseActivity {
         page.setPadding(dp(4), dp(2), dp(4), 0);
         List<Deck> decks = collection.decks();
         if (decks.isEmpty()) {
-            if (login.ready()) {
+            if (login.ready() || local()) {
                 TextView none = text(syncing ? "Syncing" : "No decks", 13, color(R.color.text_subtle));
                 none.setGravity(Gravity.CENTER);
                 page.addView(none, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(120)));
@@ -465,7 +497,7 @@ public final class MainActivity extends BaseActivity {
         });
         Ui.onSelect(list, at -> deckAt = at);
         page.addView(list, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        if (!login.ready()) {
+        if (!login.ready() && !local()) {
             page.addView(pairingPanel(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             Ui.fill(content, page);
             list.requestFocus();
@@ -557,10 +589,11 @@ public final class MainActivity extends BaseActivity {
             items.add(new AnkiMenu.Item("Options", () -> showOptions(deck)));
             items.add(new AnkiMenu.Item("Stats", () -> showStats(deck)));
         }
-        items.add(new AnkiMenu.Item("Sync", this::syncNow).group());
-        items.add(new AnkiMenu.Item("Import", this::chooseImport));
+        if (!local()) items.add(new AnkiMenu.Item("Sync", this::syncNow).group());
+        AnkiMenu.Item importing = new AnkiMenu.Item("Import", this::chooseImport);
+        items.add(local() ? importing.group() : importing);
         items.addAll(lookItems());
-        items.add(new AnkiMenu.Item("Command center", this::askLogin).group());
+        items.add(new AnkiMenu.Item("Setup\u2026", () -> startActivity(Setup.intent(this))).group());
         showMenu(items);
     }
 
@@ -946,7 +979,7 @@ public final class MainActivity extends BaseActivity {
     }
 
     // ---------------------------------------------------------------------
-    // The command center login
+    // Settings
 
     private boolean nightShift() {
         return prefs().getBoolean(PREF_NIGHT, false);
@@ -972,79 +1005,16 @@ public final class MainActivity extends BaseActivity {
         return getSharedPreferences(PREFS, MODE_PRIVATE);
     }
 
-    /** The bundled login, adopted once per build that carries a new one, else what was typed in. */
-    private Login loadLogin(SharedPreferences prefs) {
-        String revision = Bundled.REVISION;
-        if (revision.length() > 0 && !revision.equals(prefs.getString("bundled", ""))) {
-            Login bundled;
-            try {
-                bundled = Login.of(Bundled.SERVER, Bundled.TOKEN);
-            } catch (IllegalArgumentException e) {
-                bundled = Login.blank();
-            }
-            if (bundled.ready()) {
-                prefs.edit().putString("login", bundled.toJson()).putString("bundled", revision).apply();
-                return bundled;
-            }
+    /**
+     * The setup, or null. A command center login an older version saved (it
+     * used to be baked into the APK, or came from pairing) becomes a Delta
+     * setup, once.
+     */
+    private Config loadSetup(SharedPreferences prefs) {
+        Config found = Setup.migrateDelta(this, prefs.getString("login", ""));
+        if (prefs.contains("login") || prefs.contains("bundled")) {
+            prefs.edit().remove("login").remove("bundled").apply();
         }
-        return Login.parse(prefs.getString("login", ""));
-    }
-
-    private void askLogin() {
-        LinearLayout box = vertical();
-        int pad = dp(16);
-        box.setPadding(pad, pad / 2, pad, 0);
-        final EditText server = new EditText(this);
-        server.setHint("https://…");
-        server.setSingleLine(true);
-        server.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        server.setText(login.server() == null ? "" : login.server());
-        final EditText token = new EditText(this);
-        token.setHint(login.ready() ? "••••••••" : "Token");
-        token.setSingleLine(true);
-        token.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        box.addView(server);
-        box.addView(token);
-        AlertDialog shown = new AlertDialog.Builder(this)
-            .setTitle("Command center")
-            .setView(box)
-            .setPositiveButton("Save", (dialog, which) -> {
-                String typed = token.getText().toString();
-                if (typed.trim().length() == 0 && login.ready()) typed = login.token();
-                try {
-                    Login next = Login.of(server.getText().toString(), typed);
-                    if (!next.ready()) throw new IllegalArgumentException("Both the address and the token are needed");
-                    login = next;
-                    prefs().edit().putString("login", next.toJson()).apply();
-                    syncError = null;
-                    pairing = null;
-                    if (screen == Screen.DECKS) showDecks();
-                    sync();
-                } catch (IllegalArgumentException e) {
-                    toast(e.getMessage());
-                }
-            })
-            .setNegativeButton("Cancel", null)
-            .show();
-        // The fields keep Down and Up to themselves; on a keys-only phone the
-        // d-pad is how one goes from field to field and on to the buttons.
-        Button cancel = shown.getButton(AlertDialog.BUTTON_NEGATIVE);
-        Button save = shown.getButton(AlertDialog.BUTTON_POSITIVE);
-        upDown(server, null, token);
-        upDown(token, server, cancel);
-        upDown(cancel, token, null);
-        upDown(save, token, null);
-    }
-
-    /** Up and Down move the focus from `view` to `up` and `down` (null: stay as Android has it). */
-    private static void upDown(View view, View up, View down) {
-        if (view == null) return;
-        view.setOnKeyListener((v, keyCode, event) -> {
-            View to = keyCode == KeyEvent.KEYCODE_DPAD_UP ? up
-                : keyCode == KeyEvent.KEYCODE_DPAD_DOWN ? down : null;
-            if (to == null) return false;
-            if (event.getAction() == KeyEvent.ACTION_DOWN) to.requestFocus();
-            return true;
-        });
+        return found;
     }
 }

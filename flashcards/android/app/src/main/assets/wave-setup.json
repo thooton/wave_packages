@@ -1,0 +1,15 @@
+{
+  "format": 1,
+  "app": "flashcards",
+  "name": "Flashcards",
+  "package": "com.flashcards.xp3",
+  "about": "Spaced-repetition flashcards. Set up directly, the decks are kept on this phone only.",
+  "settings": [],
+  "limits": [
+    "No sync: decks stay on this phone and aren't shared with the tablet."
+  ],
+  "delta": {
+    "supported": true,
+    "about": "The command center keeps the decks and syncs them with Flashcards on the tablet (/flashcards/sync)."
+  }
+}

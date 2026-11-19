@@ -72,7 +72,7 @@ The tablet's `session.earliest` is the same rule.
     format) and `Fkv` (the FKV format Import reads).
   - `sync/Center`: `POST /flashcards/sync`, and pairing.
 - `android/app`: `MainActivity` (deck list, overview, sync, the
-  login), `ReviewPane` (the reviewer: OK shows the answer; only 1 to 4
+  setup), `ReviewPane` (the reviewer: OK shows the answer; only 1 to 4
   answer, each button labelled with its key; Menu > Remove from deck takes
   the card out, see Removing), `OptionsPane` (New cards/day: Left and Right step
   it, digits type it, below 0 is Auto, Back keeps it), `StatsPane` (Anki's
@@ -126,13 +126,17 @@ for the SD card's grant (`CardGrant`) only if a plain read there is
 refused. The command center checks what Transform submits with the same
 rules (`internal/fkv` in thooton/delta); change them together.
 
-**Signing in.** As the tablet does, the app pairs: with no login, the deck
-list ends in a code (from `POST /flashcards/pair` at
-`Center.DEFAULT_SERVER`), which the user types on the website's Tablet
-page; the app polls for the token that makes, which reaches only the
-flashcards. A sync refused with 401 (unpaired on the website) forgets the
-login and pairs again. A build with a bundled login (`gradle/bundled.gradle`)
-starts signed in, and Menu > Command center takes a typed one.
+**Signing in.** Nothing is built in. The app is set up on the phone
+(common/ui's `Setup`, `../common/SETUP.md`; `app/src/main/assets/wave-setup.json`
+describes it for the setup screen and the Wave site's generator): **on
+this phone only** (no sync, no pairing), or a **command center** imported
+from a setup file or typed in. A sync refused with 401 (unpaired on the
+website) pairs again as the tablet does: the deck list ends in a code
+(from `POST /flashcards/pair` at the setup's command center), which the
+user types on the website's Tablet page; the token that makes, which
+reaches only the flashcards, becomes the setup. `Center.DEFAULT_SERVER` is
+no longer used by the app. A login an older version kept (prefs `login`)
+becomes the setup once.
 
 ```bash
 JAVA_HOME=/usr/lib/jvm/java-21-openjdk ./gradlew :flashcards:core:selfTest :flashcards:app:assembleRelease
