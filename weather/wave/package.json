@@ -1,0 +1,19 @@
+{
+  "id": "com.weather.xp3",
+  "type": "apk",
+  "name": "Weather",
+  "summary": "Current weather and forecasts for your locations",
+  "description": "Check current conditions and upcoming weather in a compact forecast view on the flip phone.",
+  "author": "thooton",
+  "homepage": "https://github.com/thooton/wave_packages/tree/master/weather",
+  "requires": {
+    "device": [
+      "XP3800"
+    ],
+    "sdk": 27
+  },
+  "depends": [],
+  "conflicts": [],
+  "replaces": [],
+  "section": "applications"
+}

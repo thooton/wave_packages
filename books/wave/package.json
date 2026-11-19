@@ -1,0 +1,19 @@
+{
+  "id": "com.books.xp3",
+  "type": "apk",
+  "name": "Books",
+  "summary": "Read ebooks on your phone without a connection",
+  "description": "Browse your stored books and open them where you left off. Works offline with the keypad and supports books on the removable card.",
+  "author": "thooton",
+  "homepage": "https://github.com/thooton/wave_packages/tree/master/books",
+  "requires": {
+    "device": [
+      "XP3800"
+    ],
+    "sdk": 27
+  },
+  "depends": [],
+  "conflicts": [],
+  "replaces": [],
+  "section": "applications"
+}

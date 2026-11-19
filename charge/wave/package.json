@@ -1,0 +1,19 @@
+{
+  "id": "com.teslacharge.xp3",
+  "type": "apk",
+  "name": "Charge",
+  "summary": "Find Tesla Superchargers and manage charging",
+  "description": "Look up Superchargers, keep favorites, and start or monitor supported charging sessions after importing your Tesla setup file.",
+  "author": "thooton",
+  "homepage": "https://github.com/thooton/wave_packages/tree/master/charge",
+  "requires": {
+    "device": [
+      "XP3800"
+    ],
+    "sdk": 27
+  },
+  "depends": [],
+  "conflicts": [],
+  "replaces": [],
+  "section": "applications"
+}

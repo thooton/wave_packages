@@ -1,0 +1,19 @@
+{
+  "id": "com.serve.xp3",
+  "type": "apk",
+  "name": "Serve",
+  "summary": "Share a folder over local Wi-Fi",
+  "description": "Pick a folder and serve its files over HTTP to a browser on the same network. Stop the server when you are done sharing.",
+  "author": "thooton",
+  "homepage": "https://github.com/thooton/wave_packages/tree/master/serve",
+  "requires": {
+    "device": [
+      "XP3800"
+    ],
+    "sdk": 27
+  },
+  "depends": [],
+  "conflicts": [],
+  "replaces": [],
+  "section": "applications"
+}

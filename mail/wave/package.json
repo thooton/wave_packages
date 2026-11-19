@@ -1,0 +1,19 @@
+{
+  "id": "com.mail.xp3",
+  "type": "apk",
+  "name": "Mail",
+  "summary": "Read and send Gmail with the keypad",
+  "description": "Check your inbox, open threads and send replies on the flip phone. Import your own Gmail setup file before signing in.",
+  "author": "thooton",
+  "homepage": "https://github.com/thooton/wave_packages/tree/master/mail",
+  "requires": {
+    "device": [
+      "XP3800"
+    ],
+    "sdk": 27
+  },
+  "depends": [],
+  "conflicts": [],
+  "replaces": [],
+  "section": "applications"
+}

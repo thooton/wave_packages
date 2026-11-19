@@ -1,0 +1,19 @@
+{
+  "id": "com.authenticator.xp3",
+  "type": "apk",
+  "name": "Authenticator",
+  "summary": "Two-factor codes for the accounts you use",
+  "description": "Keep time-based one-time codes on your phone. Add accounts from setup files, an image, or the keypad.",
+  "author": "thooton",
+  "homepage": "https://github.com/thooton/wave_packages/tree/master/authenticator",
+  "requires": {
+    "device": [
+      "XP3800"
+    ],
+    "sdk": 27
+  },
+  "depends": [],
+  "conflicts": [],
+  "replaces": [],
+  "section": "applications"
+}

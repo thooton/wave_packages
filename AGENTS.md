@@ -155,28 +155,36 @@ builds every app and runs every self-test. One app is `:<app>:app` (and
 
 ## Releases
 
-`.github/workflows/build-apks.yml` builds every app on each push to master
-and publishes them to the rolling `latest` release as `<app>.apk` (named for
-the app's directory), together with `manifest.json`, written by
-`.github/manifest.py`: for each app its versionName, versionCode, package
-and label (read from the built APK), the APK's size and SHA-256, and its ten
-newest commits (`git log` on the app's directory, leaving out commits that
-change only its `*.md` files or mockups, the "App 1.2.3:" lead cut
-from each subject and its version kept beside it). The Updater reads only
-that. `versions.txt` and `packages.txt` are still published from the same
-data, solely so phones on an Updater older than 1.3.0 can update to one
-that reads the manifest. A new Gradle app is built and published as soon as
-it exists; nothing needs adding to the workflow (an app whose sources aren't
-in a directory of its release name goes in `DIRS` in the script, as the
-launcher's `AppDrawer` does).
+Push a version bump to master, rather than uploading an APK by hand. Follow
+all app `SPEC.md` behavior and version rules above. Each published package
+has fixed `wave/package.json` metadata and a 96×96 launcher icon. The Actions
+workflow builds APKs without local credentials, verifies their signatures
+and generated login constants, and creates one immutable release per package
+version, then mirrors the manifest and icon into `thooton/wave_repository`.
+A released asset is never overwritten. A source change without a version
+bump fails CI. Use the `retry-publish` dispatch input after a release was
+uploaded but mirroring failed; it uses the original asset bytes.
 
-So shipping a change to the phone is: bump the app's version, push to
-master, and let the build finish. The Updater offers it from there; there is
-nothing to upload anywhere, and APKs are not put on the command center.
+The old `latest` assets and `manifest.json` (plus `versions.txt` and
+`packages.txt`) stay until the legacy-device migration in Wave task 17 is
+verified. HBSA is not built. Source and Tablet are on the legacy channel
+only until task 16 confirms private releases. AppDrawer stays because the
+stock tray cannot open from the programmable key. Updater and Installer
+get final immutable releases, but remain on the legacy channel for the
+transition; Wave replaces them. Give up Installer's device-owner role
+from Installer's status screen before uninstalling it.
 
-(There used to be a Delta app here, `delta/`, which started agent sessions
-from the phone. It has been retired: sessions are started from the Delta
-website, which the command center in thooton/delta serves.)
+The mod matrix builds and tests **unsigned** signing requests. Opt in to
+`release-mods` from master by dispatching with `signed-run-id`, the ID of
+an authorized signing run in this repo. Per-mod artifact names are
+`{launcher,messages,music}-improved-oem-signed-apks`, each containing the
+signed `<App>.apk` files at the artifact root. The workflow verifies that
+OEM signatures and the local unsigned build payload match. Signing keys
+never belong in repo files or GitHub Actions secrets. See `mods/AGENTS.md`.
+
+Local checks: `.github/build-apks.sh` (optionally pass a list of Gradle
+app paths), `python3 -m unittest discover -s .github -p 'test_*.py'`,
+and `mods/tools/setup.sh` then `mods/<mod>/tools/{test,build}.sh`.
 
 ## Shared rules
 

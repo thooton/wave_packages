@@ -1,0 +1,19 @@
+{
+  "id": "com.places.xp3",
+  "type": "apk",
+  "name": "Places",
+  "summary": "Find businesses and other places with Google Maps",
+  "description": "Search nearby places and see useful details such as location and contact information. Import your own Maps setup file first.",
+  "author": "thooton",
+  "homepage": "https://github.com/thooton/wave_packages/tree/master/places",
+  "requires": {
+    "device": [
+      "XP3800"
+    ],
+    "sdk": 27
+  },
+  "depends": [],
+  "conflicts": [],
+  "replaces": [],
+  "section": "applications"
+}

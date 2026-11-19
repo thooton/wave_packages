@@ -1,0 +1,19 @@
+{
+  "id": "com.updater.xp3",
+  "type": "apk",
+  "name": "Updater",
+  "summary": "Legacy updater, superseded by Wave",
+  "description": "Wave replaces Updater. Use it to install future app updates once Wave is set up on your phone.",
+  "author": "thooton",
+  "homepage": "https://github.com/thooton/wave_packages/tree/master/updater",
+  "requires": {
+    "device": [
+      "XP3800"
+    ],
+    "sdk": 27
+  },
+  "depends": [],
+  "conflicts": [],
+  "replaces": [],
+  "section": "system"
+}

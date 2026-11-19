@@ -1,99 +1,221 @@
-name: Build APKs
+name: Build and publish XP3800 packages
 
 on:
   push:
     branches: [master]
   pull_request:
   workflow_dispatch:
+    inputs:
+      retry-publish:
+        type: boolean
+        description: Retry mirroring unchanged packages from their existing releases
+        default: false
+      signed-run-id:
+        type: string
+        description: Optional workflow run ID with authorized OEM-signed APK artifacts
+        default: ''
+
+permissions:
+  contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: wave-packages-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
-  ANDROID_BUILD_TOOLS: 35.0.1
+  ANDROID_BUILD_TOOLS: '35.0.1'
 
 jobs:
-  build:
-    name: All APKs
+  inventory:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    outputs:
+      apks: ${{ steps.inventory.outputs.apks }}
+      mods: ${{ steps.inventory.outputs.mods }}
     steps:
-      # The whole history: manifest.json carries each app's newest commits.
+      - uses: actions/checkout@v4
+      - id: inventory
+        run: |
+          echo "apks=$(python3 .github/packages.py matrix apk)" >> "$GITHUB_OUTPUT"
+          echo "mods=$(python3 .github/packages.py matrix mod)" >> "$GITHUB_OUTPUT"
+
+  build-apks:
+    runs-on: ubuntu-latest
+    steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
-
       - uses: android-actions/setup-android@v3
         with:
-          packages: platforms;android-35 build-tools;${{ env.ANDROID_BUILD_TOOLS }}
-
+          packages: platforms;android-35 build-tools;35.0.1
       - uses: gradle/actions/setup-gradle@v4
-
-      # Charge refuses to build without android/.tokens.json. CI never bakes a
-      # real Tesla credential into a downloadable artifact, so it gets a
-      # placeholder: the APK builds, but has no working login. CI has no other
-      # logins either, so the APKs it builds carry none.
-      - name: Placeholder Charge token
-        run: echo '{"refreshToken":"ci-placeholder"}' > charge/android/.tokens.json
-
-      # Every app is one Gradle build (settings.gradle finds them), so this
-      # runs every :core's self-test and builds every release APK, signed with
-      # the shared key in signing/ like the copies on the phone.
-      - name: Self-test and build
-        run: ./gradlew --no-daemon selfTest assembleRelease
-
-      # build.sh calls `aapt` from PATH and signs with launcher/signing/.
-      - name: Build the launcher
-        run: |
-          export PATH="$ANDROID_SDK_ROOT/build-tools/$ANDROID_BUILD_TOOLS:$PATH"
-          ./launcher/build.sh
-
-      # Each APK is named for its app's directory (the launcher keeps its old
-      # AppDrawer.apk), which is also its name in the release. Then what the
-      # Updater reads, manifest.json, from the built APKs themselves so it
-      # can't drift from the build files (see .github/manifest.py).
-      - name: Collect APKs and write the manifest
-        run: |
-          mkdir apks
-          for apk in */android/app/build/outputs/apk/release/app-release.apk */app/build/outputs/apk/release/app-release.apk; do
-            [ -f "$apk" ] && cp "$apk" "apks/${apk%%/*}.apk"
-          done
-          cp launcher/AppDrawer.apk apks/
-          python3 .github/manifest.py apks "$ANDROID_SDK_ROOT/build-tools/$ANDROID_BUILD_TOOLS/aapt2"
-          cat apks/manifest.json
-
+      - name: Build release APKs and legacy manifest
+        run: .github/build-apks.sh
       - uses: actions/upload-artifact@v4
         with:
           name: all-apks
           path: apks/
           if-no-files-found: error
 
-      # Pushes to master also publish the APKs to the rolling "latest" release.
-      - name: Publish to the "latest" release
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+  release-apks:
+    needs: [inventory, build-apks]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.inventory.outputs.apks) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: all-apks
+          path: apks
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: build-tools;35.0.1
+      - id: release
+        name: Create immutable release or verify existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_PATH: ${{ matrix.package.path }}
+          RETRY_PUBLISH: ${{ inputs.retry-publish }}
+        run: |
+          asset="$PACKAGE_PATH.apk"
+          if [[ "$PACKAGE_PATH" == launcher ]]; then asset=AppDrawer.apk; fi
+          retry=(); [[ "$RETRY_PUBLISH" != true ]] || retry+=(--retry-publish)
+          python3 .github/release_package.py "$PACKAGE_PATH" "apks/$asset" \
+            --aapt2 "$ANDROID_SDK_ROOT/build-tools/$ANDROID_BUILD_TOOLS/aapt2" "${retry[@]}"
+      - uses: thooton/wave/publish@v1
+        if: matrix.package.publish && steps.release.outputs.binary != ''
+        with:
+          source-repository: thooton/wave_repository
+          source-token: ${{ secrets.WAVE_REPOSITORY_TOKEN }}
+          section: ${{ matrix.package.section }}
+          folder: ${{ matrix.package.name }}
+          meta: ${{ matrix.package.path }}/wave/package.json
+          icon: ${{ matrix.package.path }}/wave/icon.png
+          binary: ${{ steps.release.outputs.binary }}
+          url: ${{ steps.release.outputs.url }}
+          changes-path: ${{ matrix.package.path }}
+
+  mods:
+    needs: inventory
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.inventory.outputs.mods) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platforms;android-35 build-tools;35.0.1
+      - name: Host tests and unsigned signing requests
+        env:
+          PACKAGE_PATH: ${{ matrix.package.path }}
+        run: |
+          mods/tools/setup.sh
+          "$PACKAGE_PATH/tools/test.sh"
+          "$PACKAGE_PATH/tools/build.sh"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package.name }}-unsigned-not-for-install
+          path: ${{ matrix.package.path }}/build/*/unsigned.apk
+          if-no-files-found: error
+
+  release-mods:
+    needs: [inventory, mods]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.signed-run-id != ''
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.inventory.outputs.mods) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.package.name }}-unsigned-not-for-install
+          path: ${{ matrix.package.path }}/build
+      - name: Validate signing run reference
+        env:
+          SIGNED_RUN_ID: ${{ inputs.signed-run-id }}
+        run: '[[ "$SIGNED_RUN_ID" =~ ^[0-9]+$ ]]'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.package.name }}-oem-signed-apks
+          path: signed-apks
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.signed-run-id }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platforms;android-35 build-tools;35.0.1
+      - id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_PATH: ${{ matrix.package.path }}
+          RETRY_PUBLISH: ${{ inputs.retry-publish }}
+        run: |
+          OEM_SIGNED_APKS="$PWD/signed-apks" "$PACKAGE_PATH/tools/package.sh"
+          zip=$(find "$PACKAGE_PATH/out" -maxdepth 1 -name '*.zip' -print -quit)
+          retry=(); [[ "$RETRY_PUBLISH" != true ]] || retry+=(--retry-publish)
+          python3 .github/release_package.py "$PACKAGE_PATH" "$zip" "${retry[@]}"
+      - uses: thooton/wave/publish@v1
+        if: steps.release.outputs.binary != ''
+        with:
+          source-repository: thooton/wave_repository
+          source-token: ${{ secrets.WAVE_REPOSITORY_TOKEN }}
+          section: ${{ matrix.package.section }}
+          folder: ${{ matrix.package.name }}
+          meta: ${{ matrix.package.path }}/wave/package.json
+          icon: ${{ matrix.package.path }}/wave/icon.png
+          binary: ${{ steps.release.outputs.binary }}
+          url: ${{ steps.release.outputs.url }}
+          changes-path: ${{ matrix.package.path }}
+
+  legacy-latest:
+    needs: build-apks
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: all-apks
+          path: apks
+      - name: Publish legacy rolling release (do not retire before task 17)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           git tag -f latest
-          git push -f origin latest
-          cat > notes.md <<'EOF'
-          Built automatically from master. Download the APK for the app you want and install it with `adb install <file>.apk`, or let the Updater app on the phone do it.
-
-          `manifest.json` describes every app (version, package, size, SHA-256 and its newest commits); the Updater reads it. `versions.txt` and `packages.txt` are only for Updaters older than 1.3.0.
-          EOF
-          gh release view latest >/dev/null 2>&1 || \
-            gh release create latest --title "Sonim apps (latest)" --notes-file notes.md
-          gh release edit latest --notes-file notes.md
+          git push -f origin refs/tags/latest
+          notes="Legacy update channel. Wave replaces Updater and Installer; see https://github.com/thooton/wave."
+          gh release view latest >/dev/null 2>&1 || gh release create latest --verify-tag --title "Sonim apps (latest)" --notes "$notes"
+          gh release edit latest --notes "$notes"
           gh release upload latest apks/*.apk apks/manifest.json apks/versions.txt apks/packages.txt --clobber
-          # Drop assets no build produces any more, such as the old
-          # *-debug.apk files.
           gh release view latest --json assets -q '.assets[].name' | while read -r name; do
             [ -f "apks/$name" ] || gh release delete-asset latest "$name" -y
           done
