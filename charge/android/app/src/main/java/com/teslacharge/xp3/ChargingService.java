@@ -69,7 +69,6 @@ public final class ChargingService extends Service {
     /** The next poll, held so that a change of pace can cancel it rather than
      *  leave a second chain of them running alongside the first. */
     private ScheduledFuture<?> pending;
-    private ChargingRepository repository;
     private NotificationManager notifications;
     // Written on the main thread, read by the poller: both have to be volatile
     // or the poll can keep working from a session id, or a liveness flag, that
@@ -118,7 +117,6 @@ public final class ChargingService extends Service {
     public void onCreate() {
         super.onCreate();
         instance = this;
-        repository = ChargingRepository.get(this);
         notifications = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         poller = Executors.newSingleThreadScheduledExecutor();
         createChannel();
@@ -195,7 +193,7 @@ public final class ChargingService extends Service {
         JSONObject session = null;
         String error = null;
         try {
-            session = repository.session(sessionId);
+            session = ChargingRepository.get(this).session(sessionId);
         } catch (Exception failure) {
             error = failure.getMessage();
         }

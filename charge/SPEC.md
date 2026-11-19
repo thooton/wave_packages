@@ -12,7 +12,8 @@ cost. It is driven one-handed with the d-pad, OK, Back, Clear and Menu on a
 It must stay small, quick and trustworthy with money: every figure on screen
 is either live from Tesla or plainly marked as missing or stale, and nothing
 that costs money happens without a confirmation. It is a single-user,
-sideloaded app with one Tesla login baked into the build. It must never
+sideloaded app with one Tesla login, imported on the phone from a setup
+file. It must never
 become a general EV-charging map, a car remote (climate, locks, trips), a
 multi-account client, or an app that needs a companion server.
 
@@ -48,7 +49,7 @@ content area. The open tab is marked. The app opens on Favorites.
   content). Back on a tab's top level leaves the app. Clear does nothing in a
   text field (it deletes there).
 - Menu: a dialog titled Menu with "Refresh this page", "Search radius: N
-  miles" and "Account info", on every screen.
+  miles", "Account info" and "Setup…", on every screen.
 
 ### Lists (Favorites, Discover results, History)
 
@@ -221,27 +222,38 @@ Starting a charge (real money; never press Start in QA):
   block shows its own error instead if only it failed; a total failure
   shows "Your account could not be loaded." and the reason. OK closes it.
   Re-read every time it opens.
+- Setup…: the shared setup screen. Back returns; a changed setup (imported
+  again, signed out) starts the app over.
 
 ## Behaviour
 
 - Network: Tesla's API over HTTPS for everything; address search through
-  Google geocoding when the build has a key, otherwise OpenStreetMap
+  Google geocoding when the setup has a Maps key, otherwise OpenStreetMap
   Nominatim. No other server.
-- Login: a Tesla refresh token baked into the build; refreshed and rotated
-  automatically. A build without one (CI and QA builds) answers every Tesla
-  request with "This build does not contain sign-in credentials." That must
-  show as the normal error states above, never a crash or endless spinner.
+- Setup: nothing is built into the APK. With nothing set up, Charge opens on
+  the shared setup screen (`../common/SETUP.md`) instead; Menu's Setup…
+  opens it later. The setup is a Tesla refresh token (required), and
+  optionally a Google Maps key, a contact email for Nominatim, and country,
+  language, currency, locale, vehicle type, Tesla app version and user agent
+  (defaults US, en, USD, en_US, NTSLA, 4.60.0 and Tesla's iOS agent). There
+  is no command center form. The token is refreshed and rotated
+  automatically; importing a different one starts over from it, signing out
+  forgets the rotated ones. A version with a token built in hands its live
+  token to the setup on first launch (regional settings take the defaults,
+  and a built-in Maps key is not carried over). A request with no token
+  answers "Charge isn't set up." as the normal error states above, never a
+  crash or endless spinner.
 - Errors never replace data already on screen except where stated: a failed
   search sets the status line; a failed detail shows the dialog (Back then
   returns to the list); a failed session lookup with no session known shows
   in place on the Session tab; with a session on screen it shows the dialog
   only on the Session tab, and is silent elsewhere.
 - Error wording: a login Tesla rejects reads "Tesla sign-in has expired."
-  (it will not recover by itself); no signal reads "No connection." and a
+  (it will not recover by itself: import a setup file with a new token); no signal reads "No connection." and a
   stalled request "The connection timed out." (try again later).
-- Stored on the phone: favorites (identity and address only), the login,
-  and the stall/site context of sessions this phone started. Survives a
-  restart: favorites, login. Not kept: search results, radius, history,
+- Stored on the phone: favorites (identity and address only), the setup,
+  the rotated tokens, and the stall/site context of sessions this phone
+  started. Survives a restart: favorites, setup. Not kept: search results, radius, history,
   live figures.
 - Charging service: starts when a session is known to be running and holds
   an ongoing, silent notification titled with the status ("Charging") and a

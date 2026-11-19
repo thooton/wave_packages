@@ -26,6 +26,13 @@
             </intent-filter>
         </activity>
 
+        <!-- The shared setup screen (common/ui): the Tesla refresh token and
+             regional settings, imported from a setup file. -->
+        <activity
+            android:name="com.xp3.common.ui.SetupActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
+            android:screenOrientation="portrait" />
+
         <!-- Watches the running session and holds up its notification. Not
              exported: it is started by this app and nothing else has any
              business starting it. -->

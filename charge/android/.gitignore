@@ -1,3 +1,4 @@
-# The Tesla login and settings gradle/bundled.gradle bakes into the APK.
+# The Tesla login and settings older builds baked into the APK; no longer
+# read (the app is set up on the phone), still ignored so they never get in.
 .tokens.json
 .env

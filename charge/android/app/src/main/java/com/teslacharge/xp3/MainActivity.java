@@ -30,6 +30,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import com.teslacharge.xp3.data.ApiException;
 import com.teslacharge.xp3.data.ChargingRepository;
+import com.xp3.common.Config;
+import com.xp3.common.ui.Setup;
 import com.teslacharge.xp3.data.FavoriteStore;
 import com.teslacharge.xp3.data.Normalizer;
 import com.xp3.common.ui.BaseActivity;
@@ -85,6 +87,7 @@ public final class MainActivity extends BaseActivity {
     }
     private final Handler main = new Handler(Looper.getMainLooper());
     private ChargingRepository repository;
+    private String setupStamp;
     private FavoriteStore favorites;
     private FrameLayout content;
     private Tabs tabs;
@@ -189,6 +192,9 @@ public final class MainActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        adoptOldSignIn();
+        if (!Setup.require(this)) return;
+        setupStamp = Setup.stamp(this);
         setContentView(R.layout.activity_main);
         repository = ChargingRepository.get(this);
         favorites = new FavoriteStore(this);
@@ -198,9 +204,38 @@ public final class MainActivity extends BaseActivity {
         showTab(FAVORITES, true);
     }
 
+    /**
+     * Versions before setup files kept the Tesla tokens they were built with
+     * in "tesla_credentials". Their live refresh token becomes the setup,
+     * once (the regional settings take their defaults), and TokenStore keeps
+     * rotating it from there.
+     */
+    private void adoptOldSignIn() {
+        if (Setup.ready(this)) return;
+        String token = getSharedPreferences("tesla_credentials", MODE_PRIVATE).getString("refresh_token", "");
+        if (token.length() == 0) return;
+        java.util.Map<String, String> values = new java.util.LinkedHashMap<>();
+        values.put("refreshToken", token);
+        try {
+            Setup.migrate(this, Config.direct(Setup.spec(this), null, values));
+        } catch (IllegalArgumentException ignored) {
+            // Not a token the setup takes: the setup screen asks for one.
+        }
+    }
+
+    private void openSetup() {
+        startActivity(Setup.intent(this));
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
+        // Imported again or signed out on the setup screen: start over with it.
+        if (setupStamp != null && !setupStamp.equals(Setup.stamp(this))) {
+            recreate();
+            return;
+        }
+        if (repository == null) return;
         // onResume is the app-open boundary even when Android kept this
         // Activity alive in the background, so do not rely on onCreate alone.
         refreshFavorites(true);
@@ -1701,13 +1736,15 @@ public final class MainActivity extends BaseActivity {
             "Refresh this page",
             "Search radius: " + displayRadius(),
             "Account info",
+            "Setup\u2026",
         };
         new AlertDialog.Builder(this).setTitle("Menu").setItems(
                 items,
                 (dialog, which) -> {
                     if (which == 0) refreshCurrentScreen();
                     else if (which == 1) chooseRadius();
-                    else showAccount();
+                    else if (which == 2) showAccount();
+                    else openSetup();
                 }
             ).show();
     }
@@ -1899,10 +1936,10 @@ public final class MainActivity extends BaseActivity {
     }
 
     /**
-     * How long the credentials baked into this build have left. Phrased as a
-     * countdown rather than a date because the only thing to do about it is
-     * rebuild, and what decides whether that is worth doing now is how many
-     * days are left, not which day it lands on.
+     * How long the Tesla sign-in has left. Phrased as a countdown rather than
+     * a date because the only thing to do about it is import a new setup
+     * file, and what decides whether that is worth doing now is how many days
+     * are left, not which day it lands on.
      */
     private static String signInExpiry(long expiresAt) {
         long remaining = expiresAt - System.currentTimeMillis();

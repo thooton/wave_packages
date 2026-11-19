@@ -1,0 +1,52 @@
+{
+  "format": 1,
+  "app": "charge",
+  "name": "Charge",
+  "package": "com.teslacharge.xp3",
+  "about": "Finds and starts charging at Tesla Superchargers with your Tesla account.",
+  "settings": [
+    {
+      "name": "refreshToken",
+      "label": "Tesla refresh token",
+      "secret": true,
+      "required": true,
+      "pattern": "^[A-Za-z0-9._-]{20,2000}$",
+      "max": 2000,
+      "example": "eyJhbGciOi...",
+      "obtain": "A refresh token for Tesla's owner API (client ownerapi), made with a Tesla token tool such as the Auth for Tesla app or tesla_auth on a computer. The app rotates it as Tesla requires, so it keeps working once imported."
+    },
+    {
+      "name": "mapsKey",
+      "label": "Maps key (optional)",
+      "secret": true,
+      "required": false,
+      "pattern": "^[A-Za-z0-9_-]{30,60}$",
+      "max": 60,
+      "obtain": "A Google Maps Platform key with the Geocoding API, for finding places typed into search. Without it, OpenStreetMap's Nominatim is used."
+    },
+    {
+      "name": "geocodeEmail",
+      "label": "Contact email",
+      "secret": false,
+      "required": false,
+      "manual": true,
+      "pattern": "^[^@\\s]+@[^@\\s]+$",
+      "max": 254,
+      "obtain": "Optional: an address sent to OpenStreetMap's Nominatim with searches, as its usage policy asks."
+    },
+    { "name": "country", "label": "Country", "secret": false, "required": false, "manual": true, "pattern": "^[A-Z]{2}$", "max": 2, "default": "US", "obtain": "Two-letter country code Tesla prices and finds chargers for." },
+    { "name": "language", "label": "Language", "secret": false, "required": false, "manual": true, "pattern": "^[a-z]{2}$", "max": 2, "default": "en", "obtain": "Two-letter language code." },
+    { "name": "currency", "label": "Currency", "secret": false, "required": false, "manual": true, "pattern": "^[A-Z]{3}$", "max": 3, "default": "USD", "obtain": "Three-letter currency code." },
+    { "name": "locale", "label": "Locale", "secret": false, "required": false, "manual": true, "pattern": "^[a-z]{2}_[A-Z]{2}$", "max": 5, "default": "en_US", "obtain": "Tesla's locale, language and country." },
+    { "name": "vehicle", "label": "Vehicle", "secret": false, "required": false, "manual": true, "pattern": "^[A-Z_]{2,20}$", "max": 20, "default": "NTSLA", "obtain": "NTSLA for a non-Tesla car charging at Superchargers; TSLA for a Tesla." },
+    { "name": "appVersion", "label": "Tesla app version", "secret": false, "required": false, "pattern": "^[0-9]+(\\.[0-9]+){1,3}$", "max": 20, "default": "4.60.0", "obtain": "The Tesla app version the requests claim to come from." },
+    { "name": "userAgent", "label": "Tesla user agent", "secret": false, "required": false, "pattern": "^[!-~ ]{1,200}$", "max": 200, "default": "TeslaApp/4.60.0/07b1bbdf9/ios/26.0", "obtain": "The x-tesla-user-agent header the requests send." }
+  ],
+  "limits": [
+    "Tesla's owner API is unofficial and can change without notice."
+  ],
+  "delta": {
+    "supported": false,
+    "about": "Charge has always talked to Tesla directly; there is no Delta backend."
+  }
+}

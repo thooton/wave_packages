@@ -15,14 +15,43 @@ public final class TokenStore {
     private static final long ACCESS_SKEW_MS = 5 * 60_000L;
     public static final String SIGN_IN_EXPIRED = "Tesla sign-in has expired.";
     private final SharedPreferences preferences;
+    private final Settings settings;
 
-    public TokenStore(Context context) {
+    public TokenStore(Context context, Settings settings) {
+        this.settings = settings;
         preferences = context.getSharedPreferences("tesla_credentials", Context.MODE_PRIVATE);
-        if (!preferences.contains("refresh_token")) {
-            preferences.edit().putString("refresh_token", Bundled.REFRESH_TOKEN)
-                .putString("previous_refresh_token", Bundled.PREVIOUS_REFRESH_TOKEN)
-                .putString("access_token", Bundled.ACCESS_TOKEN)
-                .putLong("access_expires_at", Bundled.ACCESS_EXPIRES_AT).commit();
+        seed(settings.refreshToken);
+    }
+
+    /**
+     * Starts the rotation from the setup's refresh token, unless it already
+     * has: Tesla spends a refresh token on every use, so the one imported is
+     * soon dead and the live one is whichever this store last got back. A
+     * different token imported starts over from it; signed out (none), the
+     * rotated tokens are forgotten. The store remembers only a digest of the
+     * token it was seeded with.
+     */
+    private void seed(String refreshToken) {
+        if (refreshToken.length() == 0) {
+            if (preferences.getAll().size() > 0) preferences.edit().clear().commit();
+            return;
+        }
+        String seed = digest(refreshToken);
+        if (seed.equals(preferences.getString("seed", ""))) return;
+        if (!preferences.contains("seed") && refreshToken.equals(preferences.getString("refresh_token", ""))) {
+            // Adopted from an older version's store (the setup was made from it): keep its access token.
+            preferences.edit().putString("seed", seed).commit();
+            return;
+        }
+        preferences.edit().clear().putString("refresh_token", refreshToken).putString("seed", seed).commit();
+    }
+
+    private static String digest(String value) {
+        try {
+            byte[] hash = java.security.MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+            return Base64.encodeToString(hash, Base64.NO_WRAP | Base64.NO_PADDING | Base64.URL_SAFE);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
         }
     }
 
@@ -63,7 +92,7 @@ public final class TokenStore {
     private String refresh() throws ApiException {
         String current = preferences.getString("refresh_token", "");
         String previous = preferences.getString("previous_refresh_token", "");
-        if (current.length() == 0) throw new ApiException("This build does not contain sign-in credentials.", 401);
+        if (current.length() == 0) throw new ApiException("Charge isn't set up.", 401);
         try {
             return exchangeAndStore(current);
         } catch (ApiException first) {
@@ -83,9 +112,9 @@ public final class TokenStore {
             Map<String, String> headers = new HashMap<>();
             headers.put("content-type", "application/json");
             headers.put("accept", "*/*");
-            headers.put("accept-language", Bundled.DEVICE_LANGUAGE);
-            headers.put("user-agent", "TeslaV4/" + Bundled.APP_VERSION + " (com.teslamotors.TeslaApp; build:4542; iOS 26.0.0)");
-            headers.put("x-tesla-user-agent", Bundled.TESLA_USER_AGENT);
+            headers.put("accept-language", settings.language);
+            headers.put("user-agent", "TeslaV4/" + settings.appVersion + " (com.teslamotors.TeslaApp; build:4542; iOS 26.0.0)");
+            headers.put("x-tesla-user-agent", settings.userAgent);
 
             HttpJson.Response response = HttpJson.post(AUTH_URL, headers, body);
             JSONObject payload = response.object();

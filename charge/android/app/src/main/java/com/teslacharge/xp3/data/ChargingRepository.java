@@ -3,6 +3,8 @@ package com.teslacharge.xp3.data;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import com.xp3.common.ui.Setup;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -14,8 +16,10 @@ public final class ChargingRepository {
     private final TokenStore tokens;
     private final SiteDirectory directory;
     private final SharedPreferences sessionContext;
+    private final Settings settings;
 
     private static ChargingRepository instance;
+    private static String instanceStamp;
 
     /**
      * The one repository in the process.
@@ -25,18 +29,23 @@ public final class ChargingRepository {
      * credential: whichever refreshes second presents a token that was just
      * invalidated. The Activity and the charging service both need a
      * repository, so they need the same one. The site directory's per-run cache
-     * is shared for free.
+     * is shared for free. A new setup (imported again, or signed out) makes a
+     * new one, over the new settings.
      */
     public static synchronized ChargingRepository get(Context context) {
-        if (instance == null) {
-            instance = new ChargingRepository(context.getApplicationContext());
+        Context app = context.getApplicationContext();
+        String stamp = Setup.stamp(app);
+        if (instance == null || !stamp.equals(instanceStamp)) {
+            instance = new ChargingRepository(app, new Settings(Setup.load(app)));
+            instanceStamp = stamp;
         }
         return instance;
     }
 
-    private ChargingRepository(Context context) {
-        tokens = new TokenStore(context);
-        api = new TeslaApi(tokens);
+    private ChargingRepository(Context context, Settings settings) {
+        this.settings = settings;
+        tokens = new TokenStore(context, settings);
+        api = new TeslaApi(tokens, settings);
         directory = new SiteDirectory(api);
         sessionContext = context.getSharedPreferences("session_context", Context.MODE_PRIVATE);
     }
@@ -168,7 +177,7 @@ public final class ChargingRepository {
             // asked for the payment instrument in. Carried even though the
             // balances name their own, because a zero balance is a list with
             // nothing in it to read a currency off.
-            result.put("currency", Bundled.CURRENCY_CODE);
+            result.put("currency", settings.currency);
             return result;
         } catch (ApiException e) {
             throw e;

@@ -17,11 +17,13 @@ public final class TeslaApi {
     private static final double AVAILABILITY_RADIUS = 13.0;
 
     private final TokenStore tokens;
+    private final Settings settings;
     private final Object evsLock = new Object();
     private volatile JSONArray cachedEvs;
 
-    public TeslaApi(TokenStore tokens) {
+    public TeslaApi(TokenStore tokens, Settings settings) {
         this.tokens = tokens;
+        this.settings = settings;
     }
 
     private JSONObject gql(String network, String query, JSONObject variables, String operation, String screen) throws ApiException {
@@ -32,19 +34,19 @@ public final class TeslaApi {
         try {
             String token = tokens.getAccessToken();
             String requestId = UUID.randomUUID().toString();
-            String url = network + "?deviceLanguage=" + encode(Bundled.DEVICE_LANGUAGE)
-                + "&deviceCountry=" + encode(Bundled.DEVICE_COUNTRY)
-                + "&ttpLocale=" + encode(Bundled.TTP_LOCALE)
+            String url = network + "?deviceLanguage=" + encode(settings.language)
+                + "&deviceCountry=" + encode(settings.country)
+                + "&ttpLocale=" + encode(settings.locale)
                 + "&operationName=" + encode(operation)
                 + "&screen=" + encode(screen);
 
             Map<String, String> headers = new LinkedHashMap<>();
             headers.put("content-type", "application/json");
             headers.put("accept", "*/*");
-            headers.put("accept-language", Bundled.DEVICE_LANGUAGE);
+            headers.put("accept-language", settings.language);
             headers.put("cache-control", "no-cache");
             headers.put("authorization", "Bearer " + token);
-            headers.put("x-tesla-user-agent", Bundled.TESLA_USER_AGENT);
+            headers.put("x-tesla-user-agent", settings.userAgent);
             headers.put("user-agent", "TeslaV4/4542 CFNetwork/3860.100.1 Darwin/25.0.0");
             headers.put("x-request-id", requestId);
             headers.put("x-txid", requestId);
@@ -80,13 +82,13 @@ public final class TeslaApi {
                 return origin(parts[0].trim() + ", " + parts[1].trim(), Double.parseDouble(parts[0].trim()), Double.parseDouble(parts[1].trim()), "coordinates");
             } catch (JSONException e) { throw new ApiException("Invalid coordinates.", 400, e); }
         }
-        return Bundled.GOOGLE_MAPS_KEY.length() > 0 ? geocodeGoogle(query) : geocodeNominatim(query);
+        return settings.mapsKey.length() > 0 ? geocodeGoogle(query) : geocodeNominatim(query);
     }
 
     private JSONObject geocodeGoogle(String query) throws ApiException {
         try {
-            String url = "https://maps.googleapis.com/maps/api/geocode/json?key=" + encode(Bundled.GOOGLE_MAPS_KEY)
-                + "&address=" + encode(query) + "&components=" + encode("country:" + Bundled.DEVICE_COUNTRY);
+            String url = "https://maps.googleapis.com/maps/api/geocode/json?key=" + encode(settings.mapsKey)
+                + "&address=" + encode(query) + "&components=" + encode("country:" + settings.country);
             HttpJson.Response response = HttpJson.get(url, null);
             JSONObject payload = response.object();
             String status = payload.optString("status");
@@ -102,14 +104,14 @@ public final class TeslaApi {
     private JSONObject geocodeNominatim(String query) throws ApiException {
         try {
             String url = "https://nominatim.openstreetmap.org/search?q=" + encode(query) + "&format=jsonv2&limit=1&addressdetails=1";
-            if (query.matches("^\\d{5}(?:-\\d{4})?$") && Bundled.DEVICE_COUNTRY.length() > 0) {
-                url += "&countrycodes=" + encode(Bundled.DEVICE_COUNTRY.toLowerCase(Locale.US));
+            if (query.matches("^\\d{5}(?:-\\d{4})?$") && settings.country.length() > 0) {
+                url += "&countrycodes=" + encode(settings.country.toLowerCase(Locale.US));
             }
             Map<String, String> headers = new HashMap<>();
-            String contact = Bundled.GEOCODE_EMAIL.length() > 0 ? " (" + Bundled.GEOCODE_EMAIL + ")" : "";
+            String contact = settings.geocodeEmail.length() > 0 ? " (" + settings.geocodeEmail + ")" : "";
             headers.put("user-agent", "tesla-charge-xp3/1.0" + contact);
             headers.put("accept", "application/json");
-            headers.put("accept-language", Bundled.DEVICE_LANGUAGE);
+            headers.put("accept-language", settings.language);
             HttpJson.Response response = HttpJson.get(url, headers);
             if (response.status < 200 || response.status >= 300) throw new ApiException("Geocoding service returned " + response.status, 502);
             JSONArray results = response.array();
@@ -171,7 +173,7 @@ public final class TeslaApi {
                 .put("teslaDestinationChargers", false);
             filters.put(new JSONObject().put("name", "siteType").put("type", "CHECKBOX").put("value", siteTypes));
 
-            if ("NTSLA".equals(Bundled.VEHICLE_MAKE_TYPE)) {
+            if ("NTSLA".equals(settings.vehicle)) {
                 JSONArray evs;
                 try { evs = getNonTeslaEvs(); } catch (ApiException ignored) { evs = new JSONArray(); }
                 if (evs.length() > 0) {
@@ -191,8 +193,8 @@ public final class TeslaApi {
             JSONObject siteFilter = new JSONObject().put("userLocation", latLng(lat, lng))
                 .put("northwestCorner", latLng(lat + latDelta, lng - lngDelta))
                 .put("southeastCorner", latLng(lat - latDelta, lng + lngDelta))
-                .put("filters", filters).put("experience", Bundled.VEHICLE_MAKE_TYPE);
-            JSONObject variables = new JSONObject().put("siteFilter", siteFilter).put("vehicleMakeType", Bundled.VEHICLE_MAKE_TYPE);
+                .put("filters", filters).put("experience", settings.vehicle);
+            JSONObject variables = new JSONObject().put("siteFilter", siteFilter).put("vehicleMakeType", settings.vehicle);
             JSONObject data = gql(BFF, GraphqlQueries.GET_SITE_LIST, variables, "getSiteList", "charging_nt_site_selection_screen");
             JSONArray all = Jsons.array(data, "chargingNetwork", "siteList");
             JSONArray superchargers = new JSONArray();
@@ -213,7 +215,7 @@ public final class TeslaApi {
         try {
             JSONObject variables = new JSONObject()
                 .put("siteId", new JSONObject().put("byLocationGUID", new JSONObject().put("locationGUID", locationGuid).put("programType", "PTSCH")))
-                .put("vehicleMakeType", Bundled.VEHICLE_MAKE_TYPE);
+                .put("vehicleMakeType", settings.vehicle);
             JSONObject data = gql(BFF, GraphqlQueries.GET_SITE_BY_ID, variables, "getSiteById", "supercharging_nt_site_details_screen");
             return Jsons.object(data, "chargingNetwork", "site");
         } catch (ApiException e) { throw e; }
@@ -223,7 +225,7 @@ public final class TeslaApi {
     public JSONObject canStartCharging(long trtId) throws ApiException {
         try {
             JSONObject variables = new JSONObject().put("trtId", trtId).put("programType", "PROGRAM_TYPE_PTSCH")
-                .put("deviceLanguage", Bundled.DEVICE_LANGUAGE).put("deviceCountry", Bundled.DEVICE_COUNTRY);
+                .put("deviceLanguage", settings.language).put("deviceCountry", settings.country);
             JSONObject data = gql(OWNERSHIP, GraphqlQueries.PRE_START_CHARGING_VALIDATION, variables, "preStartChargingValidation", "supercharging_nt_site_details_screen");
             JSONObject result = Jsons.object(data, "me", "charging", "canStartCharging");
             return result == null ? new JSONObject() : result;
@@ -234,8 +236,8 @@ public final class TeslaApi {
     public JSONObject startSession(String postId, long pricebookId, int occupied, int total) throws ApiException {
         try {
             JSONObject variables = new JSONObject().put("postId", postId).put("programType", "PTSCH")
-                .put("pricebookId", pricebookId).put("deviceCountry", Bundled.DEVICE_COUNTRY)
-                .put("deviceLanguage", Bundled.DEVICE_LANGUAGE).put("occupiedChargers", occupied)
+                .put("pricebookId", pricebookId).put("deviceCountry", settings.country)
+                .put("deviceLanguage", settings.language).put("occupiedChargers", occupied)
                 .put("totalChargers", total).put("source", "SUPERCHARGER");
             JSONObject data = gql(OWNERSHIP, GraphqlQueries.START_CHARGING_SESSION, variables, "StartChargingSession", "supercharging_nt_site_details_screen");
             return Jsons.object(data, "charging", "startSession");
@@ -286,8 +288,8 @@ public final class TeslaApi {
     public JSONObject paymentInstrument() throws ApiException {
         try {
             JSONObject variables = new JSONObject().put("paymentSource", "SUPERCHARGE")
-                .put("countryCode", Bundled.DEVICE_COUNTRY).put("currencyCode", Bundled.CURRENCY_CODE)
-                .put("sourceFlow", "NTSLA".equals(Bundled.VEHICLE_MAKE_TYPE) ? "NON_TESLA_CHARGING" : "TESLA_CHARGING");
+                .put("countryCode", settings.country).put("currencyCode", settings.currency)
+                .put("sourceFlow", "NTSLA".equals(settings.vehicle) ? "NON_TESLA_CHARGING" : "TESLA_CHARGING");
             JSONObject data = gql(OWNERSHIP, GraphqlQueries.GET_PAYMENT_INSTRUMENT, variables, "GetInstrumentBySource", "charging_session_screen");
             return Jsons.object(data, "me", "payment", "getInstrumentBySource");
         } catch (ApiException e) { throw e; }

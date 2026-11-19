@@ -28,8 +28,12 @@ reintroduce an older web implementation or assume there is a companion server.
 
 ## Repository map
 
-- `android/app/build.gradle`: the app's version, R8 settings and the bundled
-  secrets (see `../gradle/bundled.gradle`).
+- `android/app/build.gradle`: the app's version and R8 settings. Nothing
+  secret: the login is set up on the phone.
+- `android/app/src/main/assets/wave-setup.json`: the setup descriptor (the
+  Tesla refresh token, optional Maps key and contact, regional settings),
+  read by common/ui's setup screen and the Wave site's generator; change
+  both together. `data/Settings.java` reads the setup.
 - `android/app/src/main/AndroidManifest.xml`: portrait single-activity app and
   the non-exported charging foreground service.
 - `MainActivity.java`: four tabs, programmatic detail/session screens, keypad
@@ -74,22 +78,22 @@ MainActivity / ChargingService
 
 ### Credentials and live-account safety
 
-- `android/.tokens.json`, `android/.env`, generated `data/Bundled.java`,
-  keystores, and every APK are secrets or secret-bearing artifacts. They are
-  ignored intentionally. Never commit, paste, print, log, or expose their
-  contents. Do not add a task that includes their values in Gradle output.
-- The build requires `.tokens.json` with a `refreshToken`; it reads optional
-  regional/geocoder settings from `.env` and writes only under
-  `android/app/build/generated/bundled/`.
-- Every debug and release APK embeds a live Tesla refresh token and must be
-  treated as a credential, not as a distributable build artifact.
+- Setup files (`wave-setup*.json`), keystores, and the old `android/.tokens.json`
+  and `android/.env` (no longer read, still ignored) are secrets. Never commit,
+  paste, print, log, or expose their contents.
+- The APK carries no credential. The setup (common/ui's `Setup`, kept in the
+  app's private `files/wave-setup.json`) holds the imported refresh token;
+  `TokenStore` seeds "tesla_credentials" from it once (it keeps a digest of
+  the token it was seeded with) and rotates from there. A different token
+  imported starts over; signed out, the rotated tokens are cleared. A
+  pre-setup version's live token is adopted as the setup on first launch.
 - Tesla rotates refresh tokens on use. Always obtain
   `ChargingRepository.get(Context)`; never construct a second repository,
   `TokenStore`, or independent refresh path. Concurrent clients can invalidate
   the credential stored by the other client.
-- After an installed app refreshes successfully, the original refresh token
-  embedded in that APK is stale. Clearing app data or reinstalling that same
-  APK can therefore require rebuilding it with the newest token. Do not run
+- After an installed app refreshes successfully, the imported refresh token
+  is stale. Clearing app data therefore needs a setup file with a fresh
+  token. Do not run
   another client with the same refresh token; whichever client refreshes first
   invalidates the credential the other one still holds.
 - Merely launching network functionality may refresh and rotate credentials.

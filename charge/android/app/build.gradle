@@ -4,55 +4,17 @@ plugins {
 
 apply from: rootProject.file("gradle/app.gradle")
 
-apply from: rootProject.file("gradle/bundled.gradle")
-
-// The Tesla login, from android/.tokens.json, which the build refuses to go
-// without, and settings from android/.env (KEY=value lines, all optional).
-bundled("com.teslacharge.xp3.data") {
-    def tokenFile = file("../.tokens.json")
-    if (!tokenFile.exists()) {
-        throw new GradleException("Missing android/.tokens.json. Add a Tesla refresh token before building the private APK.")
-    }
-    def tokens = new groovy.json.JsonSlurper().parse(tokenFile)
-    if (!tokens.refreshToken) throw new GradleException("android/.tokens.json has no refreshToken.")
-
-    def env = [:]
-    def envFile = file("../.env")
-    if (envFile.exists()) envFile.eachLine { raw ->
-        def line = raw.trim()
-        if (!line || line.startsWith("#") || !line.contains("=")) return
-        def split = line.indexOf("=")
-        def value = line.substring(split + 1).trim()
-        if (value.length() >= 2 && value[0] == value[-1] && "\"'".contains(value[0])) {
-            value = value.substring(1, value.length() - 1)
-        }
-        env[line.substring(0, split).trim()] = value
-    }
-
-    [
-        REFRESH_TOKEN: tokens.refreshToken,
-        PREVIOUS_REFRESH_TOKEN: tokens.previousRefreshToken ?: "",
-        ACCESS_TOKEN: tokens.accessToken ?: "",
-        ACCESS_EXPIRES_AT: (tokens.accessExpiresAt ?: 0) as long,
-        GOOGLE_MAPS_KEY: env.GOOGLE_MAPS_API_KEY ?: "",
-        GEOCODE_EMAIL: env.GEOCODE_CONTACT_EMAIL ?: "",
-        DEVICE_COUNTRY: env.TESLA_DEVICE_COUNTRY ?: "US",
-        DEVICE_LANGUAGE: env.TESLA_DEVICE_LANGUAGE ?: "en",
-        CURRENCY_CODE: env.TESLA_CURRENCY_CODE ?: "USD",
-        TTP_LOCALE: env.TESLA_TTP_LOCALE ?: "en_US",
-        VEHICLE_MAKE_TYPE: env.TESLA_VEHICLE_MAKE_TYPE ?: "NTSLA",
-        APP_VERSION: env.TESLA_APP_VERSION ?: "4.60.0",
-        TESLA_USER_AGENT: env.TESLA_USER_AGENT ?: "TeslaApp/4.60.0/07b1bbdf9/ios/26.0",
-    ]
-}
+// No login is built in: the Tesla refresh token and the regional settings
+// are imported on the phone from a setup file (common/ui's Setup), so a
+// clean checkout builds with nothing private beside it.
 
 android {
     namespace "com.teslacharge.xp3"
 
     defaultConfig {
         applicationId "com.teslacharge.xp3"
-        versionCode 9
-        versionName "1.0.8"
+        versionCode 10
+        versionName "1.1.0"
     }
 
     buildTypes {
