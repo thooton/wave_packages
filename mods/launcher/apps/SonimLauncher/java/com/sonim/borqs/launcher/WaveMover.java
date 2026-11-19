@@ -6,13 +6,13 @@ import android.widget.GridView;
 import java.util.ArrayList;
 
 /**
- * Launcher Argon: an entry being moved through a grid (the tray's main screen or a folder), as
+ * Launcher Improved: an entry being moved through a grid (the tray's main screen or a folder), as
  * the old standalone Launcher's Move program did. The d-pad carries it, the other entries
  * shifting to make room: Left/Right one slot (wrapping across rows), Up/Down one row; past
  * either end it stops. Center, Enter or Menu puts it down (on release, so the same press
  * doesn't also launch or open the menu); Back puts everything back as it was.
  */
-final class ArgonMover {
+final class WaveMover {
     interface Done {
         void done(boolean kept);
     }
@@ -26,7 +26,7 @@ final class ArgonMover {
     private final Done done;
     private int downKey = -1;
 
-    ArgonMover(Activity activity, GridView grid, ArrayList list, DrawerAdapter adapter, Object item, Done done) {
+    WaveMover(Activity activity, GridView grid, ArrayList list, DrawerAdapter adapter, Object item, Done done) {
         this.activity = activity;
         this.grid = grid;
         this.list = list;
@@ -102,8 +102,8 @@ final class ArgonMover {
 
     /** Ends the move: kept (put down where it is) or not (everything back as it was). */
     void finish(boolean keep) {
-        if (ArgonTray.sMover != this) return;
-        ArgonTray.sMover = null;
+        if (WaveTray.sMover != this) return;
+        WaveTray.sMover = null;
         boolean changed = !original.equals(list);
         if (!keep && changed) {
             synchronized (list) {

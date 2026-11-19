@@ -1,4 +1,4 @@
-# Launcher Argon
+# Launcher Improved
 
 The Sonim XP3800's own launcher, with an apps tray you arrange yourself. Shipped as a
 systemless Magisk module that replaces `/system/priv-app/SonimLauncher`.

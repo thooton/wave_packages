@@ -1294,16 +1294,16 @@
     .locals 4
 
     .prologue
-    # FEAT(tray): ArgonTray's icon for the user's folders (null = stock folder: stock icon)
-    invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/ArgonTray;->folderIconHook(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
+    # FEAT(tray): WaveTray's icon for the user's folders (null = stock folder: stock icon)
+    invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/WaveTray;->folderIconHook(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
 
-    if-eqz v0, :argon_icon
+    if-eqz v0, :wave_icon
 
     return-object v0
 
-    :argon_icon
+    :wave_icon
     const/4 v3, 0x0
 
     .line 2204
@@ -4570,15 +4570,15 @@
 
     .prologue
     # FEAT(tray): while an app or folder is being moved, the d-pad carries it
-    invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/ArgonTray;->dispatchKey(Lcom/sonim/borqs/launcher/LauncherActivity;Landroid/view/KeyEvent;)Z
+    invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/WaveTray;->dispatchKey(Lcom/sonim/borqs/launcher/LauncherActivity;Landroid/view/KeyEvent;)Z
 
     move-result v0
 
-    if-eqz v0, :argon_keys
+    if-eqz v0, :wave_keys
 
     return v0
 
-    :argon_keys
+    :wave_keys
     const v3, 0x7f0b004d
 
     const/4 v5, 0x0
@@ -6227,7 +6227,7 @@
     invoke-super {p0, p1}, Landroid/app/Activity;->onCreateOptionsMenu(Landroid/view/Menu;)Z
 
     # FEAT(tray): Move, Move to folder, Hide, Rename/Remove folder, Hidden apps, Reset layout
-    invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/ArgonTray;->onCreateMenu(Lcom/sonim/borqs/launcher/LauncherActivity;Landroid/view/Menu;)V
+    invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/WaveTray;->onCreateMenu(Lcom/sonim/borqs/launcher/LauncherActivity;Landroid/view/Menu;)V
 
     .line 974
     const/4 v0, 0x7
@@ -7664,15 +7664,15 @@
 
     .prologue
     # FEAT(tray): our menu items
-    invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/ArgonTray;->onMenuItem(Lcom/sonim/borqs/launcher/LauncherActivity;Landroid/view/MenuItem;)Z
+    invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/WaveTray;->onMenuItem(Lcom/sonim/borqs/launcher/LauncherActivity;Landroid/view/MenuItem;)Z
 
     move-result v0
 
-    if-eqz v0, :argon_menu
+    if-eqz v0, :wave_menu
 
     return v0
 
-    :argon_menu
+    :wave_menu
     const/4 v3, 0x1
 
     .line 1020
@@ -7813,7 +7813,7 @@
     invoke-super {p0}, Landroid/app/Activity;->onPause()V
 
     # FEAT(tray): a move in progress is put down where it is
-    invoke-static {p0}, Lcom/sonim/borqs/launcher/ArgonTray;->onPause(Lcom/sonim/borqs/launcher/LauncherActivity;)V
+    invoke-static {p0}, Lcom/sonim/borqs/launcher/WaveTray;->onPause(Lcom/sonim/borqs/launcher/LauncherActivity;)V
 
     .line 850
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->isAppTrayVisible()Z
@@ -8427,14 +8427,14 @@
 .method public setAppsAndFolderList()V
     .locals 0
 
-    # FEAT(tray): the tray as the user arranged it (ArgonTray), not the stock list
-    invoke-static {p0}, Lcom/sonim/borqs/launcher/ArgonTray;->rebuild(Lcom/sonim/borqs/launcher/LauncherActivity;)V
+    # FEAT(tray): the tray as the user arranged it (WaveTray), not the stock list
+    invoke-static {p0}, Lcom/sonim/borqs/launcher/WaveTray;->rebuild(Lcom/sonim/borqs/launcher/LauncherActivity;)V
 
     return-void
 .end method
 
-# FEAT(tray): the stock builder, renamed; ArgonTray falls back to it (argonStockTray) if ours fails
-.method public argonStockSetAppsAndFolderList()V
+# FEAT(tray): the stock builder, renamed; WaveTray falls back to it (waveStockTray) if ours fails
+.method public waveStockSetAppsAndFolderList()V
     .locals 13
 
     .prologue
@@ -11079,9 +11079,9 @@
     return-void
 .end method
 
-# FEAT(tray): bridges for ArgonTray (package-private, Java can't name the synthetic -getN)
+# FEAT(tray): bridges for WaveTray (package-private, Java can't name the synthetic -getN)
 
-.method static argonList(Lcom/sonim/borqs/launcher/LauncherActivity;)Ljava/util/ArrayList;
+.method static waveList(Lcom/sonim/borqs/launcher/LauncherActivity;)Ljava/util/ArrayList;
     .locals 1
 
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
@@ -11089,7 +11089,7 @@
     return-object v0
 .end method
 
-.method static argonGrid(Lcom/sonim/borqs/launcher/LauncherActivity;)Landroid/widget/GridView;
+.method static waveGrid(Lcom/sonim/borqs/launcher/LauncherActivity;)Landroid/widget/GridView;
     .locals 1
 
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDrawerFolderGrid:Landroid/widget/GridView;
@@ -11097,7 +11097,7 @@
     return-object v0
 .end method
 
-.method static argonAdapter(Lcom/sonim/borqs/launcher/LauncherActivity;)Lcom/sonim/borqs/launcher/DrawerAdapter;
+.method static waveAdapter(Lcom/sonim/borqs/launcher/LauncherActivity;)Lcom/sonim/borqs/launcher/DrawerAdapter;
     .locals 1
 
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDrawerAdapterObject:Lcom/sonim/borqs/launcher/DrawerAdapter;
@@ -11105,7 +11105,7 @@
     return-object v0
 .end method
 
-.method static argonPrefs(Lcom/sonim/borqs/launcher/LauncherActivity;)Landroid/content/SharedPreferences;
+.method static wavePrefs(Lcom/sonim/borqs/launcher/LauncherActivity;)Landroid/content/SharedPreferences;
     .locals 1
 
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
@@ -11113,7 +11113,7 @@
     return-object v0
 .end method
 
-.method static argonCursor(Lcom/sonim/borqs/launcher/LauncherActivity;)Landroid/database/Cursor;
+.method static waveCursor(Lcom/sonim/borqs/launcher/LauncherActivity;)Landroid/database/Cursor;
     .locals 1
 
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderCursor:Landroid/database/Cursor;
@@ -11121,7 +11121,7 @@
     return-object v0
 .end method
 
-.method static argonDb(Lcom/sonim/borqs/launcher/LauncherActivity;)Lcom/sonim/borqs/launcher/helper/DatabaseHelper;
+.method static waveDb(Lcom/sonim/borqs/launcher/LauncherActivity;)Lcom/sonim/borqs/launcher/helper/DatabaseHelper;
     .locals 1
 
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDataBaseHelpler:Lcom/sonim/borqs/launcher/helper/DatabaseHelper;
@@ -11129,7 +11129,7 @@
     return-object v0
 .end method
 
-.method static argonLock()Ljava/lang/Object;
+.method static waveLock()Ljava/lang/Object;
     .locals 1
 
     sget-object v0, Lcom/sonim/borqs/launcher/LauncherActivity;->sLock:Ljava/lang/Object;
@@ -11137,7 +11137,7 @@
     return-object v0
 .end method
 
-.method static argonTrayVisible(Lcom/sonim/borqs/launcher/LauncherActivity;)Z
+.method static waveTrayVisible(Lcom/sonim/borqs/launcher/LauncherActivity;)Z
     .locals 1
 
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->isAppTrayVisible()Z
@@ -11147,7 +11147,7 @@
     return v0
 .end method
 
-.method static argonStockFolderIcon(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
+.method static waveStockFolderIcon(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
     .locals 1
 
     invoke-direct {p0, p1}, Lcom/sonim/borqs/launcher/LauncherActivity;->getFolderIcon(Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
@@ -11157,7 +11157,7 @@
     return-object v0
 .end method
 
-.method static argonCheckNavKey(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)V
+.method static waveCheckNavKey(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)V
     .locals 0
 
     invoke-direct {p0, p1}, Lcom/sonim/borqs/launcher/LauncherActivity;->checkNavigationKeyAndSetDefault(Ljava/lang/String;)V
@@ -11165,7 +11165,7 @@
     return-void
 .end method
 
-.method static argonUpdateNavKey(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)V
+.method static waveUpdateNavKey(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)V
     .locals 0
 
     invoke-direct {p0, p1}, Lcom/sonim/borqs/launcher/LauncherActivity;->updateNavigationKey(Ljava/lang/String;)V
@@ -11173,7 +11173,7 @@
     return-void
 .end method
 
-.method static argonStockTray(Lcom/sonim/borqs/launcher/LauncherActivity;)V
+.method static waveStockTray(Lcom/sonim/borqs/launcher/LauncherActivity;)V
     .locals 1
 
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDataBaseHelpler:Lcom/sonim/borqs/launcher/helper/DatabaseHelper;
@@ -11184,7 +11184,7 @@
 
     iput-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderCursor:Landroid/database/Cursor;
 
-    invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->argonStockSetAppsAndFolderList()V
+    invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->waveStockSetAppsAndFolderList()V
 
     return-void
 .end method

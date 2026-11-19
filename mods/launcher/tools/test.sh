@@ -1,8 +1,10 @@
 #!/bin/bash
-# tools/test.sh: host tests of the Android-free code (ArgonLayout, ArgonDefaults).
+# tools/test.sh: host tests of the Android-free code (WaveLayout, WaveDefaults).
 source "$(dirname "$0")/lib/env.sh"
 J="$ROOT/apps/SonimLauncher/java/com/sonim/borqs/launcher"
 O="$ROOT/build/test"; rm -rf "$O"; mkdir -p "$O"
 javac -nowarn -Xlint:-options -source 8 -target 8 -d "$O" \
-    "$J/ArgonLayout.java" "$J/ArgonDefaults.java" "$ROOT/tools/test/LayoutTest.java"
+    "$J/WaveLayout.java" "$J/WaveDefaults.java" "$J/TrayFile.java" "$ROOT/tools/test/TrayFileTest.java" "$ROOT/tools/test/LayoutTest.java"
 java -cp "$O" com.sonim.borqs.launcher.LayoutTest
+
+java -cp "$O" com.sonim.borqs.launcher.TrayFileTest

@@ -9,7 +9,7 @@ import android.widget.GridView;
 import com.sonim.borqs.launcher.helper.DatabaseHelper;
 import java.util.ArrayList;
 
-/** Compile-only: what ArgonTray uses of the stock LauncherActivity (argon* = smali bridges). */
+/** Compile-only: what WaveTray uses of the stock LauncherActivity (wave* = smali bridges). */
 public class LauncherActivity extends Activity {
     Handler mHandler;
 
@@ -40,16 +40,16 @@ public class LauncherActivity extends Activity {
     public synchronized void setSTKApp() { }
     void autoStartAppIfNeeded(String s) { }
 
-    static ArrayList argonList(LauncherActivity l) { return null; }
-    static GridView argonGrid(LauncherActivity l) { return null; }
-    static DrawerAdapter argonAdapter(LauncherActivity l) { return null; }
-    static SharedPreferences argonPrefs(LauncherActivity l) { return null; }
-    static Cursor argonCursor(LauncherActivity l) { return null; }
-    static DatabaseHelper argonDb(LauncherActivity l) { return null; }
-    static Object argonLock() { return null; }
-    static boolean argonTrayVisible(LauncherActivity l) { return false; }
-    static Drawable argonStockFolderIcon(LauncherActivity l, String name) { return null; }
-    static void argonCheckNavKey(LauncherActivity l, String pkg) { }
-    static void argonUpdateNavKey(LauncherActivity l, String pkg) { }
-    static void argonStockTray(LauncherActivity l) { }
+    static ArrayList waveList(LauncherActivity l) { return null; }
+    static GridView waveGrid(LauncherActivity l) { return null; }
+    static DrawerAdapter waveAdapter(LauncherActivity l) { return null; }
+    static SharedPreferences wavePrefs(LauncherActivity l) { return null; }
+    static Cursor waveCursor(LauncherActivity l) { return null; }
+    static DatabaseHelper waveDb(LauncherActivity l) { return null; }
+    static Object waveLock() { return null; }
+    static boolean waveTrayVisible(LauncherActivity l) { return false; }
+    static Drawable waveStockFolderIcon(LauncherActivity l, String name) { return null; }
+    static void waveCheckNavKey(LauncherActivity l, String pkg) { }
+    static void waveUpdateNavKey(LauncherActivity l, String pkg) { }
+    static void waveStockTray(LauncherActivity l) { }
 }

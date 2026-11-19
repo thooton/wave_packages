@@ -1,8 +1,8 @@
 package com.sonim.borqs.launcher;
 
-/** Launcher Argon: the stock resources our code uses (values from the stock APK's R). */
-final class ArgonR {
-    private ArgonR() {
+/** Launcher Improved: the stock resources our code uses (values from the stock APK's R). */
+final class WaveR {
+    private WaveR() {
     }
 
     static final int LAYOUT_DRAWER_ITEM = 0x7f030003;

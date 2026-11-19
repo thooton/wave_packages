@@ -1,7 +1,7 @@
 #!/bin/bash
 # tools/preview.sh [theme 0|1] [layout file]  -> build/preview/*.png, tray.txt
 # Renders the tray and its folders with the BUILT code on the connected phone (app_process as the
-# shell user; nothing installed, the screen untouched; only /data/local/tmp/argon_preview is used
+# shell user; nothing installed, the screen untouched; only /data/local/tmp/wave_preview is used
 # and removed). Needs root once, to copy the launcher's App_Tray database for the stock rows.
 # Run tools/build.sh first. Details: tools/preview/com/sonim/borqs/launcher/TrayPreview.java.
 source "$(dirname "$0")/lib/env.sh"
@@ -14,7 +14,7 @@ javac -nowarn -Xlint:-options -source 8 -target 8 -cp "$ANDROID_JAR:$B/stubs:$B/
     $(find "$ROOT/tools/preview" -name '*.java')
 "$BT/d8" --min-api $MIN_API --lib "$ANDROID_JAR" --classpath "$B/stubs" --classpath "$B/classes" \
     --output "$P" $(find "$P/classes" -name '*.class')
-T=/data/local/tmp/argon_preview
+T=/data/local/tmp/wave_preview
 adb shell "rm -rf $T; mkdir -p $T/out"
 adb push "$APK" $T/app.apk >/dev/null
 adb push "$P/classes.dex" $T/preview.dex >/dev/null

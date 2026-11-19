@@ -30,7 +30,7 @@ import java.util.Map;
 /**
  * tools/preview.sh: renders the tray and its folders as PNGs on the phone, without installing
  * anything or touching its screen. Runs under app_process (as the shell user) with the BUILT
- * APK's dex on the classpath, so it's the shipped ArgonLayout / ArgonDefaults / ArgonIcons /
+ * APK's dex on the classpath, so it's the shipped WaveLayout / WaveDefaults / WaveIcons /
  * DrawerAdapter code, inflating the stock launcher's own layouts and resources (same IDs: the
  * resources are untouched), with the phone's real launcher apps and the stock App_Tray rows.
  *
@@ -52,31 +52,31 @@ public final class TrayPreview {
         lc.setTheme(la.getThemeResource());
         float d = lc.getResources().getDisplayMetrics().density;
 
-        // The layout, exactly as ArgonTray.layout() makes it when there's no saved file.
-        ArgonLayout layout;
+        // The layout, exactly as WaveTray.layout() makes it when there's no saved file.
+        WaveLayout layout;
         if (args.length > 3) {
-            layout = ArgonLayout.parse(new String(java.nio.file.Files.readAllBytes(new File(args[3]).toPath()), "UTF-8"));
+            layout = WaveLayout.parse(new String(java.nio.file.Files.readAllBytes(new File(args[3]).toPath()), "UTF-8"));
         } else {
-            layout = ArgonLayout.withStock(ArgonLayout.parse(ArgonDefaults.LAYOUT), stockRows(args[1]));
+            layout = WaveLayout.withStock(WaveLayout.parse(WaveDefaults.LAYOUT), stockRows(args[1]));
         }
 
-        // Installed launcher activities, as ArgonTray.build() lists them.
+        // Installed launcher activities, as WaveTray.build() lists them.
         Map<String, ResolveInfo> byComp = new HashMap<>();
-        List<ArgonLayout.Installed> installed = new ArrayList<>();
+        List<WaveLayout.Installed> installed = new ArrayList<>();
         for (ResolveInfo ri : pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)) {
             String pkg = ri.activityInfo.packageName;
             if (pkg.equals("com.sonim.borqs.launcher") || pkg.equals("com.android.stk")) continue;
             String comp = pkg + "/" + ri.activityInfo.name;
             boolean system = (ri.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
-            if (byComp.put(comp, ri) == null) installed.add(new ArgonLayout.Installed(comp, system));
+            if (byComp.put(comp, ri) == null) installed.add(new WaveLayout.Installed(comp, system));
         }
-        ArgonLayout.Result r = ArgonLayout.resolve(layout, installed, ArgonDefaults.INBOX);
+        WaveLayout.Result r = WaveLayout.resolve(layout, installed, WaveDefaults.INBOX);
 
         // Folder needs an outer LauncherActivity only to exist: allocate one without running it.
         LauncherActivity l = (LauncherActivity) unsafeAllocate(LauncherActivity.class);
         ArrayList list = new ArrayList();
         StringBuilder text = new StringBuilder();
-        for (ArgonLayout.Node n : r.tree) {
+        for (WaveLayout.Node n : r.tree) {
             if (n.folder == null) {
                 list.add(app(pm, byComp.get(n.component), n.component));
                 text.append(label(byComp.get(n.component), pm)).append('\n');
@@ -93,7 +93,7 @@ public final class TrayPreview {
                 text.append("    ").append(label(byComp.get(c), pm)).append("  (").append(c).append(")\n");
             }
             boolean stock = n.folder.equalsIgnoreCase("Applications") || n.folder.equalsIgnoreCase("Tools");
-            f.setIcon(stock ? stockFolderIcon(lc, n.folder, theme) : ArgonIcons.folder(lc.getResources(), n.folder, icons, theme));
+            f.setIcon(stock ? stockFolderIcon(lc, n.folder, theme) : WaveIcons.folder(lc.getResources(), n.folder, icons, theme));
             list.add(f);
         }
         text.append("missing: ").append(r.missing).append("\nhidden: ").append(r.hidden).append('\n');
@@ -123,9 +123,9 @@ public final class TrayPreview {
         for (Object o : list) {
             if (!(o instanceof LauncherActivity.Folder)) continue;
             LauncherActivity.Folder f = (LauncherActivity.Folder) o;
-            View v = LayoutInflater.from(lc).inflate(ArgonR.LAYOUT_FOLDER_TRAY, null);
-            ((TextView) v.findViewById(ArgonR.ID_FOLDER_TITLE)).setText(f.getName());
-            ((GridView) v.findViewById(ArgonR.ID_FOLDER_GRID)).setAdapter(new DrawerAdapter(lc, f.getAppListInsideFolder()));
+            View v = LayoutInflater.from(lc).inflate(WaveR.LAYOUT_FOLDER_TRAY, null);
+            ((TextView) v.findViewById(WaveR.ID_FOLDER_TITLE)).setText(f.getName());
+            ((GridView) v.findViewById(WaveR.ID_FOLDER_GRID)).setAdapter(new DrawerAdapter(lc, f.getAppListInsideFolder()));
             int h = lc.getResources().getDimensionPixelSize(lc.getResources().getIdentifier("folder_layout_height", "dimen", "com.sonim.borqs.launcher"));
             render(v, Math.round(200 * d), h, out + String.format("/folder_%02d_%s.png", i++, f.getName().replaceAll("\\W", "")));
         }

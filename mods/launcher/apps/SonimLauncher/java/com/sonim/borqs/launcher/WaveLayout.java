@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Launcher Argon: the apps tray's arrangement, as saved in files/argon_tray.txt. Plain Java (no
+ * Launcher Improved: the apps tray's arrangement, as saved in files/wave_tray.txt. Plain Java (no
  * Android) so tools/test can run it on the host.
  *
  * Text format, one entry per line ('#' starts a comment line):
@@ -22,7 +22,7 @@ import java.util.Set;
  * A key is "package/class" (one launcher activity) or "package" (every launcher activity of the
  * package that isn't placed anywhere else).
  */
-final class ArgonLayout {
+final class WaveLayout {
 
     /** One entry of the main screen: an app (folder == null) or a folder. */
     static final class Item {
@@ -112,8 +112,8 @@ final class ArgonLayout {
 
     // ---- text ---------------------------------------------------------------------------------
 
-    static ArgonLayout parse(String text) {
-        ArgonLayout layout = new ArgonLayout();
+    static WaveLayout parse(String text) {
+        WaveLayout layout = new WaveLayout();
         List<String> folder = null;
         int n = 0;
         for (String raw : text.split("\r?\n", -1)) {
@@ -162,7 +162,7 @@ final class ArgonLayout {
 
     String serialize() {
         StringBuilder sb = new StringBuilder();
-        sb.append("# Launcher Argon: the apps tray (see ArgonLayout.java for the format)\n");
+        sb.append("# Launcher Improved: the apps tray (see WaveLayout.java for the format)\n");
         for (Item it : top) {
             if (it.isStock()) {
                 sb.append("stock\n");
@@ -184,8 +184,8 @@ final class ArgonLayout {
      * App_Tray database's order; consecutive rows of one folder make one folder, as in the stock
      * launcher. Folder names already used by the defaults merge into the default folder.
      */
-    static ArgonLayout withStock(ArgonLayout defaults, List<String[]> stockRows) {
-        ArgonLayout out = new ArgonLayout();
+    static WaveLayout withStock(WaveLayout defaults, List<String[]> stockRows) {
+        WaveLayout out = new WaveLayout();
         out.hidden.addAll(defaults.hidden);
         for (Item it : defaults.top) {
             if (!it.isStock()) {
@@ -224,7 +224,7 @@ final class ArgonLayout {
      *   apps the layout doesn't mention stay out, as in the stock launcher.
      * - Folders show only when at least one of their apps is installed.
      */
-    static Result resolve(ArgonLayout layout, List<Installed> installed, String inbox) {
+    static Result resolve(WaveLayout layout, List<Installed> installed, String inbox) {
         Map<String, Installed> byComp = new HashMap<>();
         Map<String, List<Installed>> byPkg = new HashMap<>();
         for (Installed in : installed) {
@@ -354,8 +354,8 @@ final class ArgonLayout {
      * in the file (at the end of the folder or main screen they were in), so reinstalling one
      * puts it back where it was; a folder whose apps are all uninstalled is kept the same way.
      */
-    static ArgonLayout snapshot(List<Node> shown, Map<String, List<String>> missing, List<String> hidden) {
-        ArgonLayout out = new ArgonLayout();
+    static WaveLayout snapshot(List<Node> shown, Map<String, List<String>> missing, List<String> hidden) {
+        WaveLayout out = new WaveLayout();
         Set<String> done = new HashSet<>();
         for (Node n : shown) {
             if (n.folder == null) {

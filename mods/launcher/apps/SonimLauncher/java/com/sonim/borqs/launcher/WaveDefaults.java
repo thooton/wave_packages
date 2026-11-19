@@ -1,13 +1,13 @@
 package com.sonim.borqs.launcher;
 
 /**
- * Launcher Argon: the tray's arrangement until the user changes it (and after Reset layout).
- * Format: see ArgonLayout. One full screen, 4 rows x 3 columns, no scrolling: the everyday apps
+ * Launcher Improved: the tray's arrangement until the user changes it (and after Reset layout).
+ * Format: see WaveLayout. One full screen, 4 rows x 3 columns, no scrolling: the everyday apps
  * loose, everything else (Sonim's apps and the user's) in six folders. System apps must be named
  * here to show at all; STK is added to Tools by the stock code; new installs land in Applications.
  */
-final class ArgonDefaults {
-    private ArgonDefaults() {
+final class WaveDefaults {
+    private WaveDefaults() {
     }
 
     /** New installs nobody placed go at the end of this folder (the stock launcher's rule). */

@@ -16,14 +16,14 @@ import android.widget.Toast;
 import java.util.ArrayList;
 
 /**
- * Launcher Argon: replaces the stock folder screen (FolderLaunchActivity + its
+ * Launcher Improved: replaces the stock folder screen (FolderLaunchActivity + its
  * FolderDrawerClickListener). Same dialog, grid and keys; the Menu key adds Move, Move to folder
  * and Hide for the selected app, before the stock App info. It follows the folder by name, so a
  * rebuild of the tray (an app installed or removed) or an edit keeps it current, and it closes
  * when the folder is gone or empty.
  */
 public class FolderLaunchActivity extends Activity implements AppListChangeListener {
-    private static final String TAG = "ArgonFolder";
+    private static final String TAG = "WaveFolder";
     private static final int MENU_APP_INFO = 2;
 
     private AccessArrayList mAccessArrayList;
@@ -37,9 +37,9 @@ public class FolderLaunchActivity extends Activity implements AppListChangeListe
     protected void onCreate(Bundle bundle) {
         super.onCreate(bundle);
         mAccessArrayList = (AccessArrayList) getApplicationContext();
-        setContentView(ArgonR.LAYOUT_FOLDER_TRAY);
-        mGrid = (GridView) findViewById(ArgonR.ID_FOLDER_GRID);
-        TextView title = (TextView) findViewById(ArgonR.ID_FOLDER_TITLE);
+        setContentView(WaveR.LAYOUT_FOLDER_TRAY);
+        mGrid = (GridView) findViewById(WaveR.ID_FOLDER_GRID);
+        TextView title = (TextView) findViewById(WaveR.ID_FOLDER_TITLE);
         mFolderName = getIntent().getStringExtra("folder");
         mApps = currentList();
         if (mApps == null || mApps.isEmpty()) {
@@ -55,9 +55,9 @@ public class FolderLaunchActivity extends Activity implements AppListChangeListe
 
     /** The folder's apps now: found by name in the tray, else what the tray handed over. */
     private ArrayList currentList() {
-        LauncherActivity l = ArgonTray.launcher();
-        if (ArgonTray.active() && l != null) {
-            LauncherActivity.Folder f = ArgonTray.findFolder(LauncherActivity.argonList(l), mFolderName);
+        LauncherActivity l = WaveTray.launcher();
+        if (WaveTray.active() && l != null) {
+            LauncherActivity.Folder f = WaveTray.findFolder(LauncherActivity.waveList(l), mFolderName);
             return f == null ? null : f.getAppListInsideFolder();
         }
         return mAccessArrayList.getAppsInsideFolder();
@@ -72,7 +72,7 @@ public class FolderLaunchActivity extends Activity implements AppListChangeListe
     @Override
     protected void onPause() {
         super.onPause();
-        ArgonMover m = ArgonTray.sMover;
+        WaveMover m = WaveTray.sMover;
         if (m != null && m.activity == this) m.finish(true);
     }
 
@@ -96,7 +96,7 @@ public class FolderLaunchActivity extends Activity implements AppListChangeListe
         LauncherActivity.Apps app = (LauncherActivity.Apps) mApps.get(i);
         if (Settings.Global.getInt(getContentResolver(), Settings.Global.AIRPLANE_MODE_ON, 0) == 1
                 && "com.android.stk".equalsIgnoreCase(app.getPackageName())) {
-            Toast.makeText(this, ArgonR.STRING_NOT_FOUND_AIRPLANE, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, WaveR.STRING_NOT_FOUND_AIRPLANE, Toast.LENGTH_SHORT).show();
             return;
         }
         startActivitySafely(app.getIntent());
@@ -104,14 +104,14 @@ public class FolderLaunchActivity extends Activity implements AppListChangeListe
 
     public void startActivitySafely(Intent intent) {
         if (intent == null) {
-            Toast.makeText(this, ArgonR.STRING_ACTIVITY_NOT_FOUND, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, WaveR.STRING_ACTIVITY_NOT_FOUND, Toast.LENGTH_SHORT).show();
             return;
         }
         try {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
             startActivity(intent);
         } catch (ActivityNotFoundException | SecurityException e) {
-            Toast.makeText(this, ArgonR.STRING_ACTIVITY_NOT_FOUND, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, WaveR.STRING_ACTIVITY_NOT_FOUND, Toast.LENGTH_SHORT).show();
             Log.e(TAG, "can't start " + intent, e);
         }
     }
@@ -124,14 +124,14 @@ public class FolderLaunchActivity extends Activity implements AppListChangeListe
         int pos = mGrid.getSelectedItemPosition();
         if (pos >= 0 && pos < mApps.size()) mMenuTarget = (LauncherActivity.Apps) mApps.get(pos);
         if (mMenuTarget != null) {
-            if (ArgonTray.active()) {
-                if (mApps.size() > 1) menu.add(0, ArgonTray.MENU_MOVE, 0, "Move");
-                if (!ArgonTray.pinned(mMenuTarget)) {
-                    menu.add(0, ArgonTray.MENU_TO_FOLDER, 0, "Move to folder");
-                    menu.add(0, ArgonTray.MENU_HIDE, 0, "Hide");
+            if (WaveTray.active()) {
+                if (mApps.size() > 1) menu.add(0, WaveTray.MENU_MOVE, 0, "Move");
+                if (!WaveTray.pinned(mMenuTarget)) {
+                    menu.add(0, WaveTray.MENU_TO_FOLDER, 0, "Move to folder");
+                    menu.add(0, WaveTray.MENU_HIDE, 0, "Hide");
                 }
             }
-            menu.add(0, MENU_APP_INFO, 0, ArgonR.STRING_MENU_APP_INFO);
+            menu.add(0, MENU_APP_INFO, 0, WaveR.STRING_MENU_APP_INFO);
         }
         return super.onCreateOptionsMenu(menu);
     }
@@ -146,21 +146,21 @@ public class FolderLaunchActivity extends Activity implements AppListChangeListe
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         final LauncherActivity.Apps app = mMenuTarget;
-        LauncherActivity l = ArgonTray.launcher();
+        LauncherActivity l = WaveTray.launcher();
         if (app == null) return super.onOptionsItemSelected(item);
         switch (item.getItemId()) {
             case MENU_APP_INFO:
                 startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                         .setData(Uri.parse("package:" + app.getPackageName())));
                 return true;
-            case ArgonTray.MENU_MOVE:
-                if (l != null && mApps.contains(app)) ArgonTray.startMove(l, mGrid, mApps, mAdapter, app, this);
+            case WaveTray.MENU_MOVE:
+                if (l != null && mApps.contains(app)) WaveTray.startMove(l, mGrid, mApps, mAdapter, app, this);
                 return true;
-            case ArgonTray.MENU_TO_FOLDER:
-                if (l != null) ArgonTray.chooseFolder(l, this, app, null);
+            case WaveTray.MENU_TO_FOLDER:
+                if (l != null) WaveTray.chooseFolder(l, this, app, null);
                 return true;
-            case ArgonTray.MENU_HIDE:
-                if (l != null) ArgonTray.hide(l, app, null);
+            case WaveTray.MENU_HIDE:
+                if (l != null) WaveTray.hide(l, app, null);
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -171,7 +171,7 @@ public class FolderLaunchActivity extends Activity implements AppListChangeListe
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
-        ArgonMover m = ArgonTray.sMover;
+        WaveMover m = WaveTray.sMover;
         if (m != null && m.activity == this && m.key(e)) return true;
         return super.dispatchKeyEvent(e);
     }

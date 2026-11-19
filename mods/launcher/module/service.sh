@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# Launcher Argon module: late_start service (runs on every boot, in the background).
+# Launcher Improved module: late_start service (runs on every boot, in the background).
 #
 # The patched launcher APK doesn't match the code ART compiled for the stock one, so after install
 # it runs verified-only (interpreter + JIT) until an idle-maintenance dexopt happens to run.

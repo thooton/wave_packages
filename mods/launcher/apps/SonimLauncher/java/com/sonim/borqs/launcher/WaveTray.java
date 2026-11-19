@@ -40,21 +40,21 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Launcher Argon: the apps tray, arranged by the user. Replaces the stock tray's list building
+ * Launcher Improved: the apps tray, arranged by the user. Replaces the stock tray's list building
  * (LauncherActivity.setAppsAndFolderList and the package receiver) and adds the Menu-key
  * actions that used to live in the separate Launcher app (com.custom.appdrawer): move an app or
  * folder, put apps in folders, rename and remove folders, hide apps, reset.
  *
- * The arrangement is files/argon_tray.txt in the launcher's data (format: ArgonLayout). Until the
- * user changes something it is ArgonDefaults with Sonim's own tray at the end.
+ * The arrangement is files/wave_tray.txt in the launcher's data (format: WaveLayout). Until the
+ * user changes something it is WaveDefaults with Sonim's own tray at the end.
  *
  * Threads: rebuild() runs where the stock method ran (the launcher's ParseThread, or the UI
  * thread); package changes rebuild on a worker and swap the result in on the UI thread; every
  * edit happens on the UI thread.
  */
-final class ArgonTray {
-    static final String TAG = "ArgonTray";
-    private static final String FILE = "argon_tray.txt";
+final class WaveTray {
+    static final String TAG = "WaveTray";
+    private static final String FILE = "wave_tray.txt";
     private static final String SELF = "com.sonim.borqs.launcher";
     private static final String STK = "com.android.stk";   // the stock code adds it to Tools itself
 
@@ -67,9 +67,9 @@ final class ArgonTray {
     static final int MENU_RESET = 107;
 
     /** The move in progress, if any (one at a time, in the tray or a folder). */
-    static ArgonMover sMover;
+    static WaveMover sMover;
 
-    private static ArgonLayout sLayout;          // what was loaded or last saved
+    private static WaveLayout sLayout;          // what was loaded or last saved
     private static Map<String, List<String>> sMissing = new LinkedHashMap<>();
     private static int sGeneration;              // bumped by every edit; stale rebuilds retry
     private static boolean sPendingRebuild;      // a package changed during a move
@@ -79,7 +79,7 @@ final class ArgonTray {
     private static final Map<String, Object[]> sCache = new HashMap<>();   // component -> {icon, label}
     private static final ExecutorService sWorker = Executors.newSingleThreadExecutor();
 
-    private ArgonTray() {
+    private WaveTray() {
     }
 
     // ---- building -------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ final class ArgonTray {
         sLauncher = new WeakReference<>(l);
         try {
             ArrayList built = build(l, layout(l));
-            ArrayList list = LauncherActivity.argonList(l);
+            ArrayList list = LauncherActivity.waveList(l);
             synchronized (list) {
                 list.clear();
                 list.addAll(built);
@@ -101,7 +101,7 @@ final class ArgonTray {
             Log.e(TAG, "building the tray failed, using the stock tray", e);
             sFallback = true;
             closeStockCursor(l);                  // the caller's; the stock builder opens its own
-            LauncherActivity.argonStockTray(l);   // (and closes it and the database, as stock)
+            LauncherActivity.waveStockTray(l);   // (and closes it and the database, as stock)
             return;
         } finally {
             closeStockCursor(l);
@@ -110,28 +110,28 @@ final class ArgonTray {
 
     private static void closeStockCursor(LauncherActivity l) {
         try {
-            Cursor c = LauncherActivity.argonCursor(l);
+            Cursor c = LauncherActivity.waveCursor(l);
             if (c != null) c.close();
-            DatabaseHelper db = LauncherActivity.argonDb(l);
+            DatabaseHelper db = LauncherActivity.waveDb(l);
             if (db != null) db.close();
         } catch (RuntimeException e) {
             Log.w(TAG, "closing the stock cursor", e);
         }
     }
 
-    private static synchronized ArgonLayout layout(Context ctx) {
+    private static synchronized WaveLayout layout(Context ctx) {
         if (sLayout != null) return sLayout;
-        File f = new File(ctx.getFilesDir(), FILE);
+        File f = TrayFile.open(ctx.getFilesDir(), FILE);
         if (f.isFile()) {
             try {
-                sLayout = ArgonLayout.parse(read(f));
+                sLayout = WaveLayout.parse(read(f));
                 return sLayout;
             } catch (IOException | IllegalArgumentException e) {
                 Log.e(TAG, "unreadable " + f + ", using the defaults (kept as " + FILE + ".bad)", e);
                 f.renameTo(new File(ctx.getFilesDir(), FILE + ".bad"));
             }
         }
-        sLayout = ArgonLayout.withStock(ArgonLayout.parse(ArgonDefaults.LAYOUT), stockRows(ctx));
+        sLayout = WaveLayout.withStock(WaveLayout.parse(WaveDefaults.LAYOUT), stockRows(ctx));
         return sLayout;
     }
 
@@ -155,26 +155,26 @@ final class ArgonTray {
         return rows;
     }
 
-    private static ArrayList build(LauncherActivity l, ArgonLayout layout) {
+    private static ArrayList build(LauncherActivity l, WaveLayout layout) {
         PackageManager pm = l.getPackageManager();
         boolean safe = pm.isSafeMode();
         Intent main = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
         List<ResolveInfo> ris = pm.queryIntentActivities(main, 0);
         Map<String, ResolveInfo> byComp = new HashMap<>();
-        List<ArgonLayout.Installed> installed = new ArrayList<>();
+        List<WaveLayout.Installed> installed = new ArrayList<>();
         for (ResolveInfo ri : ris) {
             String pkg = ri.activityInfo.packageName;
             if (SELF.equals(pkg) || STK.equals(pkg)) continue;
             boolean system = (ri.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
             if (safe && !system) continue;
             String comp = pkg + "/" + ri.activityInfo.name;
-            if (byComp.put(comp, ri) == null) installed.add(new ArgonLayout.Installed(comp, system));
+            if (byComp.put(comp, ri) == null) installed.add(new WaveLayout.Installed(comp, system));
         }
-        ArgonLayout.Result r = ArgonLayout.resolve(layout, installed, ArgonDefaults.INBOX);
-        int theme = LauncherActivity.argonPrefs(l).getInt("current_theme", 0);
+        WaveLayout.Result r = WaveLayout.resolve(layout, installed, WaveDefaults.INBOX);
+        int theme = LauncherActivity.wavePrefs(l).getInt("current_theme", 0);
 
         ArrayList out = new ArrayList();
-        for (ArgonLayout.Node n : r.tree) {
+        for (WaveLayout.Node n : r.tree) {
             if (n.folder == null) {
                 out.add(makeApp(l, pm, byComp.get(n.component), n.component));
                 continue;
@@ -185,7 +185,7 @@ final class ArgonTray {
             f.setIcon(folderIcon(l, f, theme));
             out.add(f);
         }
-        synchronized (ArgonTray.class) {
+        synchronized (WaveTray.class) {
             sMissing = r.missing;
         }
         Log.i(TAG, "tray: " + out.size() + " entries, " + r.hidden.size() + " hidden, "
@@ -224,14 +224,14 @@ final class ArgonTray {
     /** Stock folders keep their stock icons; the user's get a drawn one with a preview. */
     private static boolean isStockFolder(Context ctx, String name) {
         for (String s : new String[] {"Applications", "Aplicaciones", "Tools", "Outils", "Music", "Música",
-                "Verizon", ctx.getString(ArgonR.STRING_FOLDER_APPS), ctx.getString(ArgonR.STRING_FOLDER_TOOLS)}) {
+                "Verizon", ctx.getString(WaveR.STRING_FOLDER_APPS), ctx.getString(WaveR.STRING_FOLDER_TOOLS)}) {
             if (s.equalsIgnoreCase(name)) return true;
         }
         return false;
     }
 
     private static Drawable folderIcon(LauncherActivity l, LauncherActivity.Folder f, int theme) {
-        if (isStockFolder(l, f.getName())) return LauncherActivity.argonStockFolderIcon(l, f.getName());
+        if (isStockFolder(l, f.getName())) return LauncherActivity.waveStockFolderIcon(l, f.getName());
         List<Drawable> icons = new ArrayList<>();
         ArrayList apps = f.getAppListInsideFolder();
         if (apps != null) {
@@ -240,22 +240,22 @@ final class ArgonTray {
                 if (icons.size() == 4) break;
             }
         }
-        return ArgonIcons.folder(l.getResources(), f.getName(), icons, theme);
+        return WaveIcons.folder(l.getResources(), f.getName(), icons, theme);
     }
 
     /** Hook at the start of LauncherActivity.getFolderIcon(name): null means "stock icon". */
     static Drawable folderIconHook(LauncherActivity l, String name) {
         if (sFallback || name == null || isStockFolder(l, name)) return null;
-        int theme = LauncherActivity.argonPrefs(l).getInt("current_theme", 0);
-        LauncherActivity.Folder f = findFolder(LauncherActivity.argonList(l), name);
+        int theme = LauncherActivity.wavePrefs(l).getInt("current_theme", 0);
+        LauncherActivity.Folder f = findFolder(LauncherActivity.waveList(l), name);
         if (f != null) return folderIcon(l, f, theme);
-        return ArgonIcons.folder(l.getResources(), name, new ArrayList<Drawable>(), theme);
+        return WaveIcons.folder(l.getResources(), name, new ArrayList<Drawable>(), theme);
     }
 
     /** What the stock code expects after the list is built: positions, STK, shortcut list. */
     private static void afterSwap(LauncherActivity l) {
-        ArrayList list = LauncherActivity.argonList(l);
-        String tools = l.getString(ArgonR.STRING_FOLDER_TOOLS), apps = l.getString(ArgonR.STRING_FOLDER_APPS);
+        ArrayList list = LauncherActivity.waveList(l);
+        String tools = l.getString(WaveR.STRING_FOLDER_TOOLS), apps = l.getString(WaveR.STRING_FOLDER_APPS);
         int toolsAt = -1, appsAt = -1;
         for (int i = 0; i < list.size(); i++) {
             Object o = list.get(i);
@@ -264,7 +264,7 @@ final class ArgonTray {
             if (toolsAt < 0 && tools.equalsIgnoreCase(name)) toolsAt = i;
             if (appsAt < 0 && apps.equalsIgnoreCase(name)) appsAt = i;
         }
-        LauncherActivity.argonPrefs(l).edit().putInt("stk_postion", toolsAt).putInt("sonim_postion", appsAt).apply();
+        LauncherActivity.wavePrefs(l).edit().putInt("stk_postion", toolsAt).putInt("sonim_postion", appsAt).apply();
         l.setSTKApp();
         ((AccessArrayList) l.getApplication()).setAppsAndFolderListForShorcut(list);
     }
@@ -277,13 +277,13 @@ final class ArgonTray {
         String action = intent.getAction();
         String pkg = intent.getData().getSchemeSpecificPart();
         boolean replacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
-        ArrayList list = LauncherActivity.argonList(l);
+        ArrayList list = LauncherActivity.waveList(l);
         if (pkg == null || list == null || list.isEmpty()) return true;   // not built yet: ParseThread will
         Log.i(TAG, action + " " + pkg + (replacing ? " (replacing)" : ""));
         forget(pkg);
         if (Intent.ACTION_PACKAGE_REMOVED.equals(action)) {
             if (replacing) return true;                                    // PACKAGE_ADDED follows
-            LauncherActivity.argonCheckNavKey(l, pkg);
+            LauncherActivity.waveCheckNavKey(l, pkg);
         } else if (Intent.ACTION_PACKAGE_ADDED.equals(action) && !replacing && !l.getPackageManager().isSafeMode()) {
             l.autoStartAppIfNeeded(pkg);
         }
@@ -300,7 +300,7 @@ final class ArgonTray {
         sWorker.execute(() -> {
             final ArrayList built;
             try {
-                synchronized (LauncherActivity.argonLock()) {
+                synchronized (LauncherActivity.waveLock()) {
                     built = build(l, layout(l));
                 }
             } catch (RuntimeException e) {
@@ -315,20 +315,20 @@ final class ArgonTray {
                     scheduleRebuild(l, changedPkg);   // the user changed something meanwhile
                 } else {
                     swapIn(l, built);
-                    if (changedPkg != null) LauncherActivity.argonUpdateNavKey(l, changedPkg);
+                    if (changedPkg != null) LauncherActivity.waveUpdateNavKey(l, changedPkg);
                 }
             });
         });
     }
 
     private static void swapIn(LauncherActivity l, ArrayList built) {
-        ArrayList list = LauncherActivity.argonList(l);
+        ArrayList list = LauncherActivity.waveList(l);
         synchronized (list) {
             list.clear();
             list.addAll(built);
             afterSwap(l);
         }
-        DrawerAdapter a = LauncherActivity.argonAdapter(l);
+        DrawerAdapter a = LauncherActivity.waveAdapter(l);
         if (a != null) a.notifyDataSetChanged();
         else l.mHandler.sendEmptyMessage(1);
         ((AccessArrayList) l.getApplication()).notifyAppListChanged();
@@ -338,8 +338,8 @@ final class ArgonTray {
 
     /** After any edit: refresh icons and everyone showing the tray, then save the arrangement. */
     static void changed(LauncherActivity l) {
-        ArrayList list = LauncherActivity.argonList(l);
-        int theme = LauncherActivity.argonPrefs(l).getInt("current_theme", 0);
+        ArrayList list = LauncherActivity.waveList(l);
+        int theme = LauncherActivity.wavePrefs(l).getInt("current_theme", 0);
         synchronized (list) {
             for (Object o : list) {
                 if (o instanceof LauncherActivity.Folder) {
@@ -349,15 +349,15 @@ final class ArgonTray {
             }
             afterSwap(l);
         }
-        DrawerAdapter a = LauncherActivity.argonAdapter(l);
+        DrawerAdapter a = LauncherActivity.waveAdapter(l);
         if (a != null) a.notifyDataSetChanged();
         ((AccessArrayList) l.getApplication()).notifyAppListChanged();
         save(l);
     }
 
     private static void save(LauncherActivity l) {
-        List<ArgonLayout.Node> shown = new ArrayList<>();
-        ArrayList list = LauncherActivity.argonList(l);
+        List<WaveLayout.Node> shown = new ArrayList<>();
+        ArrayList list = LauncherActivity.waveList(l);
         synchronized (list) {
             for (Object o : list) {
                 if (o instanceof LauncherActivity.Folder) {
@@ -367,20 +367,20 @@ final class ArgonTray {
                     if (in != null) {
                         for (Object a : in) {
                             String c = ((LauncherActivity.Apps) a).getPackageAndClassName();
-                            if (!STK.equals(ArgonLayout.pkgOf(c))) apps.add(c);
+                            if (!STK.equals(WaveLayout.pkgOf(c))) apps.add(c);
                         }
                     }
-                    shown.add(new ArgonLayout.Node(f.getName(), apps));
+                    shown.add(new WaveLayout.Node(f.getName(), apps));
                 } else if (o instanceof LauncherActivity.Apps) {
                     String c = ((LauncherActivity.Apps) o).getPackageAndClassName();
-                    if (!STK.equals(ArgonLayout.pkgOf(c))) shown.add(new ArgonLayout.Node(c));
+                    if (!STK.equals(WaveLayout.pkgOf(c))) shown.add(new WaveLayout.Node(c));
                 }
             }
         }
         String text;
-        synchronized (ArgonTray.class) {
-            ArgonLayout cur = layout(l);
-            sLayout = ArgonLayout.snapshot(shown, sMissing, cur.hidden);
+        synchronized (WaveTray.class) {
+            WaveLayout cur = layout(l);
+            sLayout = WaveLayout.snapshot(shown, sMissing, cur.hidden);
             sGeneration++;
             text = sLayout.serialize();
         }
@@ -427,7 +427,7 @@ final class ArgonTray {
     /** STK lives in Tools (the stock setSTKApp() puts it back there): it can only be moved within. */
     static boolean pinned(LauncherActivity.Apps app) {
         String c = app.getPackageAndClassName();
-        return c != null && STK.equals(ArgonLayout.pkgOf(c));
+        return c != null && STK.equals(WaveLayout.pkgOf(c));
     }
 
     static boolean active() {
@@ -444,9 +444,9 @@ final class ArgonTray {
 
     /** Hook at the start of LauncherActivity.dispatchKeyEvent; true = consumed. */
     static boolean dispatchKey(LauncherActivity l, android.view.KeyEvent e) {
-        ArgonMover m = sMover;
+        WaveMover m = sMover;
         if (m == null || m.activity != l) return false;
-        if (!LauncherActivity.argonTrayVisible(l)) {
+        if (!LauncherActivity.waveTrayVisible(l)) {
             m.finish(true);
             return false;
         }
@@ -455,16 +455,16 @@ final class ArgonTray {
 
     /** Hook in LauncherActivity.onPause: leaving mid-move keeps the entry where it was carried. */
     static void onPause(LauncherActivity l) {
-        ArgonMover m = sMover;
+        WaveMover m = sMover;
         if (m != null && m.activity == l) m.finish(true);
     }
 
     /** Hook in LauncherActivity.onCreateOptionsMenu, before the stock items (so ours come first). */
     static void onCreateMenu(LauncherActivity l, Menu menu) {
         sMenuTarget = null;
-        if (sFallback || !LauncherActivity.argonTrayVisible(l)) return;
-        GridView grid = LauncherActivity.argonGrid(l);
-        ArrayList list = LauncherActivity.argonList(l);
+        if (sFallback || !LauncherActivity.waveTrayVisible(l)) return;
+        GridView grid = LauncherActivity.waveGrid(l);
+        ArrayList list = LauncherActivity.waveList(l);
         int pos = grid.getSelectedItemPosition();
         if (pos >= 0 && pos < list.size()) sMenuTarget = (LauncherActivity.AppsAndFolder) list.get(pos);
         if (sMenuTarget instanceof LauncherActivity.Apps) {
@@ -485,12 +485,12 @@ final class ArgonTray {
     /** Hook at the start of LauncherActivity.onOptionsItemSelected; true = handled. */
     static boolean onMenuItem(final LauncherActivity l, MenuItem item) {
         final LauncherActivity.AppsAndFolder target = sMenuTarget;
-        final ArrayList list = LauncherActivity.argonList(l);
-        final GridView grid = LauncherActivity.argonGrid(l);
+        final ArrayList list = LauncherActivity.waveList(l);
+        final GridView grid = LauncherActivity.waveGrid(l);
         switch (item.getItemId()) {
             case MENU_MOVE:
                 if (target == null || !list.contains(target)) return true;
-                startMove(l, grid, list, LauncherActivity.argonAdapter(l), target, l);
+                startMove(l, grid, list, LauncherActivity.waveAdapter(l), target, l);
                 return true;
             case MENU_TO_FOLDER:
                 if (target instanceof LauncherActivity.Apps) chooseFolder(l, l, (LauncherActivity.Apps) target, null);
@@ -518,7 +518,7 @@ final class ArgonTray {
     static void startMove(final LauncherActivity l, GridView grid, ArrayList list, DrawerAdapter adapter,
             Object target, Activity owner) {
         if (adapter == null || sMover != null) return;
-        sMover = new ArgonMover(owner, grid, list, adapter, target, kept -> {
+        sMover = new WaveMover(owner, grid, list, adapter, target, kept -> {
             if (kept) changed(l);
             if (sPendingRebuild) {
                 sPendingRebuild = false;
@@ -573,7 +573,7 @@ final class ArgonTray {
      */
     static void chooseFolder(final LauncherActivity l, final Activity owner, final LauncherActivity.Apps app,
             final Runnable after) {
-        final ArrayList list = LauncherActivity.argonList(l);
+        final ArrayList list = LauncherActivity.waveList(l);
         final LauncherActivity.Folder current = folderHolding(list, app);
         final List<LauncherActivity.Folder> targets = new ArrayList<>();
         final List<String> labels = new ArrayList<>();
@@ -624,7 +624,7 @@ final class ArgonTray {
     }
 
     private static void moveInto(LauncherActivity l, LauncherActivity.Apps app, LauncherActivity.Folder f) {
-        ArrayList list = LauncherActivity.argonList(l);
+        ArrayList list = LauncherActivity.waveList(l);
         synchronized (list) {
             takeOut(list, app);
             f.setAppListInsideFolder(app);
@@ -634,11 +634,11 @@ final class ArgonTray {
     }
 
     static void hide(LauncherActivity l, LauncherActivity.Apps app, Runnable after) {
-        ArrayList list = LauncherActivity.argonList(l);
+        ArrayList list = LauncherActivity.waveList(l);
         synchronized (list) {
             takeOut(list, app);
         }
-        synchronized (ArgonTray.class) {
+        synchronized (WaveTray.class) {
             layout(l).hidden.add(app.getPackageAndClassName());
         }
         changed(l);
@@ -649,14 +649,14 @@ final class ArgonTray {
     private static void rename(final LauncherActivity l, final LauncherActivity.Folder f) {
         final String old = f.getName();
         askName(l, "Rename folder", old, android.R.string.ok, name -> {
-            ArrayList list = LauncherActivity.argonList(l);
+            ArrayList list = LauncherActivity.waveList(l);
             LauncherActivity.Folder other = findFolder(list, name);
             if (other != null && other != f) {
                 Toast.makeText(l, "There is already a folder called " + other.getName(), Toast.LENGTH_SHORT).show();
                 return;
             }
             f.setName(name);
-            synchronized (ArgonTray.class) {
+            synchronized (WaveTray.class) {
                 List<String> m = sMissing.remove(old);
                 if (m != null) sMissing.put(name, m);
             }
@@ -665,7 +665,7 @@ final class ArgonTray {
     }
 
     private static void unfolder(LauncherActivity l, LauncherActivity.Folder f) {
-        ArrayList list = LauncherActivity.argonList(l);
+        ArrayList list = LauncherActivity.waveList(l);
         synchronized (list) {
             int at = list.indexOf(f);
             if (at < 0) return;
@@ -679,7 +679,7 @@ final class ArgonTray {
     /** Hidden apps that are installed: component -> label, sorted by label. */
     private static LinkedHashMap<String, String> hiddenApps(Context ctx) {
         List<String> keys;
-        synchronized (ArgonTray.class) {
+        synchronized (WaveTray.class) {
             keys = new ArrayList<>(layout(ctx).hidden);
         }
         PackageManager pm = ctx.getPackageManager();
@@ -720,13 +720,13 @@ final class ArgonTray {
         ResolveInfo ri = pm.resolveActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
                 .setComponent(cn), 0);
         if (ri == null) return;
-        synchronized (ArgonTray.class) {
+        synchronized (WaveTray.class) {
             List<String> h = layout(l).hidden;
             h.remove(comp);
             h.remove(cn.getPackageName());
         }
         LauncherActivity.Apps app = makeApp(l, pm, ri, comp);
-        ArrayList list = LauncherActivity.argonList(l);
+        ArrayList list = LauncherActivity.waveList(l);
         synchronized (list) {
             list.add(app);
         }
@@ -739,8 +739,8 @@ final class ArgonTray {
                 .setTitle("Reset layout")
                 .setMessage("Put every app back where it was at first? Your folders and order are lost.")
                 .setPositiveButton("Reset", (d, w) -> {
-                    synchronized (ArgonTray.class) {
-                        new File(l.getFilesDir(), FILE).delete();
+                    synchronized (WaveTray.class) {
+                        TrayFile.reset(l.getFilesDir(), FILE);
                         sLayout = null;
                         sGeneration++;
                     }
@@ -751,14 +751,14 @@ final class ArgonTray {
     }
 
     private static void select(LauncherActivity l, Object item) {
-        ArrayList list = LauncherActivity.argonList(l);
+        ArrayList list = LauncherActivity.waveList(l);
         int i = list.indexOf(item);
         if (i < 0) {
             LauncherActivity.Folder f = folderHolding(list, item);
             i = f == null ? -1 : list.indexOf(f);
         }
-        if (i < 0 || !LauncherActivity.argonTrayVisible(l)) return;
-        GridView grid = LauncherActivity.argonGrid(l);
+        if (i < 0 || !LauncherActivity.waveTrayVisible(l)) return;
+        GridView grid = LauncherActivity.waveGrid(l);
         grid.setSelection(i);
         grid.smoothScrollToPosition(i);
     }

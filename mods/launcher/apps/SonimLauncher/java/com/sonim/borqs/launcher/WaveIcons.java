@@ -14,12 +14,12 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Launcher Argon: icons for the user's folders, drawn in the stock tray's folder style (a
+ * Launcher Improved: icons for the user's folders, drawn in the stock tray's folder style (a
  * rounded folder with a tab, like ic_colorful_folder_apps / ic_red_folder_apps) with the first
  * four apps inside shown as a 2x2 preview.
  */
-final class ArgonIcons {
-    private ArgonIcons() {
+final class WaveIcons {
+    private WaveIcons() {
     }
 
     /** Stock tray icon size: app_tray_application_icon_height_width. */

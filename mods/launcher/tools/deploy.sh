@@ -14,7 +14,7 @@ admit
 STAGE=/data/local/tmp/$MODULE_ID
 cat > "$ROOT/build/module.prop" <<EOF
 id=$MODULE_ID
-name=Launcher Argon
+name=Launcher Improved
 version=dev
 versionCode=1
 author=local

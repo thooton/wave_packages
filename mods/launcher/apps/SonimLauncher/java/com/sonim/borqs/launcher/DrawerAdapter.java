@@ -12,7 +12,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 
 /**
- * Launcher Argon: replaces the stock DrawerAdapter (same constructor, same drawer_item cells).
+ * Launcher Improved: replaces the stock DrawerAdapter (same constructor, same drawer_item cells).
  * Adds the "moving" card: the entry being moved sits on a solid lavender card, as in the old
  * standalone Launcher. The list can be swapped (a folder's list is replaced on rebuild).
  */
@@ -62,10 +62,10 @@ public class DrawerAdapter extends BaseAdapter {
     public View getView(int i, View view, ViewGroup parent) {
         ViewHolder holder;
         if (view == null) {
-            view = LayoutInflater.from(mContext).inflate(ArgonR.LAYOUT_DRAWER_ITEM, null);
+            view = LayoutInflater.from(mContext).inflate(WaveR.LAYOUT_DRAWER_ITEM, null);
             holder = new ViewHolder();
-            holder.text = (TextView) view.findViewById(ArgonR.ID_ICON_TEXT);
-            holder.icon = (ImageView) view.findViewById(ArgonR.ID_ICON_IMAGE);
+            holder.text = (TextView) view.findViewById(WaveR.ID_ICON_TEXT);
+            holder.icon = (ImageView) view.findViewById(WaveR.ID_ICON_IMAGE);
             view.setTag(holder);
         } else {
             holder = (ViewHolder) view.getTag();

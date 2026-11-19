@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Launcher Argon: the smali hooks for the arranged apps tray (FEAT(tray)), applied once to the
+"""Launcher Improved: the smali hooks for the arranged apps tray (FEAT(tray)), applied once to the
 stock apktool project; the patched smali is what's committed (git diff stock -- apps/ shows it).
-The Java side is apps/SonimLauncher/java/com/sonim/borqs/launcher/Argon*.java.
+The Java side is apps/SonimLauncher/java/com/sonim/borqs/launcher/Wave*.java.
 
 Stock classes replaced wholesale by Java are deleted here: DrawerAdapter (+ViewHolder),
 FolderLaunchActivity, FolderDrawerClickListener."""
@@ -13,47 +13,47 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 D = os.path.join(ROOT, "apps/SonimLauncher/apktool/smali/com/sonim/borqs/launcher")
 LA = f"{D}/LauncherActivity.smali"
 L = "Lcom/sonim/borqs/launcher/LauncherActivity;"
-T = "Lcom/sonim/borqs/launcher/ArgonTray;"
+T = "Lcom/sonim/borqs/launcher/WaveTray;"
 
 for name in ["DrawerAdapter", "DrawerAdapter$ViewHolder", "FolderLaunchActivity", "FolderDrawerClickListener"]:
     os.remove(f"{D}/{name}.smali")
     print(f"deleted {name}.smali (replaced by Java)")
 
-# 1. The tray's list: ArgonTray.rebuild() instead of the stock builder (kept as the fallback).
+# 1. The tray's list: WaveTray.rebuild() instead of the stock builder (kept as the fallback).
 patch(LA, ".method public setAppsAndFolderList()V\n    .locals 13\n",
       f""".method public setAppsAndFolderList()V
     .locals 0
 
-    # FEAT(tray): the tray as the user arranged it (ArgonTray), not the stock list
+    # FEAT(tray): the tray as the user arranged it (WaveTray), not the stock list
     invoke-static {{p0}}, {T}->rebuild({L})V
 
     return-void
 .end method
 
-# FEAT(tray): the stock builder, renamed; ArgonTray falls back to it (argonStockTray) if ours fails
-.method public argonStockSetAppsAndFolderList()V
+# FEAT(tray): the stock builder, renamed; WaveTray falls back to it (waveStockTray) if ours fails
+.method public waveStockSetAppsAndFolderList()V
     .locals 13
 """)
 
-# 2. Package installs/removals: ArgonTray rebuilds the tray instead of the stock folder patching.
+# 2. Package installs/removals: WaveTray rebuilds the tray instead of the stock folder patching.
 patch(f"{D}/LauncherActivity$4.smali",
       ".method public onReceive(Landroid/content/Context;Landroid/content/Intent;)V\n    .locals 13\n\n    .prologue\n",
       f""".method public onReceive(Landroid/content/Context;Landroid/content/Intent;)V
     .locals 13
 
     .prologue
-    # FEAT(tray): ArgonTray handles package changes (true = done)
+    # FEAT(tray): WaveTray handles package changes (true = done)
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity$4;->this$0:{L}
 
     invoke-static {{v0, p2}}, {T}->onPackageEvent({L}Landroid/content/Intent;)Z
 
     move-result v0
 
-    if-eqz v0, :argon_stock_receiver
+    if-eqz v0, :wave_stock_receiver
 
     return-void
 
-    :argon_stock_receiver
+    :wave_stock_receiver
 """)
 
 # 3. Keys: a move in progress gets them first.
@@ -67,11 +67,11 @@ patch(LA, ".method public dispatchKeyEvent(Landroid/view/KeyEvent;)Z\n    .local
 
     move-result v0
 
-    if-eqz v0, :argon_keys
+    if-eqz v0, :wave_keys
 
     return v0
 
-    :argon_keys
+    :wave_keys
 """)
 
 # 4. Menu: our items first (right after super), then the stock ones.
@@ -91,11 +91,11 @@ patch(LA, ".method public onOptionsItemSelected(Landroid/view/MenuItem;)Z\n    .
 
     move-result v0
 
-    if-eqz v0, :argon_menu
+    if-eqz v0, :wave_menu
 
     return v0
 
-    :argon_menu
+    :wave_menu
 """)
 
 # 5. Leaving mid-move keeps the entry where it was carried.
@@ -112,16 +112,16 @@ patch(LA, ".method private getFolderIcon(Ljava/lang/String;)Landroid/graphics/dr
     .locals 4
 
     .prologue
-    # FEAT(tray): ArgonTray's icon for the user's folders (null = stock folder: stock icon)
+    # FEAT(tray): WaveTray's icon for the user's folders (null = stock folder: stock icon)
     invoke-static {{p0, p1}}, {T}->folderIconHook({L}Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
 
-    if-eqz v0, :argon_icon
+    if-eqz v0, :wave_icon
 
     return-object v0
 
-    :argon_icon
+    :wave_icon
 """)
 
 # 7. Opening the tray selects its first entry (stock: the 5th, the middle of the first 3x3).
@@ -147,15 +147,15 @@ def getter(name, field, typ):
 .end method
 """
 
-bridges = "\n# FEAT(tray): bridges for ArgonTray (package-private, Java can't name the synthetic -getN)\n"
-bridges += getter("argonList", "mAppsAndFolderList", "Ljava/util/ArrayList;")
-bridges += getter("argonGrid", "mDrawerFolderGrid", "Landroid/widget/GridView;")
-bridges += getter("argonAdapter", "mDrawerAdapterObject", "Lcom/sonim/borqs/launcher/DrawerAdapter;")
-bridges += getter("argonPrefs", "mSharedPrefs", "Landroid/content/SharedPreferences;")
-bridges += getter("argonCursor", "mAppsAndFolderCursor", "Landroid/database/Cursor;")
-bridges += getter("argonDb", "mDataBaseHelpler", "Lcom/sonim/borqs/launcher/helper/DatabaseHelper;")
+bridges = "\n# FEAT(tray): bridges for WaveTray (package-private, Java can't name the synthetic -getN)\n"
+bridges += getter("waveList", "mAppsAndFolderList", "Ljava/util/ArrayList;")
+bridges += getter("waveGrid", "mDrawerFolderGrid", "Landroid/widget/GridView;")
+bridges += getter("waveAdapter", "mDrawerAdapterObject", "Lcom/sonim/borqs/launcher/DrawerAdapter;")
+bridges += getter("wavePrefs", "mSharedPrefs", "Landroid/content/SharedPreferences;")
+bridges += getter("waveCursor", "mAppsAndFolderCursor", "Landroid/database/Cursor;")
+bridges += getter("waveDb", "mDataBaseHelpler", "Lcom/sonim/borqs/launcher/helper/DatabaseHelper;")
 bridges += f"""
-.method static argonLock()Ljava/lang/Object;
+.method static waveLock()Ljava/lang/Object;
     .locals 1
 
     sget-object v0, {L}->sLock:Ljava/lang/Object;
@@ -163,7 +163,7 @@ bridges += f"""
     return-object v0
 .end method
 
-.method static argonTrayVisible({L})Z
+.method static waveTrayVisible({L})Z
     .locals 1
 
     invoke-direct {{p0}}, {L}->isAppTrayVisible()Z
@@ -173,7 +173,7 @@ bridges += f"""
     return v0
 .end method
 
-.method static argonStockFolderIcon({L}Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
+.method static waveStockFolderIcon({L}Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
     .locals 1
 
     invoke-direct {{p0, p1}}, {L}->getFolderIcon(Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
@@ -183,7 +183,7 @@ bridges += f"""
     return-object v0
 .end method
 
-.method static argonCheckNavKey({L}Ljava/lang/String;)V
+.method static waveCheckNavKey({L}Ljava/lang/String;)V
     .locals 0
 
     invoke-direct {{p0, p1}}, {L}->checkNavigationKeyAndSetDefault(Ljava/lang/String;)V
@@ -191,7 +191,7 @@ bridges += f"""
     return-void
 .end method
 
-.method static argonUpdateNavKey({L}Ljava/lang/String;)V
+.method static waveUpdateNavKey({L}Ljava/lang/String;)V
     .locals 0
 
     invoke-direct {{p0, p1}}, {L}->updateNavigationKey(Ljava/lang/String;)V
@@ -199,7 +199,7 @@ bridges += f"""
     return-void
 .end method
 
-.method static argonStockTray({L})V
+.method static waveStockTray({L})V
     .locals 1
 
     iget-object v0, p0, {L}->mDataBaseHelpler:Lcom/sonim/borqs/launcher/helper/DatabaseHelper;
@@ -210,7 +210,7 @@ bridges += f"""
 
     iput-object v0, p0, {L}->mAppsAndFolderCursor:Landroid/database/Cursor;
 
-    invoke-virtual {{p0}}, {L}->argonStockSetAppsAndFolderList()V
+    invoke-virtual {{p0}}, {L}->waveStockSetAppsAndFolderList()V
 
     return-void
 .end method
