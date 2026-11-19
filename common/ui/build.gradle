@@ -19,3 +19,8 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 }
+
+dependencies {
+    // Setup and SetupActivity read and keep a Config (common/core).
+    api project(":common:core")
+}

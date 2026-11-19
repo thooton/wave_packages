@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The setup screen's page and text (SetupActivity). Names of their own, so
+     an app with a dark palette (Places) still gets dark text on a light page;
+     the header and buttons take the app's primary and focus_rule. -->
+<resources>
+    <color name="setup_page">#FFFFFF</color>
+    <color name="setup_text">#1A1A1A</color>
+    <color name="setup_muted">#6E6E6E</color>
+</resources>
