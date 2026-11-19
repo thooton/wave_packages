@@ -162,7 +162,8 @@ final class Backend {
      * setup screen's to forget).
      */
     void signOut() {
-        store.clear();
+        // Nothing still running for this account writes after this.
+        store.forgetAccount();
         new File(directory, ADDRESS).delete();
     }
 

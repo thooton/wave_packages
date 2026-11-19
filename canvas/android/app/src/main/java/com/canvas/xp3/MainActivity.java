@@ -592,7 +592,7 @@ public final class MainActivity extends BaseActivity {
             final T result = value;
             final String failure = problem;
             main.post(() -> {
-                if (!isFinishing()) done.done(result, failure);
+                if (!isFinishing() && !isDestroyed()) done.done(result, failure);
             });
         });
     }

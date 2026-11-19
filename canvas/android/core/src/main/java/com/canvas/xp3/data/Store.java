@@ -57,7 +57,11 @@ public final class Store {
 
     public Store(File directory) {
         this.directory = directory;
+        era = era(directory);
     }
+
+    /** The directory's clear count when this Store was made. */
+    private final int era;
 
     // ------------------------------------------------------------------
     // Settings
@@ -409,13 +413,33 @@ public final class Store {
         return null;
     }
 
-    /** Everything written about this account, for Settings' sign-out. */
     /** Removes the old settings document once the setup has taken it over. */
     public void forgetSettings() {
         new File(directory, SETTINGS).delete();
     }
 
+    /** Everything written about this account. This Store goes on writing; see {@link #forgetAccount}. */
     public void clear() {
+        synchronized (Store.class) {
+            clearFiles();
+        }
+    }
+
+    /**
+     * Clears, for sign-out and a change of Canvas, and stops every Store on
+     * this directory made so far, this one included, from writing again: a
+     * sync still running or a turn-in job would otherwise save what it
+     * fetched for the account just forgotten. A Store made afterwards (the
+     * next setup's) writes as usual.
+     */
+    public void forgetAccount() {
+        synchronized (Store.class) {
+            ERAS.put(directory.getAbsolutePath(), era(directory) + 1);
+            clearFiles();
+        }
+    }
+
+    private void clearFiles() {
         new File(directory, SETTINGS).delete();
         new File(directory, CACHE).delete();
         new File(directory, NOTICES).delete();
@@ -448,6 +472,20 @@ public final class Store {
     }
 
     private synchronized void write(String name, String content, boolean secret) throws IOException {
-        Disk.write(new File(directory, name), content, secret);
+        synchronized (Store.class) {
+            // Cleared since this Store was made: its account is gone.
+            if (era(directory) != era) return;
+            Disk.write(new File(directory, name), content, secret);
+        }
+    }
+
+    /** How many times each directory has been cleared in this process. */
+    private static final java.util.Map<String, Integer> ERAS = new java.util.HashMap<String, Integer>();
+
+    private static int era(File directory) {
+        synchronized (Store.class) {
+            Integer known = ERAS.get(directory.getAbsolutePath());
+            return known == null ? 0 : known;
+        }
     }
 }

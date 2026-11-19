@@ -362,6 +362,29 @@ public final class NetTests {
         } finally {
             center.close();
         }
+        final java.util.concurrent.atomic.AtomicInteger status = new java.util.concurrent.atomic.AtomicInteger(404);
+        TestServer older = new TestServer(request -> {
+            if (request.path.equals("/canvas-status")) {
+                int now = status.get();
+                if (now == 200) return TestServer.Reply.json("{\"ready\":false}");
+                return TestServer.Reply.of(now, "text/plain", "no");
+            }
+            return TestServer.Reply.json("[{\"id\":1,\"name\":\"Bio\"}]");
+        });
+        try {
+            URI base = older.uri("/canvas/");
+            final Canvas canvas = with(base, Access.delta(base, "delta-token"));
+            check.ok("a command center without /canvas-status says nothing", canvas.relayCanvas() == null);
+            status.set(503);
+            check.ok("nor does a busy one", canvas.relayCanvas() == null);
+            status.set(200);
+            check.ok("nor one not ready yet", canvas.relayCanvas() == null);
+            check.same("and the courses still come", 1, canvas.courses(true).size());
+            status.set(401);
+            check.fails("a refused token is still said", "command center", () -> canvas.relayCanvas());
+        } finally {
+            older.close();
+        }
     }
 
     private static void setup(Check check) {

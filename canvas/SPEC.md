@@ -269,14 +269,16 @@ Home.
   set up"). OK opens the choices; theme and size apply at once.
 - Account: "Signed in to Canvas" / "Not set up"; Canvas (the host;
   through a command center "Known after a sync" until its relay has
-  said), Signs in with ("Access token", "Cookie service at <host>",
+  said; a command center that can't say, or hasn't the route, leaves it
+  so and the sync goes on), Signs in with ("Access token", "Cookie service at <host>",
   "Command center at <host>"), Time zone (the phone's when not set);
   Setup…, which opens the shared setup screen (`../common/SETUP.md`), as
   OK on any of the rows does; Sign out, which asks, then removes the
   setup, saved work and everything fetched, and opens the setup screen.
   The values are changed on the setup screen: import a new setup file, or
   type the Canvas address or time zone. A changed setup starts the app
-  over; work fetched from a different Canvas (or relay) is dropped first.
+  over; work fetched from a different Canvas (or relay) is dropped first,
+  and a sync or turn-in still running for the old one saves nothing.
 - Setup: nothing is built into the APK. With nothing set up the app opens
   on the shared setup screen instead. The setup is the Canvas address and
   either an access token (sent as a Bearer header; no CSRF needed) or a

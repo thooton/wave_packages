@@ -22,6 +22,7 @@ public final class DataTests {
 
     public static void run(final Check check) {
         check.run("dates", () -> dates(check));
+        check.run("signed out mid-sync", () -> signedOutMidSync(check));
         check.run("state", () -> state(check));
         check.run("sections", () -> sections(check));
         check.run("mapping", () -> mapping(check));
@@ -39,6 +40,25 @@ public final class DataTests {
         calendar.set(2026, Calendar.SEPTEMBER, 9, 12, 0, 0);
         calendar.set(Calendar.MILLISECOND, 0);
         return calendar.getTimeInMillis();
+    }
+
+    private static void signedOutMidSync(Check check) throws Exception {
+        java.io.File dir = java.nio.file.Files.createTempDirectory("store").toFile();
+        Store syncing = new Store(dir);
+        Store activity = new Store(dir);
+        syncing.saveDraft(Draft.empty("a1"));
+        activity.forgetAccount();
+        syncing.saveDraft(Draft.empty("a2"));
+        activity.saveDraft(Draft.empty("a3"));
+        String[] drafts = new java.io.File(dir, "drafts").list();
+        check.same("nothing for the old account written after sign-out", 0, drafts == null ? 0 : drafts.length);
+        Store next = new Store(dir);
+        Draft kept = Draft.empty("b1");
+        next.saveDraft(kept);
+        check.ok("the next account's store writes as before", new java.io.File(new java.io.File(dir, "drafts"),
+            kept.folder() + ".json").isFile());
+        next.clear();
+        dir.delete();
     }
 
     private static void dates(Check check) {

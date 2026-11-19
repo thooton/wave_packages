@@ -79,7 +79,8 @@ public final class Canvas {
 
     /**
      * Through a command center: the Canvas address its relay signs in to
-     * (`/canvas-status`), for links and the Account screen. Null otherwise.
+     * (`/canvas-status`), for links and the Account screen. Null otherwise,
+     * and when the command center can't say; a refused delta token throws.
      */
     public URI relayCanvas() throws IOException, InterruptedException {
         if (!access.relayed()) return null;
@@ -88,11 +89,13 @@ public final class Canvas {
         access.sign(request, false);
         Http.Response response = http.send(request);
         if (response.status() == 401) throw new IOException(access.refusal());
-        Http.requireSuccess(response.status(), "Command center");
+        // Only for links and the Account screen: a command center without the
+        // route, busy, or not ready yet says nothing, and the sync goes on.
+        if (response.status() / 100 != 2) return null;
         try {
             return Config.origin(Json.string(Json.object(Json.parse(response.body())), "base_url"));
         } catch (RuntimeException e) {
-            throw new IOException("The command center didn't say which Canvas it signs in to");
+            return null;
         }
     }
 
