@@ -199,15 +199,11 @@ public final class MainActivity extends BaseActivity {
     // The collection on disk
 
     private Collection load() {
-        File file = new File(getFilesDir(), FILE);
-        if (file.isFile()) {
-            try {
-                return Collection.read(Disk.read(file, 64L << 20));
-            } catch (RuntimeException e) {
-                // Unreadable: start again from the bundled deck, and let the
-                // command center's copy win wherever it has a later review.
-            }
-        }
+        // Unreadable: set aside (never saved over), and start again from the
+        // bundled deck; with a command center its copy wins wherever it has
+        // a later review.
+        Collection kept = Collection.load(new File(getFilesDir(), FILE));
+        if (kept != null) return kept;
         Collection fresh = new Collection();
         try {
             fresh.add(Collection.bundled(BUNDLED[0], BUNDLED[1], bundledCards()));

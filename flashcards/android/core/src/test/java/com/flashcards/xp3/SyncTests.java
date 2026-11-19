@@ -37,6 +37,28 @@ public final class SyncTests {
         removedCard(c);
         copyIsApart(c);
         stabilityRoundedToZero(c);
+        unreadableSetAside(c);
+    }
+
+    private static void unreadableSetAside(Check c) {
+        c.run("a collection that can't be read is set aside, never saved over", () -> {
+            java.io.File dir = java.nio.file.Files.createTempDirectory("decks").toFile();
+            java.io.File file = new java.io.File(dir, "collection.json");
+            c.ok("none there: none", Collection.load(file) == null);
+            Collection one = bundled(2);
+            com.xp3.common.Disk.write(file, one.write(), false);
+            Collection back = Collection.load(file);
+            c.ok("read back", back != null && back.decks().size() == one.decks().size());
+            String damaged = one.write().substring(0, 40);
+            com.xp3.common.Disk.write(file, damaged, false);
+            c.ok("damaged: none", Collection.load(file) == null);
+            c.ok("and gone from its place", !file.exists());
+            java.io.File[] aside = dir.listFiles((d, name) -> name.startsWith("collection.json.unreadable-"));
+            c.same("but kept beside it", 1, aside == null ? 0 : aside.length);
+            c.same("as it was", damaged, com.xp3.common.Disk.read(aside[0], 1 << 20));
+            for (java.io.File f : dir.listFiles()) f.delete();
+            dir.delete();
+        });
     }
 
     private static void stabilityRoundedToZero(Check c) {

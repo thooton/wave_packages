@@ -358,6 +358,27 @@ public final class Collection {
     }
 
     /** Reads what {@link #write} wrote; throws IllegalArgumentException if it can't. */
+    /**
+     * The collection kept in `file`, or null when there is none to read. One
+     * that is there but can't be read (damaged, or the read failed) is first
+     * moved aside to `<name>.unreadable-<time>`: starting afresh then never
+     * saves over it, which matters on the phone alone, with no command
+     * center's copy to bring the decks back.
+     */
+    public static Collection load(java.io.File file) {
+        if (!file.exists()) return null;
+        String text = com.xp3.common.Disk.read(file, 64L << 20);
+        if (text != null) {
+            try {
+                return read(text);
+            } catch (RuntimeException e) {
+                // Set aside below.
+            }
+        }
+        file.renameTo(new java.io.File(file.getParentFile(), file.getName() + ".unreadable-" + System.currentTimeMillis()));
+        return null;
+    }
+
     public static Collection read(String json) {
         Collection collection = new Collection();
         Map<String, Object> root = Json.object(Json.parse(json));

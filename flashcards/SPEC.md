@@ -201,9 +201,9 @@ same card is due the same day on the tablet.
 **Storage.** The collection is `collection.json` in the app's private
 storage, saved 1.5 s after an answer or removal, on leaving, and after a
 sync, off the main thread. Answers, removals and option changes survive
-force-stopping the app 2 s after them. An unreadable file is replaced by the
-bundled deck, with the command center's later reviews winning on the next
-sync. Studying needs no network.
+force-stopping the app 2 s after them. An unreadable file is moved aside
+(`<name>.unreadable-<time>`, never saved over) and replaced by the bundled
+deck, with the command center's later reviews winning on the next sync. Studying needs no network.
 
 **Sync** (set up with a command center only). `POST /flashcards/sync` to the command center: on opening (each
 resume), 30 s after the last answer or removal, after an options change,
