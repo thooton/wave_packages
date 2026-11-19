@@ -3,12 +3,12 @@
 # Renders the tray and its folders with the BUILT code on the connected phone (app_process as the
 # shell user; nothing installed, the screen untouched; only /data/local/tmp/wave_preview is used
 # and removed). Needs root once, to copy the launcher's App_Tray database for the stock rows.
-# Run tools/build.sh first. Details: tools/preview/com/sonim/borqs/launcher/TrayPreview.java.
+# Build and package authorized signed inputs first. Details: tools/preview/com/sonim/borqs/launcher/TrayPreview.java.
 source "$(dirname "$0")/lib/env.sh"
 theme=${1:-0}; lay=${2:-}
 B="$ROOT/build/SonimLauncher"; P="$ROOT/build/preview-tool"; O="$ROOT/build/preview"
 APK="$ROOT/out/system/priv-app/SonimLauncher/SonimLauncher.apk"
-[ -f "$APK" ] || { echo "run tools/build.sh first"; exit 1; }
+[ -f "$APK" ] || { echo "run tools/build.sh and tools/package.sh with authorized signed inputs first"; exit 1; }
 rm -rf "$P" "$O"; mkdir -p "$P/classes" "$O"
 javac -nowarn -Xlint:-options -source 8 -target 8 -cp "$ANDROID_JAR:$B/stubs:$B/classes" -d "$P/classes" \
     $(find "$ROOT/tools/preview" -name '*.java')

@@ -24,7 +24,8 @@ Install JDK 21 and SDK platform/build-tools listed in [../AGENTS.md](../AGENTS.m
 The shared setup needs Python 3, zip/unzip and curl; it installs apktool
 2.11.0 if necessary. Use `--jadx` for the optional read-only Java reference
 (decompile with the mod's `tools/decompile.sh`). No Gradle, NDK or adb is
-needed for the host builds. From the repo root:
+needed for the host builds. Messages TLS tests also need OpenSSL. From the
+repo root:
 
 ```bash
 mods/tools/setup.sh

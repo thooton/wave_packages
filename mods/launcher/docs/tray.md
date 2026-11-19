@@ -67,7 +67,10 @@ adb push tray.txt /data/local/tmp/ && adb shell su -c 'cp /data/local/tmp/tray.t
 ## Verifying (no install)
 * `tools/build.sh`: dexcheck + linkcheck.
 * `tools/test.sh`: format/resolve/snapshot.
-* `tools/preview.sh`: real rendering with the built dex, as the shell user via app_process.
+* `tools/preview.sh`: real rendering as the shell user via `app_process`.
+  The preview and ART verifier are hardware-only checks. Run these from
+  `mods/launcher/` only on a reserved test phone and only after `tools/package.sh`
+  has verified authorized signed APKs and staged them under `out/system/`.
 * ART verifier on the phone:
   ```
   adb push out/system/priv-app/SonimLauncher/SonimLauncher.apk /data/local/tmp/a.apk

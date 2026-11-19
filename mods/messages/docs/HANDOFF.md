@@ -1,7 +1,9 @@
 # Status: Messages Improved (Sonim XP3800 messaging modernization)
 
-State at the end of the modernization work. Read `/AGENTS.md` first; feature docs are linked from
-`/README.md`; testing is in `docs/testing.md`.
+This records upstream's modernization and device results, before the repo move
+and rename. They do not verify the current signed build or installed handover.
+Start with [the shared mod guide](../../AGENTS.md) and [Messages' notes](../AGENTS.md).
+Feature docs are linked from [the Messages README](../README.md).
 
 ## The asks and where they stand
 
@@ -16,7 +18,7 @@ State at the end of the modernization work. Read `/AGENTS.md` first; feature doc
 | RCS settings and status in Settings > Advanced settings | Done, device-verified | docs/rcs/android.md "Settings screen" |
 | UI unchanged | Kept: no layout/resource changes; RCS messages look like SMS/MMS; the one addition is the RCS settings screen, in the stock settings style and wording | |
 
-## Verification (last runs, final build)
+## Historical upstream device and host results
 * `tools/testing/mms_suite.sh`: 8/8 (MMS receive, threads, acks, no crash).
 * `tools/rcs/device_suite.sh`: 13/13 (RCS on the phone against the mock, UI-driven sends).
 * `tools/rcs/run_tests.sh all`: engine unit 16, integration 28 (incl. the new "latest group" check), TLS 3: all pass.
@@ -34,7 +36,7 @@ State at the end of the modernization work. Read `/AGENTS.md` first; feature doc
   fake MMSC; the MMS network linger (performance fix 4) can only work with a SIM.
 * MMSC limits: Bell's MMSC may refuse very large MMS groups (carrier config says 20 recipients).
 
-## Device notes
+## Historical device notes
 * Serial `2a29a58`, Android 8.1, no SIM, Magisk root. The Magisk Shell root grant was time-limited
   and kept expiring; it was made permanent (`policies.until=0` for uid 2000).
 * The device clock is 1970: never compare device timestamps with host time.

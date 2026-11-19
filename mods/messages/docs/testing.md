@@ -1,13 +1,16 @@
 # Testing on the phone
 
-The test phone has no SIM and no cellular service; everything network-side is simulated on the
-host and reached through `adb reverse`. All of it is development-only: the switches are `debug.*`
-system properties that reset on reboot, and nothing changes behaviour unless they are set.
+These procedures assume an authorized, recoverable test XP3800 with the
+signed module already approved for device testing. They are not suitable
+for a personal phone's normal SMS/RCS data. Build and run host checks from
+`mods/messages/` first (`tools/test.sh`); see [the shared mod guide](../../AGENTS.md)
+for packaging and the verification boundary. For simulated network tests,
+use a test phone without a SIM or carrier connection. The `debug.*` switches
+reset on reboot.
 
 ## Prerequisites
-* Root for `com.android.shell` (Magisk). If `adb shell su -c id` says "Permission denied", the
-  grant was reset or expired: re-grant in Magisk (Superuser tab, Shell) and make it permanent with
-  `adb shell su -c "'magisk --sqlite \"UPDATE policies SET until=0 WHERE uid=2000\"'"`.
+* Magisk root granted for the test shell. Confirm the selected device and its
+  permission before starting. Do not change root policy for normal use.
 * `adb shell svc power stayon true` and `adb shell wm dismiss-keyguard` before UI-driven tests
   (240x320, no touchscreen: `input keyevent` / `input tap`).
 * `tools/testing/push.sh`: builds and pushes `/data/local/tmp/smsinject.dex` (SmsInject,
