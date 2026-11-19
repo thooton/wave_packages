@@ -199,7 +199,7 @@ The mod matrix builds and tests **unsigned** signing requests. Opt in to
 an authorized signing run in this repo. Per-mod artifact names are
 `{launcher,messages,music}-improved-oem-signed-apks`, each containing the
 signed `<App>.apk` files at the artifact root. The workflow verifies that
-OEM signatures and the local unsigned build payload match. Signing keys
+OEM signatures and the local unsigned build payload match. OEM private keys
 never belong in repo files or GitHub Actions secrets. See `mods/AGENTS.md`.
 
 Local checks: `.github/build-apks.sh` (optionally pass a list of Gradle
