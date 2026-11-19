@@ -35,7 +35,14 @@ public final class SelfTest {
 
         check.run("descriptors in the tree", () -> {
             List<File> found = descriptors(root);
-            check.ok("descriptors found under " + root, !found.isEmpty());
+            // Every app that declares the shared setup screen ships its descriptor, and every
+            // descriptor belongs to such an app. A tree with neither (Wave's copy of common/)
+            // has nothing to check here, rather than failing.
+            List<String> withScreen = setupApps(root);
+            List<String> described = new ArrayList<String>();
+            for (File file : found) described.add(file.getParentFile().getParentFile().getParentFile().getParentFile()
+                .getParentFile().getParentFile().getName());
+            check.same("apps with the setup screen under " + root + " have descriptors", withScreen, described);
             for (File file : found) {
                 String app = file.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile()
                     .getParentFile().getName();
@@ -318,6 +325,19 @@ public final class SelfTest {
         int count = 0;
         for (Thread thread : Thread.getAllStackTraces().keySet()) if (thread.getName().equals(name)) count++;
         return count;
+    }
+
+    /** Apps whose manifest declares common's SetupActivity, in name order. */
+    static List<String> setupApps(File root) throws Exception {
+        List<String> out = new ArrayList<String>();
+        File[] dirs = root.listFiles();
+        if (dirs == null) return out;
+        java.util.Arrays.sort(dirs);
+        for (File dir : dirs) {
+            File manifest = new File(dir, "android/app/src/main/AndroidManifest.xml");
+            if (manifest.isFile() && read(manifest).contains("com.xp3.common.ui.SetupActivity")) out.add(dir.getName());
+        }
+        return out;
     }
 
     static List<File> descriptors(File root) {
