@@ -254,10 +254,41 @@ public final class SelfTest {
             check.same("round trip", 3, People.parse(people.toJson()).all().size());
         });
         check.run("gmail", () -> gmail(check));
+        check.run("google's sign-in busy or down", () -> busySignIn(check));
         if (!check.report()) System.exit(1);
     }
 
     // ---- The client, against a server standing in for the command center, Google and Gmail ----
+
+    static void busySignIn(Check check) throws Exception {
+        final AtomicInteger status = new AtomicInteger(503);
+        final AtomicInteger exchanges = new AtomicInteger();
+        try (TestServer server = new TestServer(request -> {
+            if (request.path.equals("/token")) {
+                exchanges.incrementAndGet();
+                int now = status.get();
+                if (now != 200) return TestServer.Reply.of(now, "application/json", "{\"error\":\"internal_failure\"}");
+                return TestServer.Reply.json("{\"access_token\":\"at1\",\"expires_in\":3599}");
+            }
+            if (!request.header("Authorization").equals("Bearer at1")) return TestServer.Reply.of(401, "application/json", "{}");
+            return TestServer.Reply.json("{\"threadsUnread\":4}");
+        })) {
+            String base = server.uri("").toString();
+            final Gmail gmail = new Gmail(Gmail.direct("cid", "secret-xyz", "1//refresh-xyz", "me@gmail.com"),
+                base, base + "/token");
+            check.fails("a 503 says try again, not that the login is bad", "Try again later", () -> gmail.unread());
+            status.set(429);
+            check.fails("a 429 too", "Try again in a minute", () -> gmail.unread());
+            try {
+                gmail.unread();
+            } catch (java.io.IOException e) {
+                check.ok("and never names the secrets", !e.getMessage().contains("xyz"));
+            }
+            status.set(200);
+            check.same("the same login works once Google is back", 4, gmail.unread());
+            check.same("one exchange per try", 4, exchanges.get());
+        }
+    }
 
     static void gmail(Check check) throws Exception {
         final AtomicInteger tokens = new AtomicInteger();

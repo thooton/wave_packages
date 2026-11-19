@@ -375,7 +375,7 @@ public final class MainActivity extends BaseActivity {
                 done = () -> say(message);
             }
             final Runnable then = done;
-            runOnUiThread(() -> {
+            onUi(() -> {
                 if (mine != generation) return;
                 job = null;
                 then.run();
@@ -606,7 +606,7 @@ public final class MainActivity extends BaseActivity {
                 // The counts are a nicety; the list says when Gmail fails.
             }
             final Map<String, Integer> got = found;
-            runOnUiThread(() -> {
+            onUi(() -> {
                 counting = false;
                 if (got == null || client != gmail) return;
                 counts.clear();
@@ -1110,7 +1110,7 @@ public final class MainActivity extends BaseActivity {
                 client.change(id, change);
             } catch (Exception e) {
                 final String message = message(e);
-                runOnUiThread(() -> {
+                onUi(() -> {
                     say("Couldn't do that: " + message);
                     whole.remove(id);
                     if (screen == LIST) load();
@@ -1169,7 +1169,7 @@ public final class MainActivity extends BaseActivity {
                         client.relabel(id, add, remove);
                     } catch (Exception e) {
                         final String message = message(e);
-                        runOnUiThread(() -> say("Couldn't change the labels: " + message));
+                        onUi(() -> say("Couldn't change the labels: " + message));
                     }
                 });
             })
@@ -1371,7 +1371,7 @@ public final class MainActivity extends BaseActivity {
                         client.discard(draftId);
                     } catch (Exception e) {
                         final String message = message(e);
-                        runOnUiThread(() -> say("Couldn't delete the draft: " + message));
+                        onUi(() -> say("Couldn't delete the draft: " + message));
                     }
                 });
                 toast("Draft deleted");
@@ -1508,7 +1508,7 @@ public final class MainActivity extends BaseActivity {
                 // Offline, or Google failed: what is known from mail is still offered.
                 return;
             }
-            runOnUiThread(() -> {
+            onUi(() -> {
                 if (found.size() > 100) found.clear();
                 found.put(key, people);
                 if (suggestFor != null && suggestTyped.equalsIgnoreCase(typed)) suggest(suggestFor);
@@ -2384,5 +2384,16 @@ public final class MainActivity extends BaseActivity {
                 : entry.folder != null && entry.folder.countsAll() ? color(R.color.text_muted) : color(R.color.focus_rule));
             return row;
         }
+    }
+
+    /**
+     * Back on the main thread, unless this activity has been destroyed
+     * meanwhile (closed, or started over for a new setup): work finishing
+     * late must not show dialogs on it or queue more on its stopped workers.
+     */
+    private void onUi(final Runnable work) {
+        runOnUiThread(() -> {
+            if (!isDestroyed()) work.run();
+        });
     }
 }

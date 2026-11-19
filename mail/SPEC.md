@@ -239,7 +239,10 @@ with a pill and a comma; Back hides them. Leaving the field hides them.
   token and import a new setup file (Menu, Setup)." directly; "Gmail isn't
   set up on the command center. Run `delta gmail login` on a computer."
   and "… Run `delta gmail login` again on a computer." with a command
-  center. Changing or signing out of the setup starts the app over.
+  center. Google's sign-in busy (429) or failing (5xx) is said as such
+  ("Google: too many sign-ins just now. Try again in a minute.", "Google's
+  sign-in isn't answering just now (HTTP 503). Try again later."), never
+  as a refused login. Changing or signing out of the setup starts the app over.
 - **Network.** Every action is online; there is no offline copy. A failed
   load leaves what was shown and says why in the status line. A failed
   change says "Couldn't do that: …" and reloads the list (labels: "Couldn't

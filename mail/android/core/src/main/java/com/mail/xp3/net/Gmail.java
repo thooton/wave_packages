@@ -162,6 +162,12 @@ public final class Gmail {
             + "&client_secret=" + encode(Json.string(login, "client_secret"));
         Http.Response response = http.send(Http.Request.to(URI.create(tokenUrl))
             .post(form).header("Content-Type", "application/x-www-form-urlencoded").timeout(30000));
+        if (response.status() == 429 || response.status() >= 500) {
+            // Busy or failing for the moment: the login itself is fine, and
+            // saying it was refused would send someone off to replace it.
+            throw new IOException(response.status() == 429 ? "Google: too many sign-ins just now. Try again in a minute."
+                : "Google's sign-in isn't answering just now (HTTP " + response.status() + "). Try again later.");
+        }
         Map<String, Object> reply;
         try {
             reply = Json.object(Json.parse(response.body()));
