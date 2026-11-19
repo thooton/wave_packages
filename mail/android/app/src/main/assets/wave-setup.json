@@ -1,0 +1,58 @@
+{
+  "format": 1,
+  "app": "mail",
+  "name": "Mail",
+  "package": "com.mail.xp3",
+  "about": "Reads and sends your Gmail with your own Google OAuth client.",
+  "settings": [
+    {
+      "name": "email",
+      "label": "Gmail address",
+      "secret": false,
+      "required": true,
+      "manual": true,
+      "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+      "max": 254,
+      "example": "you@gmail.com",
+      "obtain": "The address you signed in with when you made the refresh token."
+    },
+    {
+      "name": "clientId",
+      "label": "OAuth client ID",
+      "secret": false,
+      "required": true,
+      "pattern": "^[0-9]+-[A-Za-z0-9_]+\\.apps\\.googleusercontent\\.com$",
+      "max": 200,
+      "example": "123456789012-abc123.apps.googleusercontent.com",
+      "obtain": "Google Cloud console: enable the Gmail API (and, for address suggestions, the People API), set up the OAuth consent screen with yourself as a test user, then Credentials, Create credentials, OAuth client ID, type Desktop app."
+    },
+    {
+      "name": "clientSecret",
+      "label": "OAuth client secret",
+      "secret": true,
+      "required": true,
+      "pattern": "^[A-Za-z0-9_-]{10,100}$",
+      "max": 100,
+      "example": "GOCSPX-...",
+      "obtain": "Shown with the client ID when the OAuth client is made."
+    },
+    {
+      "name": "refreshToken",
+      "label": "Refresh token",
+      "secret": true,
+      "required": true,
+      "pattern": "^[A-Za-z0-9/_.~+-]{20,512}$",
+      "max": 512,
+      "example": "1//0g...",
+      "obtain": "Grant your client the scope https://www.googleapis.com/auth/gmail.modify (and optionally directory.readonly and contacts.other.readonly) once on a computer, for example with Google's OAuth 2.0 Playground set to use your own client, and copy the refresh token it gives."
+    }
+  ],
+  "limits": [
+    "Google expires refresh tokens after 7 days while the OAuth consent screen is in Testing; publish it (it needs no review for your own use) to keep the login.",
+    "Address suggestions from your organisation and saved contacts need the People API and their scopes; without them only people from your mail are suggested."
+  ],
+  "delta": {
+    "supported": true,
+    "about": "The command center keeps the Gmail login (GET /gmail-login, set with `delta gmail login`); the phone still talks to Gmail itself."
+  }
+}

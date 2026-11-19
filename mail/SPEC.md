@@ -5,15 +5,17 @@
 Gmail on the Sonim XP3 flip phone: read, reply, forward, write, archive,
 delete, star, label, search, drafts and attachments, driven one-handed with
 the d-pad, OK, Back, Menu and the T9 keypad (never touch) on a 240x320
-screen. It is the phone end of `delta gmail`: the command center keeps the
-Gmail login, and the phone talks to Google itself.
+screen. The user sets it up with their own Gmail login (an OAuth client and
+a refresh token, imported from a setup file), or with a Delta command
+center, which keeps the login as `delta gmail` does. Either way the phone
+talks to Google itself.
 
 It must stay a mail client a flip phone can drive: one screen at a time,
 quick to open, every action reachable from Menu, the common ones on a
 single keypad key. It must never become Gmail's every feature (no
 settings screens, multiple accounts, filters, rich-text editing, offline
-mailbox), never store the Gmail login on the phone, never delete mail for
-good, and never save files to the phone's own storage.
+mailbox), never keep the Gmail login anywhere on the phone but the app's
+private setup, never delete mail for good, and never save files to the phone's own storage.
 
 ## Not wanted
 
@@ -28,7 +30,9 @@ good, and never save files to the phone's own storage.
 - Saving attachments on the phone's own storage; only the SD card.
 - Deleting anything for good (the login's `gmail.modify` scope can't).
   Delete means move to Trash. Only a draft can be deleted.
-- Keeping the Gmail login (client secret, refresh token) on disk.
+- Keeping the Gmail login (client secret, refresh token) on disk anywhere
+  but the app's private setup file (and a command center's login not at
+  all: it is held in memory).
 - The old oxblood family band: Mail looks like Thunderbird for Android.
 
 ## Screens
@@ -41,9 +45,9 @@ Menu while sending or saving shows nothing.
 
 ### Starting
 
-- With no command center login (none bundled, none typed), the list is
-  empty with "Mail isn't set up" and the Command center dialog opens.
-- With a login, the Inbox loads. If a message was being written when the
+- With nothing set up, Mail opens on the shared setup screen
+  (`../common/SETUP.md`) instead, and nothing else.
+- Set up, the Inbox loads. If a message was being written when the
   app was last stopped, writing opens instead with it, and the status line
   says "Your unfinished message was kept." One nothing was typed in isn't
   kept.
@@ -93,15 +97,15 @@ Newest first, 20 at a time.
 Slides in from the left over a scrim. At its head the account's name (or
 "Gmail") and address (or "Not set up"). Then Inbox, Starred, Sent, Drafts,
 All mail, Spam, Trash; the open search, if any, as “query”; a Labels
-heading and the user's labels; an Account heading and Command center. Each
+heading and the user's labels; an Account heading and Setup. Each
 folder has its Thunderbird icon and a count: unread for Inbox, Spam and
 labels (blue), every draft for Drafts (grey); none at 0, 999+ above 999.
 The row under the d-pad is a filled blue pill; the open folder is washed
 pale blue. It opens on the open folder.
 
 - Up/Down move, skipping headings; at the first or last row they stay.
-- OK or Right opens that folder (the list starts at its top) or runs
-  Command center; choosing the open folder just closes the pane.
+- OK or Right opens that folder (the list starts at its top) or opens
+  the setup screen; choosing the open folder just closes the pane.
 - Left or Back closes it. Other keys do nothing.
 - Counts are fetched when the pane opens if over a minute old, and after
   any change; a failed fetch keeps the old counts silently.
@@ -187,9 +191,8 @@ with its files, is added under the text when sent, not shown.
   address: "Not an address: …". Otherwise "Sending…", then toast "Sent"
   and back where writing began (a conversation reloads with the reply in
   it; the list reloads). A failure leaves the message as it was with the
-  reason in the status line. With no command center login, Send and Save
-  draft say "Mail isn't set up", keep the message and open the Command
-  center dialog.
+  reason in the status line. With nothing set up, Send and Save draft say
+  "Mail isn't set up", keep the message and open the setup screen.
 - Save draft: "Saving the draft…", toast "Saved to Drafts", back. A draft
   opened again is saved in place, not duplicated.
 - Discard: a new message goes at once ("Discarded"). A saved draft asks
@@ -214,11 +217,6 @@ with a pill and a comma; Back hides them. Leaving the field hides them.
   Search opens the results as a folder named “query” (Gmail syntax, e.g.
   `from:jane has:attachment`); OK in the field searches too; empty or
   Cancel does nothing. Back from it returns to Inbox.
-- Command center: address ("https://…") and token (dots when one is
-  saved; left empty, the saved one is kept). OK in the address moves to the
-  token; OK in the token saves. Save with either missing: "Both the address
-  and the token are needed", and the dialog stays with what was typed.
-  Saved: "Saved: <host>" and the list reloads.
 - In every dialog, Up/Down move between its fields and buttons; Down from the last field, or from Cancel, lands on the primary button (Save, Search).
 - Open email file…: asks for storage the first time ("Storage not allowed"
   if refused). Lists `.eml` files from Documents and Download on the SD
@@ -228,19 +226,27 @@ with a pill and a comma; Back hides them. Leaving the field hides them.
 
 ## Behaviour
 
-- **Login.** A login baked into the build is adopted once per build; else
-  the one typed in is kept (SharedPreferences `mail`). The Gmail login is
-  fetched from the command center when first needed and held in memory
-  only. Errors are phrased for the user, e.g. "Gmail isn't set up on the
-  command center. Run `delta gmail login` on a computer.", "The Gmail login
-  has expired or was revoked…".
+- **Setup.** Nothing is built into the APK. Menu's Setup… (and the
+  pane's Setup) opens the shared setup screen. Set up directly, the
+  user's email, OAuth client id and secret and refresh token come from
+  the setup (`files/wave-setup.json`, private); the screen lists what the
+  direct way can't do as well (a consent screen left in Testing expires
+  the token in 7 days; suggestions need the People API). Set up with a
+  command center, the Gmail login is fetched from it when first needed and
+  held in memory only. A command center login saved by an earlier version
+  becomes the setup once. Errors are phrased for the user and say what to
+  do: "The Gmail login has expired or was revoked. Make a new refresh
+  token and import a new setup file (Menu, Setup)." directly; "Gmail isn't
+  set up on the command center. Run `delta gmail login` on a computer."
+  and "… Run `delta gmail login` again on a computer." with a command
+  center. Changing or signing out of the setup starts the app over.
 - **Network.** Every action is online; there is no offline copy. A failed
   load leaves what was shown and says why in the status line. A failed
   change says "Couldn't do that: …" and reloads the list (labels: "Couldn't
   change the labels: …"). A conversation once opened is kept in memory
   while the app runs. Starting new work abandons what was running; Menu →
   Stop or Back on the list stops it.
-- **Kept across restarts:** the login, the message being written (until
+- **Kept across restarts:** the setup, the message being written (until
   sent, saved or discarded), the people known from mail (up to 300; those
   written to first), and the SD card grant. Nothing else: the list is
   fetched afresh.

@@ -1,8 +1,8 @@
 package com.mail.xp3.net;
 
+import com.xp3.common.Config;
 import com.xp3.common.Http;
 import com.xp3.common.Json;
-import com.xp3.common.Login;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
@@ -24,10 +24,12 @@ import java.util.concurrent.Future;
  * thooton/delta).
  *
  * The login (the user's own OAuth client and the refresh token they granted
- * it) lives on the command center, at GET /gmail-login with the delta token.
- * It is fetched when first needed and kept in memory only, traded at
- * Google's token endpoint for an hour-long access token, and Gmail is called
- * directly with that: the command center never sees any mail.
+ * it) comes from one of two backends, behind {@link Logins}: the app's setup
+ * (direct: imported from a setup file), or the command center, at GET
+ * /gmail-login with the delta token, fetched when first needed and kept in
+ * memory only. Either way it is traded at Google's token endpoint for an
+ * hour-long access token, and Gmail is called directly with that: the
+ * command center never sees any mail.
  */
 public final class Gmail {
 
@@ -43,9 +45,69 @@ public final class Gmail {
     private static final String METADATA = "format=metadata&metadataHeaders=From&metadataHeaders=To"
         + "&metadataHeaders=Cc&metadataHeaders=Subject&metadataHeaders=Date";
 
+    /** Where the Gmail login comes from: the two backends. */
+    public interface Logins {
+        /** {"client_id", "client_secret", "refresh_token", "email"}. */
+        Map<String, Object> fetch() throws IOException, InterruptedException;
+
+        /** What the user does when Google refuses the login, as the end of a sentence's advice. */
+        String remedy();
+    }
+
+    /** The user's own OAuth client and refresh token, from the setup. */
+    public static Logins direct(String clientId, String clientSecret, String refreshToken, String email) {
+        if (clientId == null || clientSecret == null || refreshToken == null || email == null) {
+            throw new IllegalArgumentException("Mail isn't set up");
+        }
+        final Map<String, Object> login = Json.map("client_id", clientId, "client_secret", clientSecret,
+            "refresh_token", refreshToken, "email", email);
+        return new Logins() {
+            @Override
+            public Map<String, Object> fetch() {
+                return login;
+            }
+
+            @Override
+            public String remedy() {
+                return "Make a new refresh token and import a new setup file (Menu, Setup).";
+            }
+        };
+    }
+
+    /** The command center's Gmail login (GET /gmail-login), fetched each time it is needed again. */
+    public static Logins center(final String center, final String token) {
+        if (center == null || token == null) throw new IllegalArgumentException("There is no command center login");
+        final Http http = new Http();
+        return new Logins() {
+            @Override
+            public Map<String, Object> fetch() throws IOException, InterruptedException {
+                Http.Response response = http.send(Http.Request.to(URI.create(center + "/gmail-login"))
+                    .header("Authorization", "Bearer " + token).timeout(30000));
+                if (response.status() == 404) {
+                    throw new IOException("Gmail isn't set up on the command center. Run `delta gmail login` on a computer.");
+                }
+                Http.requireSuccess(response.status(), "Command center");
+                try {
+                    Map<String, Object> found = Json.object(Json.parse(response.body()));
+                    Json.string(found, "client_id");
+                    Json.string(found, "client_secret");
+                    Json.string(found, "refresh_token");
+                    Json.string(found, "email");
+                    return found;
+                } catch (RuntimeException e) {
+                    throw new IOException("The command center sent an unreadable Gmail login.");
+                }
+            }
+
+            @Override
+            public String remedy() {
+                return "Run `delta gmail login` again on a computer.";
+            }
+        };
+    }
+
     private final Http http = new Http();
-    private final String center;
-    private final String token;
+    private final Logins logins;
     private final String api;
     private final String peopleApi;
     private final String tokenUrl;
@@ -65,15 +127,21 @@ public final class Gmail {
     private volatile boolean noOthers;
     private volatile boolean othersWarm;
 
-    public Gmail(Login login) {
-        this(login.server(), login.token(), API, TOKEN);
+    /** As the app's setup says: the user's own login, or the command center's. */
+    public Gmail(Config config) {
+        this(config.isDelta() ? center(config.delta().server(), config.delta().token())
+            : direct(config.get("clientId"), config.get("clientSecret"), config.get("refreshToken"), config.get("email")),
+            API, TOKEN);
     }
 
     /** Any command center, Gmail and token endpoint, which is how the tests use it. */
     public Gmail(String center, String token, String api, String tokenUrl) {
-        if (center == null || token == null) throw new IllegalArgumentException("There is no command center login");
-        this.center = center;
-        this.token = token;
+        this(center(center, token), api, tokenUrl);
+    }
+
+    /** Any login source, Gmail and token endpoint. */
+    public Gmail(Logins logins, String api, String tokenUrl) {
+        this.logins = logins;
         this.api = api;
         this.peopleApi = api.equals(API) ? PEOPLE : api;
         this.tokenUrl = tokenUrl;
@@ -88,7 +156,7 @@ public final class Gmail {
     /** An access token, fetched again a minute before it runs out. */
     synchronized String access() throws IOException, InterruptedException {
         if (access != null && System.currentTimeMillis() < accessUntil) return access;
-        if (login == null) login = fetchLogin();
+        if (login == null) login = logins.fetch();
         String form = "grant_type=refresh_token&refresh_token=" + encode(Json.string(login, "refresh_token"))
             + "&client_id=" + encode(Json.string(login, "client_id"))
             + "&client_secret=" + encode(Json.string(login, "client_secret"));
@@ -105,10 +173,10 @@ public final class Gmail {
             // The login may have been replaced on the command center since.
             login = null;
             if (error.equals("invalid_grant")) {
-                throw new IOException("The Gmail login has expired or was revoked. Run `delta gmail login` again on a computer.");
+                throw new IOException("The Gmail login has expired or was revoked. " + logins.remedy());
             }
             if (error.equals("invalid_client") || error.equals("unauthorized_client")) {
-                throw new IOException("Google no longer accepts the Gmail login's OAuth client. Run `delta gmail login` again.");
+                throw new IOException("Google no longer accepts the Gmail login's OAuth client. " + logins.remedy());
             }
             String detail = Json.text(reply, "error_description");
             throw new IOException("Google refused the Gmail login: " + (detail != null ? detail : error));
@@ -119,25 +187,6 @@ public final class Gmail {
         access = fresh;
         accessUntil = System.currentTimeMillis() + (seconds == null ? 3000 : seconds.longValue() - 60) * 1000;
         return fresh;
-    }
-
-    private Map<String, Object> fetchLogin() throws IOException, InterruptedException {
-        Http.Response response = http.send(Http.Request.to(URI.create(center + "/gmail-login"))
-            .header("Authorization", "Bearer " + token).timeout(30000));
-        if (response.status() == 404) {
-            throw new IOException("Gmail isn't set up on the command center. Run `delta gmail login` on a computer.");
-        }
-        Http.requireSuccess(response.status(), "Command center");
-        try {
-            Map<String, Object> found = Json.object(Json.parse(response.body()));
-            Json.string(found, "client_id");
-            Json.string(found, "client_secret");
-            Json.string(found, "refresh_token");
-            Json.string(found, "email");
-            return found;
-        } catch (RuntimeException e) {
-            throw new IOException("The command center sent an unreadable Gmail login.");
-        }
     }
 
     private synchronized void forget(String refused) {
@@ -506,9 +555,9 @@ public final class Gmail {
         }
         String message = problem(response);
         if (status == 404) throw new Gone("Gmail: that isn't there any more.");
-        if (status == 401) throw new IOException("Gmail rejected the login. Run `delta gmail login` again on a computer.");
+        if (status == 401) throw new IOException("Gmail rejected the login. " + logins.remedy());
         if (status == 403 && message.toLowerCase(Locale.US).matches(".*(scope|permission).*")) {
-            throw new IOException("The Gmail login lacks a permission. Run `delta gmail login` again and allow everything.");
+            throw new IOException("The Gmail login lacks a permission. " + logins.remedy());
         }
         if (status == 429) throw new IOException("Gmail: too many requests");
         throw new IOException("Gmail: " + (message.length() > 0 ? message : "HTTP " + status));

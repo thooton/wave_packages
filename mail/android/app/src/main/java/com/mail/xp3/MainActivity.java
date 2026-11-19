@@ -58,8 +58,9 @@ import com.mail.xp3.net.Message;
 import com.mail.xp3.net.Mime;
 import com.mail.xp3.net.Outgoing;
 import com.mail.xp3.net.People;
-import com.xp3.common.Login;
+import com.xp3.common.Config;
 import com.xp3.common.ui.BaseActivity;
+import com.xp3.common.ui.Setup;
 import com.xp3.common.ui.Card;
 import com.xp3.common.ui.Family;
 import com.xp3.common.ui.Ui;
@@ -161,7 +162,9 @@ public final class MainActivity extends BaseActivity {
     /** Searches of the user's organisation for whom to write to, beside the rest. */
     private final ExecutorService finder = Ui.worker("mail-people");
 
-    private Login login = Login.blank();
+    /** What the app was set up with (common/ui's Setup), and the stamp it had then. */
+    private Config config;
+    private String setupStamp;
     private Gmail gmail;
     private Me me;
     private People people = new People();
@@ -217,6 +220,12 @@ public final class MainActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        config = loadSetup(prefs());
+        if (config == null) {
+            Setup.require(this);
+            return;
+        }
+        setupStamp = Setup.stamp(this);
         setContentView(R.layout.activity_main);
         barIcon = (ImageView) findViewById(R.id.bar_icon);
         titleView = (TextView) findViewById(R.id.title);
@@ -263,7 +272,6 @@ public final class MainActivity extends BaseActivity {
         offerPeople(ccField);
 
         SharedPreferences prefs = prefs();
-        login = loadLogin(prefs);
         people = People.parse(prefs.getString("people", ""));
 
         Outgoing kept = Outgoing.parse(prefs.getString("compose", ""));
@@ -273,7 +281,6 @@ public final class MainActivity extends BaseActivity {
         } else {
             refresh();
         }
-        // Signed out, load() opens the Command center dialog.
         if (kept == null) load();
     }
 
@@ -284,7 +291,18 @@ public final class MainActivity extends BaseActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // Imported again or signed out on the setup screen: start over with it.
+        if (setupStamp != null && !setupStamp.equals(Setup.stamp(this))) recreate();
+    }
+
+    @Override
     protected void onPause() {
+        if (config == null) {
+            super.onPause();
+            return;
+        }
         // What is being written survives the app being stopped.
         // A message nothing was typed in is dropped, as Back drops it.
         if (screen == WRITE && writing != null && !sending) {
@@ -306,33 +324,32 @@ public final class MainActivity extends BaseActivity {
     }
 
     /**
-     * The bundled login is adopted once per build that carries a new one;
-     * otherwise whatever was saved (perhaps typed in from the menu) is kept.
+     * The setup, or null. A command center login an older version saved (it
+     * used to be baked into the APK) becomes a Delta setup, once.
      */
-    private Login loadLogin(SharedPreferences prefs) {
-        String revision = Bundled.REVISION;
-        if (revision.length() > 0 && !revision.equals(prefs.getString("bundled", ""))) {
-            Login bundled;
-            try {
-                bundled = Login.of(Bundled.SERVER, Bundled.TOKEN);
-            } catch (IllegalArgumentException e) {
-                bundled = Login.blank();
-            }
-            if (bundled.ready()) {
-                prefs.edit().putString("login", bundled.toJson()).putString("bundled", revision).apply();
-                return bundled;
-            }
+    private Config loadSetup(SharedPreferences prefs) {
+        Config found = Setup.migrateDelta(this, prefs.getString("login", ""));
+        if (prefs.contains("login") || prefs.contains("bundled")) {
+            prefs.edit().remove("login").remove("bundled").apply();
         }
-        return Login.parse(prefs.getString("login", ""));
+        return found;
+    }
+
+    private boolean ready() {
+        return config != null;
+    }
+
+    private void openSetup() {
+        startActivity(Setup.intent(this));
     }
 
     private SharedPreferences prefs() {
         return getSharedPreferences(PREFS, MODE_PRIVATE);
     }
 
-    /** One client per login, so its access token is reused. */
+    /** One client per setup, so its access token is reused. */
     private Gmail gmail() {
-        if (gmail == null) gmail = new Gmail(login);
+        if (gmail == null) gmail = new Gmail(config);
         return gmail;
     }
 
@@ -389,8 +406,8 @@ public final class MainActivity extends BaseActivity {
 
     /** The folder's first page, keeping the pick where it was. */
     private void load() {
-        if (!login.ready()) {
-            askLogin();
+        if (!ready()) {
+            openSetup();
             return;
         }
         final Gmail client = gmail();
@@ -512,7 +529,7 @@ public final class MainActivity extends BaseActivity {
         }
     }
 
-    /** Gmail's folders, a search if one is open, the labels, then the command center. */
+    /** Gmail's folders, a search if one is open, the labels, then the setup. */
     private void buildEntries() {
         entries.clear();
         for (Folder each : Folder.SYSTEM) entries.add(new Entry(each, icon(each), each.name, null));
@@ -522,7 +539,7 @@ public final class MainActivity extends BaseActivity {
             for (Folder label : labels) entries.add(new Entry(label, icon(label), label.name, null));
         }
         entries.add(new Entry(null, 0, "Account", null));
-        entries.add(new Entry(null, R.drawable.ic_settings, "Command center", this::askLogin));
+        entries.add(new Entry(null, R.drawable.ic_settings, "Setup", this::openSetup));
     }
 
     private void openDrawer() {
@@ -532,7 +549,7 @@ public final class MainActivity extends BaseActivity {
         for (int i = 0; i < entries.size(); i++) if (entries.get(i).folder != null && entries.get(i).folder.is(folder)) drawerPick = i;
         drawerOpen = true;
         String name = me == null ? "" : me.addresses.get(0).name;
-        String email = me == null ? (login.ready() ? "Gmail" : "Not set up") : me.email;
+        String email = me == null ? (ready() ? "Gmail" : "Not set up") : me.email;
         accountName.setText(name.length() > 0 ? name : "Gmail");
         accountEmail.setText(email);
         scrim.setVisibility(View.VISIBLE);
@@ -574,7 +591,7 @@ public final class MainActivity extends BaseActivity {
 
     /** The counts beside each folder, as Gmail shows them; a failure leaves the old ones. */
     private void loadCounts() {
-        if (!login.ready() || counting) return;
+        if (!ready() || counting) return;
         counting = true;
         final Gmail client = gmail();
         final List<Folder> all = new ArrayList<Folder>(Folder.SYSTEM);
@@ -663,7 +680,7 @@ public final class MainActivity extends BaseActivity {
      */
     private void bar() {
         progress.setVisibility(busy() ? View.VISIBLE : View.INVISIBLE);
-        String account = me != null ? me.email : login.ready() ? "Gmail" : "Not set up";
+        String account = me != null ? me.email : ready() ? "Gmail" : "Not set up";
         String under = busy() ? doing : account;
         countView.setVisibility(View.GONE);
         barAction.setVisibility(View.GONE);
@@ -696,7 +713,7 @@ public final class MainActivity extends BaseActivity {
     private void empty() {
         emptyIcon.setImageResource(icon(folder));
         String title;
-        if (!login.ready()) title = "Mail isn't set up";
+        if (!ready()) title = "Mail isn't set up";
         else if (busy()) title = doing;
         else if (!listed) title = folder.name + " didn't load";
         else title = "Nothing in " + folder.name;
@@ -1269,11 +1286,11 @@ public final class MainActivity extends BaseActivity {
         writing.text = bodyField.getText().toString();
     }
 
-    /** Sending and saving need the login: without one, the message stays and the Command center dialog opens. */
+    /** Sending and saving need the setup: without one, the message stays and the setup screen opens. */
     private boolean signedIn() {
-        if (login.ready()) return true;
+        if (ready()) return true;
         say("Mail isn't set up");
-        askLogin();
+        openSetup();
         return false;
     }
 
@@ -1459,7 +1476,7 @@ public final class MainActivity extends BaseActivity {
         for (int i = 0; was != null && i < suggestions.size(); i++) if (suggestions.get(i).is(was.email)) suggestPick = i;
         showSuggestions();
         toField.removeCallbacks(findPeople);
-        if (typed.length() >= 2 && !found.containsKey(typed.toLowerCase(Locale.US)) && login.ready()) {
+        if (typed.length() >= 2 && !found.containsKey(typed.toLowerCase(Locale.US)) && ready()) {
             toField.postDelayed(findPeople, FIND_AFTER_MS);
         }
     }
@@ -2134,7 +2151,7 @@ public final class MainActivity extends BaseActivity {
         sheet.add(R.drawable.ic_menu, "Folders", LEFT, this::openDrawer);
         sheet.add(R.drawable.ic_refresh, "Refresh", '#', this::load);
         if (next != null) sheet.add(R.drawable.ic_expand_more, "Load more", this::more);
-        sheet.add(R.drawable.ic_settings, "Command center…", this::askLogin);
+        sheet.add(R.drawable.ic_settings, "Setup…", this::openSetup);
         return sheet;
     }
 
@@ -2210,65 +2227,6 @@ public final class MainActivity extends BaseActivity {
     private void search(EditText field) {
         String query = field.getText().toString().trim();
         if (query.length() > 0) setFolder(Folder.search(query));
-    }
-
-    /** The fallback for a build without a bundled login. */
-    private void askLogin() {
-        LinearLayout box = vertical();
-        int pad = dp(12);
-        box.setPadding(pad, pad / 2, pad, 0);
-        final EditText server = new EditText(this);
-        server.setHint("https://…");
-        server.setSingleLine(true);
-        server.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        server.setText(login.server() == null ? "" : login.server());
-        final EditText token = new EditText(this);
-        token.setHint(login.ready() ? "••••••••" : "Token");
-        token.setSingleLine(true);
-        token.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        server.setImeOptions(EditorInfo.IME_ACTION_NEXT);
-        token.setImeOptions(EditorInfo.IME_ACTION_DONE);
-        box.addView(server);
-        box.addView(token);
-        final AlertDialog ask = new AlertDialog.Builder(this)
-            .setTitle("Command center")
-            .setView(box)
-            .setPositiveButton("Save", null)
-            .setNegativeButton("Cancel", null)
-            .create();
-        final Runnable save = () -> {
-            String typed = token.getText().toString();
-            if (typed.trim().length() == 0 && login.ready()) typed = login.token();
-            try {
-                Login next = Login.of(server.getText().toString(), typed);
-                if (!next.ready()) throw new IllegalArgumentException("Both the address and the token are needed");
-                login = next;
-                if (gmail != null) gmail.close();
-                gmail = null;
-                me = null;
-                labelsLoaded = false;
-                whole.clear();
-                counts.clear();
-                countsAt = 0;
-                prefs().edit().putString("login", next.toJson()).apply();
-                ask.dismiss();
-                say("Saved: " + next.host());
-                if (screen == LIST) load();
-            } catch (IllegalArgumentException e) {
-                // The dialog stays, keeping what was typed for correcting.
-                toast(e.getMessage());
-            }
-        };
-        Map<EditText, Runnable> ok = new HashMap<EditText, Runnable>();
-        ok.put(server, () -> {
-            token.requestFocus();
-            token.setSelection(token.length());
-        });
-        ok.put(token, save);
-        driveDialog(ask, ok);
-        ask.show();
-        // Save closes the dialog only once the login is taken.
-        ask.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> save.run());
     }
 
     // ---- Adapters ----

@@ -4,22 +4,16 @@ plugins {
 
 apply from: rootProject.file("gradle/app.gradle")
 
-apply from: rootProject.file("gradle/bundled.gradle")
-
-// The same command center as Delta, with the same token: it keeps the Gmail
-// login.
-bundled("com.mail.xp3") {
-    def center = deltaCenter(true)
-    [SERVER: center.server, TOKEN: center.token, REVISION: center.revision]
-}
+// No login is built in: the Gmail login (or a command center that keeps it)
+// is imported on the phone from a setup file (common/ui's Setup).
 
 android {
     namespace "com.mail.xp3"
 
     defaultConfig {
         applicationId "com.mail.xp3"
-        versionCode 16
-        versionName "1.4.3"
+        versionCode 17
+        versionName "1.5.0"
     }
 }
 

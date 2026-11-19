@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Internet, for the command center (which keeps the Gmail login) and
-         for Google. Storage, asked for on first use, only to open an
+    <!-- Internet, for Google, and for the command center when the app is set
+         up with one (it keeps the Gmail login). Storage, asked for on first use, only to open an
          email file from Documents or Download. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -27,5 +27,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- The shared setup screen (common/ui): the user's own Gmail login,
+             or a command center, imported from a setup file. -->
+        <activity
+            android:name="com.xp3.common.ui.SetupActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
+            android:screenOrientation="portrait" />
     </application>
 </manifest>

@@ -10,11 +10,14 @@ feature.
 ## How it works
 
 Mail works the way `delta gmail` does (`cmd/delta/gmail*.go`,
-`cmd/delta-cc/gmail.go` in thooton/delta). The command center keeps the
-login: `GET /gmail-login` with the delta token answers `{"client_id",
-"client_secret", "refresh_token", "email"}` (404 while `delta gmail login`
-hasn't been run). `Gmail` fetches it when first needed and keeps it in
-memory only, never on disk, trades the refresh token at
+`cmd/delta-cc/gmail.go` in thooton/delta). The login (`{"client_id",
+"client_secret", "refresh_token", "email"}`) comes from the app's setup
+(`../common/SETUP.md`) through one of two backends behind `Gmail.Logins`:
+**direct**, the user's own OAuth client and refresh token imported from a
+setup file and kept only in the app's private setup, or **Delta**, the
+command center's `GET /gmail-login` with the delta token (404 while `delta
+gmail login` hasn't been run), fetched when first needed and kept in
+memory only. `Gmail` trades the refresh token at
 `oauth2.googleapis.com/token` for an hour-long access token (renewed a
 minute early, and once more if Gmail answers 401), and calls
 `gmail.googleapis.com` itself, so the command center never sees any mail.
@@ -85,8 +88,8 @@ The scope is `gmail.modify`: nothing can be deleted for good, only trashed
 If the CLI's addressing, quoting or forwarding changes, change `Outgoing`
 here and keep the test in step.
 
-- `android/core`: `net/` over the shared `Http`, `Json` and `Login`
-  (`../common/core`): `Gmail` (the login and every request), `Folder`,
+- `android/core`: `net/` over the shared `Http`, `Json` and `Config`
+  (`../common/core`): `Gmail` (the login's two backends and every request), `Folder`,
   `Conversation`, `Message`, `Attachment`, `Change`, `Me`, `Outgoing`,
   `People`, `Address` (parsing and writing address lists), `Mime`
   (encodings, charsets, quoting) and `Html` (mail HTML as text, and its
@@ -94,8 +97,8 @@ here and keep the test in step.
   server standing in for the command center, Google's token endpoint and
   Gmail.
 - `android/app`: `MainActivity` (the one screen: the folder pane, the
-  list, a conversation, writing, the menus and their keypad shortcuts, the
-  login dialog), `Sheet` (a screen's actions: the menu, with each one's key,
+  list, a conversation, writing, the menus and their keypad shortcuts; the
+  setup is common/ui's `SetupActivity`), `Sheet` (a screen's actions: the menu, with each one's key,
   and the lookup by key), `Pills` (address pills in To and Cc, and the
   reader's label tags) and `Avatar` (monogram letters). Its look is
   Thunderbird for Android's (see "Mail" in `../DESIGN.md`): keep it so, and
@@ -110,8 +113,8 @@ here and keep the test in step.
 
 ## Credentials
 
-`app/build.gradle` bakes the login into a generated `Bundled.java` under
-`build/`, from the same places as Source and Places (`deltaCenter` in
-`../gradle/bundled.gradle`). A bundled login is adopted once per revision.
-Never print, commit or attach the config files, the generated source, the
-Gmail login or the APK.
+None in the build: the APK carries no login. The setup (the user's Gmail
+login, or a command center) is imported on the phone from a setup file
+(`app/src/main/assets/wave-setup.json` describes it, for the setup screen
+and the Wave site's generator; change both together). Never print, commit
+or attach a setup file, the Gmail login or a token.

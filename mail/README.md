@@ -1,10 +1,10 @@
 # Mail, for the Sonim XP3
 
 Gmail on the flip phone: read, reply, forward, write, archive, delete,
-star, label, search, drafts and attachments. It is the phone end of
-`delta gmail` in [thooton/delta](https://github.com/thooton/delta): the
-Gmail login is the one `delta gmail login` keeps on the command center, and
-the app signs in with the same delta token.
+star, label, search, drafts and attachments. It signs in with your own
+Gmail login (an OAuth client and a refresh token, imported from a setup
+file the Wave site makes), or through a Delta command center, as the phone
+end of `delta gmail` in [thooton/delta](https://github.com/thooton/delta).
 
 It looks and works like Thunderbird for Android, shrunk to the flip
 phone's 240x320 screen and its keys. Three screens, and the folder pane:
@@ -12,7 +12,7 @@ phone's 240x320 screen and its keys. Three screens, and the folder pane:
 - **The folder pane** (Left on the list): the account, then Gmail's
   folders (Inbox, Starred, Sent, Drafts, All mail, Spam, Trash), each with
   Thunderbird's icon and Gmail's count (unread, or how many drafts), then
-  your labels, then the command center.
+  your labels, then Setup.
 - **The list**: a folder's conversations, newest first. Each shows the
   sender's monogram, who is in it and when, the subject with a paperclip
   when there are files and the number of messages, and the start of the
@@ -80,17 +80,15 @@ address starts a message to it.
 JAVA_HOME=/usr/lib/jvm/java-21-openjdk ./gradlew :mail:core:selfTest :mail:app:assembleRelease
 ```
 
-The command center login is baked in at build time, as in Source and
-Places: `-Pdelta.center=<file>`, else `delta-center.json` beside `android/`,
-else the CLI's `~/.config/delta/config.json`, else the `DELTA_SERVER` and
-`DELTA_TOKEN` environment variables of an agent's sandbox. A build without
-one keeps an installed copy's login; Menu → Command center sets one by hand.
-The APK contains a live token, so treat it like a password; it is
-gitignored.
+Nothing is baked in: the APK carries no login. On first launch the app
+opens on its setup screen; import a setup file made by the Wave site's
+generator (your own OAuth client and refresh token, or a command center),
+by copying `wave-setup-mail.json` to `Android/data/com.mail.xp3/files` on
+the phone, or by choosing it with the file picker. A command center login
+an older build kept is adopted as the setup. Menu → Setup… changes it.
 
-Gmail itself has to be set up once on the command center with
+With a command center, Gmail itself has to be set up once on it with
 `delta gmail login` (see the delta README's Gmail section). Suggestions
-from your organization need the People API enabled in that OAuth client's
-Google Cloud project, and a login made since `delta gmail login` began
-asking for it; without them, only people from your own mail are
+from your organization need the People API enabled in the OAuth client's
+Google Cloud project, and a login that asked for its scopes; without them, only people from your own mail are
 suggested.

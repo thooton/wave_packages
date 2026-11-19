@@ -413,6 +413,29 @@ public final class SelfTest {
             Gmail stranger = new Gmail(base + "/center", "wrong", base, base + "/token");
             check.fails("command center refuses", "Command center HTTP 401", () -> stranger.unread());
             stranger.close();
+
+            int before = (int) server.seen.stream().filter(r -> r.path.equals("/center/gmail-login")).count();
+            Gmail direct = new Gmail(Gmail.direct("cid", "sec", "r/1", "me@gmail.com"), base, base + "/token");
+            check.same("the direct backend reads mail", 7, direct.unread());
+            check.same("as the setup's address", "me@gmail.com", direct.me().email);
+            check.same("without the command center", before,
+                (int) server.seen.stream().filter(r -> r.path.equals("/center/gmail-login")).count());
+            direct.close();
+            Gmail revoked = new Gmail(Gmail.direct("cid", "sec", "r/2", "me@gmail.com"), base, base + "/token");
+            check.fails("a refused direct login says to import again", "import a new setup file", () -> revoked.unread());
+            revoked.close();
+            check.fails("half a login", "isn't set up", () -> Gmail.direct("cid", null, "r", "me@gmail.com"));
+
+            com.xp3.common.SetupSpec spec = com.xp3.common.SetupSpec.parse(new String(java.nio.file.Files.readAllBytes(
+                java.nio.file.Paths.get("../app/src/main/assets/wave-setup.json")), "UTF-8"));
+            com.xp3.common.Config config = com.xp3.common.Config.parse("{\"wave\":1,\"app\":\"mail\",\"settings\":{"
+                + "\"email\":\"me@gmail.com\",\"clientId\":\"1234-abc.apps.googleusercontent.com\","
+                + "\"clientSecret\":\"GOCSPX-abcdefghij\",\"refreshToken\":\"1//0gabcdefghijklmnopqrstuv\"}}", spec);
+            check.same("a setup's refresh token", "1//0gabcdefghijklmnopqrstuv", config.get("refreshToken"));
+            new Gmail(config).close();
+            check.fails("a setup needs every part", "no OAuth client secret", () -> com.xp3.common.Config.parse(
+                "{\"wave\":1,\"app\":\"mail\",\"settings\":{\"email\":\"me@gmail.com\","
+                + "\"clientId\":\"1234-abc.apps.googleusercontent.com\",\"refreshToken\":\"1//0gabcdefghijklmnopqrstuv\"}}", spec));
         }
         try (TestServer none = new TestServer(request -> TestServer.Reply.of(404, "application/json", "{\"error\":\"none\"}"))) {
             String base = none.uri("").toString();
