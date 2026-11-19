@@ -215,6 +215,27 @@ public final class SelfTest {
             }
         });
 
+        check.run("a command center's kept list", () -> {
+            java.io.File dir = java.nio.file.Files.createTempDirectory("cache").toFile();
+            AccountCache cache = new AccountCache(dir);
+            List<Account> one = Collections.singletonList(Account.of("GitHub", "sam", "JBSWY3DPEHPK3PXP"));
+            cache.write("https://a.example.com", one);
+            check.same("read back for its command center", 1, cache.read("https://a.example.com").size());
+            check.same("not shown for another", 0, cache.read("https://b.example.com").size());
+            check.ok("and deleted", !new java.io.File(dir, AccountCache.LIST).exists());
+            cache.write("https://a.example.com", one);
+            check.same("not shown on the phone alone or signed out", 0, cache.read(null).size());
+            check.ok("and deleted then too", !new java.io.File(dir, AccountCache.LIST).exists()
+                && !new java.io.File(dir, AccountCache.SERVER).exists());
+            cache.write(null, one);
+            check.ok("nothing kept without a command center", !new java.io.File(dir, AccountCache.LIST).exists());
+            com.xp3.common.Disk.write(new java.io.File(dir, AccountCache.LIST), Vault.write(one), true);
+            check.same("an older version's list is the current command center's", 1,
+                cache.read("https://a.example.com").size());
+            cache.forget();
+            dir.delete();
+        });
+
         check.run("on this phone only", () -> {
             java.io.File dir = java.nio.file.Files.createTempDirectory("vault").toFile();
             java.io.File file = new java.io.File(dir, "local.json");

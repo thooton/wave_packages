@@ -68,8 +68,6 @@ import java.util.concurrent.ExecutorService;
 public final class MainActivity extends BaseActivity {
 
     private static final String PREFS = "authenticator";
-    /** The command center's last list. */
-    private static final String CACHE = "accounts.json";
     /** The accounts kept on the phone alone; never touched by a command center. */
     private static final String LOCAL = "local-accounts.json";
     private static final long STALE_MS = 10 * 60 * 1000;
@@ -117,6 +115,8 @@ public final class MainActivity extends BaseActivity {
         super.onCreate(state);
         config = loadSetup(prefs());
         if (config == null) {
+            // Signed out: the command center's kept list (every secret in it) goes too.
+            new AccountCache(getFilesDir()).forget();
             Setup.require(this);
             return;
         }
@@ -781,19 +781,22 @@ public final class MainActivity extends BaseActivity {
     // What is kept on the phone.
 
     private List<Account> readCache() {
-        try {
-            if (!config.isDelta()) return new LocalVault(new File(getFilesDir(), LOCAL)).list();
-            String json = Disk.read(new File(getFilesDir(), CACHE), 4 << 20);
-            return json == null ? new ArrayList<>() : Vault.read(json);
-        } catch (RuntimeException | IOException e) {
-            return new ArrayList<>();
+        AccountCache cache = new AccountCache(getFilesDir());
+        if (!config.isDelta()) {
+            // A command center's list has no business here once it isn't the setup.
+            cache.forget();
+            try {
+                return new LocalVault(new File(getFilesDir(), LOCAL)).list();
+            } catch (IOException e) {
+                return new ArrayList<>();
+            }
         }
+        return cache.read(config.delta().server());
     }
 
-    /** The command center's last list; on the phone alone, the store is the list. */
     private void writeCache(List<Account> list) throws IOException {
         if (!config.isDelta()) return;
-        Disk.write(new File(getFilesDir(), CACHE), Vault.write(list), true);
+        new AccountCache(getFilesDir()).write(config.delta().server(), list);
     }
 
     private SharedPreferences prefs() {
