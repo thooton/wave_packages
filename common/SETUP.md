@@ -55,11 +55,14 @@ presses one.
   "Import this setup?" with the summary, Import and Cancel. Several: a list
   of their names first. None that read: "Can't import" and the first
   file's problem ("This setup file is for Mail, not Places", "Maps API key
-  doesn't look right", ...). A value is never shown in a message.
+  doesn't look right", ...), then "The file is still in <folder>.", with
+  OK and "Delete it" ("Delete them"). A value is never shown in a message.
 - **Choose a file...** opens Android's file picker; the picked file is
   read and confirmed the same way.
 - After Import, the file is deleted (through the picker's provider when
-  picked). If it can't be, an alert names it and asks the user to delete
+  picked); from the app's folder, every setup file there goes, the spare
+  copies too, since on Android 8 any app with storage access can read
+  Android/data. If it can't be, an alert names it and asks the user to delete
   it, since it holds secrets. Then the toast "<App> is set up" and the app
   opens.
 - **Command center...** is a dialog with the address and a masked token,
@@ -74,5 +77,11 @@ presses one.
 ## Where it is kept
 
 `files/wave-setup.json` in the app's private storage, owner-only, as the
-payload was imported. Never on shared storage, never logged. It is part of
-Android backup like the rest of the app's data.
+payload was imported, written whole or not at all (a temporary file renamed
+over it). Never on shared storage, never logged. It is part of
+Android backup like the rest of the app's data (allowBackup is on in every
+app so `adb backup` can move a phone's data to another, logins included).
+
+`Setup.stamp` changes with every save and sign-out, and with the file's
+size and time, so a setup written just before the process died still
+counts as a change.

@@ -36,40 +36,47 @@ public final class Disk {
     /**
      * Replaces the file whole or not at all: the text is written and synced to
      * a temporary file beside it, which is then renamed over it, so a crash or
-     * a full disk leaves the old file rather than half of the new one. Callers
-     * writing one file from several threads synchronize, since they share the
-     * temporary name.
+     * a full disk leaves the old file rather than half of the new one. Each
+     * write has a temporary file of its own, so writers on several threads
+     * (a setup imported while a sync saves) each land whole, the last one
+     * winning.
      *
-     * A `secret` file is made readable by its owner only. The apps' own
-     * directories are private already, but a file holding a login should stay
-     * unreadable even if a backup or a restore ever loosens the directory.
+     * A `secret` file is made readable by its owner only, before anything is
+     * written into it. The apps' own directories are private already, but a
+     * file holding a login should stay unreadable even if a backup or a
+     * restore ever loosens the directory.
      */
     public static void write(File file, String text, boolean secret) throws IOException {
         File parent = file.getAbsoluteFile().getParentFile();
         if (!parent.isDirectory() && !parent.mkdirs()) {
             throw new IOException("Could not open the app's storage");
         }
-        File temporary = new File(parent, file.getName() + ".tmp");
-        FileOutputStream out = new FileOutputStream(temporary);
+        File temporary = File.createTempFile(file.getName() + ".", ".tmp", parent);
+        boolean done = false;
         try {
-            out.write(text.getBytes("UTF-8"));
-            out.flush();
-            out.getFD().sync();
-        } finally {
-            out.close();
-        }
-        if (secret) {
-            temporary.setReadable(false, false);
-            temporary.setReadable(true, true);
-            temporary.setWritable(false, false);
-            temporary.setWritable(true, true);
-        }
-        if (!temporary.renameTo(file)) {
-            // Some filesystems will not replace an existing file on rename.
-            if (!file.delete() || !temporary.renameTo(file)) {
-                temporary.delete();
-                throw new IOException("Could not save to the app's storage");
+            if (secret) {
+                temporary.setReadable(false, false);
+                temporary.setReadable(true, true);
+                temporary.setWritable(false, false);
+                temporary.setWritable(true, true);
             }
+            FileOutputStream out = new FileOutputStream(temporary);
+            try {
+                out.write(text.getBytes("UTF-8"));
+                out.flush();
+                out.getFD().sync();
+            } finally {
+                out.close();
+            }
+            if (!temporary.renameTo(file)) {
+                // Some filesystems will not replace an existing file on rename.
+                if (!file.delete() && file.exists() || !temporary.renameTo(file)) {
+                    throw new IOException("Could not save to the app's storage");
+                }
+            }
+            done = true;
+        } finally {
+            if (!done) temporary.delete();
         }
     }
 }

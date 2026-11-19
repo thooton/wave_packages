@@ -67,13 +67,13 @@ public final class Setup {
     }
 
     /** Keeps `config` as the app's setup. */
-    public static void save(Context context, Config config) throws IOException {
+    public static synchronized void save(Context context, Config config) throws IOException {
         Disk.write(file(context), config.toJson(), true);
         changed(context);
     }
 
     /** Forgets the setup ("Sign out"). */
-    public static void forget(Context context) {
+    public static synchronized void forget(Context context) {
         File saved = file(context);
         if (saved.exists() && !saved.delete()) {
             try {
@@ -110,15 +110,18 @@ public final class Setup {
 
     /**
      * Something that changes whenever the setup does; "" with none. Cheap
-     * enough to compare in every onResume.
+     * enough to compare in every onResume. The file's own size and time are
+     * part of it, so a setup written by a process that died before it could
+     * count the change still reads as changed.
      */
     public static String stamp(Context context) {
         File saved = file(context);
         if (!saved.isFile() || saved.length() == 0) return "";
-        return "" + context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong("changes", 0);
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong("changes", 0)
+            + ":" + saved.length() + ":" + saved.lastModified();
     }
 
-    private static void changed(Context context) {
+    private static synchronized void changed(Context context) {
         android.content.SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         prefs.edit().putLong("changes", prefs.getLong("changes", 0) + 1).commit();
     }

@@ -160,6 +160,116 @@ public final class SelfTest {
             check.same("started over", "1/2", fresh.progress()[0] + "/" + fresh.progress()[1]);
         });
 
+        check.run("a setup file written from two threads at once", () -> {
+            File dir = java.nio.file.Files.createTempDirectory("disk").toFile();
+            final File file = new File(dir, "wave-setup.json");
+            final java.util.Set<String> written = java.util.Collections.synchronizedSet(new java.util.HashSet<String>());
+            final List<Throwable> failed = java.util.Collections.synchronizedList(new ArrayList<Throwable>());
+            List<Thread> threads = new ArrayList<Thread>();
+            for (int t = 0; t < 6; t++) {
+                final int n = t;
+                Thread thread = new Thread(() -> {
+                    for (int i = 0; i < 40; i++) {
+                        String text = "{\"writer\":" + n + ",\"i\":" + i + ",\"pad\":\"" + new String(new char[2000]).replace('\0', (char) ('a' + n)) + "\"}";
+                        written.add(text);
+                        try {
+                            Disk.write(file, text, true);
+                        } catch (Throwable e) {
+                            failed.add(e);
+                        }
+                    }
+                });
+                threads.add(thread);
+                thread.start();
+            }
+            for (Thread thread : threads) thread.join();
+            check.same("no write failed", "[]", failed.toString());
+            check.ok("the file is one whole write", written.contains(Disk.read(file, 1 << 20)));
+            String[] left = dir.list();
+            check.same("nothing left beside it", 1, left == null ? -1 : left.length);
+            check.ok("owner-only", file.canRead() && !java.nio.file.Files.getPosixFilePermissions(file.toPath())
+                .contains(java.nio.file.attribute.PosixFilePermission.OTHERS_READ));
+            for (File f : dir.listFiles()) f.delete();
+            dir.delete();
+        });
+
+        check.run("a damaged or foreign setup file is refused, never thrown at the app", () -> {
+            SetupSpec places = SetupSpec.parse(PLACES);
+            SetupSpec canvas = SetupSpec.parse(CANVAS);
+            String good = "{\"wave\":1,\"app\":\"places\",\"label\":\"x\",\"settings\":{\"key\":\"" + KEY + "\"}}";
+            String delta = "{\"wave\":1,\"app\":\"canvas\",\"delta\":{\"server\":\"https://cc.example.com/p\",\"token\":\"t\"}}";
+            String[] odd = {
+                "{\"wave\":1,\"app\":\"places\",\"settings\":[]}",
+                "{\"wave\":1,\"app\":\"places\",\"settings\":{\"key\":5}}",
+                "{\"wave\":1,\"app\":5,\"settings\":{}}",
+                "{\"wave\":\"1\",\"app\":\"places\",\"settings\":{}}",
+                "{\"wave\":2,\"app\":\"places\",\"settings\":{}}",
+                "{\"wave\":1e400,\"app\":\"places\",\"settings\":{}}",
+                "{\"wave\":1,\"app\":\"canvas\",\"delta\":{\"server\":5,\"token\":[]}}",
+                "{\"wave\":1,\"app\":\"canvas\",\"delta\":{\"server\":\"https://[::1\",\"token\":\"t\"}}",
+                "{\"wave\":1,\"app\":\"canvas\",\"delta\":{\"server\":\"https://cc.example.com/%zz\",\"token\":\"t\"}}",
+                "{\"wave\":1,\"app\":\"canvas\",\"delta\":{\"server\":\"https:///nohost\",\"token\":\"t\"}}",
+                "{\"wave\":1,\"app\":\"canvas\",\"delta\":{\"server\":\"https://cc.example.com\",\"token\":\"t\"},\"label\":{}}",
+                "[" + new String(new char[3000]).replace("\0", "[") , "\uFEFF", "\uFEFF ", "null", "\"x\"", "{}",
+            };
+            for (String text : odd) {
+                for (SetupSpec spec : new SetupSpec[] {places, canvas}) {
+                    try {
+                        Config.parse(text, spec);
+                    } catch (IllegalArgumentException expected) {
+                        // Refused, as it should be.
+                    } catch (Throwable e) {
+                        check.ok("refused, not thrown: " + text.substring(0, Math.min(60, text.length())) + " (" + e + ")", false);
+                    }
+                }
+            }
+            final String NOISE = "{}[]\":,\\u0eE-+.9 ntf/%\uFEFF";
+            java.util.Random random = new java.util.Random(14);
+            int thrown = 0;
+            for (int i = 0; i < 20000; i++) {
+                String base = (i & 1) == 0 ? good : delta;
+                StringBuilder text = new StringBuilder(base);
+                for (int m = random.nextInt(4); m >= 0; m--) {
+                    int at = random.nextInt(text.length() + 1);
+                    switch (random.nextInt(4)) {
+                        case 0: if (at < text.length()) text.deleteCharAt(at); break;
+                        case 1: text.insert(at, NOISE.charAt(random.nextInt(NOISE.length()))); break;
+                        case 2: text.setLength(Math.min(text.length(), at)); break;
+                        default: if (at < text.length()) text.setCharAt(at, (char) random.nextInt(128));
+                    }
+                }
+                for (SetupSpec spec : new SetupSpec[] {places, canvas}) {
+                    try {
+                        Config parsed = Config.parse(text.toString(), spec);
+                        // What parses must survive being kept and read back.
+                        Config.parse(parsed.toJson(), spec);
+                        if (parsed.isDelta()) parsed.delta().host();
+                    } catch (IllegalArgumentException expected) {
+                        // Refused.
+                    } catch (Throwable e) {
+                        if (thrown++ < 5) check.ok("refused, not thrown: " + text + " (" + e + ")", false);
+                    }
+                }
+            }
+            check.same("damaged files only ever refused", 0, thrown);
+            check.fails("a newer version says so", "newer version",
+                () -> Config.parse("{\"wave\":2,\"app\":\"places\",\"settings\":{}}", places));
+        });
+
+        check.run("chunks that don't fit", () -> {
+            String payload = "{\"wave\":1,\"app\":\"places\",\"settings\":{\"key\":\"" + KEY + "\"}}";
+            String id = Config.Chunks.sha256(payload).substring(0, 8);
+            for (String code : new String[] {"WS1/0/0/" + id + "/x", "WS1/99/99/" + id + "/", "", "WS1/1/1/ABCDEF12/x"}) {
+                try {
+                    new Config.Chunks().add(code);
+                } catch (IllegalArgumentException expected) {
+                    // Refused.
+                } catch (Throwable e) {
+                    check.ok("refused, not thrown: " + code + " (" + e + ")", false);
+                }
+            }
+        });
+
         if (!check.report()) System.exit(1);
     }
 

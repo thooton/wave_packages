@@ -56,6 +56,8 @@ public class SetupActivity extends BaseActivity {
 
     private SetupSpec spec;
     private Config config;
+    /** Set once a setup is saved and the screen is closing: later taps (a second dialog left open) do nothing. */
+    private boolean ending;
     private ScrollView scroll;
 
     @Override
@@ -233,24 +235,47 @@ public class SetupActivity extends BaseActivity {
                 usable.add(file);
             } catch (IllegalArgumentException e) {
                 if (problem == null) problem = file.getName() + ": " + e.getMessage();
-            } catch (IOException e) {
+            } catch (IOException | RuntimeException e) {
                 if (problem == null) problem = file.getName() + ": that file can't be read";
             }
         }
         if (usable.isEmpty()) {
-            alert("Can't import", problem);
+            refused(problem, files);
         } else if (usable.size() == 1) {
-            confirm(configs.get(0), usable.get(0).getName(), () -> deleteFile(usable.get(0)));
+            confirm(configs.get(0), usable.get(0).getName(), () -> deleteAll(dir));
         } else {
             List<String> names = new ArrayList<String>();
             for (File file : usable) names.add(file.getName());
             listDialog("Which setup?", names,
-                at -> confirm(configs.get(at), usable.get(at).getName(), () -> deleteFile(usable.get(at))), null);
+                at -> confirm(configs.get(at), usable.get(at).getName(), () -> deleteAll(dir)), null);
         }
     }
 
-    private boolean deleteFile(File file) {
-        return file.delete() || !file.exists();
+    /**
+     * Once a setup is imported from the app's folder, every setup file in it
+     * goes, not just the one chosen: the others are older or spare copies,
+     * and Android/data is readable by any app with storage access on this
+     * Android version.
+     */
+    private boolean deleteAll(File dir) {
+        boolean all = true;
+        File[] files = dir.listFiles((parent, name) -> isSetupFile(name));
+        if (files != null) for (File file : files) all &= file.delete() || !file.exists();
+        return all;
+    }
+
+    /** None of the files would do: say why, and offer to delete them, since they may hold secrets. */
+    private void refused(String problem, final File[] files) {
+        new AlertDialog.Builder(this)
+            .setTitle("Can't import")
+            .setMessage(problem + "\n\n" + (files.length == 1 ? "The file is" : "The files are") + " still in "
+                + folderName() + ".")
+            // OK is the first button, so it has the focus: deleting is a choice.
+            .setNegativeButton("OK", null)
+            .setPositiveButton(files.length == 1 ? "Delete it" : "Delete them", (dialog, which) -> {
+                for (File file : files) file.delete();
+            })
+            .show();
     }
 
     private void pick() {
@@ -282,7 +307,7 @@ public class SetupActivity extends BaseActivity {
         } catch (IllegalArgumentException e) {
             alert("Can't import", e.getMessage());
             return;
-        } catch (IOException | SecurityException e) {
+        } catch (IOException | RuntimeException e) {
             alert("Can't import", "That file can't be read");
             return;
         }
@@ -314,7 +339,7 @@ public class SetupActivity extends BaseActivity {
             .setTitle("Import this setup?")
             .setMessage(summary(next))
             .setPositiveButton("Import", (dialog, which) -> {
-                if (!save(next)) return;
+                if (ending || !save(next)) return;
                 if (!remove.remove()) {
                     new AlertDialog.Builder(this)
                         .setTitle("Delete the file")
@@ -363,7 +388,7 @@ public class SetupActivity extends BaseActivity {
                 return;
             }
             dialog.dismiss();
-            if (save(next)) done();
+            if (!ending && save(next)) done();
         }));
         dialog.show();
     }
@@ -435,10 +460,12 @@ public class SetupActivity extends BaseActivity {
     }
 
     private void finishWith(Config next) {
-        if (save(next)) done();
+        if (!ending && save(next)) done();
     }
 
     private void done() {
+        if (ending) return;
+        ending = true;
         toast(spec.name + " is set up");
         setResult(RESULT_OK);
         if (getIntent().getBooleanExtra(EXTRA_THEN_LAUNCH, false)) {
