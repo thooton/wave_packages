@@ -20,7 +20,6 @@ import java.io.FileNotFoundException;
  */
 public final class PhotoProvider extends ContentProvider {
 
-    static final String AUTHORITY = "com.authenticator.xp3.photos";
     private static final String NAME = "scan.jpg";
 
     /** Where the photo lands. */
@@ -30,8 +29,9 @@ public final class PhotoProvider extends ContentProvider {
         return new File(dir, NAME);
     }
 
-    static Uri uri() {
-        return Uri.parse("content://" + AUTHORITY + "/" + NAME);
+    /** The authority is the package's (manifest: ${applicationId}.photos), so a test build can sit beside the app. */
+    static Uri uri(Context context) {
+        return Uri.parse("content://" + context.getPackageName() + ".photos/" + NAME);
     }
 
     @Override

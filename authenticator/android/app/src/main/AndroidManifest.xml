@@ -37,7 +37,7 @@
              lent to it for that one request. -->
         <provider
             android:name=".PhotoProvider"
-            android:authorities="com.authenticator.xp3.photos"
+            android:authorities="${applicationId}.photos"
             android:exported="false"
             android:grantUriPermissions="true" />
         <!-- The shared setup screen (common/ui): on this phone only, or a

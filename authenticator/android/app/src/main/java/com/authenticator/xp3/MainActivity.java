@@ -481,7 +481,7 @@ public final class MainActivity extends BaseActivity {
     private void camera() {
         File photo = PhotoProvider.file(this);
         photo.delete();
-        Uri uri = PhotoProvider.uri();
+        Uri uri = PhotoProvider.uri(this);
         Intent capture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         capture.putExtra(MediaStore.EXTRA_OUTPUT, uri);
         capture.setClipData(ClipData.newRawUri("", uri));
