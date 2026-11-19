@@ -21,8 +21,8 @@ def contents(apk):
     with zipfile.ZipFile(apk) as z:
         if len(set(z.namelist())) != len(z.namelist()):
             sys.exit(f'{apk}: duplicate entries')
-        return {f: z.read(f) for f in z.namelist() if not re.fullmatch(
-            r'META-INF/(?:[^/]+\.(?:SF|RSA|EC|DSA)|MANIFEST\.MF)', f, re.I)}
+        return {f: z.read(f) for f in z.namelist() if not f.endswith('/') and not re.fullmatch(
+            r'META-INF/(?:[^/]+\.(?:SF|RSA|EC|DSA)|MANIFEST\.MF|SIG-[^/]+)', f, re.I)}
 
 if certificates(candidate) != certificates(stock):
     sys.exit(f'{candidate}: wrong signer; OEM authorization required')

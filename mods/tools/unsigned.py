@@ -7,7 +7,8 @@ from pathlib import Path
 stock, compiled, output = map(Path, sys.argv[1:])
 with zipfile.ZipFile(stock) as src, zipfile.ZipFile(output, 'w') as dst:
     for item in src.infolist():
-        if item.filename.upper().startswith('META-INF/') or re.fullmatch(r'classes\d*\.dex', item.filename):
+        if (re.fullmatch(r'META-INF/(?:[^/]+\.(?:SF|RSA|EC|DSA)|MANIFEST\.MF|SIG-[^/]+)', item.filename, re.I)
+                or re.fullmatch(r'classes\d*\.dex', item.filename)):
             continue
         dst.writestr(item, src.read(item))
     for dex in sorted(compiled.glob('classes*.dex')):
