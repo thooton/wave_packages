@@ -163,13 +163,30 @@ public class SetupActivity extends BaseActivity {
         button.setTextSize(14);
         button.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         button.setBackgroundResource(R.drawable.family_button);
-        button.setTextColor(getColorStateList(R.color.family_button_text));
+        button.setTextColor(buttonText());
         button.setStateListAnimator(null);
         button.setPadding(dp(8), 0, dp(8), 0);
         button.setMinHeight(0);
         button.setMinimumHeight(0);
         button.setOnClickListener(click);
         return button;
+    }
+
+    /**
+     * The button's text: the accent at rest, and readable on the fill once
+     * focused. Not family_button_text's on_primary, which is dark where an
+     * app's primary is light (Authenticator) though the focus fill is dark.
+     */
+    private android.content.res.ColorStateList buttonText() {
+        int fill = color(R.color.focus_rule);
+        int onFill = android.graphics.Color.luminance(fill) > 0.5f ? 0xFF000000 : 0xFFFFFFFF;
+        return new android.content.res.ColorStateList(new int[][] {
+            { -android.R.attr.state_enabled },
+            { android.R.attr.state_pressed },
+            { android.R.attr.state_focused },
+            { android.R.attr.state_selected },
+            { },
+        }, new int[] { color(R.color.text_muted), color(R.color.on_primary), onFill, onFill, fill });
     }
 
     /** What a setup is, for the screen and the import question; secrets only as "set". */
