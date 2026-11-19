@@ -155,6 +155,13 @@ public final class MainActivity extends BaseActivity {
     private boolean started;
 
     @Override
+    protected void onPause() {
+        // The process may be killed at any time once it is in the background.
+        if (!stack.isEmpty()) top().paused();
+        super.onPause();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         if (online != null) {

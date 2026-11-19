@@ -32,7 +32,18 @@ final class EditorScreen extends Screen {
     private AnswerField field;
     private TextView count;
     private TextView saved;
-    private final Runnable save = this::saveNow;
+    private final com.canvas.xp3.data.Autosave autosave = new com.canvas.xp3.data.Autosave(this::saveNow,
+        new com.canvas.xp3.data.Autosave.Timer() {
+            @Override
+            public void later(Runnable run, long ms) {
+                app.main.postDelayed(run, ms);
+            }
+
+            @Override
+            public void cancel(Runnable run) {
+                app.main.removeCallbacks(run);
+            }
+        }, 2000);
 
     EditorScreen(MainActivity app, Assignment work, Draft.Piece piece) {
         super(app);
@@ -117,8 +128,7 @@ final class EditorScreen extends Screen {
 
     private void changed() {
         saved.setText("");
-        app.main.removeCallbacks(save);
-        app.main.postDelayed(save, 2000);
+        autosave.changed();
     }
 
     @Override
@@ -134,7 +144,7 @@ final class EditorScreen extends Screen {
     }
 
     private void saveNow() {
-        app.main.removeCallbacks(save);
+        autosave.saved();
         String text = field.getText().toString();
         piece = piece.withRich(field.stored());
         if (text.trim().length() == 0) return;
@@ -178,8 +188,19 @@ final class EditorScreen extends Screen {
     }
 
     @Override
+    void paused() {
+        autosave.flush();
+    }
+
+    /**
+     * Saves what the autosave was still waiting for rather than dropping it
+     * (the activity destroyed, or started over, within its two seconds).
+     * saveNow runs here on the main thread, never on the activity's stopped
+     * worker; after a sign-out the store writes nothing (Store.forgetAccount).
+     */
+    @Override
     void closed() {
-        app.main.removeCallbacks(save);
+        autosave.flush();
     }
 
     @Override

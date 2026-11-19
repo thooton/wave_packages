@@ -23,6 +23,7 @@ public final class DataTests {
     public static void run(final Check check) {
         check.run("dates", () -> dates(check));
         check.run("signed out mid-sync", () -> signedOutMidSync(check));
+        check.run("autosave", () -> autosave(check));
         check.run("state", () -> state(check));
         check.run("sections", () -> sections(check));
         check.run("mapping", () -> mapping(check));
@@ -40,6 +41,39 @@ public final class DataTests {
         calendar.set(2026, Calendar.SEPTEMBER, 9, 12, 0, 0);
         calendar.set(Calendar.MILLISECOND, 0);
         return calendar.getTimeInMillis();
+    }
+
+    private static void autosave(Check check) {
+        final java.util.List<Runnable> pending = new java.util.ArrayList<>();
+        final int[] saves = {0};
+        Autosave.Timer timer = new Autosave.Timer() {
+            @Override
+            public void later(Runnable run, long ms) {
+                pending.add(run);
+            }
+
+            @Override
+            public void cancel(Runnable run) {
+                pending.remove(run);
+            }
+        };
+        Autosave autosave = new Autosave(() -> saves[0]++, timer, 2000);
+        autosave.changed();
+        autosave.changed();
+        check.same("one save waiting however much is typed", 1, pending.size());
+        new java.util.ArrayList<>(pending).forEach(Runnable::run);
+        check.same("saved once the pause is over", 1, saves[0]);
+        check.ok("nothing waiting after", !autosave.waiting() && pending.isEmpty());
+        autosave.changed();
+        autosave.flush();
+        check.same("the screen closed within the pause still saves", 2, saves[0]);
+        check.ok("and leaves nothing to run later", pending.isEmpty());
+        autosave.flush();
+        check.same("closing with nothing typed saves nothing", 2, saves[0]);
+        autosave.changed();
+        autosave.saved();
+        autosave.flush();
+        check.same("saved by Done: not again", 2, saves[0]);
     }
 
     private static void signedOutMidSync(Check check) throws Exception {

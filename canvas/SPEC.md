@@ -168,7 +168,8 @@ comments, "No reminders for CODE" / "Remind me about CODE".
 
 "‹ Your work", the piece name ("My answer", "My answer 2"), a full-height
 field, footer "N words" and "✓ Saved on phone" (gone while typing, back
-2 s after a pause). OK or Back is Done: an empty answer is dropped,
+2 s after a pause; leaving the app or the screen within those 2 s saves at
+once). OK or Back is Done: an empty answer is dropped,
 otherwise it joins the draft with the focus on it. Options: Bold, Italic,
 Underline, Bulleted list, Numbered list (each "On" when it applies; with
 no selection it applies to what is typed next), Paste (Markdown and rich

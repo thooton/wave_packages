@@ -85,6 +85,9 @@ abstract class Screen {
     /** Called once the built view is on screen. */
     void shown() {}
 
+    /** The app is leaving the screen (Home, a call, another app): keep anything unsaved now. */
+    void paused() {}
+
     /** The screen is going away for good. */
     void closed() {}
 
