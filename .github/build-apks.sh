@@ -23,12 +23,20 @@ for app in "${apps[@]}"; do
 done
 ./gradlew --no-daemon -Pdelta.center="$XDG_CONFIG_HOME/wave-no-login.json" "${tasks[@]}"
 rm -rf apks; mkdir apks
+files=()
 for app in "${apps[@]}"; do
     python3 .github/packages.py check-bundled "$app"
     build="$app/android/app/build/outputs/apk/release/app-release.apk"
     if [[ "$app" == dictionary ]]; then build="$app/app/build/outputs/apk/release/app-release.apk"; fi
-    apksigner verify --min-sdk-version 27 "$build"
     cp "$build" "apks/$app.apk"
+    files+=("apks/$app.apk")
+done
+# Each APK needs its own verifier JVM, but files are independent. Limit the
+# batch to four so a runner doesn't start a JVM for every package at once.
+printf '%s\0' "${files[@]}" | xargs -0 -n1 -P4 bash -c '
+    apksigner verify --min-sdk-version 27 "$1" || { echo "$1: APK signature check failed" >&2; exit 1; }
+' _
+for app in "${apps[@]}"; do
     if [[ -f $app/wave/package.json ]]; then
         python3 .github/release_package.py "$app" "apks/$app.apk" --check
     fi
