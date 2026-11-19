@@ -9,13 +9,15 @@ libraries, `:core` plain Java `--release 8` running on API 27.
 
 Places works the way the delta CLI's former `delta maps` did
 (`cmd/delta/maps.go` in thooton/delta's history; `cmd/delta-cc/maps.go`
-keeps the key). It is now the only client. The Google Maps Platform key lives
-on the command center: `GET /maps-key` with the delta token answers
-`{"key"}` (404 while none is set; `PUT /maps-key` sets it). The app
-fetches it the first time it needs it and keeps it in memory only, never on
-disk, then calls the Places API (New) itself, so the command center never
-sees a search. A key Google refuses (400, 401, 403) is dropped and fetched
-again on the next request, in case it was replaced.
+keeps the key). It is now the only client. The Google Maps Platform key
+comes from the app's setup (`../common/SETUP.md`), through one of two
+backends behind `Places.Keys`: **direct**, the user's own key imported from
+a setup file, or **Delta**, the command center (`GET /maps-key` with the
+delta token answers `{"key"}`, 404 while none is set; `PUT /maps-key` sets
+it), fetched the first time it is needed and kept in memory only, and
+fetched again after Google refuses it (400, 401, 403), in case it was
+replaced. Either way the app calls the Places API (New) itself, so the
+command center never sees a search.
 
 - **Near** is looked up once with a Text Search asking only for Pro fields
   (`Places.locate`), or read directly when typed as `lat,lng`. What was
@@ -73,8 +75,8 @@ Times are shown in the place's own offset (`utcOffsetMinutes`). The dash
 Google writes between opening and closing times becomes a hyphen, and price
 ranges use one too: the app writes no en or em dashes of its own.
 
-- `android/core`: `net/` over the shared `Http`, `Json` and `Login`
-  (`../common/core`): `Places` (the key and the three requests), `Place`
+- `android/core`: `net/` over the shared `Http`, `Json` and `Config`
+  (`../common/core`): `Places` (the key's two backends and the three requests), `Place`
   (Google's object, read lazily: an open/closed status,
   the CLI's sections of a place as text, and the same facts in pieces for
   the details screen: hours, about, amenities as yes/no options, reviews),
@@ -83,7 +85,7 @@ ranges use one too: the app writes no en or em dashes of its own.
   command center and Google.
 - `android/app`: `MainActivity` (the one screen: the header, the filter
   chips, the compact results or recent searches, the keys, OK's and Menu's
-  lists of choices with icons, the login dialog), `PlacePage` (a place, on
+  lists of choices with icons; the setup is common/ui's `SetupActivity`), `PlacePage` (a place, on
   one scrolling page under a name that shrinks), `Look` (Maps' dark look in
   code: Google Sans, round buttons, rounded photos, the lines of facts),
   `Photos` (fetching and keeping photos) and `Stars` (a rating's stars,
@@ -92,8 +94,8 @@ ranges use one too: the app writes no en or em dashes of its own.
 
 ## Credentials
 
-`app/build.gradle` bakes the login into a generated `Bundled.java` under
-`build/`, from the same places as Source (`deltaCenter` in
-`../gradle/bundled.gradle`). A bundled login is adopted once per revision.
-Never print, commit or attach the config files, the generated source, the
-Maps key or the APK.
+None in the build: the APK carries no login. The setup (a Maps key or a
+command center) is imported on the phone from a setup file
+(`app/src/main/assets/wave-setup.json` describes it, for the setup screen
+and the Wave site's generator; change both together). Never print, commit
+or attach a setup file, the Maps key or a token.

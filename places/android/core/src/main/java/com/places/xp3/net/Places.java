@@ -1,8 +1,8 @@
 package com.places.xp3.net;
 
+import com.xp3.common.Config;
 import com.xp3.common.Http;
 import com.xp3.common.Json;
-import com.xp3.common.Login;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
@@ -15,9 +15,10 @@ import java.util.Map;
  * Finds places with the Google Places API (New), as the delta CLI's former
  * `delta maps` did (cmd/delta/maps.go in thooton/delta's history).
  *
- * The API key lives on the command center (GET /maps-key, with the delta
- * token). It is fetched the first time it is needed and kept in memory only,
- * never on the phone's storage; Google is then called directly, so the
+ * The API key comes from one of two backends, behind {@link Keys}: the
+ * user's own key, imported with a setup file (direct), or the command center
+ * (GET /maps-key, with the delta token), fetched the first time it is needed
+ * and kept in memory only. Either way Google is called directly, so the
  * command center never sees a search.
  *
  * Field masks decide what Google bills, and these are the CLI's: a search asks
@@ -93,15 +94,83 @@ public final class Places {
         }
     }
 
+    /** Where the key comes from: the two backends. */
+    public interface Keys {
+        /** The key to send. */
+        String key() throws IOException, InterruptedException;
+
+        /** Google refused the key just sent. */
+        void refused();
+    }
+
+    /** The user's own key, from the setup. */
+    public static Keys direct(final String key) {
+        if (key == null || key.trim().length() == 0) throw new IllegalArgumentException("There is no Maps key");
+        return new Keys() {
+            @Override
+            public String key() {
+                return key.trim();
+            }
+
+            @Override
+            public void refused() {
+                // Nothing to fetch again: Google's own message says what is wrong.
+            }
+        };
+    }
+
+    /** The command center's key: fetched once and kept in memory, fetched again after Google refuses it. */
+    public static Keys center(final String center, final String token) {
+        if (center == null || token == null) throw new IllegalArgumentException("There is no command center login");
+        final Http http = new Http();
+        return new Keys() {
+            private volatile String key;
+
+            @Override
+            public String key() throws IOException, InterruptedException {
+                String known = key;
+                if (known != null) return known;
+                Http.Response response = http.send(Http.Request.to(URI.create(center + "/maps-key"))
+                    .header("Authorization", "Bearer " + token)
+                    .timeout(30000));
+                if (response.status() == 404) {
+                    throw new IOException("The command center has no Google Maps key. Put one there with PUT /maps-key.");
+                }
+                Http.requireSuccess(response.status(), "Command center");
+                String fetched;
+                try {
+                    fetched = Json.string(Json.object(Json.parse(response.body())), "key").trim();
+                } catch (RuntimeException e) {
+                    throw new IOException("The command center sent an unreadable key.");
+                }
+                key = fetched;
+                return fetched;
+            }
+
+            @Override
+            public void refused() {
+                // It may have been replaced on the command center since.
+                key = null;
+            }
+        };
+    }
+
     private final Http http = new Http();
-    private final String center;
-    private final String token;
+    private final Keys keys;
     private final String google;
     private final String geocode;
-    private volatile String key;
 
-    public Places(Login login) {
-        this(login.server(), login.token(), GOOGLE, GEOCODE);
+    /** As the app's setup says: its own key, or the command center's. */
+    public Places(Config config) {
+        this(config.isDelta() ? center(config.delta().server(), config.delta().token()) : direct(config.get("key")),
+            GOOGLE, GEOCODE);
+    }
+
+    /** Any key source and endpoints. */
+    public Places(Keys keys, String google, String geocode) {
+        this.keys = keys;
+        this.google = google;
+        this.geocode = geocode;
     }
 
     /** Any command center and any Places endpoint, which is how the tests use it. */
@@ -111,11 +180,7 @@ public final class Places {
 
     /** The same, with the Geocoding endpoint named too, which is how the tests use it. */
     public Places(String center, String token, String google, String geocode) {
-        if (center == null || token == null) throw new IllegalArgumentException("There is no command center login");
-        this.center = center;
-        this.token = token;
-        this.google = google;
-        this.geocode = geocode;
+        this(center(center, token), google, geocode);
     }
 
     /** The point to search near: Google's best match for what was typed. */
@@ -184,7 +249,7 @@ public final class Places {
         String url = geocode + (geocode.indexOf('?') < 0 ? "?" : "&") + "latlng=" + point + "&key=" + enc(key());
         Http.Response response = http.send(Http.Request.to(URI.create(url)).timeout(30000));
         if (response.status() / 100 != 2) {
-            if (response.status() == 400 || response.status() == 401 || response.status() == 403) key = null;
+            if (response.status() == 400 || response.status() == 401 || response.status() == 403) keys.refused();
             throw new IOException("Google Maps: " + problem(response));
         }
         Map<String, Object> root;
@@ -229,7 +294,7 @@ public final class Places {
             .header("X-Goog-Api-Key", key())
             .timeout(30000));
         if (response.status() / 100 != 2) {
-            if (response.status() == 400 || response.status() == 401 || response.status() == 403) key = null;
+            if (response.status() == 400 || response.status() == 401 || response.status() == 403) keys.refused();
             throw new IOException("Google Maps: " + problem(response));
         }
         String address;
@@ -286,25 +351,8 @@ public final class Places {
         return at;
     }
 
-    /** The key, from the command center the first time and from memory after. */
     String key() throws IOException, InterruptedException {
-        String known = key;
-        if (known != null) return known;
-        Http.Response response = http.send(Http.Request.to(URI.create(center + "/maps-key"))
-            .header("Authorization", "Bearer " + token)
-            .timeout(30000));
-        if (response.status() == 404) {
-            throw new IOException("The command center has no Google Maps key. Put one there with PUT /maps-key.");
-        }
-        Http.requireSuccess(response.status(), "Command center");
-        String fetched;
-        try {
-            fetched = Json.string(Json.object(Json.parse(response.body())), "key").trim();
-        } catch (RuntimeException e) {
-            throw new IOException("The command center sent an unreadable key.");
-        }
-        key = fetched;
-        return fetched;
+        return keys.key();
     }
 
     private Map<String, Object> google(String path, String fields, String body) throws IOException, InterruptedException {
@@ -316,7 +364,7 @@ public final class Places {
         Http.Response response = http.send(request);
         if (response.status() / 100 != 2) {
             // A key Google refuses may have been replaced since: fetch it again next time.
-            if (response.status() == 400 || response.status() == 401 || response.status() == 403) key = null;
+            if (response.status() == 400 || response.status() == 401 || response.status() == 403) keys.refused();
             throw new IOException("Google Maps: " + problem(response));
         }
         try {

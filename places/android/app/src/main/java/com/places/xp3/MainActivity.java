@@ -31,8 +31,9 @@ import com.places.xp3.net.Link;
 import com.places.xp3.net.Place;
 import com.places.xp3.net.Places;
 import com.xp3.common.Json;
-import com.xp3.common.Login;
+import com.xp3.common.Config;
 import com.xp3.common.ui.BaseActivity;
+import com.xp3.common.ui.Setup;
 import com.xp3.common.ui.Ui;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -92,7 +93,9 @@ public final class MainActivity extends BaseActivity {
     private final ResultAdapter adapter = new ResultAdapter();
     private final ExecutorService worker = Ui.worker("places");
 
-    private Login login = Login.blank();
+    /** What the app was set up with (common/ui's Setup), and the stamp it had then. */
+    private Config config;
+    private String setupStamp;
     private Places places;
     /** Where the last search was made near, with Google's point for it. */
     private Anchor anchor;
@@ -125,6 +128,12 @@ public final class MainActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        config = loadSetup(prefs());
+        if (config == null) {
+            Setup.require(this);
+            return;
+        }
+        setupStamp = Setup.stamp(this);
         setContentView(R.layout.activity_main);
         look = new Look(this);
         photos = new Photos(() -> places());
@@ -156,7 +165,6 @@ public final class MainActivity extends BaseActivity {
         list.setSelector(new ColorDrawable(0));
 
         SharedPreferences prefs = prefs();
-        login = loadLogin(prefs);
         anchor = Anchor.parse(prefs.getString("anchor", ""));
         near.setText(prefs.getString("near", ""));
         openNow = prefs.getBoolean("open_now", false);
@@ -192,7 +200,6 @@ public final class MainActivity extends BaseActivity {
             }
         });
         query.requestFocus();
-        if (!login.ready()) say("No command center");
         refresh();
         if (state == null) follow(getIntent());
     }
@@ -215,45 +222,47 @@ public final class MainActivity extends BaseActivity {
     @Override
     protected void onPause() {
         // Mid-edit, the saved Near stays what it was: Back can still drop the edit.
-        if (zone != Zone.NEAR) saveNear();
+        if (near != null && zone != Zone.NEAR) saveNear();
         super.onPause();
     }
 
     @Override
     protected void onDestroy() {
         worker.shutdownNow();
-        photos.shutdown();
+        if (photos != null) photos.shutdown();
         super.onDestroy();
     }
 
     /**
-     * The bundled login is adopted once per build that carries a new one;
-     * otherwise whatever was saved (perhaps typed in from the menu) is kept.
+     * The setup, or null. A command center login an older version saved (it
+     * used to be baked into the APK) becomes a Delta setup, once.
      */
-    private Login loadLogin(SharedPreferences prefs) {
-        String revision = Bundled.REVISION;
-        if (revision.length() > 0 && !revision.equals(prefs.getString("bundled", ""))) {
-            Login bundled;
-            try {
-                bundled = Login.of(Bundled.SERVER, Bundled.TOKEN);
-            } catch (IllegalArgumentException e) {
-                bundled = Login.blank();
-            }
-            if (bundled.ready()) {
-                prefs.edit().putString("login", bundled.toJson()).putString("bundled", revision).apply();
-                return bundled;
-            }
+    private Config loadSetup(SharedPreferences prefs) {
+        Config found = Setup.migrateDelta(this, prefs.getString("login", ""));
+        if (prefs.contains("login") || prefs.contains("bundled")) {
+            prefs.edit().remove("login").remove("bundled").apply();
         }
-        return Login.parse(prefs.getString("login", ""));
+        return found;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Imported again or signed out on the setup screen: start over with it.
+        if (setupStamp != null && !setupStamp.equals(Setup.stamp(this))) recreate();
+    }
+
+    private void openSetup() {
+        startActivity(Setup.intent(this));
     }
 
     private SharedPreferences prefs() {
         return getSharedPreferences(PREFS, MODE_PRIVATE);
     }
 
-    /** One client per login, so the key it fetched is reused. */
+    /** One client per setup, so a key fetched from the command center is reused. */
     private Places places() {
-        if (places == null) places = new Places(login);
+        if (places == null) places = new Places(config);
         return places;
     }
 
@@ -334,10 +343,6 @@ public final class MainActivity extends BaseActivity {
 
     private void search(final String what) {
         if (what.length() == 0) return;
-        if (!login.ready()) {
-            askLogin();
-            return;
-        }
         // A point typed in, like a dropped-pin link: show the spot and its
         // nearest address, since the Text Search rejects raw coordinates.
         Anchor point = Anchor.coordinates(what);
@@ -389,10 +394,6 @@ public final class MainActivity extends BaseActivity {
     private void follow(Intent intent) {
         if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction()) || intent.getData() == null) return;
         final String link = intent.getDataString();
-        if (!login.ready()) {
-            askLogin();
-            return;
-        }
         if (showing) close();
         final Places client = places();
         say("Opening the link…");
@@ -442,10 +443,6 @@ public final class MainActivity extends BaseActivity {
      */
     private void openPin(final Anchor point) {
         if (point == null) return;
-        if (!login.ready()) {
-            askLogin();
-            return;
-        }
         if (showing) close();
         final Places client = places();
         final String coordinates = String.format(java.util.Locale.US, "%.5f, %.5f", point.lat, point.lng);
@@ -916,7 +913,7 @@ public final class MainActivity extends BaseActivity {
         }
         // TEMPORARY: see LocationTest.
         choices.add(new Choice(R.drawable.ic_place, "Test location", () -> LocationTest.start(this)));
-        choices.add(new Choice(R.drawable.ic_cloud, "Command center\u2026", () -> askLogin()));
+        choices.add(new Choice(R.drawable.ic_cloud, "Setup\u2026", () -> openSetup()));
         choose(choices);
     }
 
@@ -969,75 +966,6 @@ public final class MainActivity extends BaseActivity {
             .show();
     }
 
-    /** The fallback for a build without a bundled login. */
-    private void askLogin() {
-        LinearLayout box = vertical();
-        int pad = dp(16);
-        box.setPadding(pad, pad / 2, pad, 0);
-        final EditText server = new EditText(this);
-        server.setHint("https://…");
-        server.setSingleLine(true);
-        server.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        server.setText(login.server() == null ? "" : login.server());
-        final EditText token = new EditText(this);
-        token.setHint(login.ready() ? "••••••••" : "Token");
-        token.setSingleLine(true);
-        token.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        box.addView(server);
-        box.addView(token);
-        final AlertDialog asked = new AlertDialog.Builder(this)
-            .setTitle("Command center")
-            .setView(box)
-            .setPositiveButton("Save", null)
-            .setNegativeButton("Cancel", null)
-            .show();
-        // Save closes the dialog only once the login is whole, so a slip
-        // keeps what was typed for another try.
-        asked.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String typed = token.getText().toString();
-            if (typed.trim().length() == 0 && login.ready()) typed = login.token();
-            Login next;
-            try {
-                next = Login.of(server.getText().toString(), typed);
-            } catch (IllegalArgumentException e) {
-                toast(e.getMessage());
-                (fault(server) ? server : token).requestFocus();
-                return;
-            }
-            if (!next.ready()) {
-                toast("Both the address and the token are needed");
-                (server.getText().toString().trim().length() == 0 ? server : token).requestFocus();
-                return;
-            }
-            login = next;
-            places = null;
-            prefs().edit().putString("login", next.toJson()).apply();
-            toast("Saved: " + next.host());
-            if (message.length() > 0) say("");
-            asked.dismiss();
-        });
-        // Down goes on to the next field, then to Save, as in the app's lists.
-        downTo(server, token);
-        downTo(token, asked.getButton(AlertDialog.BUTTON_POSITIVE));
-    }
-
-    /** Whether the typed address is what Login refuses. */
-    private static boolean fault(EditText server) {
-        try {
-            Login.of(server.getText().toString(), null);
-            return false;
-        } catch (IllegalArgumentException e) {
-            return true;
-        }
-    }
-
-    private static void downTo(View from, final View to) {
-        from.setOnKeyListener((v, key, event) -> {
-            if (key != KeyEvent.KEYCODE_DPAD_DOWN || to == null) return false;
-            if (event.getAction() == KeyEvent.ACTION_DOWN) to.requestFocus();
-            return true;
-        });
-    }
 
     private android.graphics.drawable.GradientDrawable circle(int fill) {
         android.graphics.drawable.GradientDrawable circle = new android.graphics.drawable.GradientDrawable();

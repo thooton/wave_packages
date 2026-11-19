@@ -4,22 +4,16 @@ plugins {
 
 apply from: rootProject.file("gradle/app.gradle")
 
-apply from: rootProject.file("gradle/bundled.gradle")
-
-// The same command center as Delta, with the same token: it keeps the Google
-// Maps key.
-bundled("com.places.xp3") {
-    def center = deltaCenter(true)
-    [SERVER: center.server, TOKEN: center.token, REVISION: center.revision]
-}
+// No login is built in: the Maps key (or a command center that keeps it) is
+// imported on the phone from a setup file (common/ui's Setup).
 
 android {
     namespace "com.places.xp3"
 
     defaultConfig {
         applicationId "com.places.xp3"
-        versionCode 19
-        versionName "1.6.1"
+        versionCode 20
+        versionName "1.7.0"
     }
 }
 

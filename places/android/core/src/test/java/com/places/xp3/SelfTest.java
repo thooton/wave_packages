@@ -285,6 +285,25 @@ public final class SelfTest {
 
                 Places stranger = new Places(base + "/cc", "wrong", base + "/v1");
                 check.fails("a bad token says so", "login", () -> stranger.search("coffee", null, null));
+
+                int fetched = keys.get();
+                Places direct = new Places(Places.direct(" key-2 "), base + "/v1", base + "/geocode");
+                check.same("the direct backend searches", 2, direct.search("coffee", tempe, null).places.size());
+                check.same("with its own key", "key-2", last(server).header("X-Goog-Api-Key"));
+                check.same("and never asks the command center", fetched, keys.get());
+                Places wrong = new Places(Places.direct("key-1"), base + "/v1", base + "/geocode");
+                check.fails("a refused direct key says why", "API key not valid", () -> wrong.locate("Tempe"));
+                check.fails("a refused direct key stays refused", "API key not valid", () -> wrong.locate("Tempe"));
+                check.same("still no command center", fetched, keys.get());
+                check.fails("no key, no backend", "no Maps key", () -> Places.direct(" "));
+                com.xp3.common.SetupSpec spec = com.xp3.common.SetupSpec.parse(new String(java.nio.file.Files.readAllBytes(
+                    java.nio.file.Paths.get("../app/src/main/assets/wave-setup.json")), "UTF-8"));
+                com.xp3.common.Config config = com.xp3.common.Config.parse(
+                    "{\"wave\":1,\"app\":\"places\",\"settings\":{\"key\":\"AIzaSyD3xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}}", spec);
+                check.same("a setup's key", "AIzaSyD3xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", config.get("key"));
+                check.ok("a setup makes a client", new Places(config) != null);
+                check.fails("the descriptor checks the key", "doesn't look right", () -> com.xp3.common.Config.parse(
+                    "{\"wave\":1,\"app\":\"places\",\"settings\":{\"key\":\"nope\"}}", spec));
             } finally {
                 server.close();
             }

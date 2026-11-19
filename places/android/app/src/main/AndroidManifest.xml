@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Internet, for the command center (which keeps the Google Maps key)
-         and for Google. Dialing a place goes through the phone's own dialer,
+    <!-- Internet, for Google, and for the command center when the app is set
+         up with one (it keeps the Google Maps key). Dialing a place goes through the phone's own dialer,
          which needs no permission. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- TEMPORARY: for LocationTest, to see whether the phone can locate itself. -->
@@ -60,5 +60,11 @@
                 <data android:scheme="geo" />
             </intent-filter>
         </activity>
+        <!-- The shared setup screen (common/ui): the Maps key, or a command
+             center, imported from a setup file. -->
+        <activity
+            android:name="com.xp3.common.ui.SetupActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
+            android:screenOrientation="portrait" />
     </application>
 </manifest>

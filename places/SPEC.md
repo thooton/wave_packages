@@ -27,8 +27,9 @@ Maps client, or anything that fetches in the background.
 - Chips or extra lines in result rows; the picked row does not grow.
 - En or em dashes written by the app: hours and price ranges use a hyphen.
 - The country at the end of addresses (results, place page, Copy address).
-- Keeping the Maps key on disk, or sending searches through the command
-  center.
+- Keeping a command center's Maps key on disk, or sending searches
+  through the command center. (A key imported with a setup file is kept
+  only in the app's private storage.)
 - Following a short link's redirects to anything but Google's own hosts.
 
 ## Screens
@@ -149,14 +150,21 @@ Times are in the place's own UTC offset, not the phone's.
 
 **Menu on a place**: Stop (while loading), Call, Copy address, Copy website
 URL (each when present), Copy coordinates (for a dropped pin), Back to
-results, Test location, Command center...
+results, Test location, Setup...
 
-### Command center dialog
+### Setup
 
-Title "Command center": an address field (hint "https://...") filled with the
-current address, a token field (dots as its hint when a token is saved,
-else "Token"), Cancel and Save. Save with the token empty keeps the saved
-token. Both needed, else a toast says so. On save: toast "Saved: <host>".
+The shared setup screen, as `../common/SETUP.md` describes. With nothing set
+up it is what Places opens on. Places is set up with either:
+
+- **Directly**: the user's Google Maps Platform key (`key`), from a setup
+  file the Wave site's generator makes. Its limit, shown on the screen:
+  searches, details and photos are billed to the user's Google Cloud
+  project.
+- **A command center**: its address and delta token; the key is fetched
+  from it.
+
+Menu's Setup... opens it.
 
 ### A Maps link
 
@@ -188,14 +196,15 @@ dropped pin, rather than searched for as text.
 
 ## Behaviour
 
-- **Login**: the command center address and delta token, baked in at build
-  time (adopted once per new build revision) or typed in the dialog. With
-  none, the app starts showing "No command center", and a search or link
-  opens the dialog instead.
-- **Maps key**: fetched from the command center (`GET /maps-key`) when first
-  needed, kept in memory only. 404 shows "The command center has no Google
-  Maps key. Put one there with PUT /maps-key." A key Google refuses (400,
-  401, 403) is dropped and fetched again next time.
+- **Setup**: nothing is built into the APK. The setup (`files/wave-setup.json`,
+  private) is the user's own Maps key or a command center. A command
+  center login saved by an earlier version becomes the setup once.
+- **Maps key**: set up directly, the imported key is used as it is; a key
+  Google refuses shows Google's message (as "Google Maps: API key not
+  valid..."). Through a command center it is fetched (`GET /maps-key`) when
+  first needed and kept in memory only; 404 shows "The command center has
+  no Google Maps key. Put one there with PUT /maps-key.", and a key Google
+  refuses (400, 401, 403) is dropped and fetched again next time.
 - **Search**: Google Text Search, 20 a page, biased (not limited) to 5 km
   around Near; Open now adds `openNow`, Top rated `minRating` 4.5. Next pages
   use Google's page token with the same query, point and filters.
@@ -203,7 +212,7 @@ dropped pin, rather than searched for as text.
   or as `lat,lng` (used directly). An unknown place shows `Couldn't find
   "xyz"`. The typed text and the point found are saved, so the next search
   near the same text makes one request, not two. Empty means Anywhere.
-- **Survives a restart** (SharedPreferences `places`): login, Near and its
+- **Survives a restart** (the setup, and SharedPreferences `places`): Near and its
   point, Open now, Top rated, up to 12 recent searches (newest first, a
   repeat moved to the top, compared ignoring case). Near is also saved
   when the app is paused, unless it is being edited.
@@ -238,7 +247,8 @@ Portrait only.
    be a toast?
 3. Back in the header with text typed but no results leaves the app at once,
    losing the text. Intended, or should the first Back clear the text?
-4. A Maps link opened with no login shows the dialog but forgets the link;
-   after saving, it has to be tapped again. Should it be resumed?
+4. A Maps link opened with nothing set up shows the setup screen but forgets
+   the link; after setting up, it has to be tapped again. Should it be
+   resumed?
 5. The clear (x) button and the back arrow in the header can't be reached by
    any key; they are only signs. Is that intended?

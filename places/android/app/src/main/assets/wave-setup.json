@@ -1,0 +1,26 @@
+{
+  "format": 1,
+  "app": "places",
+  "name": "Places",
+  "package": "com.places.xp3",
+  "about": "Searches Google Maps from the phone with your own Maps Platform key.",
+  "settings": [
+    {
+      "name": "key",
+      "label": "Maps API key",
+      "secret": true,
+      "required": true,
+      "pattern": "^[A-Za-z0-9_-]{30,60}$",
+      "max": 60,
+      "example": "AIzaSyD3x...",
+      "obtain": "In the Google Cloud console make a project with billing, enable the Places API (New) and the Geocoding API, then APIs & Services, Credentials, Create credentials, API key. Restrict the key to those two APIs."
+    }
+  ],
+  "limits": [
+    "Searches, place details and photos are billed to your Google Cloud project (Google's free monthly credit covers light use)."
+  ],
+  "delta": {
+    "supported": true,
+    "about": "The command center keeps the Maps key (GET /maps-key); the phone still calls Google itself."
+  }
+}

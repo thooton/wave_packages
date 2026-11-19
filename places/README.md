@@ -44,13 +44,12 @@ closes. The results show none.
 JAVA_HOME=/usr/lib/jvm/java-21-openjdk ./gradlew :places:core:selfTest :places:app:assembleRelease
 ```
 
-The command center login is baked in at build time, as in Source:
-`-Pdelta.center=<file>`, else `delta-center.json` beside `android/`, else the
-CLI's `~/.config/delta/config.json`, else the `DELTA_SERVER` and
-`DELTA_TOKEN` environment variables of an agent's sandbox. A build without
-one keeps an installed copy's login; Menu → Command center sets one by hand.
-The APK contains a live token, so treat it like a password; it is
-gitignored.
+Nothing is baked in: the APK carries no login. On first launch the app
+opens on its setup screen; import a setup file made by the Wave site's
+generator (your own Maps key, or a command center), by copying
+`wave-setup-places.json` to `Android/data/com.places.xp3/files` on the
+phone, or by choosing it with the file picker. A command center login an
+older build kept is adopted as the setup. Menu → Setup... changes it.
 
 The typeface is Google Sans Flex (`app/src/main/res/font`), under the SIL
 Open Font License 1.1 (`OFL.txt`).
