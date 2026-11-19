@@ -39,7 +39,9 @@ final class SettingsScreen extends Screen {
         list.addView(setting("week", "Week starts on", weekLabel(prefs.weekStart), this::week), Views.wide());
         list.addView(setting("downloads", "Download files", downloadLabel(prefs.downloads), this::downloads),
             Views.wide());
-        String account = app.backend.canvasReady() ? app.backend.config().canvasBase().getHost() : "Not set up";
+        com.canvas.xp3.net.Config config = app.backend.config();
+        String account = !app.backend.canvasReady() ? "Not set up"
+            : config.canvasBase() != null ? config.canvasBase().getHost() : "Command center";
         list.addView(setting("account", "Account", account, () -> app.push(new AccountScreen(app))), Views.wide());
         return root;
     }

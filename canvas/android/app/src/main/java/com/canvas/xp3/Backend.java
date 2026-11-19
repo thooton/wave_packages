@@ -35,10 +35,10 @@ import java.util.Map;
  * throws IOException may be called from it; the cached reads, which do not,
  * are the ones a screen may call directly to draw what it knew last time.
  *
- * The client is rebuilt when the settings change. That is the simplest
- * correct answer to a Canvas address or a token being edited half way through
- * a session, and it is cheap: it holds nothing but a cookie that should be
- * dropped anyway when the account it belongs to has been changed underneath it.
+ * The settings are the app's setup (common/ui's Setup), read by MainActivity
+ * and handed in; a changed setup starts the activity over, and with it a new
+ * Backend. Through a command center the Canvas address is learned from its
+ * relay on the first sync and kept in `canvas-address`.
  */
 final class Backend {
 
@@ -57,47 +57,86 @@ final class Backend {
     private volatile Canvas canvas;
     private volatile Sync sync;
 
-    Backend(File directory) {
+    Backend(File directory, com.xp3.common.Config setup) {
+        this.directory = directory;
         store = new Store(directory);
         // Versions with the chat kept a conversation and a model login here;
         // neither is used any more, and the login should not linger.
         store.forgetChat();
-        config = store.settings();
-        // Adopt a bundled setup on first launch only, so signing out of it
-        // stays signed out.
-        if (hasBundledSetup() && !store.hasSettings()) {
-            try {
-                Config bundled = Config.parse(Bundled.SETTINGS);
-                store.saveSettings(bundled);
-                config = bundled;
-            } catch (IOException e) {
-                // Could not write it down; the values are still good for this
-                // run, and the next launch will simply try again.
-                config = safeDefaults();
-            } catch (RuntimeException e) {
-                // A bundled setup this version cannot read is not a reason to
-                // refuse to start.
-                config = Config.blank();
-            }
-        }
+        config = Config.of(setup, known());
         build();
     }
 
-    private static Config safeDefaults() {
+    /**
+     * The backend over the app's setup. An older version's settings document
+     * (the Canvas address, a cookie service and its token) becomes the
+     * setup once, and is then removed. A setup that can't be read is treated
+     * as none.
+     */
+    static Backend open(android.content.Context context) {
+        File directory = context.getFilesDir();
+        com.xp3.common.Config setup = com.xp3.common.ui.Setup.load(context);
+        if (setup == null) {
+            java.util.Map<String, String> old = oldSettings(directory);
+            if (old != null) {
+                try {
+                    setup = com.xp3.common.ui.Setup.migrate(context, com.xp3.common.Config.direct(
+                        com.xp3.common.ui.Setup.spec(context), null, old));
+                    if (com.xp3.common.ui.Setup.ready(context)) forgetOldSettings(directory);
+                } catch (IllegalArgumentException e) {
+                    // Not a sign-in the setup takes: the setup screen asks for one.
+                }
+            }
+        }
         try {
-            return Config.parse(Bundled.SETTINGS);
-        } catch (RuntimeException e) {
-            return Config.blank();
+            return new Backend(directory, setup);
+        } catch (IllegalArgumentException e) {
+            return new Backend(directory, null);
         }
     }
 
-    boolean hasBundledSetup() {
-        return Bundled.SETTINGS.length() > 0;
+    /**
+     * The sign-in an older version kept in its own settings document, as the
+     * setup's direct settings, or null. The document is removed once the
+     * setup has been saved from it ({@link #forgetOldSettings}).
+     */
+    static java.util.Map<String, String> oldSettings(File directory) {
+        Store store = new Store(directory);
+        if (!store.hasSettings()) return null;
+        return store.settings().setupValues();
     }
 
-    void restoreBundledSetup() throws IOException {
-        if (!hasBundledSetup()) return;
-        saveSettings(Config.parse(Bundled.SETTINGS));
+    static void forgetOldSettings(File directory) {
+        new Store(directory).forgetSettings();
+    }
+
+    private final File directory;
+
+    /** The Canvas address a command center's relay reported last, or null. */
+    private java.net.URI known() {
+        String text = com.xp3.common.Disk.read(new File(directory, ADDRESS), 400);
+        if (text == null || text.trim().length() == 0) return null;
+        try {
+            return java.net.URI.create(text.trim());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private static final String ADDRESS = "canvas-address";
+
+    /** Through a command center, asks its relay which Canvas it signs in to, once. */
+    private void learnAddress() throws IOException, InterruptedException {
+        Canvas current = canvas;
+        if (current == null || !config.relayed() || config.canvasBase() != null) return;
+        java.net.URI found = current.relayCanvas();
+        if (found == null) return;
+        try {
+            com.xp3.common.Disk.write(new File(directory, ADDRESS), found.toString(), false);
+        } catch (IOException e) {
+            // Asked again next launch.
+        }
+        config = config.learned(found);
     }
 
     private void build() {
@@ -118,26 +157,13 @@ final class Backend {
         return config.canvasReady();
     }
 
-    void saveSettings(Config next) throws IOException {
-        store.saveSettings(next);
-        config = next;
-        build();
-    }
-
     /**
-     * Forgets the account. A blank settings file is written rather than none,
-     * so a build with a setup baked into it stays signed out.
+     * Forgets everything fetched with the account (the setup itself is the
+     * setup screen's to forget).
      */
     void signOut() {
         store.clear();
-        config = Config.blank();
-        try {
-            store.saveSettings(config);
-        } catch (IOException e) {
-            // The credentials are gone from memory and the files are deleted,
-            // which is what was actually asked for.
-        }
-        build();
+        new File(directory, ADDRESS).delete();
     }
 
     private Canvas client() throws IOException {
@@ -173,6 +199,7 @@ final class Backend {
     Sync.Result refresh(Sync.Progress progress, Sync.Result previous) throws IOException, InterruptedException {
         Sync current = sync;
         if (current == null) throw new IOException("Canvas is not set up yet");
+        learnAddress();
         Sync.Result result = current.run(previous, progress);
         save(result);
         return result;

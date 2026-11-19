@@ -80,7 +80,7 @@ public final class TurnInJob extends JobService {
 
     /** Sends every waiting draft; true if any is still waiting afterwards. */
     private boolean send() {
-        Backend backend = new Backend(getFilesDir());
+        Backend backend = Backend.open(this);
         Sync.Result known = backend.cached();
         if (known == null || !backend.canvasReady()) return false;
         boolean waiting = false;

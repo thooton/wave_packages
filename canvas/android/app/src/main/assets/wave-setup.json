@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "app": "canvas",
+  "name": "Canvas",
+  "package": "com.todo.xp3",
+  "about": "Your Canvas courses, assignments and to-dos, from your school's Canvas.",
+  "settings": [
+    {
+      "name": "baseUrl",
+      "label": "Canvas address",
+      "secret": false,
+      "required": true,
+      "manual": true,
+      "pattern": "^https://[A-Za-z0-9.-]+/?$",
+      "max": 200,
+      "example": "https://canvas.asu.edu",
+      "obtain": "The address your school's Canvas opens at, without anything after the host."
+    },
+    {
+      "name": "accessToken",
+      "label": "Access token",
+      "secret": true,
+      "required": false,
+      "group": "Sign-in",
+      "pattern": "^[A-Za-z0-9~_-]{20,200}$",
+      "max": 200,
+      "example": "7~AbCd...",
+      "obtain": "In Canvas: Account, Settings, Approved integrations, New access token. Give it a purpose and no expiry (or note the date). Some schools turn this off; use a cookie service then."
+    },
+    {
+      "name": "cookieUrl",
+      "label": "Cookie service",
+      "secret": false,
+      "required": false,
+      "group": "Sign-in",
+      "pattern": "^https://[^\\s?#]+/cookie$",
+      "max": 300,
+      "example": "https://example.com/canvas/cookie",
+      "obtain": "Instead of an access token: the /cookie address of a canvas-cookie service you run, which keeps a signed-in Canvas session and hands its Cookie header to the app."
+    },
+    {
+      "name": "cookieToken",
+      "label": "Cookie service token",
+      "secret": true,
+      "required": false,
+      "group": "Sign-in",
+      "pattern": "^[A-Za-z0-9_-]{32,128}$",
+      "max": 128,
+      "obtain": "The cookie service's API token. Needed with the cookie service, not with an access token."
+    },
+    {
+      "name": "timezone",
+      "label": "Time zone",
+      "secret": false,
+      "required": false,
+      "manual": true,
+      "pattern": "^[A-Za-z_]+(/[A-Za-z0-9_+-]+)*$",
+      "max": 60,
+      "example": "America/Phoenix",
+      "obtain": "An IANA time zone name. Leave it empty to use the phone's."
+    }
+  ],
+  "alternatives": [
+    {
+      "label": "Sign-in",
+      "sets": [
+        [
+          "accessToken"
+        ],
+        [
+          "cookieUrl",
+          "cookieToken"
+        ]
+      ]
+    }
+  ],
+  "limits": [
+    "Give either an access token or a cookie service and its token, not both.",
+    "With an access token, quizzes and pages that Canvas only serves to a browser session may not open."
+  ],
+  "delta": {
+    "supported": true,
+    "about": "The command center's Canvas relay (/canvas/..., /canvas-upload/...) signs in with its own cookie service."
+  }
+}

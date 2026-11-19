@@ -4,28 +4,9 @@ plugins {
 
 apply from: rootProject.file("gradle/app.gradle")
 
-apply from: rootProject.file("gradle/bundled.gradle")
-
-// The Canvas address, cookie service and its token, from the canvas project's
-// own config beside this directory (auth.json and service-api-token.txt, or
-// -Ptodo.canvasConfig / -Ptodo.serviceToken). Only a complete setup is
-// bundled: a half-filled one would seed settings that cannot fetch anything.
-// An installed copy adopts it on first launch only.
-bundled("com.canvas.xp3") {
-    def canvasConfig = file(project.findProperty("todo.canvasConfig") ?: "../../auth.json")
-    def serviceToken = file(project.findProperty("todo.serviceToken") ?: "../../service-api-token.txt")
-    def config = canvasConfig.isFile() ? new groovy.json.JsonSlurper().parse(canvasConfig) : [:]
-    def token = serviceToken.isFile() ? serviceToken.text.trim() : ""
-    def baseUrl = config.canvas?.baseUrl ?: ""
-    def serviceUrl = config.canvas?.cookieService?.url ?: ""
-    def usable = baseUrl && serviceUrl && token
-    logger.lifecycle(usable
-        ? "Bundled setup: canvas $baseUrl"
-        : "Bundled setup: none found; the app will open on its setup screen")
-    def settings = [canvas: [baseUrl: baseUrl, cookieService: [url: serviceUrl, token: token]]]
-    if (config.timezone) settings.timezone = config.timezone
-    [SETTINGS: usable ? groovy.json.JsonOutput.toJson(settings) : ""]
-}
+// No login is built in: the Canvas address and sign-in (an access token, a
+// cookie service, or a command center's relay) are imported on the phone
+// from a setup file (common/ui's Setup).
 
 android {
     namespace "com.canvas.xp3"
@@ -35,8 +16,8 @@ android {
         // install a second app beside the old one, without its settings or
         // cached work.
         applicationId "com.todo.xp3"
-        versionCode 25
-        versionName "1.7.1"
+        versionCode 26
+        versionName "1.8.0"
     }
 }
 

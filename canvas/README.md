@@ -13,7 +13,7 @@ adb install -r canvas/android/app/build/outputs/apk/release/app-release.apk
 
 ## Setup
 
-Open **Options → Settings → Account** and enter the Canvas origin, the cookie-service `/cookie` URL and its token, and optionally an IANA time zone. Canvas login cookies come from the cookie service. The app holds them in memory for fifteen minutes and never saves them.
+On first launch the app opens on its setup screen. Make a setup file on the Wave site: your school's Canvas address with a Canvas access token (Account, Settings, Approved integrations) or a canvas-cookie service and its token, and optionally an IANA time zone; or a Delta command center, whose Canvas relay signs in for the app. Copy `wave-setup-canvas.json` to `Android/data/com.todo.xp3/files` on the phone and choose Import, or pick it with the file picker; it is deleted once read. **Options → Settings → Account** shows the setup and opens the setup screen again. Cookies from a cookie service are held in memory for fifteen minutes and never saved.
 
 ## Controls
 
@@ -26,4 +26,4 @@ Open **Options → Settings → Account** and enter the Canvas origin, the cooki
 | 1–7, 0 | Jump to a day of the week, or back to today |
 | Back / Clear | Back one screen (deletes a character in a text field) |
 
-What the app sends to Canvas is limited to the student's own work: submissions, comments on them, discussion replies, planner check marks and classic quiz answers. A link outside Canvas is fetched only when you open or save it, with no login sent. A locally built APK may contain live bundled credentials, so treat it like a password. Bricolage Grotesque is under the SIL Open Font License (`OFL.txt`).
+What the app sends to Canvas is limited to the student's own work: submissions, comments on them, discussion replies, planner check marks and classic quiz answers. A link outside Canvas is fetched only when you open or save it, with no login sent. The APK carries no login; a setup file does, so treat it like a password. Bricolage Grotesque is under the SIL Open Font License (`OFL.txt`).

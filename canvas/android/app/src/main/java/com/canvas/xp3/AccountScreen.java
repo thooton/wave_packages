@@ -5,15 +5,17 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.canvas.xp3.net.Config;
+import com.xp3.common.ui.Setup;
 
 /**
- * The Canvas account: the school's Canvas address, the cookie service that
- * holds the login, its token, and the time zone. Sign out removes them and
- * everything fetched with them.
+ * The Canvas account: which Canvas, how the app signs in to it, and the
+ * time zone, as set up on the shared setup screen (common/ui's Setup), which
+ * Setup… opens to import a new setup file or change them. Sign out removes
+ * the setup and everything fetched with it.
  *
- * The app never sees a password. Canvas's login lives with the cookie
- * service; the phone keeps the session cookie in memory for a quarter of an
- * hour and never writes it down.
+ * The app never sees a password. With a cookie service the phone keeps the
+ * session cookie in memory for a quarter of an hour and never writes it
+ * down; through a command center it never sees Canvas's sign-in at all.
  */
 final class AccountScreen extends Screen {
 
@@ -35,21 +37,18 @@ final class AccountScreen extends Screen {
         root.addView(state, Views.wide());
         LinearLayout list = parts.page(this, root);
         list.addView(v.hairline());
-        list.addView(field(config, Config.CANVAS_URL, "Canvas address", false, true), Views.wide());
-        list.addView(field(config, Config.COOKIE_URL, "Cookie service", false, true), Views.wide());
-        list.addView(field(config, Config.COOKIE_TOKEN, "Service token", true, false), Views.wide());
-        list.addView(field(config, Config.TIMEZONE, "Time zone", false, false), Views.wide());
-        if (app.backend.hasBundledSetup()) {
-            list.addView(action("restore", "Use the bundled setup", this::restore), Views.wide());
-        }
+        String canvas = config.canvasBase() != null ? config.canvasBase().getHost()
+            : config.relayed() ? "Known after a sync" : "Not set";
+        list.addView(field("canvas", "Canvas", canvas), Views.wide());
+        list.addView(field("signin", "Signs in with", config.signIn()), Views.wide());
+        list.addView(field("zone", "Time zone", config.zone().getId()), Views.wide());
+        list.addView(action("setup", "Setup\u2026", () -> app.startActivity(Setup.intent(app))), Views.wide());
         list.addView(action("signout", "Sign out", this::signOut), Views.wide());
         return root;
     }
 
-    private Item field(Config config, final String key, final String label, boolean secret, final boolean address) {
-        String value = config.get(key);
-        String shown = value.length() == 0 ? "Not set" : secret ? "••••••••" : value.replaceFirst("^https://", "");
-        Item row = new Item(app, key, "Change", () -> edit(key, label, address));
+    private Item field(String key, String label, String shown) {
+        Item row = new Item(app, key, "Setup", () -> app.startActivity(Setup.intent(app)));
         LinearLayout line = v.row();
         v.pad(line, 12, 7, 12, 7);
         MarkText name = v.mark(label, 11, look.semibold, look.ink);
@@ -77,62 +76,11 @@ final class AccountScreen extends Screen {
         return row;
     }
 
-    private void edit(String key, String label, boolean address) {
-        edit(key, label, address, app.backend.config().get(key));
-    }
-
-    private void edit(final String key, final String label, final boolean address, String start) {
-        String help = Config.TIMEZONE.equals(key) ? "Leave empty to use the phone's own, or type one like "
-            + "America/Phoenix." : Config.COOKIE_TOKEN.equals(key) ? "Copy it into a message to the phone, then "
-            + "paste it here from Options." : null;
-        FieldScreen screen = new FieldScreen(app, label, start, label,
-            value -> apply(key, label, address, value)).exact(address);
-        if (help != null) screen.help(help);
-        app.push(screen);
-    }
-
-    private void apply(String key, String label, boolean address, String value) {
-        Config next;
-        try {
-            next = app.backend.config().with(key, value);
-        } catch (IllegalArgumentException e) {
-            // Back to the field with the text as typed: retyping a whole
-            // address on a keypad for one wrong letter is the real cost.
-            edit(key, label, address, value);
-            app.tell("Not saved", e.getMessage() == null ? "That value wasn't accepted." : e.getMessage());
-            return;
-        }
-        try {
-            app.backend.saveSettings(next);
-        } catch (java.io.IOException e) {
-            app.tell("Not saved", "Couldn't write to this phone's storage.");
-            return;
-        }
-        // A different Canvas account means the work on screen belongs to
-        // somebody else; drop it rather than showing it until a sync replaces it.
-        if (!Config.TIMEZONE.equals(key)) app.forgetWork();
-        app.refreshIfStale();
-        refresh();
-    }
-
-    private void restore() {
-        try {
-            app.backend.restoreBundledSetup();
-        } catch (java.io.IOException | RuntimeException e) {
-            app.tell("Not restored", "This build's setup couldn't be used.");
-            return;
-        }
-        app.forgetWork();
-        app.refreshIfStale();
-        refresh();
-    }
-
     private void signOut() {
-        Sheet.ask(app, "Sign out?", "The Canvas address, the token, your saved work and everything fetched are "
-            + "removed from this phone.", "Sign out", "Cancel", () -> {
+        Sheet.ask(app, "Sign out?", "The setup, your saved work and everything fetched are removed from this phone.", "Sign out", "Cancel", () -> {
+                Setup.forget(app);
                 app.backend.signOut();
-                app.forgetWork();
-                refresh();
+                app.recreate();
             });
     }
 

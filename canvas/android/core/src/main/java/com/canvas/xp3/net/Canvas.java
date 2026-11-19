@@ -50,22 +50,50 @@ public final class Canvas {
     private static final Pattern NEXT =
         Pattern.compile("<([^>]+)>\\s*;\\s*rel=\"?next\"?(?=\\s*(?:,|;|$))");
 
+    /** Canvas's download path for a file, the only place outside the API a sign-in is sent. */
+    static final Pattern DOWNLOAD = Pattern.compile("(/courses/\\d+|/users/\\d+)?/files/\\d+/download");
+
+    /** Where the API is: Canvas's own origin, or a command center's relay ("<center>/canvas/"). */
     private final URI base;
-    private final RemoteCookies cookies;
+    private final Access access;
     private final Http http;
     private final Sleeper sleeper;
 
+    /** As set up: an access token, a cookie service, or a command center's relay. */
     public Canvas(Config config, Http http) {
-        this(config.canvasBase(), new RemoteCookies(config, http), http, milliseconds -> {
+        this(config.apiBase(), config.access(http), http, milliseconds -> {
             Thread.sleep(milliseconds);
         });
     }
 
     Canvas(URI base, RemoteCookies cookies, Http http, Sleeper sleeper) {
+        this(base, Access.cookies(cookies), http, sleeper);
+    }
+
+    Canvas(URI base, Access access, Http http, Sleeper sleeper) {
         this.base = base;
-        this.cookies = cookies;
+        this.access = access;
         this.http = http;
         this.sleeper = sleeper;
+    }
+
+    /**
+     * Through a command center: the Canvas address its relay signs in to
+     * (`/canvas-status`), for links and the Account screen. Null otherwise.
+     */
+    public URI relayCanvas() throws IOException, InterruptedException {
+        if (!access.relayed()) return null;
+        Http.Request request = Http.Request.to(base.resolve("../canvas-status")).timeout(30000)
+            .header("Accept", "application/json");
+        access.sign(request, false);
+        Http.Response response = http.send(request);
+        if (response.status() == 401) throw new IOException(access.refusal());
+        Http.requireSuccess(response.status(), "Command center");
+        try {
+            return Config.origin(Json.string(Json.object(Json.parse(response.body())), "base_url"));
+        } catch (RuntimeException e) {
+            throw new IOException("The command center didn't say which Canvas it signs in to");
+        }
     }
 
     public List<Object> courses(boolean activeOnly) throws IOException, InterruptedException {
@@ -301,7 +329,7 @@ public final class Canvas {
         if (address == null) throw new IOException("This file can't be downloaded.");
         URI uri;
         try {
-            uri = base.resolve(address);
+            uri = access.route(base.resolve(address));
         } catch (IllegalArgumentException e) {
             throw new IOException("This file can't be downloaded.");
         }
@@ -310,7 +338,7 @@ public final class Canvas {
                 throw new IOException("Refused a download address that is not https");
             }
             Http.Request request = Http.Request.to(uri).timeout(300000).identity();
-            if (canvasDownload(base, uri)) request.header("Cookie", cookies.fetch());
+            if (canvasDownload(base, uri)) access.sign(request, false);
             Http.Stream stream = http.stream(request);
             try {
                 int status = stream.status();
@@ -318,7 +346,7 @@ public final class Canvas {
                     String next = stream.header("Location");
                     if (next.length() == 0) throw new IOException("Canvas HTTP " + status + ": redirect refused");
                     try {
-                        uri = uri.resolve(next);
+                        uri = access.route(uri.resolve(next));
                     } catch (IllegalArgumentException e) {
                         throw new IOException("Refused a download address that is not https");
                     }
@@ -350,8 +378,9 @@ public final class Canvas {
         if (!equal(base.getHost(), uri.getHost()) || base.getPort() != uri.getPort()
             || !equal(base.getScheme(), uri.getScheme())) return false;
         String path = uri.getRawPath();
-        return path != null && !path.contains("%") && uri.normalize().equals(uri)
-            && path.matches("(/courses/\\d+|/users/\\d+)?/files/\\d+/download");
+        String root = base.getRawPath() == null || base.getRawPath().isEmpty() ? "/" : base.getRawPath();
+        return path != null && !path.contains("%") && uri.normalize().equals(uri) && path.startsWith(root)
+            && DOWNLOAD.matcher(path.substring(root.length() - 1)).matches();
     }
 
     // ------------------------------------------------------------------
@@ -443,6 +472,7 @@ public final class Canvas {
      */
     public String upload(String course, String assignment, String name, long size, String type,
                          InputStream body, Http.Sending progress) throws IOException, InterruptedException {
+        if (access.relayed()) return relayUpload(course, assignment, name, size, type, body, progress);
         Map<String, Object> ticket = Json.object(write("POST", "courses/" + number(course) + "/assignments/"
             + number(assignment) + "/submissions/self/files",
             form("name", name, "size", Long.toString(size), "content_type", type, "on_duplicate", "rename"), FORM));
@@ -478,10 +508,7 @@ public final class Canvas {
             .header("Content-Type", "multipart/form-data; boundary=" + boundary)
             .header("Accept", "application/json");
         boolean canvasHost = equal(base.getHost(), uri.getHost()) && base.getPort() == uri.getPort();
-        if (canvasHost) {
-            String cookie = cookies.fetch();
-            request.header("Cookie", cookie).header("X-CSRF-Token", csrf(cookie));
-        }
+        if (canvasHost) access.sign(request, true);
         InputStream whole = new SequenceInputStream(new ByteArrayInputStream(start),
             new SequenceInputStream(body, new ByteArrayInputStream(end)));
         Http.Response sent = http.upload(request, whole, start.length + size + end.length, progress);
@@ -509,6 +536,31 @@ public final class Canvas {
         }
         Map<String, Object> file = Json.object(Json.parse(send("GET", confirm, null, null).body()));
         return id(file, "id");
+    }
+
+    /**
+     * The same through a command center's relay, which does Canvas's three
+     * steps itself: the file is the body, the preflight's fields the query,
+     * and the answer is the confirmed file.
+     */
+    private String relayUpload(String course, String assignment, String name, long size, String type,
+                               InputStream body, Http.Sending progress) throws IOException, InterruptedException {
+        URI center = base.resolve("..");
+        URI uri = URI.create(center.toString() + "canvas-upload/api/v1/courses/" + number(course) + "/assignments/"
+            + number(assignment) + "/submissions/self/files?"
+            + form("name", name, "content_type", type, "on_duplicate", "rename"));
+        Http.Request request = Http.Request.to(uri).method("POST").timeout(900000)
+            .header("Content-Type", type)
+            .header("Accept", "application/json");
+        access.sign(request, true);
+        Http.Response sent = http.upload(request, body, size, progress);
+        if (sent.status() == 401) throw new IOException(access.refusal());
+        Http.requireSuccess(sent.status(), "File upload");
+        try {
+            return id(Json.object(Json.parse(sent.body())), "id");
+        } catch (RuntimeException e) {
+            throw new IOException("The file host did not confirm the file");
+        }
     }
 
     /** Starts (or resumes) a classic quiz attempt. This uses an attempt and starts any timer. */
@@ -609,7 +661,7 @@ public final class Canvas {
                 all.add(selected);
             }
             Matcher match = NEXT.matcher(join(response.all("Link")));
-            next = match.find() ? next.resolve(match.group(1)) : null;
+            next = match.find() ? access.route(next.resolve(match.group(1))) : null;
         }
         return all;
     }
@@ -657,39 +709,32 @@ public final class Canvas {
             if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
             Http.Response response;
             try {
-                String cookie = cookies.fetch();
                 Http.Request request = Http.Request.to(uri)
                     .method(method)
                     .timeout(reading ? 60000 : 120000)
-                    .header("Accept", "application/json")
-                    .header("Cookie", cookie);
-                if (!reading) {
-                    request.header("X-CSRF-Token", csrf(cookie));
-                    if (body != null) request.header("Content-Type", type).post(body);
-                }
+                    .header("Accept", "application/json");
+                access.sign(request, !reading);
+                if (!reading && body != null) request.header("Content-Type", type).post(body);
                 response = http.send(request);
             } catch (IOException e) {
                 if (attempt == 0 || !reading) throw e;
                 // Mid-recovery the service itself may be briefly unavailable;
                 // that is the same failure, not a new one.
                 if (attempt >= RETRIES) throw e;
-                cookies.invalidate();
+                access.refused();
                 sleeper.sleep(delay);
                 delay = Math.min(16000, delay * 2);
                 continue;
             }
             if (response.status() == 401) {
-                cookies.invalidate();
-                if (attempt >= RETRIES) {
-                    throw new IOException("Canvas would not accept the session; the cookie service's own login may have expired");
-                }
+                if (!access.refused() || attempt >= RETRIES) throw new IOException(access.refusal());
                 sleeper.sleep(delay);
                 delay = Math.min(16000, delay * 2);
                 continue;
             }
             Http.requireSuccess(response.status(), "Canvas");
             if (!response.header("Content-Type").toLowerCase(Locale.US).contains("application/json")) {
-                throw new IOException("Canvas returned a login page rather than data; the cookie service's Canvas login needs refreshing");
+                throw new IOException("Canvas returned a login page rather than data; its sign-in needs refreshing");
             }
             return response;
         }
@@ -707,10 +752,15 @@ public final class Canvas {
     static void validatePage(URI base, URI uri) throws IOException {
         if (!equal(base.getScheme(), uri.getScheme()) || !equal(base.getHost(), uri.getHost())
             || base.getPort() != uri.getPort() || uri.getUserInfo() != null || uri.getFragment() != null
-            || uri.getRawPath() == null || !uri.getRawPath().startsWith("/api/v1/")
+            || uri.getRawPath() == null || !uri.getRawPath().startsWith(root(base) + "api/v1/")
             || uri.getRawPath().contains("%") || !uri.normalize().equals(uri)) {
             throw new IOException("Refused a Canvas address outside the configured API");
         }
+    }
+
+    private static String root(URI base) {
+        String path = base.getRawPath();
+        return path == null || path.isEmpty() ? "/" : path;
     }
 
     private static boolean equal(Object left, Object right) {

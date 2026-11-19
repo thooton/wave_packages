@@ -54,5 +54,11 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+        <!-- The shared setup screen (common/ui): the Canvas address and
+             sign-in, or a command center, imported from a setup file. -->
+        <activity
+            android:name="com.xp3.common.ui.SetupActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
+            android:screenOrientation="portrait" />
     </application>
 </manifest>

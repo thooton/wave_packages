@@ -410,6 +410,11 @@ public final class Store {
     }
 
     /** Everything written about this account, for Settings' sign-out. */
+    /** Removes the old settings document once the setup has taken it over. */
+    public void forgetSettings() {
+        new File(directory, SETTINGS).delete();
+    }
+
     public void clear() {
         new File(directory, SETTINGS).delete();
         new File(directory, CACHE).delete();

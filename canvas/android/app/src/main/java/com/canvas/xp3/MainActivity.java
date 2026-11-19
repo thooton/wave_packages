@@ -30,6 +30,7 @@ import com.canvas.xp3.data.Prefs;
 import com.canvas.xp3.data.Sync;
 import com.canvas.xp3.data.Todos;
 import com.xp3.common.ui.BaseActivity;
+import com.xp3.common.ui.Setup;
 import com.xp3.common.ui.Ui;
 
 import java.util.ArrayList;
@@ -67,6 +68,8 @@ public final class MainActivity extends BaseActivity {
     final Handler main = new Handler(Looper.getMainLooper());
     final ExecutorService work = Ui.workers("canvas-work", 2);
     Backend backend;
+    /** The setup's stamp when this activity started; a changed setup starts it over. */
+    private String setupStamp;
     Prefs prefs;
     private Look look;
     private Views views;
@@ -106,7 +109,9 @@ public final class MainActivity extends BaseActivity {
         super.onCreate(state);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         Dates.setTwentyFourHour(DateFormat.is24HourFormat(this));
-        backend = new Backend(getFilesDir());
+        backend = Backend.open(this);
+        if (!backend.canvasReady() && !Setup.require(this)) return;
+        setupStamp = Setup.stamp(this);
         prefs = backend.prefs();
         applyWeekStart();
         snapshot = backend.cached();
@@ -127,6 +132,17 @@ public final class MainActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (setupStamp == null) return;
+        if (!setupStamp.equals(Setup.stamp(this))) {
+            // Imported again or signed out on the setup screen. The work kept
+            // belongs to the account it was fetched with: it goes when that
+            // account does (signed out, or a different Canvas), and the app
+            // starts over with the setup now in force.
+            Backend next = Backend.open(this);
+            if (!next.canvasReady() || !next.config().sameAccount(backend.config())) backend.signOut();
+            recreate();
+            return;
+        }
         // A phone like this is closed by being put in a pocket, so the screen
         // you come back to is often yesterday's; what is missing is derived
         // from the clock on every draw, and Canvas is worth asking again.

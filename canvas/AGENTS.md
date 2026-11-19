@@ -77,8 +77,15 @@ rationale comments beside the implementation.
     checking the other.
 - `android/core/src/test`: the framework-free desktop test suite and local HTTP
   server.
-- `android/app/build.gradle`: the app's version and the build-time bundled
-  setup (see `../gradle/bundled.gradle`).
+- `android/app/build.gradle`: the app's version. Nothing secret: the app is
+  set up on the phone.
+- `android/app/src/main/assets/wave-setup.json`: the setup descriptor (the
+  Canvas address, an access token or a cookie service, the time zone; or
+  a command center), read by common/ui's setup screen and the Wave site's
+  generator; change both together. `net/Config.of` reads the setup,
+  `net/Access` is how a request is signed in (token, cookies, or the
+  command center's relay), and `Backend.open` carries an older version's
+  settings document over.
 
 ## Architecture and invariants
 
@@ -148,10 +155,14 @@ Treat these as code-level guarantees, not prompt suggestions:
 
 - Canvas routes are fixed in `Canvas.java` and interpolate only positive
   numeric IDs validated by `Canvas.id` or `Canvas.number`. Writes carry the
-  session's CSRF token, are retried only after a 401, and are never resent
+  session's CSRF token (with a cookie service; an access token or the
+  relay needs none), are retried only after a 401, and are never resent
   after a connection failure (a duplicate is a second attempt the teacher
   sees). Upload storage hosts and download redirects never get the cookie
-  unless they are Canvas's own host and path.
+  (or token) unless they are Canvas's own host and path. Through a
+  command center only the relay is asked, with the delta token: Canvas's
+  API and download addresses are rewritten onto it (`Access.route`), and
+  uploads go to its `/canvas-upload/` route, which does the three steps.
 - Links outside Canvas are fetched only when the student picks Open or Save
   on one, by `Web`: a GET with no cookie, token or Canvas header, every hop
   https, at most six hops, bounded like a Canvas download. Never give it the
@@ -249,15 +260,12 @@ copy on the phone. The debug APK is only for checking that the code compiles.
 
 ## Credentials and generated files
 
-`android/app/build.gradle` may read deployment credentials (`auth.json` and
-`service-api-token.txt` beside `android/`, or explicitly supplied Gradle
-properties). `../gradle/bundled.gradle` writes them into a generated
-`Bundled.java` under `android/app/build/`; never edit or commit that file.
+None in the build: the APK carries no login. A setup file
+(`wave-setup*.json`) holds the Canvas sign-in or a command center token;
+treat it like a password.
 
-An assembled personal APK can contain live Canvas credentials and
-must be treated like a password. Never print, decode, attach, or commit any APK,
-auth JSON, service token, keystore, `local.properties`, or generated default
-source. The root APKs and auth files are intentionally ignored. In particular,
+Never print, decode, attach, or commit a setup file, any APK, auth JSON,
+service token, keystore or `local.properties`. The root APKs and auth files are intentionally ignored. In particular,
 do not stage ignored files with `git add -f`.
 
 If a task concerns bundling or signing, refer to the Gradle properties already

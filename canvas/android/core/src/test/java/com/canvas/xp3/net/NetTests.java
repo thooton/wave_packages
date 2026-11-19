@@ -27,6 +27,9 @@ public final class NetTests {
         check.run("cookie service", () -> cookieService(check));
         check.run("canvas paging", () -> paging(check));
         check.run("canvas auth", () -> auth(check));
+        check.run("access token", () -> accessToken(check));
+        check.run("command center relay", () -> relay(check));
+        check.run("setup", () -> setup(check));
         check.run("canvas ids", () -> ids(check));
         check.run("canvas due", () -> due(check));
         check.run("web links", () -> web(check));
@@ -284,6 +287,113 @@ public final class NetTests {
             check.fails("a Link off-origin is refused", "outside the configured", () -> client.courses(true));
         } finally {
             away.close();
+        }
+    }
+
+    private static Canvas with(URI base, Access access) {
+        return new Canvas(base, access, new Http(), milliseconds -> { });
+    }
+
+    private static void accessToken(Check check) throws Exception {
+        final AtomicInteger asked = new AtomicInteger();
+        TestServer server = new TestServer(request -> {
+            asked.incrementAndGet();
+            if (request.path.contains("refused")) return TestServer.Reply.of(401, "application/json", "{}");
+            if (request.method.equals("POST")) return TestServer.Reply.json("{}");
+            return TestServer.Reply.json("[{\"id\":1,\"name\":\"Bio\"}]");
+        });
+        try {
+            Canvas canvas = with(server.uri("/"), Access.token("7~abcdefghijklmnopqrstuvwxyz"));
+            check.same("read with the token", 1, canvas.courses(true).size());
+            TestServer.Request read = server.seen.get(0);
+            check.same("as a Bearer header", "Bearer 7~abcdefghijklmnopqrstuvwxyz", read.header("Authorization"));
+            check.same("no cookie", "", read.header("Cookie"));
+            canvas.markDone("34", null, true);
+            TestServer.Request wrote = server.seen.get(server.seen.size() - 1);
+            check.same("a change has the token", "Bearer 7~abcdefghijklmnopqrstuvwxyz", wrote.header("Authorization"));
+            check.same("and no CSRF token", "", wrote.header("X-CSRF-Token"));
+        } finally {
+            server.close();
+        }
+        TestServer refusing = new TestServer(request -> TestServer.Reply.of(401, "application/json", "{}"));
+        try {
+            final Canvas canvas = with(refusing.uri("/"), Access.token("7~abcdefghijklmnopqrstuvwxyz"));
+            check.fails("a refused token says so", "refused the access token", () -> canvas.courses(true));
+            check.same("and isn't tried again", 1, refusing.seen.size());
+        } finally {
+            refusing.close();
+        }
+        check.fails("an empty token is no token", "no access token", () -> Access.token(""));
+    }
+
+    private static void relay(Check check) throws Exception {
+        TestServer center = new TestServer(request -> {
+            if (request.path.equals("/canvas-status")) {
+                return TestServer.Reply.json("{\"base_url\":\"https://canvas.asu.edu\",\"ready\":true}");
+            }
+            if (request.path.startsWith("/canvas-upload/")) return TestServer.Reply.json("{\"id\":77}");
+            if (request.path.startsWith("/canvas/files/")) return TestServer.Reply.of(200, "text/plain", "bytes");
+            if (request.path.contains("page=2")) return TestServer.Reply.json("[{\"id\":2,\"name\":\"Chem\"}]");
+            return TestServer.Reply.json("[{\"id\":1,\"name\":\"Bio\"}]")
+                .header("Link: <https://canvas.asu.edu/api/v1/courses?page=2&per_page=100>; rel=\"next\"");
+        });
+        try {
+            URI base = center.uri("/canvas/");
+            Canvas canvas = with(base, Access.delta(base, "delta-token"));
+            check.same("the Canvas it signs in to", "https://canvas.asu.edu/", canvas.relayCanvas().toString());
+            check.same("both pages through the relay", 2, canvas.courses(true).size());
+            check.ok("asked the relay", center.seen.get(1).path.startsWith("/canvas/api/v1/courses?"));
+            check.ok("Canvas's next page is asked of the relay", center.seen.get(2).path.startsWith("/canvas/api/v1/courses?page=2"));
+            check.same("with the delta token", "Bearer delta-token", center.seen.get(2).header("Authorization"));
+            check.same("and never a cookie", "", center.seen.get(2).header("Cookie"));
+            check.same("an upload is the relay's", "77", canvas.upload("12", "34", "notes.txt", 5, "text/plain",
+                new java.io.ByteArrayInputStream("hello".getBytes("UTF-8")), (done, total) -> { }));
+            TestServer.Request upload = center.seen.get(center.seen.size() - 1);
+            check.ok("to its upload route", upload.path.startsWith(
+                "/canvas-upload/api/v1/courses/12/assignments/34/submissions/self/files?name=notes.txt"));
+            check.same("the file as the body", "hello", upload.body);
+            Access access = Access.delta(URI.create("https://cc.example.com/canvas/"), "delta-token");
+            check.same("a Canvas file is asked of the relay", "https://cc.example.com/canvas/files/12/download?verifier=x",
+                access.route(URI.create("https://canvas.asu.edu/files/12/download?verifier=x")).toString());
+            check.same("a storage host is not", "https://inst-fs.example.net/x?sig=1",
+                access.route(URI.create("https://inst-fs.example.net/x?sig=1")).toString());
+            check.ok("the relay's file path is Canvas's download path", Canvas.canvasDownload(
+                URI.create("https://cc.example.com/canvas/"), URI.create("https://cc.example.com/canvas/files/12/download")));
+        } finally {
+            center.close();
+        }
+    }
+
+    private static void setup(Check check) {
+        com.xp3.common.SetupSpec spec = com.xp3.common.SetupSpec.parse(read("../app/src/main/assets/wave-setup.json"));
+        Map<String, String> values = new java.util.LinkedHashMap<String, String>();
+        values.put("baseUrl", "https://canvas.asu.edu");
+        values.put("accessToken", "7~abcdefghijklmnopqrstuvwxyz");
+        Config token = Config.of(com.xp3.common.Config.direct(spec, null, values), null);
+        check.ok("a token setup is ready", token.canvasReady());
+        check.same("signs in with the token", "Access token", token.signIn());
+        check.same("at the school's Canvas", "https://canvas.asu.edu/", token.apiBase().toString());
+        Config delta = Config.of(com.xp3.common.Config.parse(
+            "{\"wave\":1,\"app\":\"canvas\",\"delta\":{\"server\":\"https://cc.example.com\",\"token\":\"t0k\"}}", spec), null);
+        check.ok("a command center setup is ready", delta.canvasReady());
+        check.same("asks the relay", "https://cc.example.com/canvas/", delta.apiBase().toString());
+        check.ok("Canvas's address unknown until asked", delta.canvasBase() == null);
+        check.ok("not the same account as the token", !delta.sameAccount(token));
+        check.ok("the same once more", delta.learned(URI.create("https://canvas.asu.edu/")).sameAccount(delta));
+        Config old = Config.parse("{\"canvas\":{\"baseUrl\":\"https://canvas.asu.edu\",\"cookieService\":{"
+            + "\"url\":\"https://edit.example.org/api/canvas-cookie/cookie\",\"token\":\"" + TOKEN + "\"}},"
+            + "\"timezone\":\"America/Phoenix\"}");
+        Config moved = Config.of(com.xp3.common.Config.direct(spec, null, old.setupValues()), null);
+        check.ok("the old settings carry over", moved.canvasReady() && moved.sameAccount(old));
+        check.same("with the time zone", "America/Phoenix", moved.zone().getId());
+        check.ok("nothing to carry from a blank one", Config.blank().setupValues() == null);
+    }
+
+    private static String read(String path) {
+        try {
+            return new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(path)), "UTF-8");
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(e);
         }
     }
 

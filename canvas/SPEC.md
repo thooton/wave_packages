@@ -267,13 +267,25 @@ Home.
   Week starts on (Monday, Sunday; "(region)" until chosen), Download
   files (Always, On Wi-Fi only, Never), Account (the Canvas host, or "Not
   set up"). OK opens the choices; theme and size apply at once.
-- Account: "Signed in to Canvas" / "Not set up"; Canvas address, Cookie
-  service, Service token (dots), Time zone ("Not set"); "Use the bundled
-  setup" when the build has one; Sign out, which asks, then removes the
-  settings, saved work and everything fetched. A rejected value (both
-  addresses must be https): the field opens again with the text as typed,
-  under a "Not saved" dialog saying why (one OK). A new address, service
-  or token drops the work on screen and syncs.
+- Account: "Signed in to Canvas" / "Not set up"; Canvas (the host;
+  through a command center "Known after a sync" until its relay has
+  said), Signs in with ("Access token", "Cookie service at <host>",
+  "Command center at <host>"), Time zone (the phone's when not set);
+  Setup…, which opens the shared setup screen (`../common/SETUP.md`), as
+  OK on any of the rows does; Sign out, which asks, then removes the
+  setup, saved work and everything fetched, and opens the setup screen.
+  The values are changed on the setup screen: import a new setup file, or
+  type the Canvas address or time zone. A changed setup starts the app
+  over; work fetched from a different Canvas (or relay) is dropped first.
+- Setup: nothing is built into the APK. With nothing set up the app opens
+  on the shared setup screen instead. The setup is the Canvas address and
+  either an access token (sent as a Bearer header; no CSRF needed) or a
+  cookie service and its token (the session cookie, as before), and an
+  optional time zone; or a Delta command center, whose Canvas relay
+  (`/canvas/...`, uploads `/canvas-upload/...`, `/canvas-status` for the
+  Canvas address) signs in for the app, which then talks only to the
+  command center with the delta token. An earlier version's settings
+  (address, cookie service, token, time zone) become the setup once.
 - Field: "‹ Back", title, one-line field focused; OK saves and returns,
   Back returns unsaved. Options: Paste (with text on the clipboard),
   Clear, Cancel.
@@ -281,7 +293,7 @@ Home.
 ## Behaviour
 
 - Everything lives in the app's private files and survives a restart:
-  settings (owner-only, with the token), prefs, the work cache, details,
+  the setup (owner-only, `files/wave-setup.json`), prefs, the work cache, details,
   class pages, notifications, drafts and their files, downloaded teacher
   files. Android backup is on, so `adb backup` can move them to another phone.
 - Launch always syncs, behind a loading bar, and draws only the result;
@@ -291,8 +303,9 @@ Home.
   list, the check marks and the last-known classes' work all at once. Refresh syncs now: "Up to date", "Updated. Some classes
   couldn't be read." or why; with no setup, "Canvas isn't set up. See
   Settings, then Account." One unreadable class never blanks the rest.
-- The session cookie comes from the cookie service, is held only in
-  memory for 15 minutes and never written down. Links outside Canvas are
+- With a cookie service, the session cookie is held only in memory for
+  15 minutes and never written down. An access token or the delta token
+  lives only in the setup. Links outside Canvas are
   fetched only on Open or Save, https only, with no login.
 - Drafts are saved before anything is sent. With no signal a turn-in is
   queued: "You're offline. It will turn in when you reconnect.", pieces

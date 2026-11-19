@@ -52,7 +52,7 @@ public final class Alarms extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        Backend backend = new Backend(context.getFilesDir());
+        Backend backend = Backend.open(context);
         // A minute's grace: the alarm may fire a moment early or late, and the
         // reminder it was set for is the one due now.
         Prefs prefs = backend.prefs();
@@ -88,7 +88,7 @@ public final class Alarms extends BroadcastReceiver {
     public static final class Boot extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
-            schedule(context, new Backend(context.getFilesDir()));
+            schedule(context, Backend.open(context));
             TurnInJob.schedule(context);
         }
     }

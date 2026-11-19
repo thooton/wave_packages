@@ -9,14 +9,11 @@ import java.util.Map;
 /**
  * Everything the app has been told about where to fetch from and who it is.
  *
- * The desktop program this was ported from kept its credentials in files beside
- * its jar and pointed at them by path. A phone has no such place and no comfortable
- * way to type a path anyway, so the values live inline in one small JSON
- * document in the app's private storage, written by the Settings screen and
- * read back here.
- *
- * A half-filled configuration is a normal state rather than an error: the
- * Settings screen fills it in one field at a time.
+ * It comes from the app's setup (common/ui's Setup, see {@link #of}): the
+ * school's Canvas address with an access token or a cookie service, or a
+ * Delta command center whose relay signs in for it. Versions before setup
+ * files kept the cookie-service form in a settings document of their own;
+ * {@link #parse} still reads that, once, to carry it over.
  */
 public final class Config {
 
@@ -30,12 +27,107 @@ public final class Config {
     private final URI cookieService;
     private final String cookieToken;
     private final String zone;
+    private final String accessToken;
+    /** The command center's relay ("<center>/canvas/"), or null. */
+    private final URI relay;
+    private final String deltaToken;
 
     private Config(URI canvasBase, URI cookieService, String cookieToken, String zone) {
+        this(canvasBase, cookieService, cookieToken, zone, null, null, null);
+    }
+
+    private Config(URI canvasBase, URI cookieService, String cookieToken, String zone, String accessToken,
+                   URI relay, String deltaToken) {
         this.canvasBase = canvasBase;
         this.cookieService = cookieService;
         this.cookieToken = cookieToken;
         this.zone = zone;
+        this.accessToken = accessToken;
+        this.relay = relay;
+        this.deltaToken = deltaToken;
+    }
+
+    /**
+     * The app's setup, checked against its descriptor already. Through a
+     * command center the Canvas address is the relay's to say: `known` is
+     * the one it said last time (or null), used for links and the settings.
+     */
+    public static Config of(com.xp3.common.Config setup, URI known) {
+        if (setup == null) return blank();
+        if (setup.isDelta()) {
+            String server = setup.delta().server();
+            return new Config(known, null, null, null, null,
+                URI.create(server.replaceAll("/+$", "") + "/canvas/"), setup.delta().token());
+        }
+        String base = empty(setup.get("baseUrl"));
+        String cookies = empty(setup.get("cookieUrl"));
+        return new Config(base == null ? null : origin(base), cookies == null ? null : endpoint(cookies),
+            empty(setup.get("cookieToken")), valid(empty(setup.get("timezone"))), empty(setup.get("accessToken")),
+            null, null);
+    }
+
+    /** The same, with the Canvas address a command center's relay reported. */
+    public Config learned(URI canvas) {
+        return new Config(canvas, cookieService, cookieToken, zone, accessToken, relay, deltaToken);
+    }
+
+    private static String empty(String value) {
+        return value == null || value.trim().length() == 0 ? null : value.trim();
+    }
+
+    private static String valid(String zone) {
+        try {
+            if (zone != null) ZoneId.of(zone);
+            return zone;
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** True when the setup is a command center's relay. */
+    public boolean relayed() {
+        return relay != null;
+    }
+
+    /** Where the Canvas API is asked: the school's Canvas, or the relay. */
+    public URI apiBase() {
+        return relay != null ? relay : canvasBase;
+    }
+
+    /** How the requests are signed in, as set up. */
+    public Access access(com.xp3.common.Http http) {
+        if (relay != null) return Access.delta(relay, deltaToken);
+        if (accessToken != null) return Access.token(accessToken);
+        return Access.cookies(new RemoteCookies(this, http));
+    }
+
+    /** Whether `other` reaches the same Canvas account's work (the same Canvas, or the same relay). */
+    public boolean sameAccount(Config other) {
+        if (other == null) return false;
+        if (relay != null || other.relay != null) return relay != null && relay.equals(other.relay);
+        return canvasBase != null && canvasBase.equals(other.canvasBase);
+    }
+
+    /** How it signs in, in a few words for the Account screen. */
+    public String signIn() {
+        if (relay != null) return "Command center at " + relay.getHost();
+        if (accessToken != null) return "Access token";
+        if (cookieService != null) return "Cookie service at " + cookieService.getHost();
+        return "Not set up";
+    }
+
+    /**
+     * The old settings document's values as the setup's direct settings, or
+     * null when it had nothing to sign in with.
+     */
+    public Map<String, String> setupValues() {
+        if (canvasBase == null || cookieService == null || cookieToken == null) return null;
+        Map<String, String> out = new LinkedHashMap<String, String>();
+        out.put("baseUrl", trimSlash(canvasBase.toString()));
+        out.put("cookieUrl", cookieService.toString());
+        out.put("cookieToken", cookieToken);
+        if (zone != null) out.put("timezone", zone);
+        return out;
     }
 
     public static Config blank() {
@@ -183,7 +275,8 @@ public final class Config {
 
     /** Whether the three work lists can be filled from Canvas. */
     public boolean canvasReady() {
-        return canvasBase != null && cookieService != null && cookieToken != null;
+        if (relay != null) return deltaToken != null;
+        return canvasBase != null && (accessToken != null || cookieService != null && cookieToken != null);
     }
 
     public URI canvasBase() {
