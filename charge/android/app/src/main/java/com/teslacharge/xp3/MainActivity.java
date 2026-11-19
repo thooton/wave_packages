@@ -193,6 +193,10 @@ public final class MainActivity extends BaseActivity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         adoptOldSignIn();
+        if (!Setup.ready(this)) {
+            // Signed out: the tokens rotated from the old setup go too.
+            getSharedPreferences("tesla_credentials", MODE_PRIVATE).edit().clear().commit();
+        }
         if (!Setup.require(this)) return;
         setupStamp = Setup.stamp(this);
         setContentView(R.layout.activity_main);
@@ -212,7 +216,10 @@ public final class MainActivity extends BaseActivity {
      */
     private void adoptOldSignIn() {
         if (Setup.ready(this)) return;
-        String token = getSharedPreferences("tesla_credentials", MODE_PRIVATE).getString("refresh_token", "");
+        android.content.SharedPreferences old = getSharedPreferences("tesla_credentials", MODE_PRIVATE);
+        // A store this version seeded (it has "seed") is not an old one: after
+        // Sign out it is left to TokenStore to clear, never adopted again.
+        String token = old.contains("seed") ? "" : old.getString("refresh_token", "");
         if (token.length() == 0) return;
         java.util.Map<String, String> values = new java.util.LinkedHashMap<>();
         values.put("refreshToken", token);

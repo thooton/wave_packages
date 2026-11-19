@@ -86,7 +86,8 @@ MainActivity / ChargingService
   `TokenStore` seeds "tesla_credentials" from it once (it keeps a digest of
   the token it was seeded with) and rotates from there. A different token
   imported starts over; signed out, the rotated tokens are cleared. A
-  pre-setup version's live token is adopted as the setup on first launch.
+  pre-setup version's live token (a store without a "seed") is adopted as the
+  setup on first launch; with no setup, MainActivity clears the store.
 - Tesla rotates refresh tokens on use. Always obtain
   `ChargingRepository.get(Context)`; never construct a second repository,
   `TokenStore`, or independent refresh path. Concurrent clients can invalidate
