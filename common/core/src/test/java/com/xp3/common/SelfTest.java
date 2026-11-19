@@ -1,6 +1,7 @@
 package com.xp3.common;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -160,6 +161,46 @@ public final class SelfTest {
             check.same("started over", "1/2", fresh.progress()[0] + "/" + fresh.progress()[1]);
         });
 
+        check.run("a key in an address never reaches an error", () -> {
+            String key = "AIzaSyDUMMYDUMMYDUMMYDUMMYDUMMYDUMMY12";
+            IOException quoted = Http.friendly(new java.io.FileNotFoundException(
+                "https://maps.googleapis.com/maps/api/geocode/json?latlng=1,2&key=" + key));
+            check.ok("the key is cut off", !quoted.getMessage().contains(key));
+            check.ok("the address stays", quoted.getMessage().startsWith("https://maps.googleapis.com/maps/api/geocode/json?"));
+            IOException wrapped = Http.friendly(new IOException("unexpected end of stream on https://x.example/a#t=" + key + " (retry)"));
+            check.ok("in the middle of a sentence too", !wrapped.getMessage().contains(key) && wrapped.getMessage().endsWith("(retry)"));
+            IOException plain = new IOException("The file changed while it was being sent.");
+            check.ok("a message with no address is left alone", Http.friendly(plain) == plain);
+            check.same("timeouts are named", "The connection timed out.",
+                Http.friendly(new java.net.SocketTimeoutException("connect timed out to https://x/?key=" + key)).getMessage());
+        });
+
+        check.run("a pool left behind holds no thread", () -> {
+            final String name = "workers-test-" + System.nanoTime();
+            java.util.concurrent.ExecutorService pool = Workers.pool(name, 2, 200);
+            final java.util.concurrent.atomic.AtomicInteger ran = new java.util.concurrent.atomic.AtomicInteger();
+            for (int i = 0; i < 6; i++) pool.execute(ran::incrementAndGet);
+            long until = System.currentTimeMillis() + 5000;
+            while (ran.get() < 6 && System.currentTimeMillis() < until) Thread.sleep(10);
+            check.same("all ran", 6, ran.get());
+            until = System.currentTimeMillis() + 5000;
+            while (threads(name) > 0 && System.currentTimeMillis() < until) Thread.sleep(50);
+            check.same("idle threads ended", 0, threads(name));
+            pool.execute(ran::incrementAndGet);
+            until = System.currentTimeMillis() + 5000;
+            while (ran.get() < 7 && System.currentTimeMillis() < until) Thread.sleep(10);
+            check.same("and work queued later still runs", 7, ran.get());
+            final StringBuilder order = new StringBuilder();
+            java.util.concurrent.ExecutorService one = Workers.pool(name + "-1", 1, 200);
+            for (int i = 0; i < 5; i++) {
+                final int n = i;
+                one.execute(() -> order.append(n));
+            }
+            one.shutdown();
+            one.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS);
+            check.same("one thread keeps the order", "01234", order.toString());
+        });
+
         check.run("a setup file written from two threads at once", () -> {
             File dir = java.nio.file.Files.createTempDirectory("disk").toFile();
             final File file = new File(dir, "wave-setup.json");
@@ -271,6 +312,12 @@ public final class SelfTest {
         });
 
         if (!check.report()) System.exit(1);
+    }
+
+    static int threads(String name) {
+        int count = 0;
+        for (Thread thread : Thread.getAllStackTraces().keySet()) if (thread.getName().equals(name)) count++;
+        return count;
     }
 
     static List<File> descriptors(File root) {

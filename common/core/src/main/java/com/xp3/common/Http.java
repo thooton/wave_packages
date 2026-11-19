@@ -59,7 +59,17 @@ public final class Http {
      * "java.net.UnknownHostException: Unable to resolve host" answers neither.
      * Anything already phrased for a person passes through untouched.
      */
-    private static IOException friendly(IOException e) {
+    /**
+     * A message with any web address's query cut off. Some requests carry a
+     * key in the address (Google's Geocoding API takes `key=` there), and a
+     * few of the platform's own errors quote the address they failed on.
+     */
+    static String scrub(String message) {
+        if (message == null) return null;
+        return message.replaceAll("(\\w+://[^\\s?#\"'<>]*)[?#][^\\s\"'<>]*", "$1?\u2026");
+    }
+
+    static IOException friendly(IOException e) {
         if (e instanceof java.net.SocketTimeoutException) {
             return new IOException("The connection timed out.");
         }
@@ -72,6 +82,9 @@ public final class Http {
         if (e instanceof javax.net.ssl.SSLException) {
             return new IOException("The secure connection failed.");
         }
+        String message = e.getMessage();
+        String safe = scrub(message);
+        if (safe != null && !safe.equals(message)) return new IOException(safe);
         return e;
     }
 

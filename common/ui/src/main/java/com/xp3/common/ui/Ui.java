@@ -10,7 +10,6 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /** Helpers for views and for work off the main thread. See also BaseActivity. */
 public final class Ui {
@@ -67,10 +66,7 @@ public final class Ui {
 
     /** As {@link #worker}, with up to `threads` jobs at once. */
     public static ExecutorService workers(final String name, int threads) {
-        return Executors.newFixedThreadPool(threads, runnable -> {
-            Thread thread = new Thread(runnable, name);
-            thread.setDaemon(true);
-            return thread;
-        });
+        // Idle threads end by themselves, so a pool an activity leaves behind costs nothing.
+        return com.xp3.common.Workers.pool(name, threads);
     }
 }
