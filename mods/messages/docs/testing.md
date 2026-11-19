@@ -18,12 +18,12 @@ system properties that reset on reboot, and nothing changes behaviour unless the
 * `python3 tools/testing/fake_mmsc.py`: fake MMSC on :8098 (OMA MMS 1.2 PDUs). Control API:
   `POST /ctl/new {from,to,cc,text,subject,image,delay,fail}`, `GET /ctl/log` (everything the phone
   posted: M-Send.req with recipients and report flags, NotifyResp/Ack), `GET /ctl/reset`.
-* `tools/testing/testnet.sh on|off`: adb reverse :8098, `debug.argon.mms.testnet=1` (skip the
-  carrier MMS APN), `debug.argon.mms.mmsc=http://127.0.0.1:8098/mmsc`.
+* `tools/testing/testnet.sh on|off`: adb reverse :8098, `debug.wave.mms.testnet=1` (skip the
+  carrier MMS APN), `debug.wave.mms.mmsc=http://127.0.0.1:8098/mmsc`.
 * `tools/testing/mms_inject.sh <from> <to,...> <text>`: creates a message at the MMSC and delivers
   its WAP push (prints `MMSC_ID`).
 * `tools/testing/mms_suite.sh`: receive regression suite (8 checks, see its header). Spoofs our
-  number with `debug.argon.self_number=+15550002`.
+  number with `debug.wave.self_number=+15550002`.
 * `tools/testing/mms_watch.sh <s>`: samples pdu rows / notification twice a second.
 * `tools/testing/mms_latency.sh [n] [warm|cold]`, `tools/testing/mms_trace.sh`,
   `tools/testing/trace_top.py`: latency and method traces (docs/fixes/performance).
@@ -38,7 +38,7 @@ system properties that reset on reboot, and nothing changes behaviour unless the
 * `tools/testing/inbox_open.sh [samples]`: cold inbox window, contact map, query and first
   nonempty list layout timings. The phone must be unlocked. The script resets its log flags.
 * `tools/testing/conversation_open.sh THREAD [--cold]`: launch markers, row binds, PDU loads and
-  WebView startup. Set `adb shell setprop log.tag.ArgonLaunch DEBUG` before a cold launch to time
+  WebView startup. Set `adb shell setprop log.tag.WaveLaunch DEBUG` before a cold launch to time
   app init, conversation view setup, history, and the first nonempty list layout. `rows_ready` is
   pre-draw, not GPU presentation or completion of the media loader. Clear the property after testing.
   Use `log.tag.Mms=VERBOSE` separately for stock markers; it changes the startup workload.
@@ -69,7 +69,7 @@ messages.
 ## Cleaning up the phone
 ```
 tools/testing/testnet.sh off; tools/rcs/testnet.sh off
-adb shell su -c "'setprop debug.argon.self_number \"\"'"
+adb shell su -c "'setprop debug.wave.self_number \"\"'"
 tools/rcs/import_config.sh clear=1 enabled=0            # if a test RCS config was imported
 # delete test threads (Messages UI or content delete on content://mms-sms/conversations/<id>)
 adb shell appops set com.android.shell WRITE_SMS default

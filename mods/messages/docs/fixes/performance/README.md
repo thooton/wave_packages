@@ -34,7 +34,7 @@ Not changed: the SMS receive path (inject -> notification ~0.5 s, mostly the not
 which got cheaper with the first fix), `MessageUtils.updateThreadAttachTypeByThreadId` (runs after
 the notification), cold process start (~0.4 s before the push is handled).
 
-## Fixes (`apps/BMms/java/com/android/mms/transaction/ArgonPerf.java`, smali hooks marked `PERF(...)`)
+## Fixes (`apps/BMms/java/com/android/mms/transaction/WavePerf.java`, smali hooks marked `PERF(...)`)
 
 1. **Notification content cache** (`MessagingNotification.smali`, `addMmsNotificationInfos`):
    sender (`mmsFrom`, replaces `AddressUtils.getFrom`), text and attachment type are cached per
@@ -42,17 +42,17 @@ the notification), cold process start (~0.4 s before the push is handled).
    (its picture may be shown); later rows use the cache, are loaded once if not cached, and rows
    past the newest 8 are not loaded at all unless the pop-up alert preference is on (it lists every
    message). Pictures are decoded for row 0 only.
-2. **Early MMS notification** (`NotificationTransaction.smali`): `ArgonPerf.notifyEarly(uri)` right
+2. **Early MMS notification** (`NotificationTransaction.smali`): `WavePerf.notifyEarly(uri)` right
    after the message is stored; `TransactionService.update` calls `updateAfterTransaction`, which
    skips its own notification once for a thread that was notified early (no second sound). Entries
    expire after 5 min.
-3. **Push executor** (`PushReceiver.smali`): `ReceivePushTask.executeOnExecutor(ArgonPerf.PUSH_EXECUTOR)`,
+3. **Push executor** (`PushReceiver.smali`): `ReceivePushTask.executeOnExecutor(WavePerf.PUSH_EXECUTOR)`,
    a dedicated single thread (still serial among pushes, which stock duplicate detection expects).
 4. **MMS network linger** (`TransactionService.smali`, `releaseNetworkRequest`): when the MMS
    network is connected, `lingerMmsNetwork` files its own request for it before stock releases its
    own, and drops it 5 s later (like AOSP `MmsNetworkManager.NETWORK_RELEASE_TIMEOUT_MILLIS`). A
    following MMS finds the network up. Never when the test network is on; never more than one.
-5. **Expiry query** (`DownloadManager.smali`, `markState`): `ArgonPerf.expiry` reads the `exp`
+5. **Expiry query** (`DownloadManager.smali`, `markState`): `WavePerf.expiry` reads the `exp`
    column (same semantics: missing row throws like `PduPersister.load`, missing value = -1).
 6. **Compiled code** (`module/service.sh`, Magisk late-start): 90 s after boot,
    `cmd package compile -m speed` for `com.android.mms` and `com.android.providers.telephony`

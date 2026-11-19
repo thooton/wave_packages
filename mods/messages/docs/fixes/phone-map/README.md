@@ -1,7 +1,7 @@
 # Bulk phone-to-name lookup
 
-`content://com.android.contacts/data?argon_phone_map=1` with the single
-projection token `argon_phone_map_v1` exposes the current user's local phone
+`content://com.android.contacts/data?wave_phone_map=1` with the single
+projection token `wave_phone_map_v1` exposes the current user's local phone
 lookup rows and contact display metadata in one fixed, read-only cursor. It runs
 after the provider's normal read-access, profile and directory routing, checks
 `READ_CONTACTS` explicitly, and only accepts same-user callers. No arbitrary

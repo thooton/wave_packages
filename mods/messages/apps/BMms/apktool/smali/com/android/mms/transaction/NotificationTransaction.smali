@@ -342,7 +342,7 @@
     # FIX(mms ack): the framework composer drops X-Mms-Report-Allowed from M-NotifyResp.ind
     iget-object v1, p0, Lcom/android/mms/transaction/NotificationTransaction;->mContext:Landroid/content/Context;
 
-    invoke-static {v0, v1}, Lcom/android/mms/transaction/ArgonMmsReceive;->withReportAllowed([BLandroid/content/Context;)[B
+    invoke-static {v0, v1}, Lcom/android/mms/transaction/WaveMmsReceive;->withReportAllowed([BLandroid/content/Context;)[B
 
     move-result-object v0
 
@@ -369,7 +369,7 @@
     # FIX(mms ack): the framework composer drops X-Mms-Report-Allowed from M-NotifyResp.ind
     iget-object v1, p0, Lcom/android/mms/transaction/NotificationTransaction;->mContext:Landroid/content/Context;
 
-    invoke-static {v0, v1}, Lcom/android/mms/transaction/ArgonMmsReceive;->withReportAllowed([BLandroid/content/Context;)[B
+    invoke-static {v0, v1}, Lcom/android/mms/transaction/WaveMmsReceive;->withReportAllowed([BLandroid/content/Context;)[B
 
     move-result-object v0
 
@@ -959,8 +959,8 @@
     const/4 v5, 0x0
 
     # FEAT(self number): learn our own number from 1:1 MMS when the SIM has none; v3 =
-    # createThreadId (false when ArgonSelf.afterPersist picks the group thread itself)
-    invoke-static {v1, v4}, Lcom/android/mms/argon/ArgonSelf;->beforePersist(Lcom/google/android/mms/pdu/GenericPdu;Z)Z
+    # createThreadId (false when WaveSelf.afterPersist picks the group thread itself)
+    invoke-static {v1, v4}, Lcom/android/mms/wave/WaveSelf;->beforePersist(Lcom/google/android/mms/pdu/GenericPdu;Z)Z
 
     move-result v3
 
@@ -970,7 +970,7 @@
     move-result-object v10
 
     # FEAT(self number): file under the right group thread when the SIM has no number
-    invoke-static {v10, v4}, Lcom/android/mms/argon/ArgonSelf;->afterPersist(Landroid/net/Uri;Z)V
+    invoke-static {v10, v4}, Lcom/android/mms/wave/WaveSelf;->afterPersist(Landroid/net/Uri;Z)V
 
     .line 212
     new-instance v11, Landroid/content/ContentValues;
@@ -1168,7 +1168,7 @@
     iput-object v10, p0, Lcom/android/mms/transaction/NotificationTransaction;->mUri:Landroid/net/Uri;
 
     # PERF(mms notification): notify now, not after the NotifyResp round trip
-    invoke-static {v10}, Lcom/android/mms/transaction/ArgonPerf;->notifyEarly(Landroid/net/Uri;)V
+    invoke-static {v10}, Lcom/android/mms/transaction/WavePerf;->notifyEarly(Landroid/net/Uri;)V
 
     move v0, v6
 

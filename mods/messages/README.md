@@ -1,4 +1,4 @@
-# Messages Argon
+# Messages Improved
 
 Modified stock Messages app (BMms) and TelephonyProvider for the Sonim XP3800 (Android 8.1),
 deployed as a Magisk module. Goal: a revamped messaging system on top of the stock apps.

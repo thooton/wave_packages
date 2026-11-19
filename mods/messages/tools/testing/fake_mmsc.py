@@ -4,7 +4,7 @@ Fake MMSC for testing incoming/outgoing MMS on a phone without a SIM (developmen
 
 The phone reaches it through `adb reverse tcp:8098 tcp:8098` (http://127.0.0.1:8098) with the
 BMms test network switched on:
-    adb shell su -c 'setprop debug.argon.mms.testnet 1; setprop debug.argon.mms.mmsc http://127.0.0.1:8098/mmsc'
+    adb shell su -c 'setprop debug.wave.mms.testnet 1; setprop debug.wave.mms.mmsc http://127.0.0.1:8098/mmsc'
 
 It encodes real OMA MMS 1.2 PDUs (WSP binary): M-Notification.ind (what the WAP push carries)
 and M-Retrieve.conf (what the phone downloads), and decodes what the phone POSTs

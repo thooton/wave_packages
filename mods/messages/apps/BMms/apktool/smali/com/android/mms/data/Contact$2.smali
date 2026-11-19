@@ -37,7 +37,7 @@
     .prologue
     .line 77
     # PERF(phone map): invalidate only on a real Contacts observer change.
-    invoke-static {}, Lcom/android/mms/data/ArgonPhoneSnapshot;->invalidate()V
+    invoke-static {}, Lcom/android/mms/data/WavePhoneSnapshot;->invalidate()V
     invoke-static {}, Lcom/android/mms/data/Contact;->invalidateCache()V
 
     .line 78

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Time a registered conversation launch without printing or saving any message text.
-# Set log.tag.ArgonLaunch=DEBUG before process launch for app and first-layout stages.
+# Set log.tag.WaveLaunch=DEBUG before process launch for app and first-layout stages.
 # Set log.tag.Mms=VERBOSE only when you also need the stock history/PDU diagnostics.
 # --cold stops only the Messages process, not the provider or filesystem cache.
 set -euo pipefail
@@ -15,8 +15,8 @@ if [[ ${2:-} == --cold ]]; then adb shell am force-stop "$app"; fi
 after=$(adb shell 'date "+%m-%d %H:%M:%S.000"' | tr -d '\r')
 adb shell am start -f 0x10008000 -a android.intent.action.VIEW \
     -d "content://mms-sms/conversations/$thread" -n "$app/.ui.ComposeMessageActivity" >/dev/null
-sleep "${ARGON_OPEN_WAIT:-4}"
-adb logcat -v epoch -d -T "$after" ActivityManager:I Mms:V WebViewFactory:I ArgonLaunch:D '*:S' | python3 -c '
+sleep "${WAVE_OPEN_WAIT:-4}"
+adb logcat -v epoch -d -T "$after" ActivityManager:I Mms:V WebViewFactory:I WaveLaunch:D '*:S' | python3 -c '
 import re, sys
 start = None
 marks = {"display": [], "history": [], "bind": [], "pdu": [], "webview": []}
@@ -33,7 +33,7 @@ for line in sys.stdin:
         stages.clear()
     if start is None:
         continue
-    stage = re.search(r"\bArgonLaunch:\s+([a-z_]+)\s*$", line)
+    stage = re.search(r"\bWaveLaunch:\s+([a-z_]+)\s*$", line)
     if stage:
         stages.setdefault(stage[1], round((now-start)*1000))
     for key, marker in (("display", "Displayed com.android.mms/.ui.ComposeMessageActivity"),

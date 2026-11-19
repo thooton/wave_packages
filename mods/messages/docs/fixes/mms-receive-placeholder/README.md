@@ -11,7 +11,7 @@ unseen, and `MessagingNotification` announces it. `RetrieveTransaction`/`Notific
 then download the real message (M-Retrieve.conf, which has all recipients), store it in the group
 thread and delete the placeholder.
 
-## Fix (`apps/BMms/java/com/android/mms/transaction/ArgonMmsReceive.java`)
+## Fix (`apps/BMms/java/com/android/mms/transaction/WaveMmsReceive.java`)
 * `PushReceiver$ReceivePushTask.smali`: the `createThreadId` argument of `PduPersister.persist`
   comes from `prepareIncomingNotification(values, pdu)`. When the message will be downloaded
   automatically, the placeholder is stored **held**: no thread, `seen=1`, `read=1`, so it is

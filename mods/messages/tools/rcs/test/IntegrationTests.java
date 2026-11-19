@@ -11,11 +11,11 @@ import java.util.Random;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import org.argon.rcs.RcsCapabilities;
-import org.argon.rcs.RcsConfig;
-import org.argon.rcs.RcsEngine;
-import org.argon.rcs.RcsGroup;
-import org.argon.rcs.RcsMessage;
+import org.wave.rcs.RcsCapabilities;
+import org.wave.rcs.RcsConfig;
+import org.wave.rcs.RcsEngine;
+import org.wave.rcs.RcsGroup;
+import org.wave.rcs.RcsMessage;
 
 /**
  * End-to-end tests of RcsEngine against the mock network (tools/rcs/mock). The mock must be running
@@ -105,7 +105,7 @@ public final class IntegrationTests {
             List<Object> regs = mock.registrations();
             String s = Json.write(regs);
             T.contains(s, "urn:gsma:imei:35987654-321098-0", "instance id (IMEI URN)");
-            T.contains(s, "IM-client/OMA1.0 Argon/1.0", "user agent");
+            T.contains(s, "IM-client/OMA1.0 Wave/1.0", "user agent");
         });
 
         T.test("restart uses token (no OTP), stop un-registers", () -> {
@@ -181,10 +181,10 @@ public final class IntegrationTests {
 
         T.test("1:1 text out (session), receipts policy, invite headers", () -> {
             mock.clear(B);
-            String id = eng.sendText(B, "hello from argon");
+            String id = eng.sendText(B, "hello from wave");
             RecListener.SendResult r = rec.result(id, 20000);
             T.check(r.ok, "send ok: " + r);
-            Map<String, Object> m = waitReceived(B, "text", x -> "hello from argon".equals(x.get("text")), 10000);
+            Map<String, Object> m = waitReceived(B, "text", x -> "hello from wave".equals(x.get("text")), 10000);
             T.eq(id, m.get("message_id"), "IMDN Message-ID = returned id");
             T.eq(Boolean.FALSE, m.get("disposition_requested"), "no receipts requested by default");
             T.eq("msrp", m.get("via"), "via MSRP");

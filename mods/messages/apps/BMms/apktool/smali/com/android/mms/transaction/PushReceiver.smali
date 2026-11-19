@@ -416,7 +416,7 @@
     aput-object p2, v1, v2
 
     # PERF(mms push): own serial executor instead of the app-wide AsyncTask one
-    sget-object v3, Lcom/android/mms/transaction/ArgonPerf;->PUSH_EXECUTOR:Ljava/util/concurrent/Executor;
+    sget-object v3, Lcom/android/mms/transaction/WavePerf;->PUSH_EXECUTOR:Ljava/util/concurrent/Executor;
 
     invoke-virtual {v0, v3, v1}, Lcom/android/mms/transaction/PushReceiver$ReceivePushTask;->executeOnExecutor(Ljava/util/concurrent/Executor;[Ljava/lang/Object;)Landroid/os/AsyncTask;
 

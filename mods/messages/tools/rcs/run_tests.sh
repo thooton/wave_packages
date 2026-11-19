@@ -11,8 +11,8 @@ CLS="$OUT/classes"
 rm -rf "$CLS"; mkdir -p "$CLS" "$OUT"
 echo "== compiling"
 javac -nowarn -Xlint:-options -source 8 -target 8 -encoding UTF-8 -d "$CLS" \
-    $(find apps/BMms/java/org/argon -name '*.java') tools/rcs/test/*.java 2>&1 | grep -v '^Note:'
-[ -f "$CLS/IntegrationTests.class" ] && [ -f "$CLS/org/argon/rcs/RcsEngine.class" ] || { echo "compile failed"; exit 1; }
+    $(find apps/BMms/java/org/wave -name '*.java') tools/rcs/test/*.java 2>&1 | grep -v '^Note:'
+[ -f "$CLS/IntegrationTests.class" ] && [ -f "$CLS/org/wave/rcs/RcsEngine.class" ] || { echo "compile failed"; exit 1; }
 
 PIDS=()
 cleanup() { for p in "${PIDS[@]:-}"; do [ -n "$p" ] && kill "$p" 2>/dev/null; done; }

@@ -1,7 +1,7 @@
 #!/bin/bash
 # tools/testing/mms_suite.sh: end-to-end MMS receive regression suite (phone without SIM).
 # Needs: fake MMSC running (python3 tools/testing/fake_mmsc.py), tools/testing/push.sh done,
-# Messages Argon build installed. Turns the test network on, spoofs own number +15550002,
+# Messages Improved build installed. Turns the test network on, spoofs own number +15550002,
 # deletes previous test threads (numbers +1555000xx only), then checks:
 #   1 group MMS, slow download: nothing visible while downloading, lands in group thread
 #   2 group MMS with 3 others -> thread of 3
@@ -27,7 +27,7 @@ thread_of() {
 }
 curl -sf $MMSC/ctl/reset >/dev/null || { echo "fake MMSC not running"; exit 2; }
 tools/testing/testnet.sh on >/dev/null
-adb shell su -c "'setprop debug.argon.self_number +15550002'"
+adb shell su -c "'setprop debug.wave.self_number +15550002'"
 adb shell appops set com.android.shell WRITE_SMS allow
 for t in $(db "select t._id from threads t join canonical_addresses c on (' '||t.recipient_ids||' ') like ('% '||c._id||' %') where c.address like '+155500%' group by t._id;"); do
   adb shell content delete --uri content://mms-sms/conversations/$t >/dev/null

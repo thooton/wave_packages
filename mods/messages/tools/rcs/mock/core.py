@@ -19,7 +19,7 @@ class Config:
         self.msrps_port = 2856
         self.control_port = 8099
         self.control_bind = '127.0.0.1'
-        self.secret = 'argon-rcs-mock-secret'
+        self.secret = 'wave-rcs-mock-secret'
         self.reg_expires = 3600            # max accepted REGISTER expires (s)
         self.prov_tls = False              # provision SIPoTLS/MSRPoTLS instead of TCP
         self.ft_scheme = 'http'            # scheme advertised in ftHTTPCSURI / data urls

@@ -779,17 +779,17 @@
 
     iget v5, p0, Lcom/android/mms/transaction/SmsSingleRecipientSender;->mSubId:I
 
-    invoke-static {p0, v1, v2, v4, v5}, Lcom/android/mms/transaction/ArgonRcsSend;->interceptSms(Lcom/android/mms/transaction/SmsSingleRecipientSender;Landroid/net/Uri;Ljava/lang/String;Ljava/lang/String;I)Z
+    invoke-static {p0, v1, v2, v4, v5}, Lcom/android/mms/transaction/WaveRcsSend;->interceptSms(Lcom/android/mms/transaction/SmsSingleRecipientSender;Landroid/net/Uri;Ljava/lang/String;Ljava/lang/String;I)Z
 
     move-result v1
 
-    if-eqz v1, :argon_sms
+    if-eqz v1, :wave_sms
 
     const/4 v1, 0x0
 
     return v1
 
-    :argon_sms
+    :wave_sms
     iget-object v1, p0, Lcom/android/mms/transaction/SmsSingleRecipientSender;->mContext:Landroid/content/Context;
 
     iget-object v2, p0, Lcom/android/mms/transaction/SmsSingleRecipientSender;->mUri:Landroid/net/Uri;

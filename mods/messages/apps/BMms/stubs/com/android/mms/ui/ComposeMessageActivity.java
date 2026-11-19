@@ -2,7 +2,7 @@
 package com.android.mms.ui;
 
 public class ComposeMessageActivity extends android.app.Activity {
-    Object mArgonHistory;
+    Object mWaveHistory;
     public MessageListAdapter mMsgListAdapter;
-    boolean argonScrollOnSend() { return false; }
+    boolean waveScrollOnSend() { return false; }
 }

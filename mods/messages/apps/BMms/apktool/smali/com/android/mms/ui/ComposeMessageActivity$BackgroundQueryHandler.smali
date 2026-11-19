@@ -204,7 +204,7 @@
 
     .prologue
     # PERF(mms rows): load the newest MMS rows while the list is being built
-    invoke-static {p1, p3}, Lcom/android/mms/ui/ArgonComposePerf;->prefetch(ILandroid/database/Cursor;)V
+    invoke-static {p1, p3}, Lcom/android/mms/ui/WaveComposePerf;->prefetch(ILandroid/database/Cursor;)V
 
     const-wide/16 v2, 0x0
 
@@ -314,7 +314,7 @@
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 
     # PERF(history paging): jump to a search result once, not on every prepend or refresh
-    invoke-static {v0}, Lcom/android/mms/ui/ArgonHistory;->selectionId(Lcom/android/mms/ui/ComposeMessageActivity;)J
+    invoke-static {v0}, Lcom/android/mms/ui/WaveHistory;->selectionId(Lcom/android/mms/ui/ComposeMessageActivity;)J
 
     move-result-wide v6
 
@@ -359,7 +359,7 @@
     iget-object v6, p0, Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 
     # PERF(history): keep the visible row in place when the full cursor refreshes
-    invoke-static {v6, p3, v0}, Lcom/android/mms/ui/ArgonHistory;->apply(Lcom/android/mms/ui/ComposeMessageActivity;Landroid/database/Cursor;I)I
+    invoke-static {v6, p3, v0}, Lcom/android/mms/ui/WaveHistory;->apply(Lcom/android/mms/ui/ComposeMessageActivity;Landroid/database/Cursor;I)I
     move-result v0
     const/4 v6, -0x2
     if-eq v0, v6, :goto_2
@@ -469,7 +469,7 @@
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 
     # PERF(history paging): keep DPAD focus on the anchored message when prepending
-    invoke-static {v0}, Lcom/android/mms/ui/ArgonHistory;->keepFocus(Lcom/android/mms/ui/ComposeMessageActivity;)Z
+    invoke-static {v0}, Lcom/android/mms/ui/WaveHistory;->keepFocus(Lcom/android/mms/ui/ComposeMessageActivity;)Z
     move-result v0
     if-nez v0, :goto_3
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;

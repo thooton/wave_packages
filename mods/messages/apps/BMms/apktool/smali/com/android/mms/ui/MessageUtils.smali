@@ -2060,7 +2060,7 @@
     .line 2296
     :cond_1
     # FEAT(rcs): sending is possible without a SIM while RCS is registered
-    invoke-static {v0}, Lcom/android/mms/argon/RcsHost;->activatedIccCardCount(I)I
+    invoke-static {v0}, Lcom/android/mms/wave/RcsHost;->activatedIccCardCount(I)I
 
     move-result v0
 
@@ -3048,7 +3048,7 @@
     move-result-object v0
 
     # FEAT(self number): learned own number when the SIM doesn't carry one
-    invoke-static {v0}, Lcom/android/mms/argon/ArgonSelf;->localNumber(Ljava/lang/String;)Ljava/lang/String;
+    invoke-static {v0}, Lcom/android/mms/wave/WaveSelf;->localNumber(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 

@@ -444,7 +444,7 @@
     iget-object v0, p0, Lcom/android/mms/util/DownloadManager;->mContext:Landroid/content/Context;
 
     # PERF(mms download): one column query instead of PduPersister.load
-    invoke-static {v0, p1}, Lcom/android/mms/transaction/ArgonPerf;->expiry(Landroid/content/Context;Landroid/net/Uri;)J
+    invoke-static {v0, p1}, Lcom/android/mms/transaction/WavePerf;->expiry(Landroid/content/Context;Landroid/net/Uri;)J
 
     move-result-wide v0
 

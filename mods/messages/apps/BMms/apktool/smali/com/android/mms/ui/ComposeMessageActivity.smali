@@ -353,7 +353,7 @@
 .field private mScrollOnSend:Z
 
 # PERF(history)
-.field mArgonHistory:Ljava/lang/Object;
+.field mWaveHistory:Ljava/lang/Object;
 
 .field private mSendAfterResize:Z
 
@@ -12548,7 +12548,7 @@
     invoke-virtual {v0, v1}, Lcom/android/mms/ui/MessageListView;->setAdapter(Landroid/widget/ListAdapter;)V
 
     # PERF(history): anchor full-cursor refreshes
-    invoke-static {p0, v0}, Lcom/android/mms/ui/ArgonHistory;->attach(Lcom/android/mms/ui/ComposeMessageActivity;Landroid/widget/ListView;)V
+    invoke-static {p0, v0}, Lcom/android/mms/ui/WaveHistory;->attach(Lcom/android/mms/ui/ComposeMessageActivity;Landroid/widget/ListView;)V
 
     .line 6887
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mMsgListView:Lcom/android/mms/ui/MessageListView;
@@ -15978,10 +15978,10 @@
     const/4 v1, 0x3
     invoke-static {v0, v1}, Landroid/util/Log;->isLoggable(Ljava/lang/String;I)Z
     move-result v0
-    if-nez v0, :argon_log_enabled
+    if-nez v0, :wave_log_enabled
     return-void
 
-    :argon_log_enabled
+    :wave_log_enabled
     .line 869
     invoke-static {}, Ljava/lang/Thread;->currentThread()Ljava/lang/Thread;
 
@@ -21681,8 +21681,8 @@
     return v4
 .end method
 
-# PERF(history): package bridges for ArgonHistory
-.method argonScrollOnSend()Z
+# PERF(history): package bridges for WaveHistory
+.method waveScrollOnSend()Z
     .locals 1
     iget-boolean v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mScrollOnSend:Z
     return v0
@@ -21849,7 +21849,7 @@
     move v1, p1
 
     # PERF(history): opt in without changing the stock projection
-    invoke-static {p0, p1, v3}, Lcom/android/mms/ui/ArgonHistory;->queryUri(Lcom/android/mms/ui/ComposeMessageActivity;ILandroid/net/Uri;)Landroid/net/Uri;
+    invoke-static {p0, p1, v3}, Lcom/android/mms/ui/WaveHistory;->queryUri(Lcom/android/mms/ui/ComposeMessageActivity;ILandroid/net/Uri;)Landroid/net/Uri;
     move-result-object v3
 
     .line 6859
@@ -23370,7 +23370,7 @@
     const-string/jumbo v0, ", "
 
     # FIX(group first open): use the same resolved phone names as the inbox.
-    invoke-static {p1, v0}, Lcom/android/mms/data/ArgonPhoneSnapshot;->formatNames(Lcom/android/mms/data/ContactList;Ljava/lang/String;)Ljava/lang/String;
+    invoke-static {p1, v0}, Lcom/android/mms/data/WavePhoneSnapshot;->formatNames(Lcom/android/mms/data/ContactList;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 
@@ -23412,11 +23412,11 @@
 
     # FIX(group first open): use the stock gray swatch for a group, not whichever
     # color the first recipient's avatar happened to cache in the inbox.
-    if-eq v3, v8, :argon_single_palette
+    if-eq v3, v8, :wave_single_palette
     const v0, -0x8a8a8b    # #757575, stock neutral letter tile
     goto :cond_8
 
-    :argon_single_palette
+    :wave_single_palette
     .line 2898
     invoke-virtual {p1, v6}, Lcom/android/mms/data/ContactList;->get(I)Ljava/lang/Object;
 
@@ -24191,7 +24191,7 @@
     :goto_0
     :try_start_0
     # Fast text MMS has no slideshow until a carrier-restricted forward needs one.
-    invoke-static {p1}, Lcom/android/mms/ui/ArgonTextMms;->slidesForRestriction(Lcom/android/mms/ui/MessageItem;)Lcom/android/mms/model/SlideshowModel;
+    invoke-static {p1}, Lcom/android/mms/ui/WaveTextMms;->slidesForRestriction(Lcom/android/mms/ui/MessageItem;)Lcom/android/mms/model/SlideshowModel;
     move-result-object v0
 
     invoke-interface {v0}, Ljava/lang/Iterable;->iterator()Ljava/util/Iterator;
@@ -24573,7 +24573,7 @@
     invoke-direct {p0, p1}, Lcom/android/mms/ui/ComposeMessageActivity;->initActivityState(Landroid/os/Bundle;)V
 
     const-string v2, "compose_thread"
-    invoke-static {v2}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+    invoke-static {v2}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
 
     .line 3157
     invoke-static {}, Lcom/android/mms/MmsConfig;->isRcsVersion()Z
@@ -24630,7 +24630,7 @@
     const/4 v3, 0x3
     invoke-static {v2, v3}, Landroid/util/Log;->isLoggable(Ljava/lang/String;I)Z
     move-result v2
-    if-eqz v2, :argon_launch_log_done
+    if-eqz v2, :wave_launch_log_done
     new-instance v2, Ljava/lang/StringBuilder;
 
     invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
@@ -24685,7 +24685,7 @@
 
     invoke-static {v2}, Lcom/android/mms/ui/ComposeMessageActivity;->log(Ljava/lang/String;)V
 
-    :argon_launch_log_done
+    :wave_launch_log_done
     .line 3171
     invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getIntent()Landroid/content/Intent;
 
@@ -24717,22 +24717,22 @@
 
     # FIX(conversation reveal): wait only on a real thread that will query history.
     iget-boolean v2, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mSendReplyMode:Z
-    if-nez v2, :argon_no_reveal
+    if-nez v2, :wave_no_reveal
     iget-boolean v2, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mSendDiscreetMode:Z
-    if-nez v2, :argon_no_reveal
+    if-nez v2, :wave_no_reveal
     invoke-static {}, Lcom/android/mms/ui/MessageUtils;->isMailboxMode()Z
     move-result v2
-    if-nez v2, :argon_no_reveal
+    if-nez v2, :wave_no_reveal
     iget-object v2, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mConversation:Lcom/android/mms/data/Conversation;
     invoke-virtual {v2}, Lcom/android/mms/data/Conversation;->getThreadId()J
     move-result-wide v2
-    invoke-static {p0, v2, v3}, Lcom/android/mms/ui/ArgonHistory;->beginReveal(Lcom/android/mms/ui/ComposeMessageActivity;J)V
-    goto :argon_reveal_armed
+    invoke-static {p0, v2, v3}, Lcom/android/mms/ui/WaveHistory;->beginReveal(Lcom/android/mms/ui/ComposeMessageActivity;J)V
+    goto :wave_reveal_armed
 
-    :argon_no_reveal
-    invoke-static {p0}, Lcom/android/mms/ui/ArgonHistory;->endReveal(Lcom/android/mms/ui/ComposeMessageActivity;)V
+    :wave_no_reveal
+    invoke-static {p0}, Lcom/android/mms/ui/WaveHistory;->endReveal(Lcom/android/mms/ui/ComposeMessageActivity;)V
 
-    :argon_reveal_armed
+    :wave_reveal_armed
 
     .line 3181
     iput-boolean v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mShouldLoadDraft:Z
@@ -26474,7 +26474,7 @@
     const/4 v0, 0x0
 
     const-string v1, "compose_start"
-    invoke-static {v1}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+    invoke-static {v1}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
 
     .line 3026
     invoke-static {p0}, Lcom/android/mms/MmsConfig;->isSmsEnabled(Landroid/content/Context;)Z
@@ -26566,7 +26566,7 @@
     invoke-direct {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->initResourceRefs()V
 
     const-string v0, "compose_views"
-    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+    invoke-static {v0}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
 
     .line 3043
     invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
@@ -26858,10 +26858,10 @@
 
     invoke-virtual {p1}, Landroid/view/KeyEvent;->getAction()I
     move-result v0
-    if-nez v0, :argon_dispatch_key
-    invoke-static {p0}, Lcom/android/mms/ui/ArgonHistory;->stopInitialAlignment(Lcom/android/mms/ui/ComposeMessageActivity;)V
+    if-nez v0, :wave_dispatch_key
+    invoke-static {p0}, Lcom/android/mms/ui/WaveHistory;->stopInitialAlignment(Lcom/android/mms/ui/ComposeMessageActivity;)V
 
-    :argon_dispatch_key
+    :wave_dispatch_key
     invoke-super {p0, p1}, Landroid/app/Activity;->dispatchKeyEvent(Landroid/view/KeyEvent;)Z
     move-result v0
     return v0
@@ -26872,10 +26872,10 @@
 
     invoke-virtual {p1}, Landroid/view/MotionEvent;->getActionMasked()I
     move-result v0
-    if-nez v0, :argon_dispatch_touch
-    invoke-static {p0}, Lcom/android/mms/ui/ArgonHistory;->stopInitialAlignment(Lcom/android/mms/ui/ComposeMessageActivity;)V
+    if-nez v0, :wave_dispatch_touch
+    invoke-static {p0}, Lcom/android/mms/ui/WaveHistory;->stopInitialAlignment(Lcom/android/mms/ui/ComposeMessageActivity;)V
 
-    :argon_dispatch_touch
+    :wave_dispatch_touch
     invoke-super {p0, p1}, Landroid/app/Activity;->dispatchTouchEvent(Landroid/view/MotionEvent;)Z
     move-result v0
     return v0
@@ -28386,7 +28386,7 @@
     .line 3630
     invoke-super {p0}, Landroid/app/Activity;->onPause()V
 
-    invoke-static {p0}, Lcom/android/mms/ui/ArgonHistory;->stopInitialAlignment(Lcom/android/mms/ui/ComposeMessageActivity;)V
+    invoke-static {p0}, Lcom/android/mms/ui/WaveHistory;->stopInitialAlignment(Lcom/android/mms/ui/ComposeMessageActivity;)V
 
     .line 3636
     const-wide/16 v0, -0x2
@@ -30957,7 +30957,7 @@
     .line 3675
     invoke-super {p0}, Landroid/app/Activity;->onStop()V
 
-    invoke-static {p0}, Lcom/android/mms/ui/ArgonHistory;->endReveal(Lcom/android/mms/ui/ComposeMessageActivity;)V
+    invoke-static {p0}, Lcom/android/mms/ui/WaveHistory;->endReveal(Lcom/android/mms/ui/ComposeMessageActivity;)V
 
     .line 3678
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mBackgroundQueryHandler:Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;
@@ -31079,16 +31079,16 @@
     .locals 2
 
     .prologue
-    # PERF(contact updates): one refresh posted at a time (ArgonComposePerf)
-    invoke-static {p0, p1}, Lcom/android/mms/ui/ArgonComposePerf;->queue(Ljava/lang/Object;Lcom/android/mms/data/Contact;)Z
+    # PERF(contact updates): one refresh posted at a time (WaveComposePerf)
+    invoke-static {p0, p1}, Lcom/android/mms/ui/WaveComposePerf;->queue(Ljava/lang/Object;Lcom/android/mms/data/Contact;)Z
 
     move-result v0
 
-    if-nez v0, :argon_post
+    if-nez v0, :wave_post
 
     return-void
 
-    :argon_post
+    :wave_post
     .line 7832
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mMessageListItemHandler:Landroid/os/Handler;
 

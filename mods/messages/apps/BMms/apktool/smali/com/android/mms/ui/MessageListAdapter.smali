@@ -1265,7 +1265,7 @@
     check-cast v0, Landroid/view/LayoutInflater;
 
     # PERF(mms rows): rows' TextViews without street-address linking (no WebView start)
-    invoke-static {v0}, Lcom/android/mms/ui/ArgonComposePerf;->rowInflater(Landroid/view/LayoutInflater;)Landroid/view/LayoutInflater;
+    invoke-static {v0}, Lcom/android/mms/ui/WaveComposePerf;->rowInflater(Landroid/view/LayoutInflater;)Landroid/view/LayoutInflater;
 
     move-result-object v0
 
@@ -1401,17 +1401,17 @@
     move-result v1
 
     # PERF(inline text rows): the SMS row pool uses the same layouts without the MMS stub.
-    invoke-static {p1}, Lcom/android/mms/ui/ArgonTextMms;->hasInlineText(Landroid/database/Cursor;)Z
+    invoke-static {p1}, Lcom/android/mms/ui/WaveTextMms;->hasInlineText(Landroid/database/Cursor;)Z
     move-result v2
-    if-eqz v2, :argon_attachment_pool
-    if-eq v1, v0, :argon_received_text
-    if-nez v1, :argon_sent_text
-    :argon_received_text
+    if-eqz v2, :wave_attachment_pool
+    if-eq v1, v0, :wave_received_text
+    if-nez v1, :wave_sent_text
+    :wave_received_text
     const/4 v0, 0x0
-    :argon_sent_text
+    :wave_sent_text
     return v0
 
-    :argon_attachment_pool
+    :wave_attachment_pool
     .line 568
     if-eq v1, v0, :cond_4
 

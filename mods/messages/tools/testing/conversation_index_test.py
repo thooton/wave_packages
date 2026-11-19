@@ -21,15 +21,15 @@ def build_fixtures():
         sql.write_text('''package com.android.providers.telephony;
 public class DumpSchema {
     public static void main(String[] args) {
-        System.out.println(ArgonConversationSchema.ROW_QUERY);
-        System.out.println(ArgonConversationSchema.FIRST_PAGE_QUERY);
-        System.out.println(ArgonConversationSchema.floorQuery(false, ArgonConversationSchema.FIRST_PAGE_SIZE));
-        System.out.println(ArgonConversationSchema.floorQuery(true, 32));
-        System.out.println(ArgonConversationSchema.floorQuery(true, 10));
-        System.out.println(ArgonConversationSchema.pageQuery(true, true));
-        System.out.println(ArgonConversationSchema.pageQuery(false, false));
-        System.out.println(ArgonConversationSchema.FIND_KEY);
-        for (String stmt : ArgonConversationSchema.rebuild()) System.out.println(stmt);
+        System.out.println(WaveConversationSchema.ROW_QUERY);
+        System.out.println(WaveConversationSchema.FIRST_PAGE_QUERY);
+        System.out.println(WaveConversationSchema.floorQuery(false, WaveConversationSchema.FIRST_PAGE_SIZE));
+        System.out.println(WaveConversationSchema.floorQuery(true, 32));
+        System.out.println(WaveConversationSchema.floorQuery(true, 10));
+        System.out.println(WaveConversationSchema.pageQuery(true, true));
+        System.out.println(WaveConversationSchema.pageQuery(false, false));
+        System.out.println(WaveConversationSchema.FIND_KEY);
+        for (String stmt : WaveConversationSchema.rebuild()) System.out.println(stmt);
     }
 }
 ''')
@@ -37,7 +37,7 @@ public class DumpSchema {
         addr.write_text('''package com.android.mms.ui;
 public class CheckAddress {
     private static void check(String text, String expected) {
-        java.util.regex.Matcher match = ArgonStreetAddress.matches(text);
+        java.util.regex.Matcher match = WaveStreetAddress.matches(text);
         String found = match != null && match.find() ? match.group() : null;
         if (!java.util.Objects.equals(found, expected)) throw new AssertionError(text + ": " + found);
     }
@@ -50,17 +50,17 @@ public class CheckAddress {
         check("do 5 more reps", null);
         check("4 Main\\nSt", null);
         check("No street number here", null);
-        if (ArgonStreetAddress.matches("No street number here") != null) {
+        if (WaveStreetAddress.matches("No street number here") != null) {
             throw new AssertionError("ASCII without digits must bypass the matcher");
         }
-        if (ArgonStreetAddress.matches("١ Main St") == null) {
+        if (WaveStreetAddress.matches("١ Main St") == null) {
             throw new AssertionError("Unicode digits must reach the platform regex");
         }
     }
 }
 ''')
         subprocess.run(['javac', '-encoding', 'UTF-8', '-d', work, str(sql), str(addr),
-                        str(PROVIDER / 'ArgonConversationSchema.java'), str(UI / 'ArgonStreetAddress.java')], check=True)
+                        str(PROVIDER / 'WaveConversationSchema.java'), str(UI / 'WaveStreetAddress.java')], check=True)
         subprocess.run(['java', '-cp', work, 'com.android.mms.ui.CheckAddress'], check=True)
         query, *sql = subprocess.check_output(
             ['java', '-cp', work, 'com.android.providers.telephony.DumpSchema'], text=True).splitlines()
@@ -215,7 +215,7 @@ def check_paging(queries, schema):
     db.execute('ROLLBACK TO large_history')
     db.execute('RELEASE large_history')
     plan = [row[-1] for row in db.execute('EXPLAIN QUERY PLAN ' + first_sql, ('9',))]
-    assert sum('SEARCH' in step and 'argon_msg USING PRIMARY KEY' in step for step in plan) == 3, plan
+    assert sum('SEARCH' in step and 'wave_msg USING PRIMARY KEY' in step for step in plan) == 3, plan
     assert not any('TEMP B-TREE' in step for step in plan), plan
     older = db.execute(prepend_sql, ('9', *map(str, newest))).fetchone()
     expanded = db.execute(page_sql, ('9', *map(str, older))).fetchall()
@@ -223,7 +223,7 @@ def check_paging(queries, schema):
     assert db.execute(newest_sql, ('10',)).fetchone() is None
     # A live insert or deletion doesn't turn a historical boundary into an offset.
     db.execute("INSERT INTO sms(_id,thread_id,date,type) VALUES (102,9,999999,1)")
-    db.execute("DELETE FROM argon_msg WHERE thread_id=9 AND (normalized_date,transport_type,_id)=(?,?,?)", older)
+    db.execute("DELETE FROM wave_msg WHERE thread_id=9 AND (normalized_date,transport_type,_id)=(?,?,?)", older)
     changed = db.execute(page_sql, ('9', *map(str, older))).fetchall()
     assert changed[:-1] == expanded[1:] and changed[-1][1] == 102
     for kind in ('mms', 'sms'):
@@ -249,12 +249,12 @@ def check_copy(path, query, schema):
     for table, kind, clause in [('sms', 'sms', 'type<>3'),
                                 ('pdu', 'mms', 'msg_box<>3 AND m_type IN (128,130,132)')]:
         expected = db.execute(f'SELECT _id,thread_id FROM {table} WHERE thread_id IS NOT NULL AND {clause} ORDER BY _id').fetchall()
-        actual = db.execute('SELECT _id,thread_id FROM argon_msg WHERE transport_type=? ORDER BY _id', (kind,)).fetchall()
+        actual = db.execute('SELECT _id,thread_id FROM wave_msg WHERE transport_type=? ORDER BY _id', (kind,)).fetchall()
         assert expected == actual
-    eligible, total = db.execute("SELECT sum(argon_text IS NOT NULL AND (m_type=128 OR length(argon_from)>0)),count(*)"
-                                 " FROM argon_msg WHERE transport_type='mms'").fetchone()
+    eligible, total = db.execute("SELECT sum(wave_text IS NOT NULL AND (m_type=128 OR length(wave_from)>0)),count(*)"
+                                 " FROM wave_msg WHERE transport_type='mms'").fetchone()
     print(f'Copy: all source message IDs match, {eligible or 0}/{total} MMS eligible for inline display')
-    thread = db.execute('SELECT thread_id FROM argon_msg GROUP BY thread_id ORDER BY count(*) DESC LIMIT 1').fetchone()
+    thread = db.execute('SELECT thread_id FROM wave_msg GROUP BY thread_id ORDER BY count(*) DESC LIMIT 1').fetchone()
     if thread:
         start = time.perf_counter()
         for _ in range(40):

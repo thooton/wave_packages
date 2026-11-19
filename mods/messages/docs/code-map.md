@@ -35,23 +35,23 @@ Config booleans in `apktool/res/values/bools.xml` (read-only for now; resources 
   SMS_DELIVER to the default SMS app.
 * An outer-display component logs `ExtDisplay: getMissMmsCount` (owner not identified yet).
 
-## Our code (Messages Argon)
+## Our code (Messages Improved)
 `rg '# (FIX|FEAT|PERF)\(' apps/` lists every smali hook. Java:
 
 | File (`apps/BMms/java/com/android/mms/…`) | What |
 |---|---|
-| `argon/ArgonInit` (`MmsApp.onCreate`), `argon/ArgonHooks` | app start: receipt prefs, held-MMS sweep, RCS start |
-| `argon/Argon` | dev switches (`debug.argon.*` props) |
-| `argon/ArgonConfig` (`MmsConfig`) | recipient limit |
-| `argon/ArgonSelf` (`MessageUtils.getLocalNumber`, persist call sites) | own number, group thread filing |
-| `transaction/ArgonMmsReceive` (`PushReceiver`, `TransactionService`, ack composers) | held placeholder, reveal/sweep, Report-Allowed, MMS test network |
-| `transaction/ArgonPerf` (`MessagingNotification`, `NotificationTransaction`, `TransactionService`, `PushReceiver`, `DownloadManager`) | receive latency |
-| `argon/RcsHost` (`RcsMessageStatusService`, `MessageUtils.getActivatedIccCardCount`) | RCS engine host, platform, config import |
-| `argon/ArgonRcsSettings` (`MessagingPreferenceActivity`, `MessagingReportsPreferenceActivity`) | RCS settings screen |
-| `transaction/ArgonRcsStore`, `transaction/ArgonRcsSend` (`SmsSingleRecipientSender`, `SendTransaction`, `SmsReceiverService`) | RCS storage and routing |
-| `org/argon/rcs/…` | RCS engine (pure Java, docs/rcs/engine.md) |
-| `ui/ArgonComposePerf`, `ui/ArgonHistory`, `ui/ArgonStreetAddress`, `ui/ArgonTextMms` | Conversation load, lightweight address links, inline text MMS |
+| `wave/WaveInit` (`MmsApp.onCreate`), `wave/WaveHooks` | app start: receipt prefs, held-MMS sweep, RCS start |
+| `wave/Wave` | dev switches (`debug.wave.*` props) |
+| `wave/WaveConfig` (`MmsConfig`) | recipient limit |
+| `wave/WaveSelf` (`MessageUtils.getLocalNumber`, persist call sites) | own number, group thread filing |
+| `transaction/WaveMmsReceive` (`PushReceiver`, `TransactionService`, ack composers) | held placeholder, reveal/sweep, Report-Allowed, MMS test network |
+| `transaction/WavePerf` (`MessagingNotification`, `NotificationTransaction`, `TransactionService`, `PushReceiver`, `DownloadManager`) | receive latency |
+| `wave/RcsHost` (`RcsMessageStatusService`, `MessageUtils.getActivatedIccCardCount`) | RCS engine host, platform, config import |
+| `wave/WaveRcsSettings` (`MessagingPreferenceActivity`, `MessagingReportsPreferenceActivity`) | RCS settings screen |
+| `transaction/WaveRcsStore`, `transaction/WaveRcsSend` (`SmsSingleRecipientSender`, `SendTransaction`, `SmsReceiverService`) | RCS storage and routing |
+| `org/wave/rcs/…` | RCS engine (pure Java, docs/rcs/engine.md) |
+| `ui/WaveComposePerf`, `ui/WaveHistory`, `ui/WaveStreetAddress`, `ui/WaveTextMms` | Conversation load, lightweight address links, inline text MMS |
 
 TelephonyProvider: `apps/TelephonyProvider/java/…/ThreadIntegrity` (docs/fixes/sms-orphaned-threads)
-and `ArgonConversationSchema` / `ArgonConversationQuery` (docs/fixes/conversation-load).
+and `WaveConversationSchema` / `WaveConversationQuery` (docs/fixes/conversation-load).
 Magisk module extras: `module/service.sh` (boot-time `speed` dexopt, docs/fixes/performance).

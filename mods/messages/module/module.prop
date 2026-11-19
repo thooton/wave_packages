@@ -1,6 +1,6 @@
-id=messages_argon
-name=Messages Argon
-version=1.0.0
-versionCode=1
+id=messages_improved
+name=Messages Improved
+version=1.0.1
+versionCode=2
 author=thooton
 description=System overlay for the Sonim XP3800 messages stack.

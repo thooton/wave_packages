@@ -1,8 +1,8 @@
-# Argon RCS engine
+# Wave RCS engine
 
 Pure-Java (Java 8 language level, Android API 27 runtime) GSMA RCS Universal Profile client in
-`apps/BMms/java/org/argon/rcs/`. No `android.*` imports: everything platform-specific goes through
-`RcsPlatform` (implemented by the glue in `com.android.mms.argon`). The public contract is the one in
+`apps/BMms/java/org/wave/rcs/`. No `android.*` imports: everything platform-specific goes through
+`RcsPlatform` (implemented by the glue in `com.android.mms.wave`). The public contract is the one in
 [design.md](design.md); this document describes how it is implemented.
 
 ## Public API (as implemented)
@@ -85,7 +85,7 @@ incoming request, waiting for a send result, and during file transfers.
 * REGISTER: stable Call-ID, Contact `<sip:user@ip:port;transport=..;ob>;+sip.instance=..;reg-id=1;+g.3gpp.icsi-ref=
   "..cpm.msg,..cpm.session";+g.3gpp.iari-ref="..rcs.fthttp"`, `Supported: path, gruu, outbound`, Expires 600000
   (what Google Messages asks for; the registrar shortens it), User-Agent (state `user_agent`, default
-  `IM-client/OMA1.0 Argon/1.0`). Digest MD5 (qop=auth, MD5-sess, opaque) for 401 and 407 on every request
+  `IM-client/OMA1.0 Wave/1.0`). Digest MD5 (qop=auth, MD5-sess, opaque) for 401 and 407 on every request
   (up to two retries), AKA via `simAkaChallenge` if a challenge asks for it. Credentials: APPAUTH `UserName`
   (else the private identity) and `UserPwd`; state `auth_user` overrides.
 * 200: Service-Route used as the Route set of all later requests, P-Associated-URI reported in the

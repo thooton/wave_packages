@@ -24,7 +24,7 @@
 
 
 # instance fields
-.field volatile mArgonContactUpdates:Ljava/lang/Object;
+.field volatile mWaveContactUpdates:Ljava/lang/Object;
 
 .field private isLastMessageMms:Z
 
@@ -56,7 +56,7 @@
 
 
 # direct methods
-.method argonRefreshRecipients()V
+.method waveRefreshRecipients()V
     .locals 0
 
     invoke-direct {p0}, Lcom/android/mms/ui/ConversationListItem;->updateFromView()V
@@ -717,7 +717,7 @@
 
     const-string/jumbo v1, ", "
 
-    invoke-static {v0, v1}, Lcom/android/mms/data/ArgonPhoneSnapshot;->formatNames(Lcom/android/mms/data/ContactList;Ljava/lang/String;)Ljava/lang/String;
+    invoke-static {v0, v1}, Lcom/android/mms/data/WavePhoneSnapshot;->formatNames(Lcom/android/mms/data/ContactList;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 
@@ -733,7 +733,7 @@
 
     const-string/jumbo v1, ", "
 
-    invoke-static {v0, v1}, Lcom/android/mms/data/ArgonPhoneSnapshot;->formatNames(Lcom/android/mms/data/ContactList;Ljava/lang/String;)Ljava/lang/String;
+    invoke-static {v0, v1}, Lcom/android/mms/data/WavePhoneSnapshot;->formatNames(Lcom/android/mms/data/ContactList;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 
@@ -1680,7 +1680,7 @@
     invoke-virtual {p2}, Lcom/android/mms/data/Conversation;->getRecipients()Lcom/android/mms/data/ContactList;
     move-result-object v0
     iget-object v5, p0, Lcom/android/mms/ui/ConversationListItem;->mHandler:Landroid/os/Handler;
-    invoke-static {p0, v5, v0}, Lcom/android/mms/ui/ArgonInboxContactUpdates;->bind(Lcom/android/mms/ui/ConversationListItem;Landroid/os/Handler;Lcom/android/mms/data/ContactList;)V
+    invoke-static {p0, v5, v0}, Lcom/android/mms/ui/WaveInboxContactUpdates;->bind(Lcom/android/mms/ui/ConversationListItem;Landroid/os/Handler;Lcom/android/mms/data/ContactList;)V
     invoke-static {p0}, Lcom/android/mms/data/Contact;->addListener(Lcom/android/mms/data/Contact$UpdateListener;)V
 
     .line 408
@@ -2296,7 +2296,7 @@
     .locals 0
 
     # PERF(inbox recipients): don't redraw all visible rows for unrelated contacts.
-    invoke-static {p0, p1}, Lcom/android/mms/ui/ArgonInboxContactUpdates;->changed(Lcom/android/mms/ui/ConversationListItem;Lcom/android/mms/data/Contact;)V
+    invoke-static {p0, p1}, Lcom/android/mms/ui/WaveInboxContactUpdates;->changed(Lcom/android/mms/ui/ConversationListItem;Lcom/android/mms/data/Contact;)V
     return-void
 .end method
 
@@ -2406,7 +2406,7 @@
 
     .line 597
     :cond_0
-    invoke-static {p0}, Lcom/android/mms/ui/ArgonInboxContactUpdates;->unbind(Lcom/android/mms/ui/ConversationListItem;)V
+    invoke-static {p0}, Lcom/android/mms/ui/WaveInboxContactUpdates;->unbind(Lcom/android/mms/ui/ConversationListItem;)V
     invoke-static {p0}, Lcom/android/mms/data/Contact;->removeListener(Lcom/android/mms/data/Contact$UpdateListener;)V
 
     .line 598

@@ -320,11 +320,11 @@
 
     iget-object v3, p0, Lcom/android/mms/transaction/SendTransaction;->mSendReqURI:Landroid/net/Uri;
 
-    invoke-static {v2, v8, v3}, Lcom/android/mms/transaction/ArgonRcsSend;->interceptMms(Landroid/content/Context;Lcom/google/android/mms/pdu/SendReq;Landroid/net/Uri;)Landroid/net/Uri;
+    invoke-static {v2, v8, v3}, Lcom/android/mms/transaction/WaveRcsSend;->interceptMms(Landroid/content/Context;Lcom/google/android/mms/pdu/SendReq;Landroid/net/Uri;)Landroid/net/Uri;
 
     move-result-object v2
 
-    if-eqz v2, :argon_mms
+    if-eqz v2, :wave_mms
 
     iget-object v3, p0, Lcom/android/mms/transaction/SendTransaction;->mTransactionState:Lcom/android/mms/transaction/TransactionState;
 
@@ -338,7 +338,7 @@
 
     return-void
 
-    :argon_mms
+    :wave_mms
     iget-object v2, p0, Lcom/android/mms/transaction/SendTransaction;->mSendReqURI:Landroid/net/Uri;
 
     invoke-static {v2}, Landroid/content/ContentUris;->parseId(Landroid/net/Uri;)J

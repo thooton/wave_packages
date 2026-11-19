@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / 'apps/ContactsProvider/java/com/android/providers/contacts/ArgonPhoneMap.java'
+SOURCE = ROOT / 'apps/ContactsProvider/java/com/android/providers/contacts/WavePhoneMap.java'
 SQL = ''.join(json.loads(s) for s in re.findall(r'"[^"\n]*"',
     SOURCE.read_text().split('static final String SQL = ', 1)[1].split(';', 1)[0]))
 COLUMNS = ('normalized_number', 'min_match', '_id', 'data1', 'data3', 'display_name',

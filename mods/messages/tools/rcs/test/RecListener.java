@@ -2,11 +2,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
-import org.argon.rcs.RcsCapabilities;
-import org.argon.rcs.RcsEngine;
-import org.argon.rcs.RcsGroup;
-import org.argon.rcs.RcsListener;
-import org.argon.rcs.RcsMessage;
+import org.wave.rcs.RcsCapabilities;
+import org.wave.rcs.RcsEngine;
+import org.wave.rcs.RcsGroup;
+import org.wave.rcs.RcsListener;
+import org.wave.rcs.RcsMessage;
 
 /** Records every listener callback; tests wait on them. */
 public final class RecListener implements RcsListener {

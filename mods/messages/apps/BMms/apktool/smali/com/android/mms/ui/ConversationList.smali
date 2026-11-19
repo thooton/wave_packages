@@ -38,7 +38,7 @@
 
 
 # instance fields
-.field private mArgonThreadPrefetch:Lcom/android/mms/ui/ArgonThreadPrefetch;
+.field private mWaveThreadPrefetch:Lcom/android/mms/ui/WaveThreadPrefetch;
 
 .field private groupReceiver:Lcom/suntek/rcs/ui/common/mms/GroupChatManagerReceiver;
 
@@ -914,9 +914,9 @@
     invoke-virtual {v0, v1}, Landroid/widget/ListView;->setRecyclerListener(Landroid/widget/AbsListView$RecyclerListener;)V
 
     # PERF(focus prefetch): warm only the cursor row the keypad rests on.
-    invoke-static {v0}, Lcom/android/mms/ui/ArgonThreadPrefetch;->attach(Landroid/widget/ListView;)Lcom/android/mms/ui/ArgonThreadPrefetch;
+    invoke-static {v0}, Lcom/android/mms/ui/WaveThreadPrefetch;->attach(Landroid/widget/ListView;)Lcom/android/mms/ui/WaveThreadPrefetch;
     move-result-object v0
-    iput-object v0, p0, Lcom/android/mms/ui/ConversationList;->mArgonThreadPrefetch:Lcom/android/mms/ui/ArgonThreadPrefetch;
+    iput-object v0, p0, Lcom/android/mms/ui/ConversationList;->mWaveThreadPrefetch:Lcom/android/mms/ui/WaveThreadPrefetch;
 
     .line 547
     return-void
@@ -1945,7 +1945,7 @@
 
     # PERF(inbox timing): opt-in launch milestone.
     const-string v0, "inbox_start"
-    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+    invoke-static {v0}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
 
     .line 287
     invoke-super {p0, p1}, Landroid/app/ListActivity;->onCreate(Landroid/os/Bundle;)V
@@ -2156,7 +2156,7 @@
 
     # PERF(inbox timing): opt-in launch milestone.
     const-string v0, "inbox_views"
-    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+    invoke-static {v0}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
 
     .line 341
     invoke-direct {p0}, Lcom/android/mms/ui/ConversationList;->setupActionBar()V
@@ -3599,14 +3599,14 @@
 
     # PERF(inbox timing): opt-in launch milestone.
     const-string v0, "inbox_query"
-    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+    invoke-static {v0}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
 
     .line 678
     invoke-virtual {p0}, Lcom/android/mms/ui/ConversationList;->startAsyncQuery()V
 
     # PERF(inbox timing): opt-in launch milestone.
     const-string v0, "inbox_wait_threads"
-    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+    invoke-static {v0}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
 
     .line 693
     invoke-static {}, Lcom/android/mms/data/Conversation;->loadingThreads()Z
@@ -3621,7 +3621,7 @@
     .line 696
     :cond_0
     const-string v0, "inbox_started"
-    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+    invoke-static {v0}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
     return-void
 .end method
 
@@ -3630,8 +3630,8 @@
     .locals 1
 
     invoke-super {p0, p1}, Landroid/app/ListActivity;->onWindowFocusChanged(Z)V
-    iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mArgonThreadPrefetch:Lcom/android/mms/ui/ArgonThreadPrefetch;
-    invoke-static {v0, p1}, Lcom/android/mms/ui/ArgonThreadPrefetch;->windowFocus(Lcom/android/mms/ui/ArgonThreadPrefetch;Z)V
+    iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mWaveThreadPrefetch:Lcom/android/mms/ui/WaveThreadPrefetch;
+    invoke-static {v0, p1}, Lcom/android/mms/ui/WaveThreadPrefetch;->windowFocus(Lcom/android/mms/ui/WaveThreadPrefetch;Z)V
     return-void
 .end method
 
@@ -3643,8 +3643,8 @@
     invoke-super {p0}, Landroid/app/ListActivity;->onStop()V
 
     # PERF(focus prefetch): discard work when the inbox stops.
-    iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mArgonThreadPrefetch:Lcom/android/mms/ui/ArgonThreadPrefetch;
-    invoke-static {v0}, Lcom/android/mms/ui/ArgonThreadPrefetch;->stop(Lcom/android/mms/ui/ArgonThreadPrefetch;)V
+    iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mWaveThreadPrefetch:Lcom/android/mms/ui/WaveThreadPrefetch;
+    invoke-static {v0}, Lcom/android/mms/ui/WaveThreadPrefetch;->stop(Lcom/android/mms/ui/WaveThreadPrefetch;)V
 
     .line 702
     invoke-direct {p0}, Lcom/android/mms/ui/ConversationList;->stopAsyncQuery()V

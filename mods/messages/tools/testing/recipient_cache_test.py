@@ -61,7 +61,7 @@ public class CheckRecipientCache extends ContentResolver {
     }
 
     List<RecipientIdCache.Entry> get(String ids) {
-        return ArgonRecipientCache.getAddresses(context, lock, cache, ids);
+        return WaveRecipientCache.getAddresses(context, lock, cache, ids);
     }
 
     void test() {
@@ -74,7 +74,7 @@ public class CheckRecipientCache extends ContentResolver {
         store.put(3L, "restored");
         assert "restored".equals(get("3").get(0).number) && queries == 3;
         race = true;
-        ArgonRecipientCache.warm(context, lock, cache);
+        WaveRecipientCache.warm(context, lock, cache);
         assert "newer".equals(get("1").get(0).number) && queries == 4;
         race = false;
         StringBuilder group = new StringBuilder();
@@ -93,7 +93,7 @@ with tempfile.TemporaryDirectory() as temp:
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_text(content)
     subprocess.run(['javac', '-d', temp, *map(str, root.rglob('*.java')),
-                   str(ROOT / 'apps/BMms/java' / PKG / 'ArgonRecipientCache.java'),
+                   str(ROOT / 'apps/BMms/java' / PKG / 'WaveRecipientCache.java'),
                    str(ROOT / 'apps/BMms/stubs' / PKG / 'RecipientIdCache.java')], check=True)
     subprocess.run(['java', '-ea', '-cp', temp, 'com.android.mms.data.CheckRecipientCache'], check=True)
 print('PASS: recipient order, bounded indexed misses, no I/O under cache lock, concurrent updates')

@@ -11,24 +11,24 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.argon.rcs.RcsCapabilities;
-import org.argon.rcs.RcsConfig;
-import org.argon.rcs.core.Caps;
-import org.argon.rcs.core.Core;
-import org.argon.rcs.ft.FileInfo;
-import org.argon.rcs.im.Cpim;
-import org.argon.rcs.im.GroupXml;
-import org.argon.rcs.im.Imdn;
-import org.argon.rcs.im.Multipart;
-import org.argon.rcs.im.Sdp;
-import org.argon.rcs.msrp.MsrpMessage;
-import org.argon.rcs.msrp.MsrpSession;
-import org.argon.rcs.sip.Dialog;
-import org.argon.rcs.sip.NameAddr;
-import org.argon.rcs.sip.SipMessage;
-import org.argon.rcs.util.Digest;
-import org.argon.rcs.util.Log;
-import org.argon.rcs.util.U;
+import org.wave.rcs.RcsCapabilities;
+import org.wave.rcs.RcsConfig;
+import org.wave.rcs.core.Caps;
+import org.wave.rcs.core.Core;
+import org.wave.rcs.ft.FileInfo;
+import org.wave.rcs.im.Cpim;
+import org.wave.rcs.im.GroupXml;
+import org.wave.rcs.im.Imdn;
+import org.wave.rcs.im.Multipart;
+import org.wave.rcs.im.Sdp;
+import org.wave.rcs.msrp.MsrpMessage;
+import org.wave.rcs.msrp.MsrpSession;
+import org.wave.rcs.sip.Dialog;
+import org.wave.rcs.sip.NameAddr;
+import org.wave.rcs.sip.SipMessage;
+import org.wave.rcs.util.Digest;
+import org.wave.rcs.util.Log;
+import org.wave.rcs.util.U;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -364,7 +364,7 @@ public final class UnitTests {
     }
 
     /** Platform that discards logs (for codec-level tests). */
-    static final class NullPlatform implements org.argon.rcs.RcsPlatform {
+    static final class NullPlatform implements org.wave.rcs.RcsPlatform {
         public String msisdn() { return null; } public String imsi() { return null; } public String imei() { return null; }
         public String mcc() { return null; } public String mnc() { return null; }
         public String loadState(String k) { return null; } public void saveState(String k, String v) {}

@@ -806,17 +806,17 @@
     move-result-wide v2
     const-wide/16 v0, 0x0
     cmp-long v0, v2, v0
-    if-eqz v0, :argon_phone_no_thumbnail
+    if-eqz v0, :wave_phone_no_thumbnail
 
     .line 1035
     invoke-direct {p0, p1}, Lcom/android/mms/data/Contact$ContactsCache;->loadAvatarData(Lcom/android/mms/data/Contact;)[B
     move-result-object v0
-    goto :argon_store_thumbnail
+    goto :wave_store_thumbnail
 
-    :argon_phone_no_thumbnail
+    :wave_phone_no_thumbnail
     const/4 v0, 0x0
 
-    :argon_store_thumbnail
+    :wave_store_thumbnail
     .line 1037
     monitor-enter p1
 
@@ -1765,13 +1765,13 @@
 
     # PERF(phone map): use the provider's actual lookup keys; fall back on ties.
     iget-object v3, p0, Lcom/android/mms/data/Contact$ContactsCache;->mContext:Landroid/content/Context;
-    invoke-static {v3, v0, v1, v7}, Lcom/android/mms/data/ArgonPhoneSnapshot;->lookup(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Landroid/database/Cursor;
+    invoke-static {v3, v0, v1, v7}, Lcom/android/mms/data/WavePhoneSnapshot;->lookup(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Landroid/database/Cursor;
     move-result-object v3
-    if-eqz v3, :argon_stock_phone_lookup
+    if-eqz v3, :wave_stock_phone_lookup
     move-object v1, v3
     goto :cond_3
 
-    :argon_stock_phone_lookup
+    :wave_stock_phone_lookup
     .line 957
     invoke-static {v7}, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
 

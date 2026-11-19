@@ -13,7 +13,7 @@ seconds if a provider or attachment never finishes. New compose, mailbox and
 reply-only screens are unchanged. Later history refreshes, the full scrollbar
 range, and scrolling are not gated.
 
-Set `log.tag.ArgonLaunch=DEBUG` to see `history_revealed` or the fallback
+Set `log.tag.WaveLaunch=DEBUG` to see `history_revealed` or the fallback
 `history_reveal_timeout`. `rows_ready` still means first nonempty layout, not
 necessarily the first displayed frame.
 

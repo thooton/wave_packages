@@ -13,7 +13,7 @@ messages, or retain a speculative history cursor. Opening still queries the
 latest data and presents the full scrollbar range; the first-frame reveal
 continues to wait for the visible messages.
 
-Set `log.tag.ArgonPrefetch=DEBUG` to see aggregate row and fallback-MMS counts
+Set `log.tag.WavePrefetch=DEBUG` to see aggregate row and fallback-MMS counts
 only. No thread IDs, addresses or message bodies are logged.
 
 Verified on the XP3800: moving keypad focus warmed both inline-text and fallback

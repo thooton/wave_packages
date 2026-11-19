@@ -6,7 +6,7 @@ it and compose refuses / warns above it. Resources can't be rebuilt (no re-signi
 can't be changed.
 
 ## Fix
-`MmsConfig.smali getRecipientLimit` -> `ArgonConfig.recipientLimit(stock)` returns
+`MmsConfig.smali getRecipientLimit` -> `WaveConfig.recipientLimit(stock)` returns
 `Integer.MAX_VALUE`, which the stock code treats as "unlimited" (all limit checks and warnings are
 skipped).
 

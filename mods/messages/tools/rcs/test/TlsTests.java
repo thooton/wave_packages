@@ -8,8 +8,8 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
-import org.argon.rcs.RcsEngine;
-import org.argon.rcs.RcsMessage;
+import org.wave.rcs.RcsEngine;
+import org.wave.rcs.RcsMessage;
 
 /** SIPoTLS + MSRPoTLS against a mock started with --tls --no-otp (run_tests.sh starts it). */
 public final class TlsTests {

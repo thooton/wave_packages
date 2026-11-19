@@ -53,7 +53,7 @@ if __name__ == '__main__':
         INSERT INTO pdu VALUES (2,9,1),(3,8,3),(NULL,2,1),(99,3,1),(4,7,1);
     ''')
     check(db)  # stock schema: no MMS thread index
-    db.execute('CREATE INDEX argon_pdu_thread ON pdu(thread_id,date)')
+    db.execute('CREATE INDEX wave_pdu_thread ON pdu(thread_id,date)')
     check(db)
     print('PASS: inbox, unread and notification counts match stock, including drafts and orphaned rows')
     if args.db:
@@ -62,6 +62,6 @@ if __name__ == '__main__':
             source.backup(copy)
         print('SQLite', sqlite3.sqlite_version)
         check(copy, benchmark=True)
-        copy.execute('DROP INDEX IF EXISTS argon_pdu_thread')
+        copy.execute('DROP INDEX IF EXISTS wave_pdu_thread')
         print('Without the optional MMS index:')
         check(copy, benchmark=True)

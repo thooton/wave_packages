@@ -6284,12 +6284,12 @@
     move-object/from16 v3, p3
     move-object/from16 v4, p4
     move-object/from16 v5, p5
-    invoke-static/range {v0 .. v6}, Lcom/android/providers/telephony/ArgonConversationQuery;->maybeQuery(Lcom/android/providers/telephony/MmsSmsProvider;Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;Z)Landroid/database/Cursor;
+    invoke-static/range {v0 .. v6}, Lcom/android/providers/telephony/WaveConversationQuery;->maybeQuery(Lcom/android/providers/telephony/MmsSmsProvider;Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;Z)Landroid/database/Cursor;
     move-result-object v0
-    if-eqz v0, :argon_stock_query
+    if-eqz v0, :wave_stock_query
     return-object v0
 
-    :argon_stock_query
+    :wave_stock_query
     .line 348
     invoke-static {v6}, Lcom/android/providers/telephony/MmsProvider;->getPduTable(Z)Ljava/lang/String;
 

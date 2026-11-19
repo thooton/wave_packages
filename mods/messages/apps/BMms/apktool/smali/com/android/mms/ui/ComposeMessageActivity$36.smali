@@ -120,7 +120,7 @@
     :try_start_0
     # PERF(mms rows): reconstruct the original slideshow only for an explicit forward
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$36;->val$msgItem:Lcom/android/mms/ui/MessageItem;
-    invoke-static {v0}, Lcom/android/mms/ui/ArgonTextMms;->copyForForward(Lcom/android/mms/ui/MessageItem;)Lcom/google/android/mms/pdu/PduBody;
+    invoke-static {v0}, Lcom/android/mms/ui/WaveTextMms;->copyForForward(Lcom/android/mms/ui/MessageItem;)Lcom/google/android/mms/pdu/PduBody;
     move-result-object v0
     invoke-virtual {v1, v0}, Lcom/google/android/mms/pdu/SendReq;->setBody(Lcom/google/android/mms/pdu/PduBody;)V
 

@@ -66,7 +66,7 @@
     # FIX(conversation reveal): both success and failure end the initial wait.
     iget-object v0, p0, Lcom/android/mms/ui/MessageItem$PduLoadedMessageItemCallback;->this$0:Lcom/android/mms/ui/MessageItem;
     const/4 v1, 0x0
-    iput-boolean v1, v0, Lcom/android/mms/ui/MessageItem;->mArgonPduPending:Z
+    iput-boolean v1, v0, Lcom/android/mms/ui/MessageItem;->mWavePduPending:Z
     return-void
 
     .line 569
@@ -248,7 +248,7 @@
     # FIX(conversation reveal): both success and failure end the initial wait.
     iget-object v0, p0, Lcom/android/mms/ui/MessageItem$PduLoadedMessageItemCallback;->this$0:Lcom/android/mms/ui/MessageItem;
     const/4 v1, 0x0
-    iput-boolean v1, v0, Lcom/android/mms/ui/MessageItem;->mArgonPduPending:Z
+    iput-boolean v1, v0, Lcom/android/mms/ui/MessageItem;->mWavePduPending:Z
     return-void
 
     .line 570

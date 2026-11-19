@@ -11,12 +11,12 @@ detect street addresses.
 
 ## Changes
 
-* TelephonyProvider adds `argon_msg`, a `WITHOUT ROWID` read model ordered by thread,
+* TelephonyProvider adds `wave_msg`, a `WITHOUT ROWID` read model ordered by thread,
   normalized date and message identity. The first eligible history request installs
   and backfills it atomically. Triggers on `sms`, `pdu`, `part`, `addr` and
   `pending_msgs` keep it current inside the source transaction. The stock tables,
   URIs, schema version and journal mode are unchanged.
-* Messages opts in with `argon_index=1` on its existing history URI. The provider
+* Messages opts in with `wave_index=1` on its existing history URI. The provider
   accepts only the fixed stock Messages projection with no custom filter or sort,
   checks the existing access restriction, and falls back to the stock query if the
   index is unavailable. Messages requests the full ordered cursor from the start,

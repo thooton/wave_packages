@@ -1,6 +1,6 @@
 #!/bin/bash
 # tools/rcs/device_suite.sh: end-to-end RCS regression suite on the phone against the mock network.
-# Needs: mock running (python3 -m tools.rcs.mock --no-otp), Messages Argon installed with an RCS config
+# Needs: mock running (python3 -m tools.rcs.mock --no-otp), Messages Improved installed with an RCS config
 # imported from the mock (tools/rcs/import_config.sh <(curl -s 'http://127.0.0.1:8080/config.xml?msisdn=%2B15550002') enabled=1),
 # root. Turns tools/rcs/testnet.sh on. Uses virtual users +1555777000{1,2,3} and non-RCS +15558880001;
 # deletes their threads before and after. Drives the stock UI for sending (keys/taps, 240x320).
@@ -14,7 +14,7 @@ bad() { echo "FAIL $*"; fail=$((fail+1)); }
 db()  { tools/testing/db.sh "$1"; }
 ui()  { tools/testing/ui_dump.sh; }
 api() { local m=$1 p=$2; shift 2; curl -sf -X "$m" "$API$p" ${1:+-d "$1"}; }
-rlog() { adb logcat -d -s ArgonRcs:I; }
+rlog() { adb logcat -d -s WaveRcs:I; }
 wait_log() { for _ in $(seq "${2:-40}"); do rlog | grep -q "$1" && return 0; sleep 0.5; done; return 1; }
 tag=$(head -c 64 /dev/urandom | tr -dc 'a-z' | head -c 6)
 
@@ -45,7 +45,7 @@ send_in_thread() {  # send_in_thread <thread_id> <letters-only text>
 send_pic() {    # send_pic <thread_id>
   leave
   adb shell am start -f 0x10008000 -a android.intent.action.SEND -t image/png --eu android.intent.extra.STREAM \
-      file:///sdcard/Download/argon_test.png --el thread_id $1 -n com.android.mms/.ui.ComposeMessageActivity >/dev/null
+      file:///sdcard/Download/wave_test.png --el thread_id $1 -n com.android.mms/.ui.ComposeMessageActivity >/dev/null
   for _ in $(seq 20); do ui | grep -q 'KB"' && break; sleep 0.5; done
   menu_send
 }
@@ -71,10 +71,10 @@ import zlib, struct
 w = h = 64
 raw = b''.join(b'\x00' + b''.join(bytes([30, (x * 4) % 256, (y * 4) % 256]) for x in range(w)) for y in range(h))
 ch = lambda t, d: struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d) & 0xffffffff)
-open('build/argon_test.png', 'wb').write(b'\x89PNG\r\n\x1a\n' + ch(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0))
+open('build/wave_test.png', 'wb').write(b'\x89PNG\r\n\x1a\n' + ch(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0))
                                          + ch(b'IDAT', zlib.compress(raw)) + ch(b'IEND', b''))
 EOF
-adb push build/argon_test.png /sdcard/Download/argon_test.png >/dev/null
+adb push build/wave_test.png /sdcard/Download/wave_test.png >/dev/null
 cleanup
 adb logcat -c
 
@@ -99,7 +99,7 @@ from=$(db "select a.address from part p join addr a on a.msg_id=p.mid where p.te
 [ "$from" = "$U2" ] && ok "2b group message sender $U2" || bad "2b sender '$from'"
 
 # 3 incoming file -> MMS with the image in the sender's thread
-api POST /api/users/${U1#+}/send "{\"file\":{\"name\":\"in $tag.png\",\"type\":\"image/png\",\"path\":\"$PWD/build/argon_test.png\"}}" >/dev/null
+api POST /api/users/${U1#+}/send "{\"file\":{\"name\":\"in $tag.png\",\"type\":\"image/png\",\"path\":\"$PWD/build/wave_test.png\"}}" >/dev/null
 wait_log "stored file" || true
 t1=$(thread_of "$U1")
 r=$(db "select m.thread_id||'|'||p.ct from part p join pdu m on m._id=p.mid where p.cl='in_$tag.png';")
@@ -164,7 +164,7 @@ c=$(adb logcat -d | grep -cE 'FATAL EXCEPTION|ANR in com.android.mms')
 
 leave
 cleanup
-adb shell rm -f /sdcard/Download/argon_test.png /sdcard/ui.xml
+adb shell rm -f /sdcard/Download/wave_test.png /sdcard/ui.xml
 adb shell appops set com.android.shell WRITE_SMS default
 echo "== $pass passed, $fail failed"
 [ $fail = 0 ]

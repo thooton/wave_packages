@@ -680,7 +680,7 @@
 
     .line 223
     # FEAT(mms receive): hold the notification out of any thread while it auto-downloads
-    invoke-static {v13, v3}, Lcom/android/mms/transaction/ArgonMmsReceive;->prepareIncomingNotification(Landroid/content/ContentValues;Lcom/google/android/mms/pdu/GenericPdu;)Z
+    invoke-static {v13, v3}, Lcom/android/mms/transaction/WaveMmsReceive;->prepareIncomingNotification(Landroid/content/ContentValues;Lcom/google/android/mms/pdu/GenericPdu;)Z
 
     move-result v5
 
@@ -726,7 +726,7 @@
 
     .line 229
     # FEAT(mms receive): skipped for held (thread-less) rows
-    invoke-static {v3, v4, v5, v2}, Lcom/android/mms/transaction/ArgonMmsReceive;->markAsNotificationThreadIfNeed(Landroid/content/Context;JLjava/lang/String;)V
+    invoke-static {v3, v4, v5, v2}, Lcom/android/mms/transaction/WaveMmsReceive;->markAsNotificationThreadIfNeed(Landroid/content/Context;JLjava/lang/String;)V
 
     .line 233
     new-instance v2, Landroid/content/Intent;

@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# Messages Argon module: late_start service (runs on every boot, in the background).
+# Messages Improved module: late_start service (runs on every boot, in the background).
 #
 # The firmware's apps run AOT-compiled code (speed-profile). The patched APKs don't match that code,
 # so after install ART only verifies them (interpreter + JIT) until an idle-maintenance dexopt

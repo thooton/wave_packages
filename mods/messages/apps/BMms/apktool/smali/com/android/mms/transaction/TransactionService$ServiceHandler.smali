@@ -481,7 +481,7 @@
     invoke-static {v3}, Lcom/android/mms/LogTag;->debugD(Ljava/lang/String;)V
 
     # FEAT(rcs): a send RCS can take doesn't need the MMS network
-    invoke-static {p1}, Lcom/android/mms/transaction/ArgonRcsSend;->rcsReadyForMms(Lcom/android/mms/transaction/Transaction;)Z
+    invoke-static {p1}, Lcom/android/mms/transaction/WaveRcsSend;->rcsReadyForMms(Lcom/android/mms/transaction/Transaction;)Z
 
     move-result v3
 
@@ -494,7 +494,7 @@
 
     .line 1312
     # FEAT(mms testnet): the default route counts as MMS connectivity on the test network
-    invoke-static {}, Lcom/android/mms/transaction/ArgonMmsReceive;->testNet()Z
+    invoke-static {}, Lcom/android/mms/transaction/WaveMmsReceive;->testNet()Z
 
     move-result v0
 

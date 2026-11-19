@@ -560,7 +560,7 @@
     # FIX(mms ack)
     iget-object v2, p0, Lcom/android/mms/transaction/RetrieveTransaction;->mContext:Landroid/content/Context;
 
-    invoke-static {v1, v2}, Lcom/android/mms/transaction/ArgonMmsReceive;->setReportAllowed(Lcom/google/android/mms/pdu/GenericPdu;Landroid/content/Context;)V
+    invoke-static {v1, v2}, Lcom/android/mms/transaction/WaveMmsReceive;->setReportAllowed(Lcom/google/android/mms/pdu/GenericPdu;Landroid/content/Context;)V
 
     .line 350
     invoke-static {}, Lcom/android/mms/ui/MessageUtils;->getLocalNumber()Ljava/lang/String;
@@ -1196,8 +1196,8 @@
     const/4 v5, 0x0
 
     # FEAT(self number): learn our own number from 1:1 MMS when the SIM has none; v3 =
-    # createThreadId (false when ArgonSelf.afterPersist picks the group thread itself)
-    invoke-static {v1, v4}, Lcom/android/mms/argon/ArgonSelf;->beforePersist(Lcom/google/android/mms/pdu/GenericPdu;Z)Z
+    # createThreadId (false when WaveSelf.afterPersist picks the group thread itself)
+    invoke-static {v1, v4}, Lcom/android/mms/wave/WaveSelf;->beforePersist(Lcom/google/android/mms/pdu/GenericPdu;Z)Z
 
     move-result v3
 
@@ -1207,7 +1207,7 @@
     move-result-object v0
 
     # FEAT(self number): file under the right group thread when the SIM has no number
-    invoke-static {v0, v4}, Lcom/android/mms/argon/ArgonSelf;->afterPersist(Landroid/net/Uri;Z)V
+    invoke-static {v0, v4}, Lcom/android/mms/wave/WaveSelf;->afterPersist(Landroid/net/Uri;Z)V
 
     .line 182
     new-instance v9, Landroid/content/ContentValues;

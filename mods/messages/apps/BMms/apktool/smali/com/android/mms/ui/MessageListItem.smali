@@ -67,7 +67,7 @@
 
 .field private mGestureDetector:Landroid/view/GestureDetector;
 
-.field private mArgonTouchListener:Landroid/view/View$OnTouchListener;
+.field private mWaveTouchListener:Landroid/view/View$OnTouchListener;
 
 .field private mHandler:Landroid/os/Handler;
 
@@ -771,7 +771,7 @@
 
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
 
-    iget-boolean v1, v0, Lcom/android/mms/ui/MessageItem;->mArgonTextReady:Z
+    iget-boolean v1, v0, Lcom/android/mms/ui/MessageItem;->mWaveTextReady:Z
     if-nez v1, :cond_2
 
     iget-object v0, v0, Lcom/android/mms/ui/MessageItem;->mSlideshow:Lcom/android/mms/model/SlideshowModel;
@@ -924,16 +924,16 @@
     # PERF(inline text): a nonempty inline body is immediately set again by the stock
     # non-RCS branch. Let that final TextView bind linkify the body once.
     iget-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
-    iget-boolean v1, v1, Lcom/android/mms/ui/MessageItem;->mArgonTextReady:Z
-    if-eqz v1, :argon_stock_body
+    iget-boolean v1, v1, Lcom/android/mms/ui/MessageItem;->mWaveTextReady:Z
+    if-eqz v1, :wave_stock_body
     invoke-static {}, Lcom/android/mms/MmsConfig;->isRcsVersion()Z
     move-result v1
-    if-nez v1, :argon_stock_body
+    if-nez v1, :wave_stock_body
     invoke-static {v0}, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
     move-result v1
     if-eqz v1, :cond_8
 
-    :argon_stock_body
+    :wave_stock_body
     .line 725
     new-instance v1, Landroid/text/SpannableString;
 
@@ -1387,7 +1387,7 @@
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
 
     # No asynchronous rebind or presenter for a row whose text is already here.
-    iget-boolean v1, v0, Lcom/android/mms/ui/MessageItem;->mArgonTextReady:Z
+    iget-boolean v1, v0, Lcom/android/mms/ui/MessageItem;->mWaveTextReady:Z
     if-nez v1, :goto_9
 
     iget-object v0, v0, Lcom/android/mms/ui/MessageItem;->mSlideshow:Lcom/android/mms/model/SlideshowModel;
@@ -2399,7 +2399,7 @@
 .end method
 
 # PERF(row inflation): these optional assets are only needed when a burn row binds.
-.method private argonBurnIcon(Z)Landroid/graphics/drawable/Drawable;
+.method private waveBurnIcon(Z)Landroid/graphics/drawable/Drawable;
     .locals 2
 
     if-eqz p1, :flag
@@ -2491,7 +2491,7 @@
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mImageView:Landroid/widget/ImageView;
 
     const/4 v1, 0x1
-    invoke-direct {p0, v1}, Lcom/android/mms/ui/MessageListItem;->argonBurnIcon(Z)Landroid/graphics/drawable/Drawable;
+    invoke-direct {p0, v1}, Lcom/android/mms/ui/MessageListItem;->waveBurnIcon(Z)Landroid/graphics/drawable/Drawable;
     move-result-object v1
 
     invoke-virtual {v0, v1}, Landroid/widget/ImageView;->setImageDrawable(Landroid/graphics/drawable/Drawable;)V
@@ -2528,7 +2528,7 @@
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mImageView:Landroid/widget/ImageView;
 
     const/4 v1, 0x0
-    invoke-direct {p0, v1}, Lcom/android/mms/ui/MessageListItem;->argonBurnIcon(Z)Landroid/graphics/drawable/Drawable;
+    invoke-direct {p0, v1}, Lcom/android/mms/ui/MessageListItem;->waveBurnIcon(Z)Landroid/graphics/drawable/Drawable;
     move-result-object v1
 
     invoke-virtual {v0, v1}, Landroid/widget/ImageView;->setImageDrawable(Landroid/graphics/drawable/Drawable;)V
@@ -4011,19 +4011,19 @@
 
     .prologue
     # PERF(inline text): the body is already plain text, unless search needs style spans.
-    if-nez p5, :argon_stock_format
-    if-eqz p2, :argon_stock_format
+    if-nez p5, :wave_stock_format
+    if-eqz p2, :wave_stock_format
     iget-boolean v0, p0, Lcom/android/mms/ui/MessageListItem;->mIsMsimIccCardActived:Z
-    if-nez v0, :argon_stock_format
-    iget-boolean v0, p1, Lcom/android/mms/ui/MessageItem;->mArgonTextReady:Z
-    if-eqz v0, :argon_stock_format
+    if-nez v0, :wave_stock_format
+    iget-boolean v0, p1, Lcom/android/mms/ui/MessageItem;->mWaveTextReady:Z
+    if-eqz v0, :wave_stock_format
     const-string v0, "text/plain"
     invoke-virtual {v0, p6}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
     move-result v0
-    if-eqz v0, :argon_stock_format
+    if-eqz v0, :wave_stock_format
     return-object p2
 
-    :argon_stock_format
+    :wave_stock_format
     .line 1505
     new-instance v1, Landroid/text/SpannableStringBuilder;
 
@@ -5740,11 +5740,11 @@
     const/4 v0, 0x0
     iput-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mGestureDetector:Landroid/view/GestureDetector;
 
-    iget-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mArgonTouchListener:Landroid/view/View$OnTouchListener;
+    iget-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mWaveTouchListener:Landroid/view/View$OnTouchListener;
     if-nez v1, :attach
     new-instance v1, Lcom/android/mms/ui/MessageListItem$6;
     invoke-direct {v1, p0}, Lcom/android/mms/ui/MessageListItem$6;-><init>(Lcom/android/mms/ui/MessageListItem;)V
-    iput-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mArgonTouchListener:Landroid/view/View$OnTouchListener;
+    iput-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mWaveTouchListener:Landroid/view/View$OnTouchListener;
 
     :attach
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageBlock:Landroid/view/View;
@@ -5808,7 +5808,7 @@
     const/4 v3, 0x2
     invoke-static {v0, v3}, Landroid/util/Log;->isLoggable(Ljava/lang/String;I)Z
     move-result v3
-    if-eqz v3, :argon_attachment_log_done
+    if-eqz v3, :wave_attachment_log_done
     new-instance v3, Ljava/lang/StringBuilder;
 
     invoke-direct {v3}, Ljava/lang/StringBuilder;-><init>()V
@@ -5843,7 +5843,7 @@
 
     invoke-static {v0, v3}, Landroid/util/Log;->v(Ljava/lang/String;Ljava/lang/String;)I
 
-    :argon_attachment_log_done
+    :wave_attachment_log_done
     .line 1027
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
 
@@ -6422,39 +6422,39 @@
     # PERF(hidden avatar): ordinary Sonim message rows hide the avatar. For inline text MMS,
     # keep the stock bubble tint without fetching a contact, decoding its photo or building a tile.
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
-    iget-boolean v0, v0, Lcom/android/mms/ui/MessageItem;->mArgonTextReady:Z
-    if-eqz v0, :argon_avatar_stock
+    iget-boolean v0, v0, Lcom/android/mms/ui/MessageItem;->mWaveTextReady:Z
+    if-eqz v0, :wave_avatar_stock
 
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mAvatar:Lcom/android/mms/ui/QuickContactDivot;
     invoke-virtual {v0}, Landroid/view/View;->getVisibility()I
     move-result v0
     const/16 v1, 0x8
-    if-ne v0, v1, :argon_avatar_stock
+    if-ne v0, v1, :wave_avatar_stock
 
     invoke-virtual {p0}, Lcom/android/mms/ui/MessageListItem;->isChecked()Z
     move-result v0
-    if-nez v0, :argon_avatar_stock
+    if-nez v0, :wave_avatar_stock
 
-    if-eqz p2, :argon_avatar_received
+    if-eqz p2, :wave_avatar_received
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mContext:Landroid/content/Context;
     invoke-virtual {v0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
     move-result-object v0
     const v1, 0x7f080018    # R.color.white
     invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getColor(I)I
     move-result v0
-    goto :argon_avatar_tint
+    goto :wave_avatar_tint
 
-    :argon_avatar_received
+    :wave_avatar_received
     invoke-static {p1}, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
     move-result v0
-    if-nez v0, :argon_avatar_stock
+    if-nez v0, :wave_avatar_stock
     invoke-direct {p0}, Lcom/android/mms/ui/MessageListItem;->isSimCardMessage()Z
     move-result v0
-    if-nez v0, :argon_avatar_stock
+    if-nez v0, :wave_avatar_stock
     invoke-static {}, Lcom/android/mms/ui/ComposeMessageActivity;->getSendContactColor()I
     move-result v0
 
-    :argon_avatar_tint
+    :wave_avatar_tint
     iput v0, p0, Lcom/android/mms/ui/MessageListItem;->mBackgroundColor:I
     iget-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mMessageBlock:Landroid/view/View;
     invoke-virtual {v1}, Landroid/view/View;->getBackground()Landroid/graphics/drawable/Drawable;
@@ -6462,7 +6462,7 @@
     invoke-virtual {v1, v0}, Landroid/graphics/drawable/Drawable;->setTint(I)V
     return-void
 
-    :argon_avatar_stock
+    :wave_avatar_stock
     const-wide/16 v4, 0x0
 
     const/4 v12, 0x3
@@ -7255,7 +7255,7 @@
     const/4 v2, 0x2
     invoke-static {v0, v2}, Landroid/util/Log;->isLoggable(Ljava/lang/String;I)Z
     move-result v2
-    if-eqz v2, :argon_bind_log_done
+    if-eqz v2, :wave_bind_log_done
     new-instance v2, Ljava/lang/StringBuilder;
 
     invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
@@ -7276,7 +7276,7 @@
 
     invoke-static {v0, v2}, Landroid/util/Log;->v(Ljava/lang/String;Ljava/lang/String;)I
 
-    :argon_bind_log_done
+    :wave_bind_log_done
     .line 337
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
 

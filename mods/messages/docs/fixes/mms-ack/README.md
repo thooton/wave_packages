@@ -12,9 +12,9 @@
 ## Fix
 * `NotificationTransaction.smali` / `RetrieveTransaction.smali`: the gates are replaced by
   `goto :cond_0`; acknowledgements are always sent (`# FIX(mms ack)`).
-* `ArgonMmsReceive.setReportAllowed(AcknowledgeInd)`: sets Report-Allowed (128 yes / 129 no) from
+* `WaveMmsReceive.setReportAllowed(AcknowledgeInd)`: sets Report-Allowed (128 yes / 129 no) from
   `pref_key_mms_send_delivery_report` (default yes, see receipts).
-* `ArgonMmsReceive.withReportAllowed(byte[])`: appends `0x91 0x80|0x81` to the composed
+* `WaveMmsReceive.withReportAllowed(byte[])`: appends `0x91 0x80|0x81` to the composed
   M-NotifyResp.ind bytes (applied after both `PduComposer.make()` call sites).
 
 ## Verification

@@ -6,10 +6,10 @@ number the framework `PduPersister` can't tell which address of a group MMS is "
 in the thread recipients (a group with yourself in it) or, for To==From, drops the 1-entry To.
 Group MMS mode (`getIsGroupMmsEnabled`) also requires a known number.
 
-## Fix (`apps/BMms/java/com/android/mms/argon/ArgonSelf.java`)
+## Fix (`apps/BMms/java/com/android/mms/wave/WaveSelf.java`)
 * `MessageUtils.getLocalNumber` hook (`localNumber`): the stock value if non-empty, else a
-  learned number (pref `argon_self_number`) or the development override property
-  `debug.argon.self_number`.
+  learned number (pref `wave_self_number`) or the development override property
+  `debug.wave.self_number`.
 * Learning: a 1:1 M-Retrieve.conf (exactly one To, no Cc) addressed to a phone number that isn't
   the sender is ours (`beforePersist`).
 * Both persist call sites (`NotificationTransaction`, `RetrieveTransaction`): `beforePersist`
@@ -18,5 +18,5 @@ Group MMS mode (`getIsGroupMmsEnabled`) also requires a known number.
   so the provider triggers recount the thread.
 
 ## Verification
-`tools/testing/mms_suite.sh` tests 1b/2/3 (run with `debug.argon.self_number`): group of 2 others,
+`tools/testing/mms_suite.sh` tests 1b/2/3 (run with `debug.wave.self_number`): group of 2 others,
 group of 3 others and 1:1 each in the right thread.

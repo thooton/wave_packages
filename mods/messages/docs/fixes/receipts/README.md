@@ -22,7 +22,7 @@ The user's rules:
 delivery notifications sent for incoming ones, never "displayed", never isComposing.
 
 ## Settings
-`ArgonInit.applyReceiptPolicy` (every app start) mirrors the policy into the settings so the
+`WaveInit.applyReceiptPolicy` (every app start) mirrors the policy into the settings so the
 switches show what happens: all "request delivery/read report" and "send read report" switches off;
 on first run `pref_key_mms_send_delivery_report` on (the user may switch that one off later).
 

@@ -326,7 +326,7 @@
 
     iget-object v2, v0, Lcom/android/mms/data/RecipientIdCache;->mCache:Ljava/util/Map;
 
-    invoke-static {v1, v0, v2}, Lcom/android/mms/data/ArgonRecipientCache;->warm(Landroid/content/Context;Ljava/lang/Object;Ljava/util/Map;)V
+    invoke-static {v1, v0, v2}, Lcom/android/mms/data/WaveRecipientCache;->warm(Landroid/content/Context;Ljava/lang/Object;Ljava/util/Map;)V
 
     return-void
 .end method
@@ -340,7 +340,7 @@
 
     iget-object v2, v0, Lcom/android/mms/data/RecipientIdCache;->mCache:Ljava/util/Map;
 
-    invoke-static {v1, v0, v2, p0}, Lcom/android/mms/data/ArgonRecipientCache;->getAddresses(Landroid/content/Context;Ljava/lang/Object;Ljava/util/Map;Ljava/lang/String;)Ljava/util/List;
+    invoke-static {v1, v0, v2, p0}, Lcom/android/mms/data/WaveRecipientCache;->getAddresses(Landroid/content/Context;Ljava/lang/Object;Ljava/util/Map;Ljava/lang/String;)Ljava/util/List;
 
     move-result-object v0
 

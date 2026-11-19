@@ -1,7 +1,7 @@
 #!/bin/bash
 # tools/rcs/import_config.sh [config.xml] [key=value ...]
 #
-# Gives Messages Argon an RCS account (root required). Writes into the app's private directory
+# Gives Messages Improved an RCS account (root required). Writes into the app's private directory
 #   /data/data/com.android.mms/files/rcs_import/config.xml        wap-provisioningdoc (manual config)
 #   /data/data/com.android.mms/files/rcs_import/state.properties  key=value lines
 # and pokes the RCS host service, which imports and deletes them, then (re)starts the engine.
@@ -18,7 +18,7 @@
 set -euo pipefail
 PKG=com.android.mms
 DIR=/data/data/$PKG/files/rcs_import
-TMP=/data/local/tmp/argon_rcs_import
+TMP=/data/local/tmp/wave_rcs_import
 xml=""; props=()
 for a in "$@"; do
     if [[ "$a" == *=* ]]; then props+=("$a"); else xml="$a"; fi
@@ -30,10 +30,10 @@ if [ -n "$xml" ]; then
     adb push "$xml" $TMP/config.xml >/dev/null
 fi
 if [ ${#props[@]} -gt 0 ]; then
-    printf '%s\n' "${props[@]}" > "${TMPDIR:-/tmp}/argon_rcs_state.properties"
-    adb push "${TMPDIR:-/tmp}/argon_rcs_state.properties" $TMP/state.properties >/dev/null
-    rm -f "${TMPDIR:-/tmp}/argon_rcs_state.properties"
+    printf '%s\n' "${props[@]}" > "${TMPDIR:-/tmp}/wave_rcs_state.properties"
+    adb push "${TMPDIR:-/tmp}/wave_rcs_state.properties" $TMP/state.properties >/dev/null
+    rm -f "${TMPDIR:-/tmp}/wave_rcs_state.properties"
 fi
 adb shell su -c "'uid=\$(stat -c %u /data/data/$PKG); mkdir -p $DIR; cp $TMP/* $DIR/; chown -R \$uid:\$uid $DIR; chmod 700 $DIR; chmod 600 $DIR/*; restorecon -R /data/data/$PKG/files; rm -rf $TMP'"
-adb shell am startservice -n $PKG/com.android.mms.rcs.RcsMessageStatusService -a org.argon.rcs.HOST --es cmd restart >/dev/null
+adb shell am startservice -n $PKG/com.android.mms.rcs.RcsMessageStatusService -a org.wave.rcs.HOST --es cmd restart >/dev/null
 echo "imported; status: tools/rcs/device_status.sh"

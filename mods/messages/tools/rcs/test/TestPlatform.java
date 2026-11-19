@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 
 import javax.net.ssl.SSLSocketFactory;
 
-import org.argon.rcs.RcsPlatform;
+import org.wave.rcs.RcsPlatform;
 
 /** Host implementation of RcsPlatform for tests: in-memory state, OTP from the mock control API. */
 public final class TestPlatform implements RcsPlatform {

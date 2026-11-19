@@ -1,7 +1,7 @@
 # Mock RCS network
 
 A single-process Python 3 (stdlib only) stand-in for a carrier RCS deployment, for testing the
-RCS client engine (`apps/BMms/java/org/argon/rcs/`). It speaks the same wire protocols a Jibe/GSMA
+RCS client engine (`apps/BMms/java/org/wave/rcs/`). It speaks the same wire protocols a Jibe/GSMA
 Universal Profile network does: RCC.14 auto-configuration (ACS), SIP over TCP/TLS (registrar +
 terminating UA/B2BUA for scripted "virtual users"), MSRP, CPIM, IMDN, conference focus (RFC 4579/4575),
 and the FT-over-HTTP content server (RCC.07). A JSON control API creates virtual users, makes them send

@@ -24,13 +24,13 @@
 
 .field mAttachmentType:I
 
-.field mArgonTextReady:Z
+.field mWaveTextReady:Z
 
-.field mArgonPduPending:Z
+.field mWavePduPending:Z
 
-.field mArgonTimestampPending:Z
+.field mWaveTimestampPending:Z
 
-.field mArgonTimestampMillis:J
+.field mWaveTimestampMillis:J
 
 .field mBody:Ljava/lang/String;
 
@@ -904,13 +904,13 @@
     .line 274
     :goto_b
     # PERF(mms rows): plain text from the cursor, no per-message PDU load
-    invoke-static {p0, p3}, Lcom/android/mms/ui/ArgonTextMms;->bind(Lcom/android/mms/ui/MessageItem;Landroid/database/Cursor;)Z
+    invoke-static {p0, p3}, Lcom/android/mms/ui/WaveTextMms;->bind(Lcom/android/mms/ui/MessageItem;Landroid/database/Cursor;)Z
     move-result v3
-    iput-boolean v3, p0, Lcom/android/mms/ui/MessageItem;->mArgonTextReady:Z
-    if-nez v3, :argon_mms_ready
+    iput-boolean v3, p0, Lcom/android/mms/ui/MessageItem;->mWaveTextReady:Z
+    if-nez v3, :wave_mms_ready
     # FIX(conversation reveal): cached PDU callbacks can run inline, so set this first.
     const/4 v3, 0x1
-    iput-boolean v3, p0, Lcom/android/mms/ui/MessageItem;->mArgonPduPending:Z
+    iput-boolean v3, p0, Lcom/android/mms/ui/MessageItem;->mWavePduPending:Z
 
     invoke-static {}, Lcom/android/mms/MmsApp;->getApplication()Lcom/android/mms/MmsApp;
 
@@ -935,7 +935,7 @@
 
     iput-object v0, p0, Lcom/android/mms/ui/MessageItem;->mItemLoadedFuture:Lcom/android/mms/util/ItemLoadedFuture;
 
-    :argon_mms_ready
+    :wave_mms_ready
     .line 277
     iget-object v0, p0, Lcom/android/mms/ui/MessageItem;->mColumnsMap:Lcom/android/mms/ui/MessageListAdapter$ColumnsMap;
 
@@ -2371,15 +2371,15 @@
     .locals 3
 
     # PERF(inline text): clustered rows may never display their timestamp.
-    iget-boolean v0, p0, Lcom/android/mms/ui/MessageItem;->mArgonTimestampPending:Z
-    if-eqz v0, :argon_read_timestamp
+    iget-boolean v0, p0, Lcom/android/mms/ui/MessageItem;->mWaveTimestampPending:Z
+    if-eqz v0, :wave_read_timestamp
     iget-object v0, p0, Lcom/android/mms/ui/MessageItem;->mContext:Landroid/content/Context;
-    iget-wide v1, p0, Lcom/android/mms/ui/MessageItem;->mArgonTimestampMillis:J
+    iget-wide v1, p0, Lcom/android/mms/ui/MessageItem;->mWaveTimestampMillis:J
     invoke-static {v0, v1, v2}, Lcom/android/mms/ui/MessageUtils;->formatTimeStampString(Landroid/content/Context;J)Ljava/lang/String;
     move-result-object v0
     invoke-virtual {p0, v0}, Lcom/android/mms/ui/MessageItem;->setTimestamp(Ljava/lang/String;)V
 
-    :argon_read_timestamp
+    :wave_read_timestamp
     .line 702
     iget-object v0, p0, Lcom/android/mms/ui/MessageItem;->mTimestamp:Ljava/lang/String;
 
@@ -2885,7 +2885,7 @@
 
     .prologue
     const/4 v0, 0x0
-    iput-boolean v0, p0, Lcom/android/mms/ui/MessageItem;->mArgonTimestampPending:Z
+    iput-boolean v0, p0, Lcom/android/mms/ui/MessageItem;->mWaveTimestampPending:Z
     .line 706
     iput-object p1, p0, Lcom/android/mms/ui/MessageItem;->mTimestamp:Ljava/lang/String;
 

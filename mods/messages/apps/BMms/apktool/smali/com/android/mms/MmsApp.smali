@@ -346,7 +346,7 @@
     invoke-static {v0}, Lcom/android/mms/util/DraftCache;->init(Landroid/content/Context;)V
 
     # PERF(phone map): synchronously load the compact phone index before any inbox rows.
-    invoke-static {v0}, Lcom/android/mms/data/ArgonPhoneSnapshot;->prime(Landroid/content/Context;)V
+    invoke-static {v0}, Lcom/android/mms/data/WavePhoneSnapshot;->prime(Landroid/content/Context;)V
 
     # PERF(inbox warmup): resolve all conversation recipients on the stock background
     # worker so scrolling does not have to discover every name on demand.
@@ -396,7 +396,7 @@
     const/4 v2, 0x0
 
     const-string v0, "app_start"
-    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+    invoke-static {v0}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
 
     .line 75
     invoke-super {p0}, Landroid/app/Application;->onCreate()V
@@ -520,7 +520,7 @@
     invoke-static {p0}, Lcom/android/mms/MmsConfig;->init(Landroid/content/Context;)V
 
     const-string v0, "app_configured"
-    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+    invoke-static {v0}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
 
     .line 111
     invoke-static {p0}, Lcom/android/mms/util/DownloadManager;->init(Landroid/content/Context;)V
@@ -580,11 +580,11 @@
 
     invoke-virtual {v2, v3, v0, v1}, Landroid/content/pm/PackageManager;->setComponentEnabledSetting(Landroid/content/ComponentName;II)V
 
-    # FEAT(argon): Messages Argon startup (pref migration, held-MMS sweep, RCS)
-    invoke-static {p0}, Lcom/android/mms/argon/ArgonInit;->onAppCreate(Landroid/app/Application;)V
+    # FEAT(wave): Messages Improved startup (pref migration, held-MMS sweep, RCS)
+    invoke-static {p0}, Lcom/android/mms/wave/WaveInit;->onAppCreate(Landroid/app/Application;)V
 
     const-string v0, "app_ready"
-    invoke-static {v0}, Lcom/android/mms/util/ArgonLaunch;->mark(Ljava/lang/String;)V
+    invoke-static {v0}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
 
     .line 126
     return-void

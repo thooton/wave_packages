@@ -747,7 +747,7 @@
     iget-object v0, p0, Lcom/android/mms/transaction/TransactionSettings;->mServiceCenter:Ljava/lang/String;
 
     # FEAT(mms testnet): MMSC override for the development test network only
-    invoke-static {v0}, Lcom/android/mms/transaction/ArgonMmsReceive;->mmscUrl(Ljava/lang/String;)Ljava/lang/String;
+    invoke-static {v0}, Lcom/android/mms/transaction/WaveMmsReceive;->mmscUrl(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 

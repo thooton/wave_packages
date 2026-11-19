@@ -1518,7 +1518,7 @@
 
     .prologue
     # PERF(mms network): linger like AOSP MmsNetworkManager, so back-to-back MMS skip the bring-up
-    invoke-static {p0, p1}, Lcom/android/mms/transaction/ArgonPerf;->lingerMmsNetwork(Landroid/content/Context;I)V
+    invoke-static {p0, p1}, Lcom/android/mms/transaction/WavePerf;->lingerMmsNetwork(Landroid/content/Context;I)V
 
     const/4 v4, 0x0
 
@@ -1528,11 +1528,11 @@
     move-result v0
 
     # FIX(mms no subscription): nothing was requested for an invalid phone id
-    if-gez v0, :argon_phone_ok
+    if-gez v0, :wave_phone_ok
 
     return-void
 
-    :argon_phone_ok
+    :wave_phone_ok
 
     .line 966
     iget-object v1, p0, Lcom/android/mms/transaction/TransactionService;->mMmsNetworkCallback:[Landroid/net/ConnectivityManager$NetworkCallback;
@@ -1765,15 +1765,15 @@
     invoke-direct {p0}, Lcom/android/mms/transaction/TransactionService;->createWakeLock()V
 
     # FEAT(mms testnet): no carrier MMS APN on the development test network
-    invoke-static {}, Lcom/android/mms/transaction/ArgonMmsReceive;->testNet()Z
+    invoke-static {}, Lcom/android/mms/transaction/WaveMmsReceive;->testNet()Z
 
     move-result v0
 
-    if-eqz v0, :argon_real_apn
+    if-eqz v0, :wave_real_apn
 
     return-void
 
-    :argon_real_apn
+    :wave_real_apn
 
     .line 946
     invoke-static {p1}, Landroid/telephony/SubscriptionManager;->getPhoneId(I)I
@@ -1781,7 +1781,7 @@
     move-result v0
 
     # FIX(mms no subscription): fail like "no MMS connectivity" instead of crashing
-    if-gez v0, :argon_phone_ok
+    if-gez v0, :wave_phone_ok
 
     new-instance v1, Ljava/io/IOException;
 
@@ -1791,7 +1791,7 @@
 
     throw v1
 
-    :argon_phone_ok
+    :wave_phone_ok
 
     .line 947
     const-string/jumbo v1, "Mms"
@@ -3181,7 +3181,7 @@
     check-cast p1, Lcom/android/mms/transaction/Transaction;
 
     # FEAT(mms receive): reveal a held notification if its download didn't produce a message
-    invoke-static {p0, p1}, Lcom/android/mms/transaction/ArgonMmsReceive;->onTransactionUpdate(Landroid/content/Context;Lcom/android/mms/transaction/Transaction;)V
+    invoke-static {p0, p1}, Lcom/android/mms/transaction/WaveMmsReceive;->onTransactionUpdate(Landroid/content/Context;Lcom/android/mms/transaction/Transaction;)V
 
     .line 803
     invoke-virtual {p1}, Lcom/android/mms/transaction/Transaction;->getServiceId()I
@@ -3548,8 +3548,8 @@
     const/4 v2, 0x0
 
     .line 856
-    # PERF(mms notification): skipped when ArgonPerf.notifyEarly already notified
-    invoke-static {p0, v0, v1, v2}, Lcom/android/mms/transaction/ArgonPerf;->updateAfterTransaction(Landroid/content/Context;JZ)V
+    # PERF(mms notification): skipped when WavePerf.notifyEarly already notified
+    invoke-static {p0, v0, v1, v2}, Lcom/android/mms/transaction/WavePerf;->updateAfterTransaction(Landroid/content/Context;JZ)V
 
     .line 859
     invoke-static {p0}, Lcom/android/mms/transaction/MessagingNotification;->updateDownloadFailedNotification(Landroid/content/Context;)V

@@ -416,7 +416,7 @@
     move-object/from16 v1, v16
 
     # PERF(mms notification): sender cached per message
-    invoke-static {v0, v1, v15}, Lcom/android/mms/transaction/ArgonPerf;->mmsFrom(Landroid/content/Context;Landroid/net/Uri;Landroid/database/Cursor;)Ljava/lang/String;
+    invoke-static {v0, v1, v15}, Lcom/android/mms/transaction/WavePerf;->mmsFrom(Landroid/content/Context;Landroid/net/Uri;Landroid/database/Cursor;)Ljava/lang/String;
 
     move-result-object v4
 
@@ -599,27 +599,27 @@
     # rows past the newest few are not loaded at all (mode 0 = load, 1 = cached, 2 = skip)
     move-object/from16 v2, p0
 
-    invoke-static {v2, v15}, Lcom/android/mms/transaction/ArgonPerf;->mmsNotificationMode(Landroid/content/Context;Landroid/database/Cursor;)I
+    invoke-static {v2, v15}, Lcom/android/mms/transaction/WavePerf;->mmsNotificationMode(Landroid/content/Context;Landroid/database/Cursor;)I
 
     move-result v2
 
-    if-eqz v2, :argon_load
+    if-eqz v2, :wave_load
 
     const/4 v3, 0x1
 
     if-ne v2, v3, :cond_4
 
-    invoke-static {v15}, Lcom/android/mms/transaction/ArgonPerf;->mmsCachedText(Landroid/database/Cursor;)Ljava/lang/String;
+    invoke-static {v15}, Lcom/android/mms/transaction/WavePerf;->mmsCachedText(Landroid/database/Cursor;)Ljava/lang/String;
 
     move-result-object v5
 
-    invoke-static {v15}, Lcom/android/mms/transaction/ArgonPerf;->mmsCachedType(Landroid/database/Cursor;)I
+    invoke-static {v15}, Lcom/android/mms/transaction/WavePerf;->mmsCachedType(Landroid/database/Cursor;)I
 
     move-result v14
 
     goto :cond_4
 
-    :argon_load
+    :wave_load
 
     .line 856
     :try_start_1
@@ -675,7 +675,7 @@
     if-eqz v3, :cond_3
 
     # PERF(mms notification): only the newest message's picture is ever shown
-    invoke-static {v15}, Lcom/android/mms/transaction/ArgonPerf;->skipMmsNotificationPicture(Landroid/database/Cursor;)Z
+    invoke-static {v15}, Lcom/android/mms/transaction/WavePerf;->skipMmsNotificationPicture(Landroid/database/Cursor;)Z
 
     move-result v3
 
@@ -720,7 +720,7 @@
     .line 878
     :cond_4
     # PERF(mms notification): remember what was loaded
-    invoke-static {v15, v5, v14}, Lcom/android/mms/transaction/ArgonPerf;->mmsRemember(Landroid/database/Cursor;Ljava/lang/String;I)V
+    invoke-static {v15, v5, v14}, Lcom/android/mms/transaction/WavePerf;->mmsRemember(Landroid/database/Cursor;Ljava/lang/String;I)V
 
     const/4 v3, 0x0
 

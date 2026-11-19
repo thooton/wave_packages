@@ -1594,22 +1594,22 @@
 
     # PERF(recipient setup): the framework email pattern requires an @. Phone
     # numbers need neither address extraction nor regex matcher allocation.
-    if-eqz v0, :argon_not_email
+    if-eqz v0, :wave_not_email
     const/16 v1, 0x40
     invoke-virtual {v0, v1}, Ljava/lang/String;->indexOf(I)I
     move-result v1
-    if-ltz v1, :argon_not_email
+    if-ltz v1, :wave_not_email
     invoke-static {v0}, Landroid/provider/Telephony$Mms;->isEmailAddress(Ljava/lang/String;)Z
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
     move-result v0
-    goto :argon_email_done
+    goto :wave_email_done
 
-    :argon_not_email
+    :wave_not_email
     const/4 v0, 0x0
 
-    :argon_email_done
+    :wave_email_done
     monitor-exit p0
 
     return v0

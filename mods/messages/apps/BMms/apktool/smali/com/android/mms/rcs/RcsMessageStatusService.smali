@@ -592,15 +592,15 @@
 
     .prologue
     # FEAT(rcs): our action (or a sticky restart) keeps the RCS engine's process alive
-    invoke-static {p0, p1}, Lcom/android/mms/argon/RcsHost;->onStartCommand(Landroid/app/Service;Landroid/content/Intent;)I
+    invoke-static {p0, p1}, Lcom/android/mms/wave/RcsHost;->onStartCommand(Landroid/app/Service;Landroid/content/Intent;)I
 
     move-result v0
 
-    if-ltz v0, :argon_stock
+    if-ltz v0, :wave_stock
 
     return v0
 
-    :argon_stock
+    :wave_stock
     .line 90
     sget-wide v0, Lcom/android/mms/rcs/RcsMessageStatusService;->taskCount:J
 

@@ -1,4 +1,4 @@
-# Status: Messages Argon (Sonim XP3800 messaging modernization)
+# Status: Messages Improved (Sonim XP3800 messaging modernization)
 
 State at the end of the modernization work. Read `/AGENTS.md` first; feature docs are linked from
 `/README.md`; testing is in `docs/testing.md`.

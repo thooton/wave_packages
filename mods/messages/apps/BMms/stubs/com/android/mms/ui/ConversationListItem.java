@@ -5,7 +5,7 @@ import android.content.Context;
 import android.widget.RelativeLayout;
 
 public class ConversationListItem extends RelativeLayout {
-    volatile Object mArgonContactUpdates;
+    volatile Object mWaveContactUpdates;
     public ConversationListItem(Context context) { super(context); }
-    void argonRefreshRecipients() {}
+    void waveRefreshRecipients() {}
 }

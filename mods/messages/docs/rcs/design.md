@@ -1,4 +1,4 @@
-# RCS in Messages Argon: design and contract
+# RCS in Messages Improved: design and contract
 
 ## Constraints that shape the design
 * The phone (Sonim XP3800, Android 8.1 / API 27, firmware for Bell Canada) has **no Google Play
@@ -28,9 +28,9 @@ These are `RcsConfig.Policy` fields with exactly these defaults.
 
 ## Layering
 ```
-apps/BMms/java/org/argon/rcs/        pure Java 8 engine (NO android.* imports): provisioning,
+apps/BMms/java/org/wave/rcs/        pure Java 8 engine (NO android.* imports): provisioning,
                                      SIP UA, MSRP, CPIM/IMDN, chat/group/FT, capabilities
-apps/BMms/java/com/android/mms/argon/   Android glue (service, storage in telephony provider,
+apps/BMms/java/com/android/mms/wave/   Android glue (service, storage in telephony provider,
                                      routing from the compose screen, notifications)
 tools/rcs/mock/                      mock RCS network (Python 3 stdlib): ACS, SIP registrar/proxy,
                                      MSRP, FT-over-HTTP content server, scriptable virtual users,
@@ -39,7 +39,7 @@ tools/rcs/test/ + run_tests.sh       host tests: engine on the host JVM against 
 ```
 
 ## Engine API (contract the Android glue codes against)
-Package `org.argon.rcs`. All numbers are E.164 strings (`+15551234567`). Callbacks arrive on
+Package `org.wave.rcs`. All numbers are E.164 strings (`+15551234567`). Callbacks arrive on
 engine threads; the glue must not block them for long.
 
 ```java
