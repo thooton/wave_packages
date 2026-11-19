@@ -15,6 +15,8 @@ writes **unsigned signing requests** to `build/<App>/unsigned.apk`, not
 installable modules. It changes dex only; keep the manifest and resources
 byte-identical. Android API 27, no new permissions or shared UIDs.
 
+Earlier builds substituted DEX and retained stale stock signer records; that
+was not an OEM signature on the modified code. The old helper is not imported.
 These privileged stock apps require genuine OEM signing. The release
 builder never takes private keys. After an authorized signer returns the
 signed APKs named `<App>.apk`, set `OEM_SIGNED_APKS` to their directory and
