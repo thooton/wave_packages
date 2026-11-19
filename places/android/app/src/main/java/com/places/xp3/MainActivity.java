@@ -313,7 +313,7 @@ public final class MainActivity extends BaseActivity {
                 };
             }
             final Runnable then = done;
-            runOnUiThread(() -> {
+            onUi(() -> {
                 if (mine != generation) return;
                 job = null;
                 progress.setVisibility(View.GONE);
@@ -1075,5 +1075,16 @@ public final class MainActivity extends BaseActivity {
             view.setText(text);
             view.setVisibility(text.length() == 0 ? View.GONE : View.VISIBLE);
         }
+    }
+
+    /**
+     * Back on the main thread, unless this activity has been destroyed
+     * meanwhile (closed, or started over for a new setup): work finishing
+     * late must not show dialogs on it or queue more on its stopped workers.
+     */
+    private void onUi(final Runnable work) {
+        runOnUiThread(() -> {
+            if (!isDestroyed()) work.run();
+        });
     }
 }
