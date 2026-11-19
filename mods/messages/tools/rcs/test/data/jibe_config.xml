@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Realistic Google Jibe provisioning document (structure as captured from Google Messages,
+     values redacted/fake). Used by UnitTests.jibeConfig. -->
+<wap-provisioningdoc version="1.1">
+  <characteristic type="TOKEN">
+    <parm name="token" value="5-AAredactedTOKENredactedTOKENredacted"/>
+    <parm name="validity" value="2505600"/>
+  </characteristic>
+  <characteristic type="VERS">
+    <parm name="version" value="8"/>
+    <parm name="validity" value="142731"/>
+  </characteristic>
+  <characteristic type="APPLICATION">
+    <characteristic type="ConRefs">
+      <characteristic type="ConRef"/>
+    </characteristic>
+    <characteristic type="Public_user_identity_List">
+      <parm name="Public_user_Identity" value="tel:+13475550123"/>
+      <parm name="Public_user_Identity" value="sip:+13475550123@us-tmobile.rcs.telephony.goog"/>
+    </characteristic>
+    <characteristic type="Ext">
+      <characteristic type="SecondaryDevicePar">
+        <parm name="VoiceCall" value="0"/>
+        <parm name="Chat" value="0"/>
+        <parm name="SendSms" value="0"/>
+        <parm name="FileTransfer" value="0"/>
+      </characteristic>
+      <parm name="NatUrlFmt" value="0"/>
+      <parm name="IntUrlFmt" value="0"/>
+      <parm name="Q-Value" value="0.5"/>
+      <parm name="MaxSizeImageShare" value="104857600"/>
+    </characteristic>
+    <characteristic type="ICSI_List">
+      <parm name="ICSI" value="0"/>
+      <parm name="ICSI_Resource_Allocation_Mode" value="0"/>
+    </characteristic>
+    <characteristic type="LBO_P-CSCF_Address">
+      <parm name="Address" value="us-tmobile.rcs.telephony.goog"/>
+      <parm name="AddressType" value="FQDN"/>
+      <parm name="Voice_Domain_Preference_E_UTRAN" value=""/>
+    </characteristic>
+    <characteristic type="PhoneContext_List">
+      <parm name="PhoneContext" value="+1"/>
+      <parm name="Public_user_identity" value="tel:+13475550123"/>
+    </characteristic>
+    <characteristic type="APPAUTH">
+      <parm name="AuthType" value="Digest"/>
+      <parm name="Realm" value="us-tmobile.rcs.telephony.goog"/>
+      <parm name="UserName" value="+13475550123"/>
+      <parm name="UserPwd" value="JrWIredactedPASSWORDredacted_"/>
+    </characteristic>
+    <parm name="APPID" value="ap2001"/>
+    <parm name="Name" value="IMS Settings"/>
+    <parm name="AppRef" value="IMS-Settings"/>
+    <parm name="PDP_ContextOperPref" value="0"/>
+    <parm name="Timer_T1" value="600"/>
+    <parm name="Timer_T2" value="9500"/>
+    <parm name="Timer_T4" value="10000"/>
+    <parm name="Private_User_Identity" value="+13475550123@us-tmobile.rcs.telephony.goog"/>
+    <parm name="Home_network_domain_name" value="us-tmobile.rcs.telephony.goog"/>
+    <parm name="Keep_Alive_Enabled" value="1"/>
+    <parm name="RegRetryBaseTime" value="30"/>
+    <parm name="RegRetryMaxTime" value="1800"/>
+  </characteristic>
+  <characteristic type="APPLICATION">
+    <characteristic type="IMS">
+      <parm name="To-AppRef" value="IMS-Settings"/>
+    </characteristic>
+    <characteristic type="SERVICES">
+      <characteristic type="Ext"/>
+      <parm name="presencePrfl" value="0"/>
+      <parm name="ChatAuth" value="1"/>
+      <parm name="GroupChatAuth" value="1"/>
+      <parm name="ftAuth" value="1"/>
+      <parm name="standaloneMsgAuth" value="0"/>
+      <parm name="geolocPushAuth" value="1"/>
+      <parm name="ChatMessagingTechnology" value="1"/>
+    </characteristic>
+    <characteristic type="PRESENCE">
+      <parm name="usePresence" value="0"/>
+      <parm name="presencePrfl" value="0"/>
+    </characteristic>
+    <characteristic type="XDMS">
+      <parm name="XCAPRootURI" value="http://example.com"/>
+      <parm name="XCAPAuthenticationUserName" value="unused"/>
+    </characteristic>
+    <characteristic type="IM">
+      <characteristic type="Ext"/>
+      <parm name="imMsgTech" value="1"/>
+      <parm name="imCapAlwaysON" value="1"/>
+      <parm name="GroupChatFullStandFwd" value="1"/>
+      <parm name="imSessionStart" value="0"/>
+      <parm name="ftWarnSize" value="102400"/>
+      <parm name="ftAutAccept" value="1"/>
+      <parm name="ftStAndFwEnabled" value="0"/>
+      <parm name="AutAccept" value="1"/>
+      <parm name="AutAcceptGroupChat" value="1"/>
+      <parm name="firstMessageInvite" value="1"/>
+      <parm name="MaxConcurrentSession" value="0"/>
+      <parm name="MaxSize1to1" value="8192"/>
+      <parm name="MaxSize1toM" value="8192"/>
+      <parm name="TimerIdle" value="180"/>
+      <parm name="MaxSizeFileTr" value="104857600"/>
+      <parm name="ftHTTPCSURI" value="https://rcs-copper-optimized-us.googleapis.com"/>
+      <parm name="ftHTTPCSUser" value="+13475550123"/>
+      <parm name="ftHTTPCSPwd" value="KxVredactedFTPASSWORDredactedWy"/>
+      <parm name="ftDefaultMech" value="HTTP"/>
+      <parm name="deferred-msg-func-uri" value="sip:foo@bar"/>
+      <parm name="max_adhoc_group_size" value="100"/>
+      <parm name="conf-fcty-uri" value="sip:conference@rcs.google.com"/>
+      <parm name="exploder-uri" value="sip:foo@bar"/>
+      <parm name="ChatRevokeTimer" value="420"/>
+    </characteristic>
+    <characteristic type="CPM">
+      <characteristic type="StandaloneMsg">
+        <parm name="MaxSizeStandalone" value="0"/>
+      </characteristic>
+      <characteristic type="MessageStore">
+        <parm name="Url" value="http://example.com"/>
+        <parm name="UserName" value="unused"/>
+        <parm name="UserPwd" value="unused"/>
+      </characteristic>
+    </characteristic>
+    <characteristic type="CAPDISCOVERY">
+      <characteristic type="Ext">
+        <characteristic type="joyn">
+          <characteristic type="Ext"/>
+          <parm name="msgCapValidity" value="10"/>
+        </characteristic>
+      </characteristic>
+      <parm name="pollingPeriod" value="0"/>
+      <parm name="capInfoExpiry" value="0"/>
+      <parm name="defaultDisc" value="0"/>
+    </characteristic>
+    <characteristic type="OTHER">
+      <characteristic type="transportProto">
+        <parm name="psSignalling" value="SIPoTLS"/>
+        <parm name="psMedia" value="MSRPoTLS"/>
+        <parm name="psSignallingRoaming" value="SIPoTLS"/>
+        <parm name="psMediaRoaming" value="MSRPoTLS"/>
+        <parm name="psRTMedia" value="SRTP"/>
+        <parm name="wifiSignalling" value="SIPoTLS"/>
+        <parm name="wifiMedia" value="MSRPoTLS"/>
+      </characteristic>
+      <parm name="uuid_Value" value="0"/>
+      <parm name="callComposerTimerIdle" value="180"/>
+    </characteristic>
+    <characteristic type="SERVICEPROVIDEREXT">
+      <characteristic type="joyn">
+        <characteristic type="Messaging">
+          <parm name="deliveryTimeout" value="300"/>
+          <parm name="ftHTTPCapAlwaysOn" value="1"/>
+        </characteristic>
+      </characteristic>
+    </characteristic>
+    <parm name="AppID" value="ap2002"/>
+    <parm name="Name" value="RCS-e settings"/>
+    <parm name="AppRef" value="RCSe-Settings"/>
+  </characteristic>
+  <characteristic type="MSG">
+    <parm name="title" value="Welcome to RCS chats"/>
+    <parm name="message" value="You will now get read receipts &lt;a href='x'&gt;terms&lt;/a&gt;."/>
+    <parm name="Accept_btn" value="1"/>
+    <parm name="Reject_btn" value="0"/>
+  </characteristic>
+  <characteristic type="XGOOGLE">
+    <characteristic type="ReducedFraming">
+      <parm name="AuthToken" value="redacted"/>
+    </characteristic>
+    <parm name="ImUrl" value="instantmessaging-pa-jms-us.googleapis.com:443"/>
+  </characteristic>
+</wap-provisioningdoc>

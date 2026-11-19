@@ -1,0 +1,29 @@
+Signature-Version: 1.0
+Created-By: 1.0 (Android SignApk)
+SHA-256-Digest-Manifest: 61qBpUXRYctj4mTets3ZJfWFkNAMvoskymPPXAVAzsU=
+X-Android-APK-Signed: 2
+
+Name: AndroidManifest.xml
+SHA-256-Digest: /c1vVDwfraBfsOTaBxVJ1/uMHt9ON174sxWdkCSkZTg=
+
+Name: classes.dex
+SHA-256-Digest: i9NTlZZnqtgLVxLhBP15HO2x6cNF7ZrSz8T9qJiN/U0=
+
+Name: res/mipmap-hdpi-v4/ic_launcher_phone.png
+SHA-256-Digest: K8NRwhB5YrEXgjVw/ftBAahFb+1ONl+iKcshzX/UyYY=
+
+Name: res/mipmap-mdpi-v4/ic_launcher_phone.png
+SHA-256-Digest: KyU65dK1AP7PVYJALNj1jmNiC1YEgmb5Ai0O33mTVrE=
+
+Name: res/mipmap-xhdpi-v4/ic_launcher_phone.png
+SHA-256-Digest: Mv97LdxRVa7Q5qNe0JidNq3xxAD7Ymu3NahAUEj2kXw=
+
+Name: res/mipmap-xxhdpi-v4/ic_launcher_phone.png
+SHA-256-Digest: ZNdx8xbGh5fgzuwbNxguFkSOUdzmpByAzg71rHwppXE=
+
+Name: res/xml/hbpcd_lookup_tables.xml
+SHA-256-Digest: Bg5d5/2ZROAtKEx7YjfSlaB/doM2LPH/Mswn86pyitg=
+
+Name: resources.arsc
+SHA-256-Digest: bLdQot8Hahf2jiZvOvlOEkAMV480iV9WPxTi8hdpP1I=
+
