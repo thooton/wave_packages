@@ -239,7 +239,10 @@ Starting a charge (real money; never press Start in QA):
   (defaults US, en, USD, en_US, NTSLA, 4.60.0 and Tesla's iOS agent). There
   is no command center form. The token is refreshed and rotated
   automatically; importing a different one starts over from it, signing out
-  forgets the rotated ones. A version with a token built in hands its live
+  forgets the rotated ones. Each rotation happens once however many
+  requests are refused at once, and an exchange still running when a new
+  setup is imported never lands on top of it (that request answers
+  "Charge's setup changed. Try again."). A version with a token built in hands its live
   token to the setup on first launch (regional settings take the defaults,
   and a built-in Maps key is not carried over). A request with no token
   answers "Charge isn't set up." as the normal error states above, never a

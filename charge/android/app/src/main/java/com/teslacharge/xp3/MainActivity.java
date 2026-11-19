@@ -2004,13 +2004,13 @@ public final class MainActivity extends BaseActivity {
                     final T result = task.call();
                     main.post(
                         () -> {
-                            if (!isFinishing()) success.accept(result);
+                            if (!isFinishing() && !isDestroyed()) success.accept(result);
                         }
                     );
                 } catch (final Exception error) {
                     main.post(
                         () -> {
-                            if (!isFinishing()) failure.accept(error);
+                            if (!isFinishing() && !isDestroyed()) failure.accept(error);
                         }
                     );
                 }

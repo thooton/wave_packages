@@ -16,6 +16,14 @@ public final class TokenStore {
     public static final String SIGN_IN_EXPIRED = "Tesla sign-in has expired.";
     private final SharedPreferences preferences;
     private final Settings settings;
+    /**
+     * One lock for every store in the process, not one per store: a new
+     * setup builds a new repository (and store) while the old one may still
+     * be exchanging, and both work on the same preferences. Two monitors
+     * would let two exchanges spend the same refresh token, or let the old
+     * account's rotation land on top of the new setup's seed.
+     */
+    private static final Object LOCK = new Object();
 
     public TokenStore(Context context, Settings settings) {
         this.settings = settings;
@@ -32,6 +40,12 @@ public final class TokenStore {
      * token it was seeded with.
      */
     private void seed(String refreshToken) {
+        synchronized (LOCK) {
+            seedLocked(refreshToken);
+        }
+    }
+
+    private void seedLocked(String refreshToken) {
         if (refreshToken.length() == 0) {
             if (preferences.getAll().size() > 0) preferences.edit().clear().commit();
             return;
@@ -63,7 +77,13 @@ public final class TokenStore {
      * arriving at once on an expired token produce one exchange, not one each,
      * because everyone behind the first re-reads what the first stored.
      */
-    public synchronized String getAccessToken() throws ApiException {
+    public String getAccessToken() throws ApiException {
+        synchronized (LOCK) {
+            return accessLocked();
+        }
+    }
+
+    private String accessLocked() throws ApiException {
         String access = preferences.getString("access_token", "");
         long expiry = preferences.getLong("access_expires_at", 0L);
         if (access.length() > 0 && System.currentTimeMillis() < expiry - ACCESS_SKEW_MS) return access;
@@ -82,14 +102,25 @@ public final class TokenStore {
      * because reading it back would just find whatever is current and could
      * never tell "already fixed" from "still broken".
      */
-    public synchronized String refreshRejected(String rejected) throws ApiException {
+    public String refreshRejected(String rejected) throws ApiException {
+        synchronized (LOCK) {
+            return rejectedLocked(rejected);
+        }
+    }
+
+    private String rejectedLocked(String rejected) throws ApiException {
         String access = preferences.getString("access_token", "");
         if (access.length() > 0 && !access.equals(rejected)) return access;
         return refresh();
     }
 
-    /** Callers hold this object's monitor. */
+    /** Callers hold LOCK. */
     private String refresh() throws ApiException {
+        if (!settings.refreshToken.isEmpty() && !digest(settings.refreshToken).equals(preferences.getString("seed", ""))) {
+            // A newer setup has reseeded the store since this one was made:
+            // its tokens are another sign-in's, not this store's to spend.
+            throw new ApiException("Charge's setup changed. Try again.", 409);
+        }
         String current = preferences.getString("refresh_token", "");
         String previous = preferences.getString("previous_refresh_token", "");
         if (current.length() == 0) throw new ApiException("Charge isn't set up.", 401);
