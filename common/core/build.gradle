@@ -11,3 +11,17 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
     options.release = 8
 }
+
+// Its own tests: the setup payload and every app's descriptor in the tree
+// (Config, SetupSpec). The same runner as an app's :core.
+tasks.register("selfTest", JavaExec) {
+    dependsOn "testClasses"
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.xp3.common.SelfTest"
+    args rootDir.absolutePath
+}
+tasks.named("check") { dependsOn "selfTest" }
+tasks.named("test") {
+    dependsOn "selfTest"
+    enabled = false
+}
