@@ -81,6 +81,14 @@ payload was imported, written whole or not at all (a temporary file renamed
 over it). Never on shared storage, never logged. It is part of
 Android backup like the rest of the app's data (allowBackup is on in every
 app so `adb backup` can move a phone's data to another, logins included).
+That is a decision of the owner's (Wave `docs/decisions.md`, decided item
+11), with a cost: whoever holds an `adb backup` of the phone can read every
+app's setup, so Tesla tokens, Authenticator accounts, Canvas and Flashcards
+tokens, Mail's login and a command center sign-in. The owner accepted that
+for moving a phone with its logins on their own device. Keep a backup like
+the secrets it holds, and sign out or revoke what it held if one is lost.
+Don't set `allowBackup="false"` in an app, or leave the setup file out of
+backup, without changing that decision first.
 
 `Setup.stamp` changes with every save and sign-out, and with the file's
 size and time, so a setup written just before the process died still
