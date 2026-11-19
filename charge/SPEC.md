@@ -229,7 +229,8 @@ Starting a charge (real money; never press Start in QA):
 
 - Network: Tesla's API over HTTPS for everything; address search through
   Google geocoding when the setup has a Maps key, otherwise OpenStreetMap
-  Nominatim. No other server.
+  Nominatim. No other server. Requests use the shared bounded HTTP client;
+  redirects are not followed.
 - Setup: nothing is built into the APK. With nothing set up, Charge opens on
   the shared setup screen (`../common/SETUP.md`) instead; Menu's Setup…
   opens it later. The setup is a Tesla refresh token (required), and
