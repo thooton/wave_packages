@@ -1,0 +1,16 @@
+# Allow just the five build inputs, never a full firmware dump.
+*
+!.gitignore
+!system/
+!system/build.prop
+!system/priv-app/
+!system/priv-app/BMms/
+!system/priv-app/BMms/BMms.apk
+!system/priv-app/TelephonyProvider/
+!system/priv-app/TelephonyProvider/TelephonyProvider.apk
+!system/priv-app/ContactsProvider/
+!system/priv-app/ContactsProvider/ContactsProvider.apk
+!system/priv-app/SonimLauncher/
+!system/priv-app/SonimLauncher/SonimLauncher.apk
+!system/priv-app/BMusic/
+!system/priv-app/BMusic/BMusic.apk

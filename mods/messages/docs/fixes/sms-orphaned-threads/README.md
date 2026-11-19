@@ -91,6 +91,6 @@ Search for `FIX(orphaned sms)`:
 * `apps/TelephonyProvider/java/.../ThreadIntegrity.java` (the logic)
 * `apps/BMms/apktool/smali/com/android/mms/transaction/SmsReceiverService.smali`
 
-`git diff stock -- apps/` shows the full change. Build, deploy and signing notes are in
+`git diff stock-messages -- apps/` shows the full change. Build, deploy and signing notes are in
 /AGENTS.md. The first release was the standalone Magisk module `sms_orphan_fix`, which
 `tools/deploy.sh` and the packaged zip replace automatically.

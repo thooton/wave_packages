@@ -1,11 +1,5 @@
 #!/bin/bash
-# tools/build.sh [App...]      (default: every app in apps/)
-# For each app:
-#   apps/<App>/apktool/  -> apktool b -> classes*.dex
-#   apps/<App>/java/     -> javac + d8 -> next classesN.dex   (optional; apps/<App>/stubs/ is
-#                           compile-only: declarations of stock classes the Java code calls)
-#   splice the dex files into the STOCK apk (keeps its platform signature, see AGENTS.md),
-#   zipalign -> out/system/.../<App>.apk
+# Compile dex, check symbol references, and produce an unsigned request for the OEM signer.
 source "$(dirname "$0")/lib/env.sh"
 apps=("$@"); [ ${#apps[@]} -gt 0 ] || mapfile -t apps < <(all_apps)
 for app in "${apps[@]}"; do
@@ -16,23 +10,20 @@ for app in "${apps[@]}"; do
     n=$(ls "$B/dex" | wc -l)
     if [ -d "$A/java" ]; then
         mkdir -p "$B/stubs" "$B/classes" "$B/d8"
-        filter='^warning|bootstrap|release 8|^[0-9]+ warning|^Note:'
         if [ -d "$A/stubs" ]; then
             javac -nowarn -source 8 -target 8 -cp "$ANDROID_JAR" -d "$B/stubs" \
-                $(find "$A/stubs" -name '*.java') 2>&1 | grep -vE "$filter" || true
+                $(find "$A/stubs" -name '*.java')
         fi
         # JAVA_EXCLUDE: optional path glob to leave out (e.g. '*/org/argon/*' while it's mid-edit)
         javac -nowarn -source 8 -target 8 -cp "$ANDROID_JAR:$B/stubs" -d "$B/classes" \
-            $(find "$A/java" -name '*.java' ${JAVA_EXCLUDE:+-not -path "$JAVA_EXCLUDE"}) 2>&1 | grep -vE "$filter" || true
+            $(find "$A/java" -name '*.java' ${JAVA_EXCLUDE:+-not -path "$JAVA_EXCLUDE"})
         [ -n "$(find "$B/classes" -name '*.class')" ] || { echo "$app: javac failed"; exit 1; }
         "$BT/d8" --release --min-api $MIN_API --lib "$ANDROID_JAR" --classpath "$B/stubs" \
             --output "$B/d8" $(find "$B/classes" -name '*.class')
         n=$((n + 1)); mv "$B/d8/classes.dex" "$B/dex/classes$n.dex"
+        python3 "$SHARED/dexcheck.py" "$B/dex" "$B/classes"
     fi
-    args=(); for d in "$B"/dex/*.dex; do args+=("$(basename "$d")=$d"); done
-    out="$ROOT/out/$(system_path "$app")"; mkdir -p "$(dirname "$out")"
-    python3 "$ROOT/tools/lib/splice_apk.py" "$(stock_apk "$app")" "$B/unaligned.apk" "${args[@]}" >/dev/null
-    "$BT/zipalign" -f -p 4 "$B/unaligned.apk" "$out"
-    "$BT/zipalign" -c -p 4 "$out"
-    echo "built ${out#"$ROOT"/} ($(ls "$B/dex" | tr '\n' ' '))"
+    python3 "$SHARED/unsigned.py" "$(stock_apk "$app")" "$B/dex" "$B/request.apk"
+    "$BT/zipalign" -f -p 4 "$B/request.apk" "$B/unsigned.apk"
+    echo "$app: built unsigned signing request ($B/unsigned.apk)"
 done

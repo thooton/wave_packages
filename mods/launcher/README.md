@@ -15,6 +15,4 @@ systemless Magisk module that replaces `/system/priv-app/SonimLauncher`.
 * **New installs** go to the end of the Applications folder, as in stock. Uninstalling an app
   keeps its place, so reinstalling puts it back where it was.
 
-Build: `tools/setup.sh`, then `tools/build.sh`. Install: `tools/deploy.sh`, which reboots;
-undo with `tools/deploy.sh --remove`. Preview without installing: `tools/preview.sh`.
-See AGENTS.md for the workflow and docs/tray.md for how it works and the layout file format.
+Build and test with `tools/setup.sh`, `tools/build.sh`, `tools/test.sh`. See [shared signing and packaging requirements](../AGENTS.md) before attempting to install.

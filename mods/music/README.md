@@ -12,15 +12,4 @@ The setting filters the Music library, including search, tracks in playlists, an
 It doesn't alter Android's media index, delete files, change saved playlists, clear the playback
 queue, or prevent explicitly opening an audio file from another app.
 
-## Build and package
-
-```sh
-tools/setup.sh
-tools/pull_firmware.sh          # read-only; requires the unmodified stock APK on the phone
-tools/build.sh                  # out/system/priv-app/BMusic/BMusic.apk
-tools/test.sh                   # host tests for the library predicates
-tools/package.sh 1.0.0           # out/music_argon-1.0.0.zip
-```
-
-The ZIP is a Magisk module for stock Sonim firmware `3A.0.0-01-8.1.0-11.17.00`. Install it through
-Magisk and reboot when ready. Removing the module and rebooting restores stock Music.
+Build and test with `tools/setup.sh`, `tools/build.sh`, `tools/test.sh`. See [shared signing and packaging requirements](../AGENTS.md) before attempting to install.

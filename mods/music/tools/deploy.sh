@@ -8,6 +8,8 @@ if [ "${1:-}" = --remove ]; then
     adb shell su -c "'rm -rf /data/adb/modules/$MODULE_ID'" && adb reboot && echo "module removed, rebooting"
     exit 0
 fi
+source "$SHARED/admit.sh"
+admit
 [ -d "$ROOT/out/system" ] || { echo "nothing in out/system: run tools/build.sh"; exit 1; }
 expected=$(firmware_fingerprint)
 actual=$(adb shell getprop ro.build.fingerprint | tr -d '\r')

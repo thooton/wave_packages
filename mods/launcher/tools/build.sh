@@ -1,13 +1,5 @@
 #!/bin/bash
-# tools/build.sh [App...]      (default: every app in apps/)
-# For each app:
-#   apps/<App>/apktool/  -> apktool b -> classes*.dex
-#   apps/<App>/java/     -> javac + d8 -> next classesN.dex   (apps/<App>/stubs/ is compile-only:
-#                           declarations of stock classes the Java code calls, never shipped)
-#   splice the dex files into the STOCK apk (keeps its platform signature, see AGENTS.md),
-#   zipalign -> out/system/.../<App>.apk
-# Stock classes whose smali was deleted (replaced by Java) must not survive in the smali dex: the
-# check at the end fails the build if a class is defined in two dex files.
+# Compile dex, check symbol references, and produce an unsigned request for the OEM signer.
 source "$(dirname "$0")/lib/env.sh"
 apps=("$@"); [ ${#apps[@]} -gt 0 ] || mapfile -t apps < <(all_apps)
 for app in "${apps[@]}"; do
@@ -28,13 +20,10 @@ for app in "${apps[@]}"; do
             --output "$B/d8" $(find "$B/classes" -name '*.class')
         n=$((n + 1)); mv "$B/d8/classes.dex" "$B/dex/classes$n.dex"
         # Nothing from stubs/ may end up in the APK, and no class may be defined twice.
-        python3 "$ROOT/tools/lib/dexcheck.py" "$B/dex" "$B/classes"
+        python3 "$SHARED/dexcheck.py" "$B/dex" "$B/classes"
     fi
-    args=(); for d in "$B"/dex/*.dex; do args+=("$(basename "$d")=$d"); done
-    out="$ROOT/out/$(system_path "$app")"; mkdir -p "$(dirname "$out")"
-    python3 "$ROOT/tools/lib/splice_apk.py" "$(stock_apk "$app")" "$B/unaligned.apk" "${args[@]}" >/dev/null
-    "$BT/zipalign" -f -p 4 "$B/unaligned.apk" "$out"
-    "$BT/zipalign" -c -p 4 "$out"
-    ANDROID_JAR="$ANDROID_JAR" python3 "$ROOT/tools/lib/linkcheck.py" "$out"
-    echo "built ${out#"$ROOT"/} ($(ls "$B/dex" | tr '\n' ' '))"
+    python3 "$SHARED/unsigned.py" "$(stock_apk "$app")" "$B/dex" "$B/request.apk"
+    "$BT/zipalign" -f -p 4 "$B/request.apk" "$B/unsigned.apk"
+    ANDROID_JAR="$ANDROID_JAR" python3 "$SHARED/linkcheck.py" "$B/unsigned.apk" "Lcom/sonim/borqs/launcher/"
+    echo "$app: built unsigned signing request ($B/unsigned.apk)"
 done

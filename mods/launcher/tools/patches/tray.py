@@ -6,7 +6,7 @@ The Java side is apps/SonimLauncher/java/com/sonim/borqs/launcher/Argon*.java.
 Stock classes replaced wholesale by Java are deleted here: DrawerAdapter (+ViewHolder),
 FolderLaunchActivity, FolderDrawerClickListener."""
 import os, sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "tools"))
 from smalipatch import patch
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))

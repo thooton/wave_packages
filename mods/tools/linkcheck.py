@@ -6,7 +6,7 @@ doesn't exist (the stubs only promise it). Uses apktool's baksmali on the built 
 import os, re, subprocess, sys, tempfile
 
 apk = sys.argv[1]
-PKG = "Lcom/android/music/"
+PKG = sys.argv[2]
 temp = tempfile.TemporaryDirectory()
 tmp = temp.name
 subprocess.run(["apktool", "d", "-q", "-r", "-f", apk, "-o", tmp], check=True)

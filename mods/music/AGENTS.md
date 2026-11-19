@@ -1,11 +1,6 @@
 # Music Argon
 
-Stock BMusic for the Sonim XP3800, Android 8.1 / API 27, firmware `3A.0.0-01-8.1.0-11.17.00`.
-It is platform-signed and shares `android.uid.system`. Follow the sibling Argon projects: change
-only DEX files, keep manifest/resources/META-INF byte-identical, and deploy only as a Magisk system
-overlay. Do not re-sign. The source is `apps/BMusic/apktool` (stock baseline: git tag `stock`),
-`apps/BMusic/java` and compile-only `apps/BMusic/stubs`. `tools/patches/whitelist.py` recreates the
-marked smali hooks from `stock`. `tools/decompile.sh BMusic` produces the ignored JADX reference.
+Read [the shared constraints](../AGENTS.md) for building, signing and testing.
 
 The whitelist is a Music-only preference (`argon_library`). Directory entries are paths relative
 to mounted, removable, non-emulated volumes. MediaProvider on this firmware indexes removable

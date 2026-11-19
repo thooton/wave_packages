@@ -27,4 +27,4 @@ What it changes (the UI stays as it is):
 * Crash fixes: [mms-no-subscription](docs/fixes/mms-no-subscription/README.md),
   [invisible unread SMS / stuck Missed Events (orphaned threads)](docs/fixes/sms-orphaned-threads/README.md)
 
-Quick start: `tools/setup.sh && tools/build.sh && tools/deploy.sh`
+Build and test with `tools/setup.sh`, `tools/build.sh`, `tools/test.sh`. See [shared signing and packaging requirements](../AGENTS.md) before attempting to install.
