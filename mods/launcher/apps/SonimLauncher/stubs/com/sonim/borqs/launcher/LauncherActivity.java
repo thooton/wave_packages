@@ -39,6 +39,10 @@ public class LauncherActivity extends Activity {
     public String setFolderName(String s) { return null; }
     public synchronized void setSTKApp() { }
     void autoStartAppIfNeeded(String s) { }
+    void startNotification() { }
+    void startThemesActivity() { }
+    void startHomeShortcutsActivity() { }
+    static void waveWallpaper(LauncherActivity l) { }
 
     static ArrayList waveList(LauncherActivity l) { return null; }
     static GridView waveGrid(LauncherActivity l) { return null; }

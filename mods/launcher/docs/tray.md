@@ -16,7 +16,7 @@ install/uninstall. A folder opens `FolderLaunchActivity` (a dialog, 2 columns) w
 | `setAppsAndFolderList()` | now just `WaveTray.rebuild(this)`; the stock body is `waveStockSetAppsAndFolderList()` (fallback) |
 | `LauncherActivity$4.onReceive` | `WaveTray.onPackageEvent` first; true = handled (worker rebuild + swap on the UI thread) |
 | `dispatchKeyEvent` | `WaveTray.dispatchKey`: a move in progress takes the d-pad, Center/Enter/Menu/Back |
-| `onCreateOptionsMenu` (after super) / `onOptionsItemSelected` | our menu items (ids 101-107; stock uses 2-9) |
+| `onPrepareOptionsMenu` | clears and fills the current screen's menu with `WaveMenu`; uses the stock builder only in fallback |
 | `onPause` | a move in progress is put down |
 | `getFolderIcon(name)` | `WaveTray.folderIconHook`: drawn icon for the user's folders, stock icon for stock ones |
 | `updateAppTrayList()` | disabled PTT moves Calculator to the main tray only in stock fallback |
@@ -29,7 +29,8 @@ Java (`apps/SonimLauncher/java/com/sonim/borqs/launcher/`):
 * `WaveLayout`: the file format, matching against installed apps (`resolve`), and saving what's
   shown (`snapshot`). Pure Java, tested by `tools/test.sh`.
 * `WaveDefaults`: the first-run arrangement. Its `stock` line becomes Sonim's tray, read from `App_Tray`.
-* `WaveTray`: builds the list, package events, menu, dialogs, saving.
+* `WaveTray`: builds the list, handles package events, edits and saves the layout, and builds the Add apps picker.
+* `WaveMenu`: home, tray, and folder menus, prepared from the current selection.
 * `WaveMover`: carrying an entry through a grid (tray or folder).
 * `WaveIcons`: folder icons (colourful theme: coloured folder, red theme: white with red outline;
   2x2 preview of the first apps).

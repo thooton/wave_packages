@@ -3,13 +3,11 @@ package com.sonim.borqs.launcher;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
-import android.view.MenuItem;
 import android.widget.GridView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -17,21 +15,19 @@ import java.util.ArrayList;
 
 /**
  * Launcher Improved: replaces the stock folder screen (FolderLaunchActivity + its
- * FolderDrawerClickListener). Same dialog, grid and keys; the Menu key adds Move, Move to folder
- * and Hide for the selected app, before the stock App info. It follows the folder by name, so a
+ * FolderDrawerClickListener). Same dialog, grid and keys, with the shared WaveMenu. It follows
+ * the folder by name, so a
  * rebuild of the tray (an app installed or removed) or an edit keeps it current, and it closes
  * when the folder is gone or empty.
  */
 public class FolderLaunchActivity extends Activity implements AppListChangeListener {
     private static final String TAG = "WaveFolder";
-    private static final int MENU_APP_INFO = 2;
 
     private AccessArrayList mAccessArrayList;
     private ArrayList mApps;
     private DrawerAdapter mAdapter;
     private GridView mGrid;
     private String mFolderName;
-    private LauncherActivity.Apps mMenuTarget;
 
     @Override
     protected void onCreate(Bundle bundle) {
@@ -120,51 +116,13 @@ public class FolderLaunchActivity extends Activity implements AppListChangeListe
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        mMenuTarget = null;
-        int pos = mGrid.getSelectedItemPosition();
-        if (pos >= 0 && pos < mApps.size()) mMenuTarget = (LauncherActivity.Apps) mApps.get(pos);
-        if (mMenuTarget != null) {
-            if (WaveTray.active()) {
-                if (mApps.size() > 1) menu.add(0, WaveTray.MENU_MOVE, 0, "Move");
-                if (!WaveTray.pinned(mMenuTarget)) {
-                    menu.add(0, WaveTray.MENU_TO_FOLDER, 0, "Move to folder");
-                    menu.add(0, WaveTray.MENU_HIDE, 0, "Hide");
-                }
-            }
-            menu.add(0, MENU_APP_INFO, 0, WaveR.STRING_MENU_APP_INFO);
-        }
-        return super.onCreateOptionsMenu(menu);
+        return true;
     }
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        // As the stock screen: rebuild the menu for whatever is selected now.
-        invalidateOptionsMenu();
-        return super.onPrepareOptionsMenu(menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        final LauncherActivity.Apps app = mMenuTarget;
-        LauncherActivity l = WaveTray.launcher();
-        if (app == null) return super.onOptionsItemSelected(item);
-        switch (item.getItemId()) {
-            case MENU_APP_INFO:
-                startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                        .setData(Uri.parse("package:" + app.getPackageName())));
-                return true;
-            case WaveTray.MENU_MOVE:
-                if (l != null && mApps.contains(app)) WaveTray.startMove(l, mGrid, mApps, mAdapter, app, this);
-                return true;
-            case WaveTray.MENU_TO_FOLDER:
-                if (l != null) WaveTray.chooseFolder(l, this, app, null);
-                return true;
-            case WaveTray.MENU_HIDE:
-                if (l != null) WaveTray.hide(l, app, null);
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
-        }
+        menu.clear();
+        return WaveMenu.prepareFolder(this, menu, mGrid, mApps, mAdapter, mFolderName);
     }
 
     // ---- keys -----------------------------------------------------------------------------------------

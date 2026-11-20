@@ -13,8 +13,6 @@ import android.graphics.drawable.Drawable;
 import android.text.InputFilter;
 import android.text.InputType;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -31,19 +29,18 @@ import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
 import java.text.Collator;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 
 /**
  * Launcher Improved: the apps tray, arranged by the user. Replaces the stock tray's list building
- * (LauncherActivity.setAppsAndFolderList and the package receiver) and adds the Menu-key
- * actions that used to live in the separate Launcher app (com.custom.appdrawer): move an app or
- * folder, put apps in folders, rename and remove folders, hide apps, reset.
+ * (LauncherActivity.setAppsAndFolderList and the package receiver) and handles tray edits from
+ * WaveMenu.
  *
  * The arrangement is files/wave_tray.txt in the launcher's data (format: WaveLayout). Until the
  * user changes something it is WaveDefaults with Sonim's own tray at the end.
@@ -58,14 +55,6 @@ final class WaveTray {
     private static final String SELF = "com.sonim.borqs.launcher";
     private static final String STK = "com.android.stk";   // the stock code adds it to Tools itself
 
-    static final int MENU_MOVE = 101;
-    static final int MENU_TO_FOLDER = 102;
-    static final int MENU_HIDE = 103;
-    static final int MENU_RENAME = 104;
-    static final int MENU_UNFOLDER = 105;
-    static final int MENU_HIDDEN = 106;
-    static final int MENU_RESET = 107;
-
     /** The move in progress, if any (one at a time, in the tray or a folder). */
     static WaveMover sMover;
 
@@ -75,7 +64,6 @@ final class WaveTray {
     private static boolean sPendingRebuild;      // a package changed during a move
     private static boolean sFallback;            // our build failed: the stock tray is running
     private static WeakReference<LauncherActivity> sLauncher = new WeakReference<>(null);
-    private static LauncherActivity.AppsAndFolder sMenuTarget;
     private static final Map<String, Object[]> sCache = new HashMap<>();   // component -> {icon, label}
     private static final ExecutorService sWorker = Executors.newSingleThreadExecutor();
 
@@ -93,11 +81,12 @@ final class WaveTray {
     static void rebuild(LauncherActivity l) {
         sLauncher = new WeakReference<>(l);
         try {
-            ArrayList built = build(l, layout(l));
+            Built built = build(l, layout(l));
             ArrayList list = LauncherActivity.waveList(l);
             synchronized (list) {
                 list.clear();
-                list.addAll(built);
+                list.addAll(built.entries);
+                sMissing = built.missing;
                 afterSwap(l);
             }
             sFallback = false;
@@ -160,20 +149,39 @@ final class WaveTray {
         return rows;
     }
 
-    private static ArrayList build(LauncherActivity l, WaveLayout layout) {
-        PackageManager pm = l.getPackageManager();
+    /** Shared with the picker so safe mode, the launcher itself and STK are handled the same way. */
+    private static Map<String, ResolveInfo> launchable(PackageManager pm) {
         boolean safe = pm.isSafeMode();
         Intent main = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-        List<ResolveInfo> ris = pm.queryIntentActivities(main, 0);
-        Map<String, ResolveInfo> byComp = new HashMap<>();
-        List<WaveLayout.Installed> installed = new ArrayList<>();
-        for (ResolveInfo ri : ris) {
+        Map<String, ResolveInfo> activities = new LinkedHashMap<>();
+        for (ResolveInfo ri : pm.queryIntentActivities(main, 0)) {
             String pkg = ri.activityInfo.packageName;
-            if (SELF.equals(pkg) || STK.equals(pkg)) continue;
-            boolean system = (ri.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
-            if (safe && !system) continue;
-            String comp = pkg + "/" + ri.activityInfo.name;
-            if (byComp.put(comp, ri) == null) installed.add(new WaveLayout.Installed(comp, system));
+            if (SELF.equals(pkg) || STK.equals(pkg) || (safe && !system(ri))) continue;
+            activities.putIfAbsent(pkg + "/" + ri.activityInfo.name, ri);
+        }
+        return activities;
+    }
+
+    private static boolean system(ResolveInfo ri) {
+        return (ri.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
+    }
+
+    private static final class Built {
+        final ArrayList entries;
+        final Map<String, List<String>> missing;
+
+        Built(ArrayList entries, Map<String, List<String>> missing) {
+            this.entries = entries;
+            this.missing = missing;
+        }
+    }
+
+    private static Built build(LauncherActivity l, WaveLayout layout) {
+        PackageManager pm = l.getPackageManager();
+        Map<String, ResolveInfo> byComp = launchable(pm);
+        List<WaveLayout.Installed> installed = new ArrayList<>();
+        for (Map.Entry<String, ResolveInfo> e : byComp.entrySet()) {
+            installed.add(new WaveLayout.Installed(e.getKey(), system(e.getValue())));
         }
         WaveLayout.Result r = WaveLayout.resolve(layout, installed, WaveDefaults.INBOX);
         int theme = LauncherActivity.wavePrefs(l).getInt("current_theme", 0);
@@ -190,12 +198,9 @@ final class WaveTray {
             f.setIcon(folderIcon(l, f, theme));
             out.add(f);
         }
-        synchronized (WaveTray.class) {
-            sMissing = r.missing;
-        }
         Log.i(TAG, "tray: " + out.size() + " entries, " + r.hidden.size() + " hidden, "
                 + r.missing.size() + " places with uninstalled apps");
-        return out;
+        return new Built(out, r.missing);
     }
 
     private static LauncherActivity.Apps makeApp(LauncherActivity l, PackageManager pm, ResolveInfo ri, String comp) {
@@ -303,7 +308,7 @@ final class WaveTray {
         }
         final int gen = sGeneration;
         sWorker.execute(() -> {
-            final ArrayList built;
+            final Built built;
             try {
                 synchronized (LauncherActivity.waveLock()) {
                     built = build(l, layout(l));
@@ -326,11 +331,12 @@ final class WaveTray {
         });
     }
 
-    private static void swapIn(LauncherActivity l, ArrayList built) {
+    private static void swapIn(LauncherActivity l, Built built) {
         ArrayList list = LauncherActivity.waveList(l);
         synchronized (list) {
             list.clear();
-            list.addAll(built);
+            list.addAll(built.entries);
+            sMissing = built.missing;
             afterSwap(l);
         }
         DrawerAdapter a = LauncherActivity.waveAdapter(l);
@@ -464,62 +470,6 @@ final class WaveTray {
         if (m != null && m.activity == l) m.finish(true);
     }
 
-    /** Hook in LauncherActivity.onCreateOptionsMenu, before the stock items (so ours come first). */
-    static void onCreateMenu(LauncherActivity l, Menu menu) {
-        sMenuTarget = null;
-        if (sFallback || !LauncherActivity.waveTrayVisible(l)) return;
-        GridView grid = LauncherActivity.waveGrid(l);
-        ArrayList list = LauncherActivity.waveList(l);
-        int pos = grid.getSelectedItemPosition();
-        if (pos >= 0 && pos < list.size()) sMenuTarget = (LauncherActivity.AppsAndFolder) list.get(pos);
-        if (sMenuTarget instanceof LauncherActivity.Apps) {
-            if (list.size() > 1) menu.add(0, MENU_MOVE, 0, "Move");
-            if (!pinned((LauncherActivity.Apps) sMenuTarget)) {
-                menu.add(0, MENU_TO_FOLDER, 0, "Move to folder");
-                menu.add(0, MENU_HIDE, 0, "Hide");
-            }
-        } else if (sMenuTarget instanceof LauncherActivity.Folder) {
-            if (list.size() > 1) menu.add(0, MENU_MOVE, 0, "Move");
-            menu.add(0, MENU_RENAME, 0, "Rename folder");
-            menu.add(0, MENU_UNFOLDER, 0, "Remove folder");
-        }
-        if (!hiddenApps(l).isEmpty()) menu.add(0, MENU_HIDDEN, 0, "Hidden apps");
-        menu.add(0, MENU_RESET, 6, "Reset layout");
-    }
-
-    /** Hook at the start of LauncherActivity.onOptionsItemSelected; true = handled. */
-    static boolean onMenuItem(final LauncherActivity l, MenuItem item) {
-        final LauncherActivity.AppsAndFolder target = sMenuTarget;
-        final ArrayList list = LauncherActivity.waveList(l);
-        final GridView grid = LauncherActivity.waveGrid(l);
-        switch (item.getItemId()) {
-            case MENU_MOVE:
-                if (target == null || !list.contains(target)) return true;
-                startMove(l, grid, list, LauncherActivity.waveAdapter(l), target, l);
-                return true;
-            case MENU_TO_FOLDER:
-                if (target instanceof LauncherActivity.Apps) chooseFolder(l, l, (LauncherActivity.Apps) target, null);
-                return true;
-            case MENU_HIDE:
-                if (target instanceof LauncherActivity.Apps) hide(l, (LauncherActivity.Apps) target, null);
-                return true;
-            case MENU_RENAME:
-                if (target instanceof LauncherActivity.Folder) rename(l, (LauncherActivity.Folder) target);
-                return true;
-            case MENU_UNFOLDER:
-                if (target instanceof LauncherActivity.Folder) unfolder(l, (LauncherActivity.Folder) target);
-                return true;
-            case MENU_HIDDEN:
-                showHidden(l);
-                return true;
-            case MENU_RESET:
-                confirmReset(l);
-                return true;
-            default:
-                return false;
-        }
-    }
-
     static void startMove(final LauncherActivity l, GridView grid, ArrayList list, DrawerAdapter adapter,
             Object target, Activity owner) {
         if (adapter == null || sMover != null) return;
@@ -534,14 +484,9 @@ final class WaveTray {
 
     // ---- edits (UI thread) ------------------------------------------------------------------------
 
-    /** The container (the tray's list or a folder's) holding app, or null. */
-    private static ArrayList containerOf(ArrayList list, Object app) {
-        if (list.contains(app)) return list;
-        for (LauncherActivity.Folder f : folders(list)) {
-            ArrayList in = f.getAppListInsideFolder();
-            if (in != null && in.contains(app)) return in;
-        }
-        return null;
+    static boolean contains(LauncherActivity l, LauncherActivity.Apps app) {
+        ArrayList list = LauncherActivity.waveList(l);
+        return list.contains(app) || folderHolding(list, app) != null;
     }
 
     private static LauncherActivity.Folder folderHolding(ArrayList list, Object app) {
@@ -574,10 +519,8 @@ final class WaveTray {
 
     /**
      * "Move to folder": the other folders, "Main screen" when it's in a folder, and "New folder".
-     * from: the folder screen asking (it closes itself when emptied), or null for the tray.
      */
-    static void chooseFolder(final LauncherActivity l, final Activity owner, final LauncherActivity.Apps app,
-            final Runnable after) {
+    static void chooseFolder(final LauncherActivity l, final Activity owner, final LauncherActivity.Apps app) {
         final ArrayList list = LauncherActivity.waveList(l);
         final LauncherActivity.Folder current = folderHolding(list, app);
         final List<LauncherActivity.Folder> targets = new ArrayList<>();
@@ -593,8 +536,10 @@ final class WaveTray {
         new AlertDialog.Builder(owner)
                 .setTitle("Move to folder")
                 .setItems(labels.toArray(new String[0]), (d, which) -> {
+                    if (!contains(l, app)) return;
                     if (which < targets.size()) {
-                        moveInto(l, app, targets.get(which));
+                        LauncherActivity.Folder target = targets.get(which);
+                        if (list.contains(target)) moveInto(l, app, target);
                     } else if (offerMain && which == targets.size()) {
                         synchronized (list) {
                             int at = takeOut(list, app);
@@ -604,6 +549,7 @@ final class WaveTray {
                         select(l, app);
                     } else {
                         askName(owner, "New folder", "", "Create", name -> {
+                            if (!contains(l, app)) return;
                             LauncherActivity.Folder existing = findFolder(list, name);
                             if (existing != null) {
                                 moveInto(l, app, existing);
@@ -618,11 +564,8 @@ final class WaveTray {
                                 changed(l);
                                 select(l, f);
                             }
-                            if (after != null) after.run();
                         });
-                        return;
                     }
-                    if (after != null) after.run();
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
@@ -638,7 +581,7 @@ final class WaveTray {
         select(l, f);
     }
 
-    static void hide(LauncherActivity l, LauncherActivity.Apps app, Runnable after) {
+    static void hide(LauncherActivity l, LauncherActivity.Apps app) {
         ArrayList list = LauncherActivity.waveList(l);
         synchronized (list) {
             takeOut(list, app);
@@ -648,13 +591,13 @@ final class WaveTray {
         }
         changed(l);
         Toast.makeText(l, app.getName() + " hidden", Toast.LENGTH_SHORT).show();
-        if (after != null) after.run();
     }
 
-    private static void rename(final LauncherActivity l, final LauncherActivity.Folder f) {
+    static void rename(final LauncherActivity l, final LauncherActivity.Folder f) {
         final String old = f.getName();
         askName(l, "Rename folder", old, android.R.string.ok, name -> {
             ArrayList list = LauncherActivity.waveList(l);
+            if (!list.contains(f)) return;
             LauncherActivity.Folder other = findFolder(list, name);
             if (other != null && other != f) {
                 Toast.makeText(l, "There is already a folder called " + other.getName(), Toast.LENGTH_SHORT).show();
@@ -669,7 +612,7 @@ final class WaveTray {
         });
     }
 
-    private static void unfolder(LauncherActivity l, LauncherActivity.Folder f) {
+    static void unfolder(LauncherActivity l, LauncherActivity.Folder f) {
         ArrayList list = LauncherActivity.waveList(l);
         synchronized (list) {
             int at = list.indexOf(f);
@@ -681,65 +624,107 @@ final class WaveTray {
         changed(l);
     }
 
-    /** Hidden apps that are installed: component -> label, sorted by label. */
-    private static LinkedHashMap<String, String> hiddenApps(Context ctx) {
-        List<String> keys;
-        synchronized (WaveTray.class) {
-            keys = new ArrayList<>(layout(ctx).hidden);
-        }
-        PackageManager pm = ctx.getPackageManager();
-        Intent main = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-        final Map<String, String> found = new HashMap<>();
-        for (String k : keys) {
-            Intent i = new Intent(main);
-            if (k.indexOf('/') >= 0) i.setComponent(ComponentName.unflattenFromString(k));
-            else i.setPackage(k);
-            for (ResolveInfo ri : pm.queryIntentActivities(i, 0)) {
-                found.put(ri.activityInfo.packageName + "/" + ri.activityInfo.name, String.valueOf(ri.loadLabel(pm)));
+    /** Installed activities not already in the destination; current locations disambiguate the list. */
+    static void chooseApp(LauncherActivity l, Activity owner, String folder, Consumer<LauncherActivity.Apps> added) {
+        ArrayList list = LauncherActivity.waveList(l);
+        Map<String, String> placed = new HashMap<>();
+        synchronized (list) {
+            for (Object o : list) {
+                if (o instanceof LauncherActivity.Folder) {
+                    LauncherActivity.Folder f = (LauncherActivity.Folder) o;
+                    ArrayList apps = f.getAppListInsideFolder();
+                    if (apps == null) continue;
+                    for (Object app : apps) {
+                        placed.put(((LauncherActivity.Apps) app).getPackageAndClassName(), f.getName());
+                    }
+                } else if (o instanceof LauncherActivity.Apps) {
+                    placed.put(((LauncherActivity.Apps) o).getPackageAndClassName(), "");
+                }
             }
         }
-        List<String> comps = new ArrayList<>(found.keySet());
-        final Collator coll = Collator.getInstance();
-        coll.setStrength(Collator.PRIMARY);
-        Collections.sort(comps, (a, b) -> coll.compare(found.get(a), found.get(b)));
-        LinkedHashMap<String, String> out = new LinkedHashMap<>();
-        for (String c : comps) out.put(c, found.get(c));
-        return out;
-    }
-
-    private static void showHidden(final LauncherActivity l) {
-        final LinkedHashMap<String, String> hidden = hiddenApps(l);
-        if (hidden.isEmpty()) return;
-        final List<String> comps = new ArrayList<>(hidden.keySet());
-        new AlertDialog.Builder(l)
-                .setTitle("Hidden apps")
-                .setItems(hidden.values().toArray(new String[0]), (d, which) -> unhide(l, comps.get(which)))
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
-    }
-
-    /** Shows a hidden app again, at the end of the main screen. */
-    private static void unhide(LauncherActivity l, String comp) {
         PackageManager pm = l.getPackageManager();
-        ComponentName cn = ComponentName.unflattenFromString(comp);
-        ResolveInfo ri = pm.resolveActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-                .setComponent(cn), 0);
-        if (ri == null) return;
-        synchronized (WaveTray.class) {
-            List<String> h = layout(l).hidden;
-            h.remove(comp);
-            h.remove(cn.getPackageName());
+        Map<String, String> labels = new HashMap<>();
+        String destination = folder == null ? "" : folder;
+        for (Map.Entry<String, ResolveInfo> e : launchable(pm).entrySet()) {
+            if (e.getValue().activityInfo.exported && !WaveLayout.sameName(placed.get(e.getKey()), destination)) {
+                labels.put(e.getKey(), String.valueOf(e.getValue().loadLabel(pm)));
+            }
         }
-        LauncherActivity.Apps app = makeApp(l, pm, ri, comp);
+        List<String> choices = new ArrayList<>(labels.keySet());
+        Collator collator = Collator.getInstance();
+        collator.setStrength(Collator.PRIMARY);
+        choices.sort((a, b) -> {
+            int order = collator.compare(labels.get(a), labels.get(b));
+            return order != 0 ? order : a.compareTo(b);
+        });
+        String[] rows = new String[choices.size()];
+        for (int i = 0; i < rows.length; i++) {
+            String comp = choices.get(i), where = placed.get(comp);
+            rows[i] = labels.get(comp);
+            if (where != null) rows[i] += " (" + (where.isEmpty() ? "Main tray" : where) + ")";
+        }
+        AlertDialog.Builder dialog = new AlertDialog.Builder(owner)
+                .setTitle(folder == null ? "Add apps" : "Add to " + folder);
+        if (rows.length == 0) {
+            dialog.setMessage("No other apps to add").setPositiveButton(android.R.string.ok, null);
+        } else {
+            dialog.setItems(rows, (d, which) -> {
+                LauncherActivity.Apps app = addApp(l, folder, choices.get(which));
+                if (app == null) Toast.makeText(owner, "App no longer available to add", Toast.LENGTH_SHORT).show();
+                else if (added != null) added.accept(app);
+            }).setNegativeButton(android.R.string.cancel, null);
+        }
+        dialog.show();
+    }
+
+    /** Add an unlisted app or move the existing entry, never make a second copy. */
+    private static LauncherActivity.Apps addApp(LauncherActivity l, String folder, String comp) {
+        if (!active() || l.isDestroyed()) return null;
+        PackageManager pm = l.getPackageManager();
+        ResolveInfo ri = launchable(pm).get(comp);
+        if (ri == null || !ri.activityInfo.exported) return null;
+
         ArrayList list = LauncherActivity.waveList(l);
+        LauncherActivity.Apps app;
         synchronized (list) {
-            list.add(app);
+            LauncherActivity.Folder dest = findFolder(list, folder);
+            if (folder != null && dest == null) return null;
+            ArrayList target = dest == null ? list : dest.getAppListInsideFolder();
+            app = findApp(target, comp);
+            if (app != null) return app; // an update put it there while the picker was open
+            app = findApp(list, comp);
+            if (app == null) {
+                for (LauncherActivity.Folder f : folders(list)) {
+                    if ((app = findApp(f.getAppListInsideFolder(), comp)) != null) break;
+                }
+            }
+            if (app == null) app = makeApp(l, pm, ri, comp);
+            else takeOut(list, app);
+            if (dest == null) list.add(app);
+            else dest.setAppListInsideFolder(app);
+        }
+        synchronized (WaveTray.class) {
+            layout(l).reveal(comp);
+            // An install can reach the picker before the tray rebuild for it has landed.
+            for (List<String> keys : sMissing.values()) keys.removeIf(comp::equals);
         }
         changed(l);
-        select(l, app);
+        if (folder == null) select(l, app);
+        return app;
     }
 
-    private static void confirmReset(final LauncherActivity l) {
+    private static LauncherActivity.Apps findApp(ArrayList list, String comp) {
+        if (list == null) return null;
+        for (Object o : list) {
+            if (o instanceof LauncherActivity.Apps) {
+                LauncherActivity.Apps app = (LauncherActivity.Apps) o;
+                if (comp.equals(app.getPackageAndClassName())) return app;
+            }
+        }
+        return null;
+    }
+
+    static void confirmReset(final LauncherActivity l) {
         new AlertDialog.Builder(l)
                 .setTitle("Reset layout")
                 .setMessage("Put every app back where it was at first? Your folders and order are lost.")

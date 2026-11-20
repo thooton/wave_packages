@@ -101,6 +101,11 @@ final class WaveLayout {
     final List<Item> top = new ArrayList<>();
     final List<String> hidden = new ArrayList<>();
 
+    void reveal(String component) {
+        // The explicit placement wins over a package-wide hide. Keep that rule for its other apps.
+        hidden.removeIf(component::equals);
+    }
+
     static String pkgOf(String key) {
         int slash = key.indexOf('/');
         return slash < 0 ? key : key.substring(0, slash);

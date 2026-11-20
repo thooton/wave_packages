@@ -74,28 +74,36 @@ patch(LA, ".method public dispatchKeyEvent(Landroid/view/KeyEvent;)Z\n    .local
     :wave_keys
 """)
 
-# 4. Menu: our items first (right after super), then the stock ones.
-patch(LA, "    invoke-super {p0, p1}, Landroid/app/Activity;->onCreateOptionsMenu(Landroid/view/Menu;)Z\n",
-      f"""    invoke-super {{p0, p1}}, Landroid/app/Activity;->onCreateOptionsMenu(Landroid/view/Menu;)Z
+# 4. Menu: build for the current screen/selection in onPrepare, not onCreate.
+patch(LA, ".method public onCreateOptionsMenu(Landroid/view/Menu;)Z\n    .locals 8\n",
+      """.method public onCreateOptionsMenu(Landroid/view/Menu;)Z
+    .locals 1
 
-    # FEAT(tray): Move, Move to folder, Hide, Rename/Remove folder, Hidden apps, Reset layout
-    invoke-static {{p0, p1}}, {T}->onCreateMenu({L}Landroid/view/Menu;)V
+    # FEAT(tray): build the menu when opening it, with the current selection
+    const/4 v0, 0x1
+
+    return v0
+.end method
+
+# FEAT(tray): stock menu builder, used only for the stock fallback
+.method private waveStockMenu(Landroid/view/Menu;)Z
+    .locals 8
 """)
-patch(LA, ".method public onOptionsItemSelected(Landroid/view/MenuItem;)Z\n    .locals 4\n\n    .prologue\n",
-      f""".method public onOptionsItemSelected(Landroid/view/MenuItem;)Z
-    .locals 4
+patch(LA, "    .line 972\n    invoke-super {p0, p1}, Landroid/app/Activity;->onCreateOptionsMenu(Landroid/view/Menu;)Z\n", "")
+patch(LA, "    .line 1081\n    invoke-virtual {p0}, " + L + "->invalidateOptionsMenu()V\n",
+      f"""    # FEAT(tray): replace the old menu, without invalidating it while it is opening
+    invoke-interface {{p1}}, Landroid/view/Menu;->clear()V
 
-    .prologue
-    # FEAT(tray): our menu items
-    invoke-static {{p0, p1}}, {T}->onMenuItem({L}Landroid/view/MenuItem;)Z
+    invoke-static {{p0, p1}}, Lcom/sonim/borqs/launcher/WaveMenu;->prepare({L}Landroid/view/Menu;)Z
 
     move-result v0
 
-    if-eqz v0, :wave_menu
+    if-eqz v0, :wave_stock_menu
 
     return v0
 
-    :wave_menu
+    :wave_stock_menu
+    invoke-direct {{p0, p1}}, {L}->waveStockMenu(Landroid/view/Menu;)Z
 """)
 
 # 5. Leaving mid-move keeps the entry where it was carried.
@@ -228,6 +236,14 @@ bridges += getter("wavePrefs", "mSharedPrefs", "Landroid/content/SharedPreferenc
 bridges += getter("waveCursor", "mAppsAndFolderCursor", "Landroid/database/Cursor;")
 bridges += getter("waveDb", "mDataBaseHelpler", "Lcom/sonim/borqs/launcher/helper/DatabaseHelper;")
 bridges += f"""
+.method static waveWallpaper({L})V
+    .locals 0
+
+    invoke-direct {{p0}}, {L}->startWallpaper()V
+
+    return-void
+.end method
+
 .method static waveLock()Ljava/lang/Object;
     .locals 1
 

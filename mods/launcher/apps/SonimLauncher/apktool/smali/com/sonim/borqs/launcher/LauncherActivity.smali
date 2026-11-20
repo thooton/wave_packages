@@ -6222,6 +6222,16 @@
 .end method
 
 .method public onCreateOptionsMenu(Landroid/view/Menu;)Z
+    .locals 1
+
+    # FEAT(tray): build the menu when opening it, with the current selection
+    const/4 v0, 0x1
+
+    return v0
+.end method
+
+# FEAT(tray): stock menu builder, used only for the stock fallback
+.method private waveStockMenu(Landroid/view/Menu;)Z
     .locals 8
 
     .prologue
@@ -6233,11 +6243,6 @@
 
     const/4 v4, 0x0
 
-    .line 972
-    invoke-super {p0, p1}, Landroid/app/Activity;->onCreateOptionsMenu(Landroid/view/Menu;)Z
-
-    # FEAT(tray): Move, Move to folder, Hide, Rename/Remove folder, Hidden apps, Reset layout
-    invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/WaveTray;->onCreateMenu(Lcom/sonim/borqs/launcher/LauncherActivity;Landroid/view/Menu;)V
 
     .line 974
     const/4 v0, 0x7
@@ -7670,16 +7675,6 @@
     .locals 4
 
     .prologue
-    # FEAT(tray): our menu items
-    invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/WaveTray;->onMenuItem(Lcom/sonim/borqs/launcher/LauncherActivity;Landroid/view/MenuItem;)Z
-
-    move-result v0
-
-    if-eqz v0, :wave_menu
-
-    return v0
-
-    :wave_menu
     const/4 v3, 0x1
 
     .line 1020
@@ -7867,8 +7862,19 @@
     .line 1080
     invoke-super {p0, p1}, Landroid/app/Activity;->onPrepareOptionsMenu(Landroid/view/Menu;)Z
 
-    .line 1081
-    invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->invalidateOptionsMenu()V
+    # FEAT(tray): replace the old menu, without invalidating it while it is opening
+    invoke-interface {p1}, Landroid/view/Menu;->clear()V
+
+    invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/WaveMenu;->prepare(Lcom/sonim/borqs/launcher/LauncherActivity;Landroid/view/Menu;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_stock_menu
+
+    return v0
+
+    :wave_stock_menu
+    invoke-direct {p0, p1}, Lcom/sonim/borqs/launcher/LauncherActivity;->waveStockMenu(Landroid/view/Menu;)Z
 
     .line 1082
     const-string/jumbo v0, "LauncherActivity"
@@ -11134,6 +11140,14 @@
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDataBaseHelpler:Lcom/sonim/borqs/launcher/helper/DatabaseHelper;
 
     return-object v0
+.end method
+
+.method static waveWallpaper(Lcom/sonim/borqs/launcher/LauncherActivity;)V
+    .locals 0
+
+    invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->startWallpaper()V
+
+    return-void
 .end method
 
 .method static waveLock()Ljava/lang/Object;

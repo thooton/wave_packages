@@ -112,6 +112,24 @@ public final class LayoutTest {
                 "app a/A\nfolder Files\n    fx/Explorer\n    gone2\napp gone/G\nfolder Empty\n    nothere/X\nhide junk\n",
                 "snapshot");
 
+        // Save and reload picker placements. A system app stays out until explicitly added;
+        // restoring one hidden activity must not restore the rest of its package.
+        WaveLayout beforeAdd = WaveLayout.parse("folder Work\n    a/A\n    gone/G\n"
+                + "folder Applications\n    inbox/I\nhide hidden/H\nhide hidden\n");
+        inst = installed("a/A", "inbox/I", "!system/S", "hidden/H", "hidden/Other");
+        r = WaveLayout.resolve(beforeAdd, inst, WaveDefaults.INBOX);
+        eq(show(r.tree), "Work[a/A] | Applications[inbox/I]", "available but not yet added");
+        eq(r.hidden, "[hidden/H, hidden/Other]", "both activities initially hidden");
+        beforeAdd.reveal("hidden/H");
+        WaveLayout picked = WaveLayout.snapshot(Arrays.asList(
+                new WaveLayout.Node("Work", Arrays.asList("a/A", "inbox/I")),
+                new WaveLayout.Node("system/S"), new WaveLayout.Node("hidden/H")), r.missing, beforeAdd.hidden);
+        eq(picked.hidden, "[hidden]", "remove the exact hide, keep the package rule");
+        r = WaveLayout.resolve(WaveLayout.parse(picked.serialize()), inst, WaveDefaults.INBOX);
+        eq(show(r.tree), "Work[a/A, inbox/I] | system/S | hidden/H", "additions and move survive reload");
+        eq(r.hidden, "[hidden/Other]", "other activity still hidden");
+        eq(r.missing, "{Work=[gone/G]}", "uninstalled app stays reserved after adding other apps");
+
         // The real defaults against the phone's apps (as of this writing).
         List<String[]> stock = Arrays.asList(
                 new String[] {"", "com.android.browser/com.android.browser.BrowserActivity"},

@@ -6,10 +6,13 @@ systemless Magisk module that replaces `/system/priv-app/SonimLauncher`.
 * **Folders.** The default tray starts with common apps, then Media, Reading, Tools, Files,
   System and Applications. Each of your
   folders gets an icon showing its first four apps.
-* **Menu key in the tray** (on an app): Move, Move to folder (an existing one, the main
-  screen, or a new folder), Hide. On a folder: Move, Rename folder, Remove folder (its apps
-  go back to the main screen). Always there: Hidden apps (to show one again), Reset layout.
-* **Inside a folder**: Move, Move to folder, Hide, and the stock App info.
+* **Add apps.** Open Menu in the tray or inside a folder and choose **Add apps**. The picker
+  includes hidden and unlisted launchable apps. Choosing an app shown elsewhere moves it here
+  instead of making a copy.
+* **Short menus.** The tray shows Add apps, Edit app or Edit folder for the selected entry,
+  and Reset layout. Inside a folder the menu has Add apps and Edit app. Edit holds move, hide,
+  and App info for apps, or move, rename, and remove for folders.
+* **Home menu.** Notifications, Settings, and Customize home (wallpaper, themes, and home shortcuts).
 * **Moving**: the entry sits on a lavender card. The d-pad carries it, Center, Enter or Menu
   puts it down, and Back cancels.
 * **New installs** go to the end of the Applications folder, as in stock. Uninstalling an app
