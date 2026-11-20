@@ -13,8 +13,7 @@ Each mod's `apps/<App>/apktool/` is the smali source tree; `java/` adds
 Java 8 code and `stubs/` holds compile-only declarations. Keep changes in
 small smali hooks and Java. Do not change stock manifests, resources,
 permissions or shared UIDs. `firmware/system/` contains the five pinned APKs
-and `build.prop`, plus three libraries used by the SQLite build, not a whole
-phone backup. The firmware fingerprint is
+and `build.prop`, not a whole phone backup. The firmware fingerprint is
 advisory for module compatibility, not a substitute for device testing.
 Never add personal data or device dumps. The tags above record the original imports. Messages and Launcher now build
 against 11.20.00; decode the APKs in `firmware/system/priv-app/` to compare
@@ -67,6 +66,3 @@ legacy ID replacements.
 `mods/tools/build-module.sh messages` builds every APK and packages the module
 zip that the [package workflow](../.github/workflows/build-apks.yml) tests.
 The Wave-side publishing Action is [`thooton/wave/publish@v1`](https://github.com/thooton/wave/tree/master/publish).
-
-The [experimental SQLite overlay](sqlite/README.md) is built and packaged
-separately. It does not replace APKs and is not published in the catalog.

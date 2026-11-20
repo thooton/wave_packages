@@ -1,3 +1,9 @@
-# sonim
+# Wave Packages
 
-HAVE YOU ever had a desire for numerous GIPPITY-generated sonim xp3 flip phone apps? Well, you've come to exactly the right place. I have a vast assortment of such apps for your perusal and quiet enjoyment. Enjoy!
+Source code for Android apps and system modules distributed through the
+[Wave package catalog](https://github.com/thooton/wave_repository).
+
+[Wave](https://github.com/thooton/wave) is the package manager. This repository
+keeps the public catalog apps, shared code, and Messages Improved, Music
+Improved, and Launcher Improved. Private apps live in a separate repository.
+See [AGENTS.md](AGENTS.md) for build instructions.

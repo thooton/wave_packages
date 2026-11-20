@@ -55,8 +55,9 @@ def release_state(path, tag, version):
     else:
         scope = [path, 'common', 'gradle', 'signing', 'build.gradle', 'settings.gradle', 'gradle.properties',
                  'gradlew', 'gradlew.bat']
-    docs = [':(glob,exclude)**/*.md', ':(glob,exclude)**/mockups/**']
-    if subprocess.run(['git', 'diff', '--quiet', tag + '^{commit}', 'HEAD', '--', *scope, *docs]).returncode:
+    non_build_inputs = [':(glob,exclude)**/*.md', ':(glob,exclude)**/mockups/**',
+                        ':(exclude)gradle/retired-apps.txt']
+    if subprocess.run(['git', 'diff', '--quiet', tag + '^{commit}', 'HEAD', '--', *scope, *non_build_inputs]).returncode:
         raise ValueError(f'{path}: changes to {tag} require a versionName and versionCode bump; assets are immutable')
     return 'existing'
 

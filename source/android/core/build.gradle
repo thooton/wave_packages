@@ -1,6 +1,0 @@
-// The command center's book and music routes, and tar unpacking.
-apply from: rootProject.file("gradle/core.gradle")
-
-dependencies {
-    api project(":common:core")
-}

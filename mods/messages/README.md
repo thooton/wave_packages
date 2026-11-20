@@ -2,8 +2,7 @@
 
 Systemless improvements to the stock Messages app, TelephonyProvider and ContactsProvider
 on the Sonim XP3800 (Android 8.1). This build is SMS/MMS-only; the original Argon checkout
-retains the custom RCS work. The experimental [SQLite overlay](../sqlite/README.md)
-is separate and not required.
+retains the custom RCS work.
 
 * How to work in this repo (build, deploy, constraints): [AGENTS.md](AGENTS.md)
 * Where things are in the stock code: [docs/code-map.md](docs/code-map.md)

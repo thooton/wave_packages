@@ -1,6 +1,6 @@
 # The family look
 
-How the light, list-and-form apps (List, Mail, Serve, Source)
+How the light, list-and-form apps (List, Mail, Serve)
 are drawn, so they read as siblings of Charge and Books rather than
 as stock Android with a coloured bar. The pieces live in `common/ui`
 (`Family`, `res/drawable/family_*`, `res/values/family*.xml`); this is why
@@ -93,9 +93,8 @@ would otherwise lay that wash over the whole page.
 | List | `#23201C` | `#C7B9A6` | `#A85C00` | `#FBF2E5` |
 | Mail | `#004F9B` | `#A9C7FF` | `#004F9B` | `#E4EDF8` |
 | Serve | `#0D3236` | `#9CC3C6` | `#11707A` | `#E7F4F5` |
-| Source | `#FEF7FF` | `#49454F` | `#6750A4` | `#EADDFF` |
 
-Mail's row is Thunderbird's, and Source's is Material 3's: see below. Each pair was checked for contrast:
+Mail's row is Thunderbird's: see below. Each pair was checked for contrast:
 the dim header text is at least 7:1 on its header, the accent at least 4.5:1
 on its wash, and muted text at least 4.8:1 on white.
 
@@ -184,44 +183,6 @@ What changes from Maps, for the keys and the screen:
   list of choices, each after a teal icon: Call, Copy address, Copy website
   URL. Menu's choices take icons too.
 
-## Retired: Updater and Installer
-
-Wave takes over package discovery, updates and rooted installation. Updater
-and Installer are preserved in their original directories for reference but
-no longer build or ship; no new entries go into `latest` or the Wave source.
-Wave declares both package IDs in `replaces`. A managed phone must first give
-up Installer's device-owner role from its status screen before removal.
-
-### The former Updater: as the App Store shows it
-
-The Updater takes its look from the App Store's Updates page, since that is
-the screen people know for keeping apps up to date. It sets aside the family
-rules where Apple's page differs:
-
-- **Apple's chrome and colours.** A near-white bar (`#F9F9F9`) with a grey
-  hairline under it and "Updates" centred in it, the status bar the same
-  colour with dark icons. Black names, iOS's secondary grey (`#8E8E93`) for
-  dates, its separator grey for hairlines (inset on both sides) and its
-  system blue (`#007AFF`) for everything that can be pressed.
-- **Large bold section headings.** Available, Not Installed and Installed,
-  at 18sp bold, as "Updated Recently" is on the App Store.
-- **Apple's rows.** A rounded-square icon (an installed app's own, cropped
-  to what it paints; a coloured tile with its initial for one that isn't on
-  the phone), the name, the date of its newest change ("Today", "Yesterday",
-  "Jun 15, 2019"), and on the right the capsule: UPDATE, OPEN or GET in bold
-  blue capitals on `#EFEFF4`. Under it, full width, the start of what's new
-  (no "more": What's New is in the menu). While an app downloads, the capsule becomes the App Store's ring
-  with its stop square; while it waits or installs, the ring spins.
-- **Focus as a press.** The row under the d-pad greys as an iOS cell does
-  while it is touched, and its capsule fills blue with white text, as the
-  button does while pressed. OK presses it. Update All sits on the bar's right, as
-  on iOS 12, reached with Up from the top row.
-- **What's new comes from commits.** CI builds every app on each push and
-  writes each app's newest commits into the release's manifest.json, so the
-  subject of an app's newest commit ("Mail: drop the conversation's
-  position from the bar") is what's new in its APK, and its date is the
-  App Store's date. Without them the rows show the version instead.
-
 ## Dictionary: home, a word, the search
 
 Dictionary has three pages under one search capsule (home with the Word of
@@ -260,88 +221,6 @@ its own:
   query reads as, each after a faint pen, the outline in SemiBold and its
   English in grey. The row under the d-pad is washed in a pale blue (`#EBF2FF`).
 - **Its icon.** An open book with a gold ribbon on blue.
-
-## Source: Tonal
-
-Source takes its look from the Tonal proposal: Material 3's colour roles
-generated from `#6750A4`, built around the d-pad. It keeps
-the family's rules on words (nothing explains itself, no em dashes) and
-departs from it where the proposal does:
-
-- **Light chrome, tonal surfaces.** No band: the status bar is the page
-  (`surface`, `#FEF7FF`) with dark icons. Colour comes from soft tinted
-  containers (`container`, `container_high`); saturated `accent` is kept for
-  the one action that matters, a page's button, focus rings and
-  progress. The family's names (`primary`, `focus_fill`, `row`...) are kept,
-  pointed at the matching roles, for the shared drawables and dialogs.
-- **A dark theme.** `values-night` holds Material 3's dark roles for the same
-  seed. The phone has no dark setting, so Options switches it, by giving
-  the app's activities a night configuration (`Tonal.attachBaseContext`).
-- **DM Sans, and Bold rather than Medium.** The proposal's face, bundled as
-  static instances of Google Fonts' variable DM Sans at its 14pt optical
-  size (OFL): row titles, the picked tab, page titles and a page's button
-  in Bold, labels in SemiBold, tabs at rest in
-  Medium, everything else regular (`Tonal.FONT` and the rest, and
-  `@font/dm_sans_family` in the theme).
-- **Pill tabs** in a tonal track, each with the icon of what it finds, and a
-  pill search field with a search icon that rings in `accent` while it takes
-  the keys.
-- **No soft-key bar.** The rows get the full height. A result's page has
-  one filled pill of `accent` under its card saying what OK does there
-  (Download, Try again, Play, Read), gone while it downloads.
-- **Look before you get.** OK on a result opens its page (or plays a saved
-  one); it is downloaded only from there, never straight from the list.
-- **State once asked for.** A result's row ends in `StateButton` only once
-  it is downloading: a ring filling with the percentage, an outline with a
-  clock while queued, the success container with a tick once saved, the
-  error container with a retry arrow when it failed. The picked row is a
-  filled 14dp block of `accent_container`, not an outlined card.
-- **Drawn covers.** Soulseek and the book source send no artwork, so `Cover`
-  draws the name's initials on one of six tones: a square for a song, a
-  square with a record behind it for an album, 2:3 with a spine for a book. A
-  failed download's cover loses its colour.
-- **Folders always show.** A music result's folders, as the sharer named
-  them, are a line of their own under its name, cut from the start so the
-  deepest folders stay in view; a detail page shows them whole. Who shares
-  it stays on every row, after a short "320 · 10.8 MB" in the mockup's
-  manner; its length and the sharer's speed are on its page.
-- **Wavy means moving.** `Wavy` draws progress as a sine path whose phase
-  drifts while the download runs; failed, it goes straight and still in the
-  error colour.
-- **Never a dead end.** An empty or failed search shows what is so and a
-  next step that takes the d-pad (search albums instead, search again), with
-  the engine's last log lines below it.
-
-## Tablet: e-ink paper and one highlighter
-
-Tablet follows its own design proposal (where it was called Margin) rather
-than the family look: the e-ink tablet itself, on a 240x320 screen.
-
-- **Paper, graphite and one yellow.** Paper `#E3E4DF` for the page, sheet
-  `#F7F7F3` for what rises over it (sheets, cards, the drawer), ink
-  `#222428`, graphite `#62666D` for what follows, rules `#C5C7C1`. The
-  highlighter `#F2D343` means "this is selected" and nothing else: a marker
-  stroke with slanted ends (`Mark`) behind the selected file's or job's
-  title and the selected choice, the zoom level, the part of the page the
-  minimap shows. Never a filled box around
-  a row.
-- **Two faces.** Literata (semibold) for titles, Atkinson Hyperlegible for
-  everything else. Spaced-capital labels
-  at 8.5px bold over sections and sheets.
-- **Larger than the mockup.** Every size is the proposal's pixels times
-  1.25 (`Look.SCALE`); at its own size the 9px text could not be read on
-  the phone.
-- **The shelf has the Library.** Covers slide between slots, the middle one
-  outlined in ink, the rest greyed and fading toward the edges, with dots
-  for where you are (a count instead, past twelve files). A file's actions
-  are a menu OK opens, Open first.
-- **Transforms is a list.** One line per job, the same height selected or
-  not, the selected title under the highlighter; OK opens the job's menu.
-- **No soft-key bar.** The keys' jobs never change, so the full height goes
-  to content: the header's menu glyph is the only hint, for the drawer.
-- **The preview is the page.** A translucent top bar with the file, page
-  and the 4 and 6 keys; round arrows where there is more to pan to; a zoom
-  pill with its * # 0 keys; a minimap.
 
 ## New Yorker: the New Yorker app, on a flip phone
 

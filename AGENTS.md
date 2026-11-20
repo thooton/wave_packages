@@ -89,9 +89,7 @@ Don't use plain file I/O for the card. Do this instead:
    onto the card. Delete the cache copy afterwards, and delete the
    document if the copy fails.
 
-Working examples to copy: `source/.../CardStore.java` (downloads),
-`books/.../CardFiles.java` (reading, deleting and renaming another app's
-files), and `tablet/.../CardSaver.java` (fetch into cache, then copy).
+See `books/.../CardFiles.java` for reading, deleting, and renaming another app's files.
 Then call `MediaScannerConnection.scanFile` on the saved paths so other
 apps see them.
 
@@ -115,8 +113,8 @@ Books' signed APK is at `books/android/app/build/outputs/apk/release/app-release
 Other Gradle apps use the same `:<app>:app:assembleRelease` target and output
 layout (Dictionary lives in `dictionary/app`, and apps with no `:core` omit
 that test target). `./gradlew selfTest assembleRelease` builds and tests all
-active Gradle apps. `gradle/retired-apps.txt` excludes archived source from
-Gradle and releases without deleting it.
+active Gradle apps. `gradle/retired-apps.txt` prevents removed package folders
+from being built or published if left over from an older checkout.
 
 The mods do not use Gradle; use the commands in
 [mods/AGENTS.md](mods/AGENTS.md).
@@ -181,13 +179,10 @@ version bump fails CI. After a successful immutable upload but failed mirror,
 use the `retry-publish` dispatch input to publish the original asset bytes.
 
 The legacy `latest` release is the rolling exception to immutable versioned
-assets. Its `manifest.json` (plus `versions.txt` and `packages.txt`) stays until the legacy-device migration in Wave task 17 is
-verified. HBSA is not built. Source and Tablet are on the legacy channel
-only until task 16 confirms private releases. AppDrawer, Updater and Installer
-are retired: no Gradle targets or new release assets, including in `latest`.
-Their code and any already-versioned releases remain for reference. Wave's
-manifest replaces both. Give up Installer's device-owner role from its
-status screen before uninstalling it.
+assets. It carries the active public APKs for older clients. Source and Tablet
+live in the private package repository. Removed apps do not build or ship
+from this repo, but old source and immutable releases remain in history.
+Give up Installer's device-owner role from its status screen before uninstalling it.
 
 The mod matrix builds each mod's stock-signed APKs and packages
 `{launcher,messages,music}-improved-<version>.zip`. The build splices the new
@@ -204,5 +199,4 @@ and `mods/tools/setup.sh` then `mods/<mod>/tools/{test,build}.sh`.
   with no signing secrets. Anyone can sign an APK Android will accept as
   an update; use binaries only from sources you trust. Keep the shared
   signing Gradle script and keystore identical in the Wave repository.
-- Installs on Wave-enabled phones are handled by Wave. Installer's old
-  device-owner flow is only kept in the archived source.
+- Installs on Wave-enabled phones are handled by Wave.

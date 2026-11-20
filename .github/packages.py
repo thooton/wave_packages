@@ -5,8 +5,6 @@ import re
 import sys
 from pathlib import Path
 
-# Source and Tablet stay on the previous channel until task 16; never Wave here.
-PRIVATE_LEGACY = ['source', 'tablet']
 RETIRED = {line for line in map(str.strip, (Path(__file__).resolve().parents[1] /
            'gradle/retired-apps.txt').read_text().splitlines()) if line and not line.startswith('#')}
 MODULES = ['mods/launcher', 'mods/messages', 'mods/music']
@@ -50,7 +48,7 @@ if __name__ == '__main__':
     if command == 'matrix':
         print(json.dumps(matrix(sys.argv[2]), separators=(',', ':')))
     elif command == 'gradle-apps':
-        print(' '.join([p['path'] for p in matrix('apk')] + PRIVATE_LEGACY))
+        print(' '.join(p['path'] for p in matrix('apk')))
     elif command == 'check-bundled':
         check_bundled(sys.argv[2])
     else:

@@ -1,6 +1,9 @@
-# Source stays for reference; these are not Gradle projects or releases.
+# Removed package IDs: never configure or publish them from this repository.
 hbsa
 installer
 launcher
 musica
+source
+tablet
 updater
+video

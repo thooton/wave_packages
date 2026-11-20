@@ -38,6 +38,8 @@ class ReleaseCheck(unittest.TestCase):
         self.assertEqual(release_state('books', 'books-1.0.0', '1.0.0'), 'existing')
         self.commit('books/README.md', 'docs')
         self.assertEqual(release_state('books', 'books-1.0.0', '1.0.0'), 'existing')
+        self.commit('gradle/retired-apps.txt', 'video\n')
+        self.assertEqual(release_state('books', 'books-1.0.0', '1.0.0'), 'existing')
         self.commit('common/core.java', 'shared change')
         with self.assertRaisesRegex(ValueError, 'require a versionName and versionCode bump'):
             release_state('books', 'books-1.0.0', '1.0.0')
@@ -49,7 +51,12 @@ class ReleaseCheck(unittest.TestCase):
     def test_retired_packages_never_selected(self):
         repo = Path(__file__).resolve().parents[1]
         os.chdir(repo)
-        self.assertTrue({'installer', 'updater', 'hbsa', 'launcher', 'musica'} <= RETIRED)
+        removed = {'hbsa', 'installer', 'launcher', 'musica', 'source', 'tablet', 'updater', 'video'}
+        self.assertTrue(removed <= RETIRED)
+        self.assertEqual([], [name for name in sorted(removed) if (repo / name).exists()])
+        self.assertEqual({'mods/launcher', 'mods/messages', 'mods/music'},
+                         {m['path'] for m in matrix('mod')})
+        self.assertFalse((repo / 'mods/sqlite').exists())
         self.assertTrue({'books'} <= {m['path'] for m in matrix('apk')})
         self.assertFalse(RETIRED & {m['path'] for m in matrix('apk')})
 
