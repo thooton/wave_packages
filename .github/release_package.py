@@ -6,11 +6,14 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import zipfile
 from pathlib import Path
 
-from manifest import badging
-from packages import RETIRED, metadata, release_name
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'signing'))
+import check_signer  # noqa: E402  (the key gate; see signing/check_signer.py)
+from manifest import badging  # noqa: E402
+from packages import RETIRED, metadata, release_name  # noqa: E402
 
 VERSION = r'(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)'
 
@@ -86,6 +89,14 @@ def main():
     pk, version, code = identity(binary, args.aapt2)
     if pk != data['id'] or not re.fullmatch(VERSION, version) or code < 1:
         raise ValueError(f'{path}: bad {pk} or version {version} ({code})')
+    if binary.suffix == '.apk':
+        # Never publish an APK signed with a key whose private half is public.
+        # --check is the build's own self-test and only says what the gate will do.
+        why = check_signer.refusal(binary)
+        if why and not args.check:
+            raise ValueError(why)
+        if why:
+            print(f'NOT PUBLISHABLE: {why}', file=sys.stderr)
     tag = f'{release_name(path)}-{version}'
     asset = tag + binary.suffix
     state = release_state(path, tag, version)

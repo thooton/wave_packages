@@ -27,10 +27,12 @@ a toast rather than crashing.
 - `res/values-mdpi/dimens.xml`: XP3800-specific mdpi icon-size override.
 - `build.sh`: complete command-line build, alignment, signing, and verification.
 - `AppDrawer.apk`: generated signed output; it is ignored by Git.
-- `signing/app-drawer.p12`: the launcher's own key, committed so every
-  checkout and CI sign with it. Never replace or regenerate it: the copy on the
-  phone was signed with it, and an APK signed with any other key cannot update
-  it.
+- `signing/app-drawer.p12`: the launcher's old key, committed (so it is PUBLIC)
+  and now only the fallback for a trial build with no release key. Release builds
+  use the shared release key from `WAVE_KEYSTORE_*` (see the root AGENTS.md); an
+  APK signed with this one is refused by the release gates, and the copy on the
+  phone, signed with it, is uninstalled once when the release-signed one is
+  installed.
 
 ## Build and verification
 

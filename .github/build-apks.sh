@@ -45,3 +45,6 @@ done
 cp launcher/AppDrawer.apk apks/
 python3 .github/release_package.py launcher apks/AppDrawer.apk --check
 python3 .github/manifest.py apks "$(command -v aapt2)"
+# Say which key signed each APK. A public key is reported, not failed: only a
+# build that is published needs the release key (the gates refuse the rest).
+python3 signing/check_signer.py --report apks/*.apk

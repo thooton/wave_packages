@@ -1,0 +1,6 @@
+# SHA-256 of the signing certificates whose private keys are committed to
+# these repositories. They are public, so nothing signed with them may be
+# published (signing/check_signer.py, and the release gates that call it).
+# Add a line whenever a keystore is ever committed; never remove one.
+3a5643633e00450967b7674cded6b2cce46456561a6f2c1d48ae8344b1fadb0e  signing/debug.keystore in wave and wave_packages (the shared debug key, password "android")
+0a4c7a2fe861f04444dab12adaab57e93eb5edce2d1a1a15cf42e0a01bc0dd4c  wave_packages launcher/signing/app-drawer.p12 (the old App Drawer key)

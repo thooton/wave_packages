@@ -36,6 +36,7 @@ jobs:
       - id: inventory
         run: |
           python3 -m unittest discover -s .github -p 'test_release.py'
+          python3 -m unittest discover -s signing -p 'test_check_signer.py'
           echo "apks=$(python3 .github/packages.py matrix apk)" >> "$GITHUB_OUTPUT"
           echo "mods=$(python3 .github/packages.py matrix mod)" >> "$GITHUB_OUTPUT"
 
@@ -53,7 +54,16 @@ jobs:
         with:
           packages: platforms;android-35 build-tools;35.0.1
       - uses: gradle/actions/setup-gradle@v4
+      # The release key comes from repository secrets; a pull request or a fork
+      # has none and builds with the public debug key, which the release gates
+      # refuse to publish. A push to master is published, so it must have the key.
       - name: Build release APKs and legacy manifest
+        env:
+          WAVE_KEYSTORE_BASE64: ${{ secrets.WAVE_KEYSTORE_BASE64 }}
+          WAVE_KEYSTORE_PASSWORD: ${{ secrets.WAVE_KEYSTORE_PASSWORD }}
+          WAVE_KEY_ALIAS: ${{ secrets.WAVE_KEY_ALIAS }}
+          WAVE_KEY_PASSWORD: ${{ secrets.WAVE_KEY_PASSWORD }}
+          WAVE_REQUIRE_RELEASE_KEY: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && '1' || '' }}
         run: .github/build-apks.sh
       - uses: actions/upload-artifact@v4
         with:
@@ -208,6 +218,11 @@ jobs:
         with:
           name: all-apks
           path: apks
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: build-tools;35.0.1
+      - name: Refuse APKs signed with a public key
+        run: python3 signing/check_signer.py apks/*.apk
       - name: Publish legacy rolling release (do not retire before task 17)
         env:
           GH_TOKEN: ${{ github.token }}
