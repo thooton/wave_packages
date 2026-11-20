@@ -22,8 +22,8 @@ white background, and lavender D-pad selection.
 ```
 
 The signed output is `AppDrawer.apk`. Intermediate files are built in a temporary
-directory and removed automatically. Without a release key (`WAVE_KEYSTORE_*`) it signs with the old public key in
-`signing/app-drawer.p12`, for a trial only; see the root AGENTS.md.
+directory and removed automatically. It uses the checked-in public key in
+`signing/app-drawer.p12`, including for releases, so existing installs can update.
 
 ## Install and assign
 

@@ -28,7 +28,7 @@ app and go".
 - Any text telling the user how to use it (DESIGN.md rule 7): no hints,
   no "Press Menu to...".
 - Uninstalling apps. Remove only takes an app out of the drawer.
-- Signing with a key of its own: releases use the shared release key (`WAVE_KEYSTORE_*`); `launcher/signing/app-drawer.p12` is only the public trial fallback.
+- Signs with its own checked-in public key, `launcher/signing/app-drawer.p12`, for both local builds and releases.
 
 ## Screens
 

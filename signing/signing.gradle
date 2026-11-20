@@ -1,114 +1,17 @@
-// Signs every Gradle app in this repository. gradle/app.gradle applies it.
-//
-//   Release builds are signed with the RELEASE key, which is never in the
-//   repository. The owner generates it once (docs/tasks/01-owner-checklist.md
-//   in the wave repository) and CI gets it from secrets:
-//
-//     WAVE_KEYSTORE_BASE64    the keystore file, base64 on one line (CI), or
-//     WAVE_KEYSTORE_FILE      a path to the keystore (a local build)
-//     WAVE_KEYSTORE_PASSWORD  the store password
-//     WAVE_KEY_ALIAS          the key's alias
-//     WAVE_KEY_PASSWORD       the key's password
-//
-//   With none of them set, a release build falls back to debug.keystore beside
-//   this file and says so, loudly, when it starts. That key is PUBLIC (it is in
-//   this repository, password "android"), so an APK signed with it is for
-//   trying on a phone and nothing else: the release gates
-//   (signing/check_signer.py) refuse to publish it. A build that is going to
-//   be published sets WAVE_REQUIRE_RELEASE_KEY=1, and then a missing release
-//   key fails the build instead of falling back. Setting only some of the
-//   WAVE_KEY* variables is always an error.
-//
-//   Debug builds always use debug.keystore.
-
-import java.nio.file.Files
-import java.nio.file.attribute.PosixFilePermissions
-
-def waveEnv = System.getenv()
-def waveSet = { String name -> (waveEnv[name] ?: "").trim() }
-def waveHasKeystore = !waveSet("WAVE_KEYSTORE_BASE64").isEmpty() || !waveSet("WAVE_KEYSTORE_FILE").isEmpty()
-def waveAnyKey = waveHasKeystore || ["WAVE_KEYSTORE_PASSWORD", "WAVE_KEY_ALIAS", "WAVE_KEY_PASSWORD"]
-        .any { !waveSet(it).isEmpty() }
-def waveAllKey = waveHasKeystore && ["WAVE_KEYSTORE_PASSWORD", "WAVE_KEY_ALIAS", "WAVE_KEY_PASSWORD"]
-        .every { !waveSet(it).isEmpty() }
-if (waveAnyKey && !waveAllKey) {
-    throw new GradleException("Release signing is half set up: WAVE_KEYSTORE_BASE64 (or WAVE_KEYSTORE_FILE), " +
-            "WAVE_KEYSTORE_PASSWORD, WAVE_KEY_ALIAS and WAVE_KEY_PASSWORD must all be set, or none of them.")
-}
-
-// The release keystore as a file, decoded once per build from the base64 form.
-def waveReleaseKeystore = null
-if (waveAllKey) {
-    if (!waveSet("WAVE_KEYSTORE_FILE").isEmpty()) {
-        waveReleaseKeystore = new File(waveSet("WAVE_KEYSTORE_FILE"))
-        if (!waveReleaseKeystore.isFile()) {
-            throw new GradleException("WAVE_KEYSTORE_FILE is not a file: " + waveReleaseKeystore)
-        }
-    } else {
-        waveReleaseKeystore = new File(rootProject.layout.buildDirectory.get().asFile, "wave-release-signing/release.keystore")
-        if (!rootProject.ext.has("waveReleaseKeystoreWritten")) {
-            waveReleaseKeystore.parentFile.mkdirs()
-            Files.deleteIfExists(waveReleaseKeystore.toPath())
-            Files.write(waveReleaseKeystore.toPath(), Base64.mimeDecoder.decode(waveSet("WAVE_KEYSTORE_BASE64")))
-            try {
-                Files.setPosixFilePermissions(waveReleaseKeystore.toPath(), PosixFilePermissions.fromString("rw-------"))
-            } catch (UnsupportedOperationException ignored) {
-            }
-            rootProject.ext.waveReleaseKeystoreWritten = true
-        }
-    }
-}
-
+// Wave deliberately ships with the checked-in public Android debug key.
+// Both variants use the same certificate for updates. No secrets are needed.
 android {
     signingConfigs {
         debug {
-            storeFile new File(buildscript.sourceFile.parentFile, "debug.keystore")
+            storeFile rootProject.file("signing/debug.keystore")
             storePassword "android"
             keyAlias "androiddebugkey"
             keyPassword "android"
         }
-        if (waveAllKey) {
-            release {
-                storeFile waveReleaseKeystore
-                storePassword waveSet("WAVE_KEYSTORE_PASSWORD")
-                keyAlias waveSet("WAVE_KEY_ALIAS")
-                keyPassword waveSet("WAVE_KEY_PASSWORD")
-            }
-        }
     }
     buildTypes {
-        debug {
-            signingConfig signingConfigs.debug
-        }
         release {
-            signingConfig waveAllKey ? signingConfigs.release : signingConfigs.debug
-        }
-    }
-}
-
-// Say which key a release build uses, once per build, before it signs anything,
-// and stop a build that must be publishable from using the public one.
-if (!rootProject.ext.has("waveSigningAnnounced")) {
-    rootProject.ext.waveSigningAnnounced = true
-    gradle.taskGraph.whenReady { graph ->
-        def releasing = graph.allTasks.any {
-            it.name ==~ /(assemble|package|bundle)[A-Za-z]*Release/
-        }
-        if (!releasing) {
-            return
-        }
-        def bar = "=" * 78
-        if (waveAllKey) {
-            println "\n${bar}\nWAVE SIGNING: release key (alias ${waveSet('WAVE_KEY_ALIAS')}) from " +
-                    "${waveSet('WAVE_KEYSTORE_FILE').isEmpty() ? 'WAVE_KEYSTORE_BASE64' : 'WAVE_KEYSTORE_FILE'}\n${bar}\n"
-        } else if (waveEnv["WAVE_REQUIRE_RELEASE_KEY"] == "1") {
-            throw new GradleException("WAVE_REQUIRE_RELEASE_KEY=1 but no release key is configured " +
-                    "(WAVE_KEYSTORE_BASE64, WAVE_KEYSTORE_PASSWORD, WAVE_KEY_ALIAS, WAVE_KEY_PASSWORD). " +
-                    "Refusing to sign a publishable build with the public debug key.")
-        } else {
-            println "\n${bar}\n!! WAVE SIGNING: NO RELEASE KEY SET, SIGNING WITH THE PUBLIC DEBUG KEY !!\n" +
-                    "   This APK is for trying on a phone only. It must never be published, and the\n" +
-                    "   release gates refuse it. Set WAVE_KEYSTORE_* (see signing/signing.gradle).\n${bar}\n"
+            signingConfig signingConfigs.debug
         }
     }
 }

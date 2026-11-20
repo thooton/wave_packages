@@ -36,7 +36,6 @@ jobs:
       - id: inventory
         run: |
           python3 -m unittest discover -s .github -p 'test_release.py'
-          python3 -m unittest discover -s signing -p 'test_check_signer.py'
           echo "apks=$(python3 .github/packages.py matrix apk)" >> "$GITHUB_OUTPUT"
           echo "mods=$(python3 .github/packages.py matrix mod)" >> "$GITHUB_OUTPUT"
 
@@ -54,16 +53,7 @@ jobs:
         with:
           packages: platforms;android-35 build-tools;35.0.1
       - uses: gradle/actions/setup-gradle@v4
-      # The release key comes from repository secrets; a pull request or a fork
-      # has none and builds with the public debug key, which the release gates
-      # refuse to publish. A push to master is published, so it must have the key.
-      - name: Build release APKs and legacy manifest
-        env:
-          WAVE_KEYSTORE_BASE64: ${{ secrets.WAVE_KEYSTORE_BASE64 }}
-          WAVE_KEYSTORE_PASSWORD: ${{ secrets.WAVE_KEYSTORE_PASSWORD }}
-          WAVE_KEY_ALIAS: ${{ secrets.WAVE_KEY_ALIAS }}
-          WAVE_KEY_PASSWORD: ${{ secrets.WAVE_KEY_PASSWORD }}
-          WAVE_REQUIRE_RELEASE_KEY: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && '1' || '' }}
+      - name: Build APKs and legacy manifest with the checked-in keys
         run: .github/build-apks.sh
       - uses: actions/upload-artifact@v4
         with:
@@ -105,7 +95,7 @@ jobs:
           python3 .github/release_package.py "$PACKAGE_PATH" "apks/$asset" \
             --aapt2 "$ANDROID_SDK_ROOT/build-tools/$ANDROID_BUILD_TOOLS/aapt2" "${retry[@]}"
       - uses: thooton/wave/publish@v1
-        if: steps.release.outputs.binary != ''
+        if: steps.release.outputs.binary != '' && vars.WAVE_PUBLISH_ENABLED == 'true'
         with:
           source-repository: thooton/wave_repository
           source-token: ${{ secrets.WAVE_REPOSITORY_TOKEN }}
@@ -194,7 +184,7 @@ jobs:
           retry=(); [[ "$RETRY_PUBLISH" != true ]] || retry+=(--retry-publish)
           python3 .github/release_package.py "$PACKAGE_PATH" "$zip" "${retry[@]}"
       - uses: thooton/wave/publish@v1
-        if: steps.release.outputs.binary != ''
+        if: steps.release.outputs.binary != '' && vars.WAVE_PUBLISH_ENABLED == 'true'
         with:
           source-repository: thooton/wave_repository
           source-token: ${{ secrets.WAVE_REPOSITORY_TOKEN }}
@@ -221,8 +211,6 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: build-tools;35.0.1
-      - name: Refuse APKs signed with a public key
-        run: python3 signing/check_signer.py apks/*.apk
       - name: Publish legacy rolling release (do not retire before task 17)
         env:
           GH_TOKEN: ${{ github.token }}

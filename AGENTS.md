@@ -179,8 +179,8 @@ host tests and builds on PRs without publishing. On master it builds APKs
 without local credentials, verifies signatures and generated login constants,
 creates an immutable `<name>-<version>` release for each new version, and uses
 `thooton/wave/publish@v1` to mirror its manifest and icon into
-`thooton/wave_repository`. The mirror needs the `WAVE_REPOSITORY_TOKEN` Actions
-secret. A released asset is never overwritten. A source change without a
+`thooton/wave_repository`. The optional CI mirror needs `WAVE_PUBLISH_ENABLED=true` and the
+`WAVE_REPOSITORY_TOKEN` Actions secret. Otherwise update the catalog locally. A released asset is never overwritten. A source change without a
 version bump fails CI. After a successful immutable upload but failed mirror,
 use the `retry-publish` dispatch input to publish the original asset bytes.
 
@@ -208,19 +208,10 @@ and `mods/tools/setup.sh` then `mods/<mod>/tools/{test,build}.sh`.
 
 ## Shared rules
 
-- Release builds are signed with the owner's release key, which is never in this
-  repository: `WAVE_KEYSTORE_BASE64` (or `WAVE_KEYSTORE_FILE`),
-  `WAVE_KEYSTORE_PASSWORD`, `WAVE_KEY_ALIAS` and `WAVE_KEY_PASSWORD` (CI secrets;
-  `signing/signing.gradle` for the Gradle apps, `launcher/build.sh` for App Drawer).
-  Without them a release build falls back to the PUBLIC `signing/debug.keystore`
-  (and, for App Drawer, `launcher/signing/app-drawer.p12`) and warns loudly. That
-  APK is for trying on a phone, and **nothing signed with either may ever be
-  published**: `signing/check_signer.py` (called by `.github/release_package.py`, the
-  legacy `latest` job and the build summary) refuses it. A build that will be
-  published sets `WAVE_REQUIRE_RELEASE_KEY=1`, which fails instead of falling back
-  (CI does it for pushes to `master`). The owner makes the key once; see
-  `docs/tasks/01-owner-checklist.md` step 0a in the wave repository. Once real
-  releases exist the release key must never change. `signing/signing.gradle` and
-  `check_signer.py` are kept identical in the wave repository.
+- Debug and release builds use the checked-in public `signing/debug.keystore`,
+  with no signing secrets. AppDrawer keeps its own checked-in public key so
+  existing copies can update. Anyone can sign an APK Android will accept as
+  an update; use binaries only from sources you trust. Keep the shared
+  signing Gradle script and keystore identical in the Wave repository.
 - Installs on Wave-enabled phones are handled by Wave. Installer's old
   device-owner flow is only kept in the archived source.
