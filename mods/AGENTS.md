@@ -8,12 +8,13 @@ separate from the Wave app:
 | Messages Improved | BMms, TelephonyProvider, ContactsProvider | `stock-messages` |
 | Launcher Improved | SonimLauncher | `stock-launcher` |
 | Music Improved | BMusic | `stock-music` |
+| SQLite Improved | None; native library overlay | 11.17.00 and 11.20.00 |
 
 Each mod's `apps/<App>/apktool/` is the smali source tree; `java/` adds
 Java 8 code and `stubs/` holds compile-only declarations. Keep changes in
 small smali hooks and Java. Do not change stock manifests, resources,
 permissions or shared UIDs. `firmware/system/` contains the five pinned APKs
-and `build.prop`, not a whole phone backup. The firmware fingerprint is
+and `build.prop`, plus three stock library inputs for SQLite, not a whole phone backup. The firmware fingerprint is
 advisory for module compatibility, not a substitute for device testing.
 Never add personal data or device dumps. The tags above record the original imports. Messages and Launcher now build
 against 11.20.00; decode the APKs in `firmware/system/priv-app/` to compare
@@ -66,3 +67,5 @@ legacy ID replacements.
 `mods/tools/build-module.sh messages` builds every APK and packages the module
 zip that the [package workflow](../.github/workflows/build-apks.yml) tests.
 The Wave-side publishing Action is [`thooton/wave/publish@v1`](https://github.com/thooton/wave/tree/master/publish).
+
+[SQLite Improved](sqlite/README.md) has its own NDK build and packaging command.

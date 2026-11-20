@@ -58,7 +58,7 @@ class ReleaseCheck(unittest.TestCase):
         self.assertEqual([], [name for name in sorted(removed) if (repo / name).exists()])
         self.assertEqual({'mods/launcher', 'mods/messages', 'mods/music'},
                          {m['path'] for m in matrix('mod')})
-        self.assertFalse((repo / 'mods/sqlite').exists())
+        self.assertTrue((repo / 'mods/sqlite/wave/package.json').is_file())
         self.assertTrue({'books'} <= {m['path'] for m in matrix('apk')})
         self.assertFalse(RETIRED & {m['path'] for m in matrix('apk')})
 
