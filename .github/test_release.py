@@ -49,7 +49,7 @@ class ReleaseCheck(unittest.TestCase):
     def test_retired_packages_never_selected(self):
         repo = Path(__file__).resolve().parents[1]
         os.chdir(repo)
-        self.assertTrue({'installer', 'updater', 'hbsa', 'launcher'} <= RETIRED)
+        self.assertTrue({'installer', 'updater', 'hbsa', 'launcher', 'musica'} <= RETIRED)
         self.assertTrue({'books'} <= {m['path'] for m in matrix('apk')})
         self.assertFalse(RETIRED & {m['path'] for m in matrix('apk')})
 

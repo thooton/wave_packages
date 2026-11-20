@@ -2,4 +2,5 @@
 hbsa
 installer
 launcher
+musica
 updater
