@@ -3,7 +3,8 @@
 This records upstream's modernization and device results, before the repo move
 and rename. They do not verify the current signed build or installed handover.
 Start with [the shared mod guide](../../AGENTS.md) and [Messages' notes](../AGENTS.md).
-Feature docs are linked from [the Messages README](../README.md).
+Feature docs are linked from [the Messages README](../README.md). The custom RCS engine
+and settings shown in this record are no longer shipped in Messages Improved.
 
 ## The asks and where they stand
 
@@ -11,11 +12,11 @@ Feature docs are linked from [the Messages README](../README.md).
 |---|---|---|
 | Group MMS shown first as 1:1 "Downloading...", then moved | Done, device-verified | docs/fixes/mms-receive-placeholder, docs/fixes/self-number |
 | Group chats capped at 10 recipients | Done, device-verified (12 recipients sent) | docs/fixes/recipient-limit |
-| RCS, receipts: never send/request read receipts; send but don't request delivery receipts | Done; verified against the mock network on the phone | docs/rcs/*, docs/fixes/receipts |
+| RCS, receipts: never send/request read receipts; send but don't request delivery receipts | Done; verified against the mock network on the phone | Original Argon checkout |
 | "...and more": MMS acks / Report-Allowed, crash fixes | Done, device-verified | docs/fixes/mms-ack, docs/fixes/mms-no-subscription |
 | Faster receiving (MMS especially) | Done, measured | docs/fixes/performance |
 | Faster group MMS history, no Chromium in message rows | Done, device-verified | docs/fixes/conversation-load |
-| RCS settings and status in Settings > Advanced settings | Done, device-verified | docs/rcs/android.md "Settings screen" |
+| RCS settings and status in Settings > Advanced settings | Done, device-verified | Original Argon checkout |
 | UI unchanged | Kept: no layout/resource changes; RCS messages look like SMS/MMS; the one addition is the RCS settings screen, in the stock settings style and wording | |
 
 ## Historical upstream device and host results
@@ -26,12 +27,6 @@ Feature docs are linked from [the Messages README](../README.md).
   report flags, injected M-Delivery.ind dropped, one notification per MMS.
 
 ## Open ends (cannot be closed from here)
-* **RCS on the real network.** Bell's RCS is Google Jibe, whose provisioning requires a DroidGuard
-  token only Google Play services can produce; this phone has none. The engine is standards-based
-  and works with an imported configuration XML from another phone that signed up for RCS
-  (docs/rcs/engine.md "Importing a config from another phone", docs/rcs/android.md
-  "Configuration"). Untested against Jibe itself: no account was available. Caveat: one active
-  client per number, so RCS must be off on the donor.
 * **Real radio paths** (SIM, carrier MMSC, MMS PDN) weren't available: MMS was tested against the
   fake MMSC; the MMS network linger (performance fix 4) can only work with a SIM.
 * MMSC limits: Bell's MMSC may refuse very large MMS groups (carrier config says 20 recipients).
@@ -46,5 +41,4 @@ Feature docs are linked from [the Messages README](../README.md).
 ## Where things are
 * Java: `apps/BMms/java/` (table in docs/code-map.md "Our code"), smali hooks marked
   `# FIX(...)` / `# FEAT(...)` / `# PERF(...)`.
-* Tools: `tools/build.sh`, `tools/deploy.sh`, `tools/package.sh`; tests under `tools/testing/`
-  and `tools/rcs/`.
+* Tools: `tools/build.sh`, `tools/deploy.sh`, `tools/package.sh`; tests under `tools/testing/`.

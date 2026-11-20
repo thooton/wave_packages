@@ -3,7 +3,7 @@
   "type": "module",
   "name": "Launcher Improved",
   "summary": "Arrange, group and hide apps in the stock tray",
-  "description": "Make folders, move apps and hide entries in the stock Sonim apps tray. AppDrawer is still needed if a programmable key opens it.",
+  "description": "Make folders, move apps and hide entries in the stock Sonim apps tray. Quick Settings initializes when opened, not when the tray starts.",
   "author": "thooton",
   "homepage": "https://github.com/thooton/wave_packages/tree/master/mods/launcher",
   "requires": {
@@ -12,7 +12,7 @@
     ],
     "sdk": 27,
     "firmware": [
-      "Sonim/XP3832/XP3800:8.1.0/3A.0.0-01-8.1.0-11.17.00/1:user/release-keys"
+      "Sonim/XP3832/XP3800:8.1.0/3A.0.1-02-8.1.0-11.20.00/22:user/release-keys"
     ]
   },
   "depends": [],

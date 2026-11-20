@@ -1,4 +1,4 @@
-# Allow just the five build inputs, never a full firmware dump.
+# Allow only the pinned build inputs, never a full firmware dump.
 *
 !.gitignore
 !system/
@@ -14,3 +14,9 @@
 !system/priv-app/SonimLauncher/SonimLauncher.apk
 !system/priv-app/BMusic/
 !system/priv-app/BMusic/BMusic.apk
+
+!sqlite-inputs.sha256
+!system/lib/
+!system/lib/libsqlite.so
+!system/lib/libicuuc.so
+!system/lib/libicui18n.so

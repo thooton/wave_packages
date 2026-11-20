@@ -31,8 +31,6 @@ def matrix(kind):
 
 
 def release_name(path):
-    if path == 'launcher':
-        return 'appdrawer'
     if path.startswith('mods/'):
         return path.split('/')[-1] + '-improved'
     return path
@@ -52,7 +50,7 @@ if __name__ == '__main__':
     if command == 'matrix':
         print(json.dumps(matrix(sys.argv[2]), separators=(',', ':')))
     elif command == 'gradle-apps':
-        print(' '.join([p['path'] for p in matrix('apk') if p['path'] != 'launcher'] + PRIVATE_LEGACY))
+        print(' '.join([p['path'] for p in matrix('apk')] + PRIVATE_LEGACY))
     elif command == 'check-bundled':
         check_bundled(sys.argv[2])
     else:

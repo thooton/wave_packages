@@ -3,8 +3,8 @@
 The Sonim XP3800's own launcher, with an apps tray you arrange yourself. Shipped as a
 systemless Magisk module that replaces `/system/priv-app/SonimLauncher`.
 
-* **Folders.** Your apps start sorted into folders (Reading, Media, Daily, Files, System). Your
-  most-used apps sit loose at the top, and Sonim's own tray follows unchanged. Each of your
+* **Folders.** The default tray starts with common apps, then Media, Reading, Tools, Files,
+  System and Applications. Each of your
   folders gets an icon showing its first four apps.
 * **Menu key in the tray** (on an app): Move, Move to folder (an existing one, the main
   screen, or a new folder), Hide. On a folder: Move, Rename folder, Remove folder (its apps
@@ -14,5 +14,8 @@ systemless Magisk module that replaces `/system/priv-app/SonimLauncher`.
   puts it down, and Back cancels.
 * **New installs** go to the end of the Applications folder, as in stock. Uninstalling an app
   keeps its place, so reinstalling puts it back where it was.
+
+* **Faster tray and home resume.** Opening the tray selects the first entry without a scroll
+  animation. Quick Settings starts on its first visible frame.
 
 Build and test with `tools/setup.sh`, `tools/build.sh`, `tools/test.sh`. See [shared signing and packaging requirements](../AGENTS.md) before attempting to install.

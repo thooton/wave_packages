@@ -52,8 +52,6 @@ def release_state(path, tag, version):
         return 'new'
     if path.startswith('mods/'):
         scope = [path, 'mods/firmware', 'mods/tools']
-    elif path == 'launcher':
-        scope = [path]
     else:
         scope = [path, 'common', 'gradle', 'signing', 'build.gradle', 'settings.gradle', 'gradle.properties',
                  'gradlew', 'gradlew.bat']

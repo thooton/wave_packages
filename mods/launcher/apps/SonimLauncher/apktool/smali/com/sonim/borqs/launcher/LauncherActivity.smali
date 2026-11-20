@@ -611,35 +611,35 @@
 
     iput v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->CAMERA_INDEX:I
 
-    .line 1434
+    .line 1433
     new-instance v0, Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;
 
     invoke-direct {v0, p0}, Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;-><init>(Lcom/sonim/borqs/launcher/LauncherActivity;)V
 
     iput-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mKeyEventInfo:Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;
 
-    .line 2529
+    .line 2528
     new-instance v0, Lcom/sonim/borqs/launcher/LauncherActivity$3;
 
     invoke-direct {v0, p0}, Lcom/sonim/borqs/launcher/LauncherActivity$3;-><init>(Lcom/sonim/borqs/launcher/LauncherActivity;)V
 
     iput-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->SIMChangeReceiver:Landroid/content/BroadcastReceiver;
 
-    .line 2594
+    .line 2593
     new-instance v0, Lcom/sonim/borqs/launcher/LauncherActivity$4;
 
     invoke-direct {v0, p0}, Lcom/sonim/borqs/launcher/LauncherActivity$4;-><init>(Lcom/sonim/borqs/launcher/LauncherActivity;)V
 
     iput-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->appInstalledReceiver:Landroid/content/BroadcastReceiver;
 
-    .line 2997
+    .line 2996
     new-instance v0, Lcom/sonim/borqs/launcher/LauncherActivity$5;
 
     invoke-direct {v0, p0}, Lcom/sonim/borqs/launcher/LauncherActivity$5;-><init>(Lcom/sonim/borqs/launcher/LauncherActivity;)V
 
     iput-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->homeNavigationShortcutChangeReceiver:Landroid/content/BroadcastReceiver;
 
-    .line 3057
+    .line 3056
     new-instance v0, Lcom/sonim/borqs/launcher/LauncherActivity$6;
 
     new-instance v1, Landroid/os/Handler;
@@ -658,14 +658,14 @@
     .locals 2
 
     .prologue
-    .line 3104
+    .line 3103
     packed-switch p1, :pswitch_data_0
 
-    .line 3120
+    .line 3119
     :goto_0
     return-void
 
-    .line 3106
+    .line 3105
     :pswitch_0
     const v0, 0x7f0b004c
 
@@ -673,14 +673,14 @@
 
     move-result-object v0
 
-    .line 3107
+    .line 3106
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPager:Landroid/support/v4/view/ViewPager;
 
     invoke-static {v1, v0}, Lcom/sonim/borqs/launcher/AccessibilityUtil;->announceForAccessibility(Landroid/view/View;Ljava/lang/CharSequence;)V
 
     goto :goto_0
 
-    .line 3110
+    .line 3109
     :pswitch_1
     const v0, 0x7f0b003e
 
@@ -688,14 +688,14 @@
 
     move-result-object v0
 
-    .line 3111
+    .line 3110
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPager:Landroid/support/v4/view/ViewPager;
 
     invoke-static {v1, v0}, Lcom/sonim/borqs/launcher/AccessibilityUtil;->announceForAccessibility(Landroid/view/View;Ljava/lang/CharSequence;)V
 
     goto :goto_0
 
-    .line 3114
+    .line 3113
     :pswitch_2
     const v0, 0x7f0b003f
 
@@ -703,14 +703,14 @@
 
     move-result-object v0
 
-    .line 3115
+    .line 3114
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPager:Landroid/support/v4/view/ViewPager;
 
     invoke-static {v1, v0}, Lcom/sonim/borqs/launcher/AccessibilityUtil;->announceForAccessibility(Landroid/view/View;Ljava/lang/CharSequence;)V
 
     goto :goto_0
 
-    .line 3104
+    .line 3103
     nop
 
     :pswitch_data_0
@@ -733,7 +733,7 @@
     .prologue
     const/4 v2, 0x2
 
-    .line 1821
+    .line 1820
     :cond_0
     invoke-interface {p0}, Lorg/xmlpull/v1/XmlPullParser;->next()I
 
@@ -741,16 +741,16 @@
 
     if-eq v0, v2, :cond_1
 
-    .line 1822
+    .line 1821
     const/4 v1, 0x1
 
     if-ne v0, v1, :cond_0
 
-    .line 1827
+    .line 1826
     :cond_1
     if-eq v0, v2, :cond_2
 
-    .line 1828
+    .line 1827
     new-instance v0, Lorg/xmlpull/v1/XmlPullParserException;
 
     const-string/jumbo v1, "No start tag found"
@@ -759,7 +759,7 @@
 
     throw v0
 
-    .line 1830
+    .line 1829
     :cond_2
     invoke-interface {p0}, Lorg/xmlpull/v1/XmlPullParser;->getName()Ljava/lang/String;
 
@@ -771,7 +771,7 @@
 
     if-nez v0, :cond_3
 
-    .line 1831
+    .line 1830
     new-instance v0, Lorg/xmlpull/v1/XmlPullParserException;
 
     new-instance v1, Ljava/lang/StringBuilder;
@@ -784,20 +784,20 @@
 
     move-result-object v1
 
-    .line 1832
+    .line 1831
     invoke-interface {p0}, Lorg/xmlpull/v1/XmlPullParser;->getName()Ljava/lang/String;
 
     move-result-object v2
 
-    .line 1831
+    .line 1830
     invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v1
 
-    .line 1832
+    .line 1831
     const-string/jumbo v2, ", expected "
 
-    .line 1831
+    .line 1830
     invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v1
@@ -814,7 +814,7 @@
 
     throw v0
 
-    .line 1834
+    .line 1833
     :cond_3
     return-void
 .end method
@@ -825,14 +825,14 @@
     .prologue
     const/4 v5, 0x0
 
-    .line 2884
+    .line 2883
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
 
     move-result-object v0
 
-    .line 2885
+    .line 2884
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     sget-object v2, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadUpPrefKey:Ljava/lang/String;
@@ -841,7 +841,7 @@
 
     move-result-object v1
 
-    .line 2886
+    .line 2885
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     sget-object v3, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadDownPrefKey:Ljava/lang/String;
@@ -850,7 +850,7 @@
 
     move-result-object v2
 
-    .line 2887
+    .line 2886
     iget-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     sget-object v4, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadCenterPrefKey:Ljava/lang/String;
@@ -859,10 +859,10 @@
 
     move-result-object v3
 
-    .line 2889
+    .line 2888
     if-eqz p1, :cond_2
 
-    .line 2890
+    .line 2889
     if-eqz v1, :cond_0
 
     invoke-virtual {v1, p1}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
@@ -871,7 +871,7 @@
 
     if-eqz v1, :cond_0
 
-    .line 2891
+    .line 2890
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     const-string/jumbo v4, "dpad_up_key_default_pref"
@@ -882,24 +882,24 @@
 
     iput-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADUpPkgName:Ljava/lang/String;
 
-    .line 2892
+    .line 2891
     sget-object v1, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadUpPrefKey:Ljava/lang/String;
 
     iget-object v4, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADUpPkgName:Ljava/lang/String;
 
     invoke-interface {v0, v1, v4}, Landroid/content/SharedPreferences$Editor;->putString(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
 
-    .line 2893
+    .line 2892
     invoke-interface {v0}, Landroid/content/SharedPreferences$Editor;->commit()Z
 
-    .line 2894
+    .line 2893
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADUpPkgName:Ljava/lang/String;
 
     const/16 v4, 0x64
 
     invoke-direct {p0, v1, v4}, Lcom/sonim/borqs/launcher/LauncherActivity;->setShortcutDrawable(Ljava/lang/String;I)V
 
-    .line 2896
+    .line 2895
     :cond_0
     if-eqz v2, :cond_1
 
@@ -909,37 +909,37 @@
 
     if-eqz v1, :cond_1
 
-    .line 2897
+    .line 2896
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
-    .line 2898
+    .line 2897
     const-string/jumbo v2, "dpad_down_key_default_pref"
 
-    .line 2897
+    .line 2896
     invoke-interface {v1, v2, v5}, Landroid/content/SharedPreferences;->getString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v1
 
     iput-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADDownPkgName:Ljava/lang/String;
 
-    .line 2899
+    .line 2898
     sget-object v1, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadDownPrefKey:Ljava/lang/String;
 
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADDownPkgName:Ljava/lang/String;
 
     invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences$Editor;->putString(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
 
-    .line 2900
+    .line 2899
     invoke-interface {v0}, Landroid/content/SharedPreferences$Editor;->commit()Z
 
-    .line 2901
+    .line 2900
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADDownPkgName:Ljava/lang/String;
 
     const/16 v2, 0x65
 
     invoke-direct {p0, v1, v2}, Lcom/sonim/borqs/launcher/LauncherActivity;->setShortcutDrawable(Ljava/lang/String;I)V
 
-    .line 2903
+    .line 2902
     :cond_1
     if-eqz v3, :cond_2
 
@@ -949,37 +949,37 @@
 
     if-eqz v1, :cond_2
 
-    .line 2904
+    .line 2903
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
-    .line 2905
+    .line 2904
     const-string/jumbo v2, "dpad_center_key_default_pref"
 
-    .line 2904
+    .line 2903
     invoke-interface {v1, v2, v5}, Landroid/content/SharedPreferences;->getString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v1
 
     iput-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADCenterPkgName:Ljava/lang/String;
 
-    .line 2906
+    .line 2905
     sget-object v1, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadCenterPrefKey:Ljava/lang/String;
 
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADCenterPkgName:Ljava/lang/String;
 
     invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences$Editor;->putString(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
 
-    .line 2907
+    .line 2906
     invoke-interface {v0}, Landroid/content/SharedPreferences$Editor;->commit()Z
 
-    .line 2908
+    .line 2907
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADCenterPkgName:Ljava/lang/String;
 
     const/16 v1, 0x66
 
     invoke-direct {p0, v0, v1}, Lcom/sonim/borqs/launcher/LauncherActivity;->setShortcutDrawable(Ljava/lang/String;I)V
 
-    .line 2911
+    .line 2910
     :cond_2
     return-void
 .end method
@@ -988,7 +988,7 @@
     .locals 4
 
     .prologue
-    .line 3178
+    .line 3177
     :try_start_0
     invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getPackageManager()Landroid/content/pm/PackageManager;
 
@@ -1002,7 +1002,7 @@
 
     move-result-object v0
 
-    .line 3179
+    .line 3178
     const-string/jumbo v1, "LauncherActivity"
 
     new-instance v2, Ljava/lang/StringBuilder;
@@ -1027,26 +1027,26 @@
 
     invoke-static {v1, v2}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 3180
+    .line 3179
     iget-boolean v0, v0, Landroid/content/pm/ApplicationInfo;->enabled:Z
 
     if-nez v0, :cond_0
 
-    .line 3181
+    .line 3180
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->updateAppTrayList()V
     :try_end_0
     .catch Landroid/content/pm/PackageManager$NameNotFoundException; {:try_start_0 .. :try_end_0} :catch_0
 
-    .line 3186
+    .line 3185
     :cond_0
     :goto_0
     return-void
 
-    .line 3183
+    .line 3182
     :catch_0
     move-exception v0
 
-    .line 3184
+    .line 3183
     const-string/jumbo v1, "LauncherActivity"
 
     new-instance v2, Ljava/lang/StringBuilder;
@@ -1212,14 +1212,14 @@
     .locals 4
 
     .prologue
-    .line 2987
+    .line 2986
     invoke-static {p1}, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
 
     move-result v0
 
     if-nez v0, :cond_0
 
-    .line 2988
+    .line 2987
     invoke-virtual {p1}, Ljava/lang/String;->trim()Ljava/lang/String;
 
     move-result-object v0
@@ -1228,7 +1228,7 @@
 
     move-result-object v0
 
-    .line 2989
+    .line 2988
     const-string/jumbo v1, "LauncherActivity"
 
     new-instance v2, Ljava/lang/StringBuilder;
@@ -1269,7 +1269,7 @@
 
     invoke-static {v1, v2}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 2990
+    .line 2989
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
     invoke-virtual {v0}, Landroid/content/ComponentName;->getPackageName()Ljava/lang/String;
@@ -1280,10 +1280,10 @@
 
     move-result-object v0
 
-    .line 2991
+    .line 2990
     return-object v0
 
-    .line 2993
+    .line 2992
     :cond_0
     const/4 v0, 0x0
 
@@ -1306,22 +1306,22 @@
     :wave_icon
     const/4 v3, 0x0
 
-    .line 2204
+    .line 2203
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mContext:Landroid/content/Context;
 
     invoke-virtual {v0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
 
     move-result-object v0
 
-    .line 2205
+    .line 2204
     const v1, 0x7f020048
 
-    .line 2204
+    .line 2203
     invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
 
-    .line 2207
+    .line 2206
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     const-string/jumbo v2, "current_theme"
@@ -1330,7 +1330,7 @@
 
     move-result v1
 
-    .line 2209
+    .line 2208
     const-string/jumbo v2, "Applications"
 
     invoke-virtual {p1, v2}, Ljava/lang/String;->equalsIgnoreCase(Ljava/lang/String;)Z
@@ -1339,41 +1339,41 @@
 
     if-nez v2, :cond_0
 
-    .line 2210
+    .line 2209
     const-string/jumbo v2, "Aplicaciones"
 
     invoke-virtual {p1, v2}, Ljava/lang/String;->equalsIgnoreCase(Ljava/lang/String;)Z
 
     move-result v2
 
-    .line 2209
+    .line 2208
     if-eqz v2, :cond_3
 
-    .line 2211
+    .line 2210
     :cond_0
     if-nez v1, :cond_2
 
-    .line 2212
+    .line 2211
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mContext:Landroid/content/Context;
 
     invoke-virtual {v0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
 
     move-result-object v0
 
-    .line 2213
+    .line 2212
     const v1, 0x7f020043
 
-    .line 2212
+    .line 2211
     invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
 
-    .line 2244
+    .line 2243
     :cond_1
     :goto_0
     return-object v0
 
-    .line 2215
+    .line 2214
     :cond_2
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mContext:Landroid/content/Context;
 
@@ -1381,17 +1381,17 @@
 
     move-result-object v0
 
-    .line 2216
+    .line 2215
     const v1, 0x7f020051
 
-    .line 2215
+    .line 2214
     invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
 
     goto :goto_0
 
-    .line 2219
+    .line 2218
     :cond_3
     const-string/jumbo v2, "Tools"
 
@@ -1401,38 +1401,38 @@
 
     if-nez v2, :cond_4
 
-    .line 2220
+    .line 2219
     const-string/jumbo v2, "Outils"
 
     invoke-virtual {p1, v2}, Ljava/lang/String;->equalsIgnoreCase(Ljava/lang/String;)Z
 
     move-result v2
 
-    .line 2219
+    .line 2218
     if-eqz v2, :cond_6
 
-    .line 2221
+    .line 2220
     :cond_4
     if-nez v1, :cond_5
 
-    .line 2222
+    .line 2221
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mContext:Landroid/content/Context;
 
     invoke-virtual {v0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
 
     move-result-object v0
 
-    .line 2223
+    .line 2222
     const v1, 0x7f020045
 
-    .line 2222
+    .line 2221
     invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
 
     goto :goto_0
 
-    .line 2225
+    .line 2224
     :cond_5
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mContext:Landroid/content/Context;
 
@@ -1440,17 +1440,17 @@
 
     move-result-object v0
 
-    .line 2226
+    .line 2225
     const v1, 0x7f020053
 
-    .line 2225
+    .line 2224
     invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
 
     goto :goto_0
 
-    .line 2229
+    .line 2228
     :cond_6
     const-string/jumbo v2, "Music"
 
@@ -1460,38 +1460,38 @@
 
     if-nez v2, :cond_7
 
-    .line 2230
+    .line 2229
     const-string/jumbo v2, "M\u00fasica"
 
     invoke-virtual {p1, v2}, Ljava/lang/String;->equalsIgnoreCase(Ljava/lang/String;)Z
 
     move-result v2
 
-    .line 2229
+    .line 2228
     if-eqz v2, :cond_9
 
-    .line 2231
+    .line 2230
     :cond_7
     if-nez v1, :cond_8
 
-    .line 2232
+    .line 2231
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mContext:Landroid/content/Context;
 
     invoke-virtual {v0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
 
     move-result-object v0
 
-    .line 2233
+    .line 2232
     const v1, 0x7f020044
 
-    .line 2232
+    .line 2231
     invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
 
     goto :goto_0
 
-    .line 2235
+    .line 2234
     :cond_8
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mContext:Landroid/content/Context;
 
@@ -1499,17 +1499,17 @@
 
     move-result-object v0
 
-    .line 2236
+    .line 2235
     const v1, 0x7f020052
 
-    .line 2235
+    .line 2234
     invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
 
     goto :goto_0
 
-    .line 2238
+    .line 2237
     :cond_9
     const-string/jumbo v1, "Verizon"
 
@@ -1519,17 +1519,17 @@
 
     if-eqz v1, :cond_1
 
-    .line 2241
+    .line 2240
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mContext:Landroid/content/Context;
 
     invoke-virtual {v0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
 
     move-result-object v0
 
-    .line 2242
+    .line 2241
     const v1, 0x7f020049
 
-    .line 2241
+    .line 2240
     invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
@@ -1543,7 +1543,7 @@
     .prologue
     const/4 v1, 0x0
 
-    .line 3071
+    .line 3070
     invoke-static {p1}, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
 
     move-result v0
@@ -1552,7 +1552,7 @@
 
     return-object v1
 
-    .line 3073
+    .line 3072
     :cond_0
     invoke-static {p1}, Lcom/sonim/borqs/launcher/LauncherActivity;->isQuickProfileSwitchPkgAndClassName(Ljava/lang/String;)Z
 
@@ -1560,7 +1560,7 @@
 
     if-eqz v0, :cond_1
 
-    .line 3074
+    .line 3073
     const v0, 0x7f0b004b
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getString(I)Ljava/lang/String;
@@ -1569,18 +1569,18 @@
 
     return-object v0
 
-    .line 3077
+    .line 3076
     :cond_1
     invoke-virtual {p1}, Ljava/lang/String;->trim()Ljava/lang/String;
 
     move-result-object v0
 
-    .line 3076
+    .line 3075
     invoke-static {v0}, Landroid/content/ComponentName;->unflattenFromString(Ljava/lang/String;)Landroid/content/ComponentName;
 
     move-result-object v0
 
-    .line 3080
+    .line 3079
     :try_start_0
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
@@ -1590,10 +1590,10 @@
 
     move-result-object v0
 
-    .line 3081
+    .line 3080
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
-    .line 3080
+    .line 3079
     invoke-virtual {v0, v1}, Landroid/content/pm/ActivityInfo;->loadLabel(Landroid/content/pm/PackageManager;)Ljava/lang/CharSequence;
 
     move-result-object v0
@@ -1602,15 +1602,15 @@
     :try_end_0
     .catch Landroid/content/pm/PackageManager$NameNotFoundException; {:try_start_0 .. :try_end_0} :catch_0
 
-    .line 3086
+    .line 3085
     :goto_0
     return-object v0
 
-    .line 3082
+    .line 3081
     :catch_0
     move-exception v0
 
-    .line 3083
+    .line 3082
     const-string/jumbo v1, "LauncherActivity"
 
     new-instance v2, Ljava/lang/StringBuilder;
@@ -1633,7 +1633,7 @@
 
     invoke-static {v1, v0}, Lcom/sonim/borqs/launcher/Log;->e(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 3084
+    .line 3083
     const-string/jumbo v0, "unknown"
 
     goto :goto_0
@@ -1643,24 +1643,24 @@
     .locals 5
 
     .prologue
-    .line 2088
+    .line 2087
     invoke-virtual {p0, p1}, Lcom/sonim/borqs/launcher/LauncherActivity;->getPkgIconForTheme(Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
 
-    .line 2090
+    .line 2089
     if-nez v0, :cond_0
 
-    .line 2091
+    .line 2090
     :try_start_0
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
-    .line 2092
+    .line 2091
     invoke-virtual {p1}, Ljava/lang/String;->trim()Ljava/lang/String;
 
     move-result-object v2
 
-    .line 2091
+    .line 2090
     invoke-static {v2}, Landroid/content/ComponentName;->unflattenFromString(Ljava/lang/String;)Landroid/content/ComponentName;
 
     move-result-object v2
@@ -1671,16 +1671,16 @@
 
     move-result-object v0
 
-    .line 2098
+    .line 2097
     :cond_0
     :goto_0
     return-object v0
 
-    .line 2094
+    .line 2093
     :catch_0
     move-exception v1
 
-    .line 2095
+    .line 2094
     const-string/jumbo v2, "LauncherActivity"
 
     new-instance v3, Ljava/lang/StringBuilder;
@@ -1828,7 +1828,7 @@
     .locals 1
 
     .prologue
-    .line 1600
+    .line 1599
     const-string/jumbo v0, "phone"
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
@@ -1844,7 +1844,7 @@
     .locals 1
 
     .prologue
-    .line 2199
+    .line 2198
     const v0, 0x7f0b0017
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getString(I)Ljava/lang/String;
@@ -1862,35 +1862,35 @@
 
     const/4 v2, 0x1
 
-    .line 2457
+    .line 2456
     iget-boolean v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsClingVisible:Z
 
     if-eqz v0, :cond_4
 
-    .line 2459
+    .line 2458
     iget-boolean v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsFirstPageCling:Z
 
     if-eqz v0, :cond_0
 
-    .line 2460
+    .line 2459
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->showFTUSecondScreen()V
 
-    .line 2461
+    .line 2460
     return v2
 
-    .line 2463
+    .line 2462
     :cond_0
     iput-boolean v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsClingVisible:Z
 
-    .line 2467
+    .line 2466
     iget-boolean v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsClingVisibleOnSIMInsert:Z
 
     if-eqz v0, :cond_1
 
-    .line 2468
+    .line 2467
     iput-boolean v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsClingVisibleOnSIMInsert:Z
 
-    .line 2470
+    .line 2469
     :cond_1
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mCustomCling:Landroid/view/View;
 
@@ -1898,44 +1898,44 @@
 
     invoke-virtual {v0, v1}, Landroid/view/View;->setVisibility(I)V
 
-    .line 2471
+    .line 2470
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
 
     move-result-object v0
 
-    .line 2478
+    .line 2477
     iget-boolean v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsClingVisibleOnSIMInsert:Z
 
     if-nez v1, :cond_3
 
-    .line 2479
+    .line 2478
     const-string/jumbo v1, "cling.workspace.cling"
 
     invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences$Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences$Editor;
 
-    .line 2480
+    .line 2479
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->isSIMReady()Z
 
     move-result v1
 
     if-eqz v1, :cond_2
 
-    .line 2481
+    .line 2480
     const-string/jumbo v1, "sim.cling.pref"
 
     invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences$Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences$Editor;
 
-    .line 2486
+    .line 2485
     :cond_2
     :goto_0
     invoke-interface {v0}, Landroid/content/SharedPreferences$Editor;->commit()Z
 
-    .line 2499
+    .line 2498
     return v2
 
-    .line 2484
+    .line 2483
     :cond_3
     const-string/jumbo v1, "sim.cling.pref"
 
@@ -1943,7 +1943,7 @@
 
     goto :goto_0
 
-    .line 2501
+    .line 2500
     :cond_4
     return v1
 .end method
@@ -2024,40 +2024,40 @@
     .prologue
     const/4 v1, 0x0
 
-    .line 2106
+    .line 2105
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mColorfulThemeIconIds:[I
 
     if-eqz v0, :cond_0
 
     return-void
 
-    .line 2108
+    .line 2107
     :cond_0
     invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getResources()Landroid/content/res/Resources;
 
     move-result-object v0
 
-    .line 2109
+    .line 2108
     const v2, 0x7f060002
 
-    .line 2108
+    .line 2107
     invoke-virtual {v0, v2}, Landroid/content/res/Resources;->obtainTypedArray(I)Landroid/content/res/TypedArray;
 
     move-result-object v2
 
-    .line 2110
+    .line 2109
     invoke-virtual {v2}, Landroid/content/res/TypedArray;->length()I
 
     move-result v0
 
-    .line 2111
+    .line 2110
     new-array v0, v0, [I
 
     iput-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mColorfulThemeIconIds:[I
 
     move v0, v1
 
-    .line 2112
+    .line 2111
     :goto_0
     iget-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mColorfulThemeIconIds:[I
 
@@ -2065,7 +2065,7 @@
 
     if-ge v0, v3, :cond_1
 
-    .line 2113
+    .line 2112
     iget-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mColorfulThemeIconIds:[I
 
     invoke-virtual {v2, v0, v1}, Landroid/content/res/TypedArray;->getResourceId(II)I
@@ -2074,16 +2074,16 @@
 
     aput v4, v3, v0
 
-    .line 2112
+    .line 2111
     add-int/lit8 v0, v0, 0x1
 
     goto :goto_0
 
-    .line 2115
+    .line 2114
     :cond_1
     invoke-virtual {v2}, Landroid/content/res/TypedArray;->recycle()V
 
-    .line 2116
+    .line 2115
     return-void
 .end method
 
@@ -2143,7 +2143,7 @@
     .locals 2
 
     .prologue
-    .line 2962
+    .line 2961
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getTelephonyManager()Landroid/telephony/TelephonyManager;
 
     move-result-object v0
@@ -2156,12 +2156,12 @@
 
     if-ne v0, v1, :cond_0
 
-    .line 2963
+    .line 2962
     const/4 v0, 0x1
 
     return v0
 
-    .line 2965
+    .line 2964
     :cond_0
     const/4 v0, 0x0
 
@@ -2174,7 +2174,7 @@
     .prologue
     const/4 v2, 0x0
 
-    .line 2950
+    .line 2949
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getTelephonyManager()Landroid/telephony/TelephonyManager;
 
     move-result-object v0
@@ -2183,37 +2183,37 @@
 
     move-result v0
 
-    .line 2951
+    .line 2950
     const/4 v1, 0x5
 
     if-eq v0, v1, :cond_0
 
-    .line 2952
+    .line 2951
     const/4 v1, 0x2
 
     if-ne v0, v1, :cond_1
 
-    .line 2956
+    .line 2955
     :cond_0
     const/4 v0, 0x1
 
     return v0
 
-    .line 2953
+    .line 2952
     :cond_1
     const/4 v1, 0x3
 
     if-eq v0, v1, :cond_0
 
-    .line 2954
+    .line 2953
     const/4 v1, 0x4
 
     if-eq v0, v1, :cond_0
 
-    .line 2955
+    .line 2954
     if-eqz v0, :cond_0
 
-    .line 2958
+    .line 2957
     return v2
 .end method
 
@@ -2221,7 +2221,7 @@
     .locals 2
 
     .prologue
-    .line 2942
+    .line 2941
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
     const-string/jumbo v1, "com.android.stk"
@@ -2230,15 +2230,15 @@
 
     move-result-object v0
 
-    .line 2943
+    .line 2942
     if-nez v0, :cond_0
 
-    .line 2944
+    .line 2943
     const/4 v0, 0x0
 
     return v0
 
-    .line 2946
+    .line 2945
     :cond_0
     const/4 v0, 0x1
 
@@ -2255,7 +2255,7 @@
 
     monitor-enter p0
 
-    .line 1604
+    .line 1603
     :try_start_0
     const-string/jumbo v0, "LauncherActivity"
 
@@ -2263,19 +2263,19 @@
 
     invoke-static {v0, v2}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1605
+    .line 1604
     const-string/jumbo v0, " loadAppTrayWithAppsAndFolder - start "
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getSystemTimeInSecond(Ljava/lang/String;)V
 
-    .line 1609
+    .line 1608
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
 
     move-result-object v3
 
-    .line 1610
+    .line 1609
     const-string/jumbo v0, "com.borqs.camera/com.borqs.camera.CameraActivity"
 
     const-string/jumbo v2, "/"
@@ -2290,7 +2290,7 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
-    .line 1613
+    .line 1612
     :try_start_1
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mContext:Landroid/content/Context;
 
@@ -2298,36 +2298,36 @@
 
     move-result-object v2
 
-    .line 1614
+    .line 1613
     iget-boolean v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mCameraSupported:Z
 
     if-eqz v0, :cond_3
 
     const/high16 v0, 0x7f040000
 
-    .line 1613
+    .line 1612
     :goto_0
     invoke-virtual {v2, v0}, Landroid/content/res/Resources;->getXml(I)Landroid/content/res/XmlResourceParser;
 
     move-result-object v5
 
-    .line 1615
+    .line 1614
     const-string/jumbo v0, "applist"
 
     invoke-static {v5, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->beginDocument(Lorg/xmlpull/v1/XmlPullParser;Ljava/lang/String;)V
 
-    .line 1617
+    .line 1616
     invoke-interface {v5}, Landroid/content/res/XmlResourceParser;->getDepth()I
 
     move-result v6
 
-    .line 1618
+    .line 1617
     const-string/jumbo v0, ""
 
-    .line 1620
+    .line 1619
     const/4 v7, 0x0
 
-    .line 1621
+    .line 1620
     const/4 v2, 0x0
 
     iput-boolean v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsSTKPostionSet:Z
@@ -2340,7 +2340,7 @@
 
     move v2, v1
 
-    .line 1622
+    .line 1621
     :cond_0
     :goto_1
     :try_start_2
@@ -2358,21 +2358,21 @@
 
     if-le v9, v6, :cond_8
 
-    .line 1623
+    .line 1622
     :cond_1
     if-eq v8, v12, :cond_8
 
-    .line 1625
+    .line 1624
     const/4 v9, 0x2
 
     if-ne v8, v9, :cond_0
 
-    .line 1628
+    .line 1627
     invoke-interface {v5}, Landroid/content/res/XmlResourceParser;->getName()Ljava/lang/String;
 
     move-result-object v8
 
-    .line 1630
+    .line 1629
     const-string/jumbo v9, "app"
 
     invoke-virtual {v8, v9}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
@@ -2381,19 +2381,19 @@
 
     if-eqz v9, :cond_4
 
-    .line 1631
+    .line 1630
     invoke-interface {v5}, Landroid/content/res/XmlResourceParser;->nextText()Ljava/lang/String;
 
     move-result-object v8
 
-    .line 1632
+    .line 1631
     iget-object v9, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDataBaseHelpler:Lcom/sonim/borqs/launcher/helper/DatabaseHelper;
 
     const-string/jumbo v10, ""
 
     invoke-virtual {v9, v10, v8}, Lcom/sonim/borqs/launcher/helper/DatabaseHelper;->createToDo(Ljava/lang/String;Ljava/lang/String;)J
 
-    .line 1633
+    .line 1632
     const-string/jumbo v9, "LauncherActivity"
 
     new-instance v10, Ljava/lang/StringBuilder;
@@ -2426,37 +2426,37 @@
 
     invoke-static {v9, v10}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1635
+    .line 1634
     add-int/lit8 v1, v1, 0x1
 
-    .line 1637
+    .line 1636
     invoke-virtual {v8, v4}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
 
     move-result v8
 
     if-eqz v8, :cond_2
 
-    .line 1639
+    .line 1638
     const-string/jumbo v8, "camera_index"
 
     invoke-interface {v3, v8, v1}, Landroid/content/SharedPreferences$Editor;->putInt(Ljava/lang/String;I)Landroid/content/SharedPreferences$Editor;
 
-    .line 1640
+    .line 1639
     invoke-interface {v3}, Landroid/content/SharedPreferences$Editor;->commit()Z
 
-    .line 1677
+    .line 1676
     :cond_2
     add-int/lit8 v2, v2, 0x1
 
     goto :goto_1
 
-    .line 1614
+    .line 1613
     :cond_3
     const v0, 0x7f040001
 
     goto :goto_0
 
-    .line 1642
+    .line 1641
     :cond_4
     const-string/jumbo v9, "folder"
 
@@ -2466,14 +2466,14 @@
 
     if-eqz v8, :cond_2
 
-    .line 1643
+    .line 1642
     invoke-interface {v5}, Landroid/content/res/XmlResourceParser;->getAttributeCount()I
 
     move-result v8
 
     if-eqz v8, :cond_5
 
-    .line 1644
+    .line 1643
     const-string/jumbo v0, "name"
 
     const/4 v8, 0x0
@@ -2482,21 +2482,21 @@
 
     move-result v0
 
-    .line 1645
+    .line 1644
     if-eqz v0, :cond_9
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getString(I)Ljava/lang/String;
 
     move-result-object v0
 
-    .line 1648
+    .line 1647
     :cond_5
     :goto_2
     iget-boolean v8, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsSTKPostionSet:Z
 
     if-nez v8, :cond_6
 
-    .line 1649
+    .line 1648
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getToolsFolderName()Ljava/lang/String;
 
     move-result-object v8
@@ -2505,13 +2505,13 @@
 
     move-result v8
 
-    .line 1648
+    .line 1647
     if-eqz v8, :cond_6
 
-    .line 1650
+    .line 1649
     const-string/jumbo v8, "LauncherActivity"
 
-    .line 1651
+    .line 1650
     new-instance v9, Ljava/lang/StringBuilder;
 
     invoke-direct {v9}, Ljava/lang/StringBuilder;-><init>()V
@@ -2526,10 +2526,10 @@
 
     move-result-object v9
 
-    .line 1652
+    .line 1651
     const-string/jumbo v10, " toolsFolderPostion = "
 
-    .line 1651
+    .line 1650
     invoke-virtual {v9, v10}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v9
@@ -2542,19 +2542,19 @@
 
     move-result-object v9
 
-    .line 1650
+    .line 1649
     invoke-static {v8, v9}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1653
+    .line 1652
     invoke-direct {p0, v2}, Lcom/sonim/borqs/launcher/LauncherActivity;->setToolsFolderPosition(I)V
 
-    .line 1654
+    .line 1653
     :cond_6
     iget-boolean v8, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsSonimAppsPostionSet:Z
 
     if-nez v8, :cond_7
 
-    .line 1655
+    .line 1654
     const v8, 0x7f0b0018
 
     invoke-virtual {p0, v8}, Lcom/sonim/borqs/launcher/LauncherActivity;->getString(I)Ljava/lang/String;
@@ -2565,27 +2565,27 @@
 
     move-result v8
 
-    .line 1654
+    .line 1653
     if-eqz v8, :cond_7
 
-    .line 1656
+    .line 1655
     const-string/jumbo v8, "sonim_postion"
 
     invoke-interface {v3, v8, v2}, Landroid/content/SharedPreferences$Editor;->putInt(Ljava/lang/String;I)Landroid/content/SharedPreferences$Editor;
 
-    .line 1657
+    .line 1656
     invoke-interface {v3}, Landroid/content/SharedPreferences$Editor;->commit()Z
 
-    .line 1658
+    .line 1657
     const/4 v8, 0x1
 
     iput-boolean v8, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsSonimAppsPostionSet:Z
 
-    .line 1661
+    .line 1660
     :cond_7
     invoke-interface {v5}, Landroid/content/res/XmlResourceParser;->next()I
 
-    .line 1663
+    .line 1662
     :goto_3
     invoke-interface {v5}, Landroid/content/res/XmlResourceParser;->getName()Ljava/lang/String;
 
@@ -2593,7 +2593,7 @@
 
     if-eqz v8, :cond_2
 
-    .line 1664
+    .line 1663
     invoke-interface {v5}, Landroid/content/res/XmlResourceParser;->getName()Ljava/lang/String;
 
     move-result-object v8
@@ -2604,15 +2604,15 @@
 
     move-result v8
 
-    .line 1663
+    .line 1662
     if-eqz v8, :cond_2
 
-    .line 1665
+    .line 1664
     invoke-interface {v5}, Landroid/content/res/XmlResourceParser;->nextText()Ljava/lang/String;
 
     move-result-object v8
 
-    .line 1668
+    .line 1667
     const-string/jumbo v9, "LauncherActivity"
 
     new-instance v10, Ljava/lang/StringBuilder;
@@ -2639,10 +2639,10 @@
 
     move-result-object v10
 
-    .line 1669
+    .line 1668
     const-string/jumbo v11, ": at position = "
 
-    .line 1668
+    .line 1667
     invoke-virtual {v10, v11}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v10
@@ -2657,15 +2657,15 @@
 
     invoke-static {v9, v10}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1670
+    .line 1669
     iget-object v9, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDataBaseHelpler:Lcom/sonim/borqs/launcher/helper/DatabaseHelper;
 
     invoke-virtual {v9, v0, v8}, Lcom/sonim/borqs/launcher/helper/DatabaseHelper;->createToDo(Ljava/lang/String;Ljava/lang/String;)J
 
-    .line 1671
+    .line 1670
     add-int/lit8 v1, v1, 0x1
 
-    .line 1672
+    .line 1671
     invoke-interface {v5}, Landroid/content/res/XmlResourceParser;->next()I
     :try_end_2
     .catch Lorg/xmlpull/v1/XmlPullParserException; {:try_start_2 .. :try_end_2} :catch_0
@@ -2676,16 +2676,16 @@
 
     goto :goto_3
 
-    .line 1679
+    .line 1678
     :catch_0
     move-exception v0
 
-    .line 1680
+    .line 1679
     :goto_4
     :try_start_3
     invoke-virtual {v0}, Lorg/xmlpull/v1/XmlPullParserException;->printStackTrace()V
 
-    .line 1681
+    .line 1680
     const-string/jumbo v1, "LauncherActivity"
 
     new-instance v3, Ljava/lang/StringBuilder;
@@ -2708,14 +2708,14 @@
 
     invoke-static {v1, v3}, Lcom/sonim/borqs/launcher/Log;->e(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1682
+    .line 1681
     invoke-virtual {v0}, Lorg/xmlpull/v1/XmlPullParserException;->getMessage()Ljava/lang/String;
 
     move-result-object v0
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->finsihOnFatalError(Ljava/lang/String;)V
 
-    .line 1695
+    .line 1694
     :cond_8
     :goto_5
     new-instance v0, Ljava/lang/StringBuilder;
@@ -2744,7 +2744,7 @@
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getSystemTimeInSecond(Ljava/lang/String;)V
 
-    .line 1696
+    .line 1695
     const-string/jumbo v0, "LauncherActivity"
 
     const-string/jumbo v1, "finisned parsing and DB poplate"
@@ -2755,10 +2755,10 @@
 
     monitor-exit p0
 
-    .line 1697
+    .line 1696
     return-void
 
-    .line 1645
+    .line 1644
     :cond_9
     :try_start_4
     const-string/jumbo v0, "name"
@@ -2775,11 +2775,11 @@
 
     goto/16 :goto_2
 
-    .line 1690
+    .line 1689
     :catch_1
     move-exception v0
 
-    .line 1691
+    .line 1690
     :goto_6
     :try_start_5
     const-string/jumbo v2, "LauncherActivity"
@@ -2804,7 +2804,7 @@
 
     invoke-static {v2, v3}, Lcom/sonim/borqs/launcher/Log;->e(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1692
+    .line 1691
     invoke-virtual {v0}, Ljava/lang/Exception;->getMessage()Ljava/lang/String;
 
     move-result-object v0
@@ -2815,13 +2815,13 @@
 
     goto :goto_5
 
-    .line 1687
+    .line 1686
     :catch_2
     move-exception v0
 
     move v2, v1
 
-    .line 1688
+    .line 1687
     :goto_7
     const-string/jumbo v1, "LauncherActivity"
 
@@ -2845,7 +2845,7 @@
 
     invoke-static {v1, v3}, Lcom/sonim/borqs/launcher/Log;->e(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1689
+    .line 1688
     invoke-virtual {v0}, Landroid/database/sqlite/SQLiteException;->getMessage()Ljava/lang/String;
 
     move-result-object v0
@@ -2863,18 +2863,18 @@
 
     throw v0
 
-    .line 1683
+    .line 1682
     :catch_3
     move-exception v0
 
     move v2, v1
 
-    .line 1684
+    .line 1683
     :goto_8
     :try_start_6
     invoke-virtual {v0}, Ljava/io/IOException;->printStackTrace()V
 
-    .line 1685
+    .line 1684
     const-string/jumbo v1, "LauncherActivity"
 
     new-instance v3, Ljava/lang/StringBuilder;
@@ -2897,7 +2897,7 @@
 
     invoke-static {v1, v3}, Lcom/sonim/borqs/launcher/Log;->e(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1686
+    .line 1685
     invoke-virtual {v0}, Ljava/io/IOException;->getMessage()Ljava/lang/String;
 
     move-result-object v0
@@ -2908,7 +2908,7 @@
 
     goto/16 :goto_5
 
-    .line 1679
+    .line 1678
     :catch_4
     move-exception v0
 
@@ -2916,19 +2916,19 @@
 
     goto/16 :goto_4
 
-    .line 1683
+    .line 1682
     :catch_5
     move-exception v0
 
     goto :goto_8
 
-    .line 1687
+    .line 1686
     :catch_6
     move-exception v0
 
     goto :goto_7
 
-    .line 1690
+    .line 1689
     :catch_7
     move-exception v0
 
@@ -2941,14 +2941,14 @@
     .locals 6
 
     .prologue
-    .line 1712
+    .line 1711
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
 
     move-result-object v1
 
-    .line 1715
+    .line 1714
     :try_start_0
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mContext:Landroid/content/Context;
 
@@ -2956,30 +2956,30 @@
 
     move-result-object v2
 
-    .line 1716
+    .line 1715
     iget-boolean v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mCameraSupported:Z
 
     if-eqz v0, :cond_4
 
     const v0, 0x7f040002
 
-    .line 1715
+    .line 1714
     :goto_0
     invoke-virtual {v2, v0}, Landroid/content/res/Resources;->getXml(I)Landroid/content/res/XmlResourceParser;
 
     move-result-object v0
 
-    .line 1718
+    .line 1717
     const-string/jumbo v2, "favorites"
 
     invoke-static {v0, v2}, Lcom/sonim/borqs/launcher/LauncherActivity;->beginDocument(Lorg/xmlpull/v1/XmlPullParser;Ljava/lang/String;)V
 
-    .line 1720
+    .line 1719
     invoke-interface {v0}, Landroid/content/res/XmlResourceParser;->getDepth()I
 
     move-result v2
 
-    .line 1721
+    .line 1720
     iget-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     sget-object v4, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadUpPrefKey:Ljava/lang/String;
@@ -2992,7 +2992,7 @@
 
     iput-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADUpPkgName:Ljava/lang/String;
 
-    .line 1722
+    .line 1721
     iget-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     sget-object v4, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadDownPrefKey:Ljava/lang/String;
@@ -3005,7 +3005,7 @@
 
     iput-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADDownPkgName:Ljava/lang/String;
 
-    .line 1723
+    .line 1722
     iget-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     sget-object v4, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadCenterPrefKey:Ljava/lang/String;
@@ -3018,7 +3018,7 @@
 
     iput-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADCenterPkgName:Ljava/lang/String;
 
-    .line 1726
+    .line 1725
     :cond_0
     :goto_1
     invoke-interface {v0}, Landroid/content/res/XmlResourceParser;->next()I
@@ -3035,23 +3035,23 @@
 
     if-le v4, v2, :cond_3
 
-    .line 1727
+    .line 1726
     :cond_1
     const/4 v4, 0x1
 
     if-eq v3, v4, :cond_3
 
-    .line 1729
+    .line 1728
     const/4 v4, 0x2
 
     if-ne v3, v4, :cond_0
 
-    .line 1732
+    .line 1731
     invoke-interface {v0}, Landroid/content/res/XmlResourceParser;->getName()Ljava/lang/String;
 
     move-result-object v3
 
-    .line 1733
+    .line 1732
     iget-object v4, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     sget-object v5, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadUpPrefKey:Ljava/lang/String;
@@ -3062,7 +3062,7 @@
 
     if-eqz v4, :cond_2
 
-    .line 1734
+    .line 1733
     iget-object v4, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADUpPkgName:Ljava/lang/String;
 
     if-eqz v4, :cond_5
@@ -3077,10 +3077,10 @@
 
     xor-int/lit8 v4, v4, 0x1
 
-    .line 1733
+    .line 1732
     if-eqz v4, :cond_5
 
-    .line 1735
+    .line 1734
     :cond_2
     const-string/jumbo v4, "keyup"
 
@@ -3090,25 +3090,25 @@
 
     if-eqz v3, :cond_0
 
-    .line 1736
+    .line 1735
     invoke-interface {v0}, Landroid/content/res/XmlResourceParser;->nextText()Ljava/lang/String;
 
     move-result-object v3
 
-    .line 1737
+    .line 1736
     sget-object v4, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadUpPrefKey:Ljava/lang/String;
 
     invoke-interface {v1, v4, v3}, Landroid/content/SharedPreferences$Editor;->putString(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
 
-    .line 1738
+    .line 1737
     const-string/jumbo v4, "dpad_up_key_default_pref"
 
     invoke-interface {v1, v4, v3}, Landroid/content/SharedPreferences$Editor;->putString(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
 
-    .line 1739
+    .line 1738
     iput-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADUpPkgName:Ljava/lang/String;
 
-    .line 1740
+    .line 1739
     invoke-interface {v1}, Landroid/content/SharedPreferences$Editor;->commit()Z
     :try_end_0
     .catch Lorg/xmlpull/v1/XmlPullParserException; {:try_start_0 .. :try_end_0} :catch_0
@@ -3116,14 +3116,14 @@
 
     goto :goto_1
 
-    .line 1763
+    .line 1762
     :catch_0
     move-exception v0
 
-    .line 1764
+    .line 1763
     invoke-virtual {v0}, Lorg/xmlpull/v1/XmlPullParserException;->printStackTrace()V
 
-    .line 1765
+    .line 1764
     const-string/jumbo v1, "LauncherActivity"
 
     new-instance v2, Ljava/lang/StringBuilder;
@@ -3146,25 +3146,25 @@
 
     invoke-static {v1, v2}, Lcom/sonim/borqs/launcher/Log;->e(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1766
+    .line 1765
     invoke-virtual {v0}, Lorg/xmlpull/v1/XmlPullParserException;->getMessage()Ljava/lang/String;
 
     move-result-object v0
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->finsihOnFatalError(Ljava/lang/String;)V
 
-    .line 1772
+    .line 1771
     :cond_3
     :goto_2
     return-void
 
-    .line 1717
+    .line 1716
     :cond_4
     const v0, 0x7f040003
 
     goto/16 :goto_0
 
-    .line 1742
+    .line 1741
     :cond_5
     :try_start_1
     iget-object v4, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
@@ -3177,7 +3177,7 @@
 
     if-eqz v4, :cond_6
 
-    .line 1743
+    .line 1742
     iget-object v4, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADDownPkgName:Ljava/lang/String;
 
     if-eqz v4, :cond_7
@@ -3192,10 +3192,10 @@
 
     xor-int/lit8 v4, v4, 0x1
 
-    .line 1742
+    .line 1741
     if-eqz v4, :cond_7
 
-    .line 1744
+    .line 1743
     :cond_6
     const-string/jumbo v4, "keydown"
 
@@ -3205,25 +3205,25 @@
 
     if-eqz v3, :cond_0
 
-    .line 1745
+    .line 1744
     invoke-interface {v0}, Landroid/content/res/XmlResourceParser;->nextText()Ljava/lang/String;
 
     move-result-object v3
 
-    .line 1746
+    .line 1745
     sget-object v4, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadDownPrefKey:Ljava/lang/String;
 
     invoke-interface {v1, v4, v3}, Landroid/content/SharedPreferences$Editor;->putString(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
 
-    .line 1747
+    .line 1746
     const-string/jumbo v4, "dpad_down_key_default_pref"
 
     invoke-interface {v1, v4, v3}, Landroid/content/SharedPreferences$Editor;->putString(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
 
-    .line 1748
+    .line 1747
     iput-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADDownPkgName:Ljava/lang/String;
 
-    .line 1749
+    .line 1748
     invoke-interface {v1}, Landroid/content/SharedPreferences$Editor;->commit()Z
     :try_end_1
     .catch Lorg/xmlpull/v1/XmlPullParserException; {:try_start_1 .. :try_end_1} :catch_0
@@ -3231,14 +3231,14 @@
 
     goto/16 :goto_1
 
-    .line 1767
+    .line 1766
     :catch_1
     move-exception v0
 
-    .line 1768
+    .line 1767
     invoke-virtual {v0}, Ljava/io/IOException;->printStackTrace()V
 
-    .line 1769
+    .line 1768
     const-string/jumbo v1, "LauncherActivity"
 
     new-instance v2, Ljava/lang/StringBuilder;
@@ -3261,7 +3261,7 @@
 
     invoke-static {v1, v2}, Lcom/sonim/borqs/launcher/Log;->e(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1770
+    .line 1769
     invoke-virtual {v0}, Ljava/io/IOException;->getMessage()Ljava/lang/String;
 
     move-result-object v0
@@ -3270,7 +3270,7 @@
 
     goto :goto_2
 
-    .line 1751
+    .line 1750
     :cond_7
     :try_start_2
     iget-object v4, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
@@ -3283,7 +3283,7 @@
 
     if-eqz v4, :cond_8
 
-    .line 1752
+    .line 1751
     iget-object v4, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADCenterPkgName:Ljava/lang/String;
 
     if-eqz v4, :cond_0
@@ -3298,10 +3298,10 @@
 
     xor-int/lit8 v4, v4, 0x1
 
-    .line 1751
+    .line 1750
     if-eqz v4, :cond_0
 
-    .line 1753
+    .line 1752
     :cond_8
     const-string/jumbo v4, "keycenter"
 
@@ -3311,25 +3311,25 @@
 
     if-eqz v3, :cond_0
 
-    .line 1754
+    .line 1753
     invoke-interface {v0}, Landroid/content/res/XmlResourceParser;->nextText()Ljava/lang/String;
 
     move-result-object v3
 
-    .line 1755
+    .line 1754
     sget-object v4, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadCenterPrefKey:Ljava/lang/String;
 
     invoke-interface {v1, v4, v3}, Landroid/content/SharedPreferences$Editor;->putString(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
 
-    .line 1756
+    .line 1755
     const-string/jumbo v4, "dpad_center_key_default_pref"
 
     invoke-interface {v1, v4, v3}, Landroid/content/SharedPreferences$Editor;->putString(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
 
-    .line 1757
+    .line 1756
     iput-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADCenterPkgName:Ljava/lang/String;
 
-    .line 1758
+    .line 1757
     invoke-interface {v1}, Landroid/content/SharedPreferences$Editor;->commit()Z
     :try_end_2
     .catch Lorg/xmlpull/v1/XmlPullParserException; {:try_start_2 .. :try_end_2} :catch_0
@@ -3342,7 +3342,7 @@
     .locals 2
 
     .prologue
-    .line 3147
+    .line 3146
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mProfileChangeCallback:Ljava/util/ArrayList;
 
     if-eqz v0, :cond_0
@@ -3357,7 +3357,7 @@
 
     return-void
 
-    .line 3148
+    .line 3147
     :cond_0
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mProfileChangeCallback:Ljava/util/ArrayList;
 
@@ -3378,12 +3378,12 @@
 
     check-cast v0, Lcom/sonim/borqs/launcher/LauncherActivity$OnProfileChangeListener;
 
-    .line 3149
+    .line 3148
     invoke-interface {v0}, Lcom/sonim/borqs/launcher/LauncherActivity$OnProfileChangeListener;->onProfileChange()V
 
     goto :goto_0
 
-    .line 3151
+    .line 3150
     :cond_1
     return-void
 .end method
@@ -3392,26 +3392,26 @@
     .locals 2
 
     .prologue
-    .line 3167
+    .line 3166
     new-instance v0, Lcom/sonim/borqs/launcher/LauncherActivity$AppTrayListChangedReceiver;
 
     invoke-direct {v0, p0}, Lcom/sonim/borqs/launcher/LauncherActivity$AppTrayListChangedReceiver;-><init>(Lcom/sonim/borqs/launcher/LauncherActivity;)V
 
     iput-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppTrayListChangedReceiver:Lcom/sonim/borqs/launcher/LauncherActivity$AppTrayListChangedReceiver;
 
-    .line 3168
+    .line 3167
     new-instance v0, Landroid/content/IntentFilter;
 
     const-string/jumbo v1, "com.android.sonim.UpdateLauncherAppList"
 
     invoke-direct {v0, v1}, Landroid/content/IntentFilter;-><init>(Ljava/lang/String;)V
 
-    .line 3169
+    .line 3168
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppTrayListChangedReceiver:Lcom/sonim/borqs/launcher/LauncherActivity$AppTrayListChangedReceiver;
 
     invoke-virtual {p0, v1, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->registerReceiver(Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;)Landroid/content/Intent;
 
-    .line 3170
+    .line 3169
     return-void
 .end method
 
@@ -3419,44 +3419,44 @@
     .locals 1
 
     .prologue
-    .line 3090
+    .line 3089
     const/16 v0, 0x13
 
     if-eq p1, v0, :cond_0
 
-    .line 3091
+    .line 3090
     const/16 v0, 0x17
 
     if-ne p1, v0, :cond_1
 
-    .line 3096
+    .line 3095
     :cond_0
     const/4 v0, 0x1
 
     return v0
 
-    .line 3092
+    .line 3091
     :cond_1
     const/16 v0, 0x42
 
     if-eq p1, v0, :cond_0
 
-    .line 3093
+    .line 3092
     const/16 v0, 0x14
 
     if-eq p1, v0, :cond_0
 
-    .line 3094
+    .line 3093
     const/16 v0, 0x16
 
     if-eq p1, v0, :cond_0
 
-    .line 3095
+    .line 3094
     const/16 v0, 0x15
 
     if-eq p1, v0, :cond_0
 
-    .line 3098
+    .line 3097
     const/4 v0, 0x0
 
     return v0
@@ -3468,14 +3468,14 @@
     .prologue
     const/high16 v1, 0x100000
 
-    .line 2525
+    .line 2524
     invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getWindow()Landroid/view/Window;
 
     move-result-object v0
 
     invoke-virtual {v0, v1, v1}, Landroid/view/Window;->setFlags(II)V
 
-    .line 2527
+    .line 2526
     return-void
 .end method
 
@@ -3592,17 +3592,17 @@
     .locals 1
 
     .prologue
-    .line 1812
+    .line 1811
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mShortcutUpdateListener:Lcom/sonim/borqs/launcher/LauncherActivity$ShortcutUpdateListener;
 
     if-eqz v0, :cond_0
 
-    .line 1813
+    .line 1812
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mShortcutUpdateListener:Lcom/sonim/borqs/launcher/LauncherActivity$ShortcutUpdateListener;
 
     invoke-interface {v0, p1, p2}, Lcom/sonim/borqs/launcher/LauncherActivity$ShortcutUpdateListener;->setShortcutDrawable(Ljava/lang/String;I)V
 
-    .line 1815
+    .line 1814
     :cond_0
     return-void
 .end method
@@ -3611,7 +3611,7 @@
     .locals 3
 
     .prologue
-    .line 2392
+    .line 2391
     const-string/jumbo v0, "LauncherActivity"
 
     new-instance v1, Ljava/lang/StringBuilder;
@@ -3646,32 +3646,32 @@
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/Log;->e(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 2393
+    .line 2392
     iget-boolean v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsSTKPostionSet:Z
 
     if-nez v0, :cond_0
 
-    .line 2394
+    .line 2393
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
 
     move-result-object v0
 
-    .line 2395
+    .line 2394
     const-string/jumbo v1, "stk_postion"
 
     invoke-interface {v0, v1, p1}, Landroid/content/SharedPreferences$Editor;->putInt(Ljava/lang/String;I)Landroid/content/SharedPreferences$Editor;
 
-    .line 2396
+    .line 2395
     invoke-interface {v0}, Landroid/content/SharedPreferences$Editor;->commit()Z
 
-    .line 2397
+    .line 2396
     const/4 v0, 0x1
 
     iput-boolean v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsSTKPostionSet:Z
 
-    .line 2399
+    .line 2398
     :cond_0
     return-void
 .end method
@@ -3680,17 +3680,17 @@
     .locals 2
 
     .prologue
-    .line 2434
+    .line 2433
     const/4 v0, 0x1
 
     iput-boolean v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsClingVisible:Z
 
-    .line 2435
+    .line 2434
     const/4 v0, 0x0
 
     iput-boolean v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsFirstPageCling:Z
 
-    .line 2436
+    .line 2435
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mCustomCling:Landroid/view/View;
 
     const v1, 0x7f0e0010
@@ -3701,15 +3701,15 @@
 
     check-cast v0, Landroid/widget/RelativeLayout;
 
-    .line 2437
+    .line 2436
     if-eqz v0, :cond_0
 
-    .line 2438
+    .line 2437
     const v1, 0x7f020014
 
     invoke-virtual {v0, v1}, Landroid/widget/RelativeLayout;->setBackgroundResource(I)V
 
-    .line 2440
+    .line 2439
     :cond_0
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mCustomCling:Landroid/view/View;
 
@@ -3721,15 +3721,15 @@
 
     check-cast v0, Landroid/widget/ImageView;
 
-    .line 2441
+    .line 2440
     if-eqz v0, :cond_1
 
-    .line 2442
+    .line 2441
     const v1, 0x7f02001b
 
     invoke-virtual {v0, v1}, Landroid/widget/ImageView;->setImageResource(I)V
 
-    .line 2444
+    .line 2443
     :cond_1
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mCustomCling:Landroid/view/View;
 
@@ -3741,15 +3741,15 @@
 
     check-cast v0, Landroid/widget/TextView;
 
-    .line 2445
+    .line 2444
     if-eqz v0, :cond_2
 
-    .line 2446
+    .line 2445
     const v1, 0x7f0b0041
 
     invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(I)V
 
-    .line 2448
+    .line 2447
     :cond_2
     return-void
 .end method
@@ -3758,19 +3758,19 @@
     .locals 1
 
     .prologue
-    .line 1571
+    .line 1570
     invoke-static {p1}, Lcom/sonim/borqs/launcher/LauncherActivity;->isQuickProfileSwitchPkgAndClassName(Ljava/lang/String;)Z
 
     move-result v0
 
     if-eqz v0, :cond_1
 
-    .line 1572
+    .line 1571
     sget-boolean v0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsStealthModeEnabled:Z
 
     if-nez v0, :cond_0
 
-    .line 1573
+    .line 1572
     invoke-static {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getQuickProfileSwitch(Landroid/content/Context;)Lcom/sonim/borqs/launcher/LauncherActivity$Apps;
 
     move-result-object v0
@@ -3781,18 +3781,18 @@
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->sendBroadcast(Landroid/content/Intent;)V
 
-    .line 1579
+    .line 1578
     :cond_0
     :goto_0
     return-void
 
-    .line 1576
+    .line 1575
     :cond_1
     invoke-direct {p0, p1}, Lcom/sonim/borqs/launcher/LauncherActivity;->getAssginedAppLaunchIntent(Ljava/lang/String;)Landroid/content/Intent;
 
     move-result-object v0
 
-    .line 1577
+    .line 1576
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->startActivitySafely(Landroid/content/Intent;)V
 
     goto :goto_0
@@ -3802,7 +3802,7 @@
     .locals 3
 
     .prologue
-    .line 2509
+    .line 2508
     const-string/jumbo v0, "search"
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
@@ -3811,25 +3811,25 @@
 
     check-cast v0, Landroid/app/SearchManager;
 
-    .line 2511
+    .line 2510
     invoke-virtual {v0}, Landroid/app/SearchManager;->getGlobalSearchActivity()Landroid/content/ComponentName;
 
     move-result-object v0
 
-    .line 2512
+    .line 2511
     new-instance v1, Landroid/content/Intent;
 
     const-string/jumbo v2, "android.search.action.GLOBAL_SEARCH"
 
     invoke-direct {v1, v2}, Landroid/content/Intent;-><init>(Ljava/lang/String;)V
 
-    .line 2513
+    .line 2512
     invoke-virtual {v1, v0}, Landroid/content/Intent;->setComponent(Landroid/content/ComponentName;)Landroid/content/Intent;
 
-    .line 2514
+    .line 2513
     invoke-virtual {p0, v1}, Lcom/sonim/borqs/launcher/LauncherActivity;->startActivitySafely(Landroid/content/Intent;)V
 
-    .line 2515
+    .line 2514
     return-void
 .end method
 
@@ -3837,33 +3837,33 @@
     .locals 2
 
     .prologue
-    .line 2518
+    .line 2517
     new-instance v0, Landroid/content/Intent;
 
     const-string/jumbo v1, "android.intent.action.SET_WALLPAPER"
 
     invoke-direct {v0, v1}, Landroid/content/Intent;-><init>(Ljava/lang/String;)V
 
-    .line 2519
+    .line 2518
     const/high16 v1, 0x10000000
 
     invoke-virtual {v0, v1}, Landroid/content/Intent;->setFlags(I)Landroid/content/Intent;
 
-    .line 2521
+    .line 2520
     const v1, 0x7f0b0002
 
     invoke-virtual {p0, v1}, Lcom/sonim/borqs/launcher/LauncherActivity;->getString(I)Ljava/lang/String;
 
     move-result-object v1
 
-    .line 2520
+    .line 2519
     invoke-static {v0, v1}, Landroid/content/Intent;->createChooser(Landroid/content/Intent;Ljava/lang/CharSequence;)Landroid/content/Intent;
 
     move-result-object v0
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->startActivity(Landroid/content/Intent;)V
 
-    .line 2522
+    .line 2521
     return-void
 .end method
 
@@ -3871,17 +3871,17 @@
     .locals 1
 
     .prologue
-    .line 3173
+    .line 3172
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppTrayListChangedReceiver:Lcom/sonim/borqs/launcher/LauncherActivity$AppTrayListChangedReceiver;
 
     if-eqz v0, :cond_0
 
-    .line 3174
+    .line 3173
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppTrayListChangedReceiver:Lcom/sonim/borqs/launcher/LauncherActivity$AppTrayListChangedReceiver;
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->unregisterReceiver(Landroid/content/BroadcastReceiver;)V
 
-    .line 3175
+    .line 3174
     :cond_0
     return-void
 .end method
@@ -3905,11 +3905,21 @@
     .locals 9
 
     .prologue
+    # FEAT(tray): disabled PTT only promotes Calculator in the stock fallback
+    invoke-static {}, Lcom/sonim/borqs/launcher/WaveTray;->usesStockTray()Z
+
+    move-result v0
+
+    if-nez v0, :wave_stock_ptt
+
+    return-void
+
+    :wave_stock_ptt
     const/4 v2, -0x1
 
     const/4 v0, 0x0
 
-    .line 3191
+    .line 3190
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
     invoke-interface {v1}, Ljava/lang/Iterable;->iterator()Ljava/util/Iterator;
@@ -3935,7 +3945,7 @@
 
     check-cast v0, Lcom/sonim/borqs/launcher/LauncherActivity$AppsAndFolder;
 
-    .line 3192
+    .line 3191
     invoke-virtual {v0}, Lcom/sonim/borqs/launcher/LauncherActivity$AppsAndFolder;->getName()Ljava/lang/String;
 
     move-result-object v3
@@ -3960,7 +3970,7 @@
 
     if-eqz v3, :cond_7
 
-    .line 3193
+    .line 3192
     :cond_0
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
@@ -3968,16 +3978,16 @@
 
     move-result v3
 
-    .line 3194
+    .line 3193
     :goto_1
     instance-of v1, v0, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;
 
     if-eqz v1, :cond_6
 
-    .line 3195
+    .line 3194
     check-cast v0, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;
 
-    .line 3196
+    .line 3195
     invoke-virtual {v0}, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;->getAppListInsideFolder()Ljava/util/ArrayList;
 
     move-result-object v1
@@ -3999,7 +4009,7 @@
 
     check-cast v1, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;
 
-    .line 3197
+    .line 3196
     invoke-virtual {v1}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->getName()Ljava/lang/String;
 
     move-result-object v7
@@ -4034,7 +4044,7 @@
 
     goto :goto_0
 
-    .line 3204
+    .line 3203
     :cond_3
     const-string/jumbo v0, "LauncherActivity"
 
@@ -4058,26 +4068,26 @@
 
     invoke-static {v0, v3}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 3205
+    .line 3204
     if-eq v1, v2, :cond_4
 
     if-eqz v5, :cond_4
 
     if-eqz v4, :cond_4
 
-    .line 3206
+    .line 3205
     invoke-virtual {v4}, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;->getAppListInsideFolder()Ljava/util/ArrayList;
 
     move-result-object v0
 
     invoke-virtual {v0, v5}, Ljava/util/ArrayList;->remove(Ljava/lang/Object;)Z
 
-    .line 3207
+    .line 3206
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
     invoke-virtual {v0, v1, v5}, Ljava/util/ArrayList;->add(ILjava/lang/Object;)V
 
-    .line 3209
+    .line 3208
     :cond_4
     return-void
 
@@ -4105,7 +4115,7 @@
     .prologue
     const/4 v4, 0x0
 
-    .line 2862
+    .line 2861
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     sget-object v1, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadUpPrefKey:Ljava/lang/String;
@@ -4114,7 +4124,7 @@
 
     move-result-object v0
 
-    .line 2863
+    .line 2862
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     sget-object v2, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadDownPrefKey:Ljava/lang/String;
@@ -4123,7 +4133,7 @@
 
     move-result-object v1
 
-    .line 2864
+    .line 2863
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     sget-object v3, Lcom/sonim/borqs/launcher/LauncherActivity;->mDpadCenterPrefKey:Ljava/lang/String;
@@ -4132,10 +4142,10 @@
 
     move-result-object v2
 
-    .line 2866
+    .line 2865
     if-eqz p1, :cond_2
 
-    .line 2867
+    .line 2866
     if-eqz v0, :cond_0
 
     invoke-virtual {v0, p1}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
@@ -4144,14 +4154,14 @@
 
     if-eqz v0, :cond_0
 
-    .line 2868
+    .line 2867
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADUpPkgName:Ljava/lang/String;
 
     const/16 v3, 0x64
 
     invoke-direct {p0, v0, v3}, Lcom/sonim/borqs/launcher/LauncherActivity;->setShortcutDrawable(Ljava/lang/String;I)V
 
-    .line 2870
+    .line 2869
     :cond_0
     if-eqz v1, :cond_1
 
@@ -4161,14 +4171,14 @@
 
     if-eqz v0, :cond_1
 
-    .line 2871
+    .line 2870
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADDownPkgName:Ljava/lang/String;
 
     const/16 v1, 0x65
 
     invoke-direct {p0, v0, v1}, Lcom/sonim/borqs/launcher/LauncherActivity;->setShortcutDrawable(Ljava/lang/String;I)V
 
-    .line 2873
+    .line 2872
     :cond_1
     if-eqz v2, :cond_2
 
@@ -4178,14 +4188,14 @@
 
     if-eqz v0, :cond_2
 
-    .line 2874
+    .line 2873
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADCenterPkgName:Ljava/lang/String;
 
     const/16 v1, 0x66
 
     invoke-direct {p0, v0, v1}, Lcom/sonim/borqs/launcher/LauncherActivity;->setShortcutDrawable(Ljava/lang/String;I)V
 
-    .line 2877
+    .line 2876
     :cond_2
     return-void
 .end method
@@ -4196,19 +4206,19 @@
     .prologue
     const/4 v4, 0x0
 
-    .line 2122
+    .line 2121
     const-string/jumbo v1, "LauncherActivity"
 
     const-string/jumbo v2, "In verifyThemeChange"
 
     invoke-static {v1, v2}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 2123
+    .line 2122
     iget-object v6, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
     monitor-enter v6
 
-    .line 2124
+    .line 2123
     :try_start_0
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
@@ -4222,7 +4232,7 @@
 
     if-gtz v1, :cond_1
 
-    .line 2125
+    .line 2124
     :cond_0
     const-string/jumbo v1, "LauncherActivity"
 
@@ -4234,43 +4244,43 @@
 
     monitor-exit v6
 
-    .line 2126
+    .line 2125
     return-void
 
-    .line 2128
+    .line 2127
     :cond_1
     :try_start_1
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     const-string/jumbo v2, "previous_theme"
 
-    .line 2129
+    .line 2128
     const/4 v3, 0x0
 
-    .line 2128
+    .line 2127
     invoke-interface {v1, v2, v3}, Landroid/content/SharedPreferences;->getInt(Ljava/lang/String;I)I
 
     move-result v1
 
-    .line 2130
+    .line 2129
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     const-string/jumbo v3, "current_theme"
 
-    .line 2131
+    .line 2130
     const/4 v5, 0x0
 
-    .line 2130
+    .line 2129
     invoke-interface {v2, v3, v5}, Landroid/content/SharedPreferences;->getInt(Ljava/lang/String;I)I
 
     move-result v2
 
-    .line 2132
+    .line 2131
     if-eq v2, v1, :cond_7
 
     move v5, v4
 
-    .line 2133
+    .line 2132
     :goto_0
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
@@ -4280,7 +4290,7 @@
 
     if-ge v5, v1, :cond_6
 
-    .line 2134
+    .line 2133
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
     invoke-virtual {v1, v5}, Ljava/util/ArrayList;->get(I)Ljava/lang/Object;
@@ -4289,19 +4299,19 @@
 
     check-cast v1, Lcom/sonim/borqs/launcher/LauncherActivity$AppsAndFolder;
 
-    .line 2135
+    .line 2134
     instance-of v2, v1, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;
 
     if-eqz v2, :cond_5
 
-    .line 2136
+    .line 2135
     move-object v0, v1
 
     check-cast v0, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;
 
     move-object v2, v0
 
-    .line 2138
+    .line 2137
     invoke-virtual {v1}, Lcom/sonim/borqs/launcher/LauncherActivity$AppsAndFolder;->getName()Ljava/lang/String;
 
     move-result-object v3
@@ -4312,12 +4322,12 @@
 
     invoke-virtual {v2, v3}, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;->setIcon(Landroid/graphics/drawable/Drawable;)V
 
-    .line 2141
+    .line 2140
     invoke-virtual {v2}, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;->getAppListInsideFolder()Ljava/util/ArrayList;
 
     move-result-object v7
 
-    .line 2142
+    .line 2141
     if-eqz v7, :cond_3
 
     invoke-virtual {v7}, Ljava/util/ArrayList;->size()I
@@ -4328,7 +4338,7 @@
 
     move v3, v4
 
-    .line 2143
+    .line 2142
     :goto_1
     invoke-virtual {v7}, Ljava/util/ArrayList;->size()I
 
@@ -4336,33 +4346,33 @@
 
     if-ge v3, v2, :cond_3
 
-    .line 2144
+    .line 2143
     invoke-virtual {v7, v3}, Ljava/util/ArrayList;->get(I)Ljava/lang/Object;
 
     move-result-object v2
 
     check-cast v2, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;
 
-    .line 2146
+    .line 2145
     invoke-virtual {v2}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->getPackageAndClassName()Ljava/lang/String;
 
     move-result-object v8
 
-    .line 2145
+    .line 2144
     invoke-direct {p0, v8}, Lcom/sonim/borqs/launcher/LauncherActivity;->getPkgOrDefaultIcon(Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v8
 
-    .line 2147
+    .line 2146
     if-eqz v8, :cond_2
 
-    .line 2148
+    .line 2147
     invoke-virtual {v2, v8}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setIcon(Landroid/graphics/drawable/Drawable;)V
 
-    .line 2149
+    .line 2148
     invoke-virtual {v7, v3, v2}, Ljava/util/ArrayList;->set(ILjava/lang/Object;)Ljava/lang/Object;
 
-    .line 2143
+    .line 2142
     :cond_2
     add-int/lit8 v2, v3, 0x1
 
@@ -4370,13 +4380,13 @@
 
     goto :goto_1
 
-    .line 2153
+    .line 2152
     :cond_3
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
     invoke-virtual {v2, v5, v1}, Ljava/util/ArrayList;->set(ILjava/lang/Object;)Ljava/lang/Object;
 
-    .line 2133
+    .line 2132
     :cond_4
     :goto_2
     add-int/lit8 v1, v5, 0x1
@@ -4385,13 +4395,13 @@
 
     goto :goto_0
 
-    .line 2154
+    .line 2153
     :cond_5
     instance-of v2, v1, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;
 
     if-eqz v2, :cond_4
 
-    .line 2156
+    .line 2155
     move-object v0, v1
 
     check-cast v0, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;
@@ -4402,18 +4412,18 @@
 
     move-result-object v2
 
-    .line 2155
+    .line 2154
     invoke-direct {p0, v2}, Lcom/sonim/borqs/launcher/LauncherActivity;->getPkgOrDefaultIcon(Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v2
 
-    .line 2157
+    .line 2156
     if-eqz v2, :cond_4
 
-    .line 2158
+    .line 2157
     invoke-virtual {v1, v2}, Lcom/sonim/borqs/launcher/LauncherActivity$AppsAndFolder;->setIcon(Landroid/graphics/drawable/Drawable;)V
 
-    .line 2159
+    .line 2158
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
     invoke-virtual {v2, v5, v1}, Ljava/util/ArrayList;->set(ILjava/lang/Object;)Ljava/lang/Object;
@@ -4422,7 +4432,7 @@
 
     goto :goto_2
 
-    .line 2123
+    .line 2122
     :catchall_0
     move-exception v1
 
@@ -4430,19 +4440,19 @@
 
     throw v1
 
-    .line 2164
+    .line 2163
     :cond_6
     :try_start_2
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDrawerAdapterObject:Lcom/sonim/borqs/launcher/DrawerAdapter;
 
     if-eqz v1, :cond_8
 
-    .line 2165
+    .line 2164
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDrawerAdapterObject:Lcom/sonim/borqs/launcher/DrawerAdapter;
 
     invoke-virtual {v1}, Lcom/sonim/borqs/launcher/DrawerAdapter;->notifyDataSetChanged()V
 
-    .line 2169
+    .line 2168
     :goto_3
     invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getApplication()Landroid/app/Application;
 
@@ -4450,13 +4460,13 @@
 
     check-cast v1, Lcom/sonim/borqs/launcher/AccessArrayList;
 
-    .line 2170
+    .line 2169
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
-    .line 2169
+    .line 2168
     invoke-virtual {v1, v2}, Lcom/sonim/borqs/launcher/AccessArrayList;->setAppsAndFolderListForShorcut(Ljava/util/ArrayList;)V
 
-    .line 2171
+    .line 2170
     invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getApplication()Landroid/app/Application;
 
     move-result-object v1
@@ -4465,12 +4475,12 @@
 
     invoke-virtual {v1}, Lcom/sonim/borqs/launcher/AccessArrayList;->notifyAppListChanged()V
 
-    .line 2173
+    .line 2172
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mThemeChangedListener:Lcom/sonim/borqs/launcher/LauncherActivity$ThemeChangedListener;
 
     if-eqz v1, :cond_7
 
-    .line 2174
+    .line 2173
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mThemeChangedListener:Lcom/sonim/borqs/launcher/LauncherActivity$ThemeChangedListener;
 
     invoke-interface {v1}, Lcom/sonim/borqs/launcher/LauncherActivity$ThemeChangedListener;->onThemeChanged()V
@@ -4480,10 +4490,10 @@
     :cond_7
     monitor-exit v6
 
-    .line 2178
+    .line 2177
     return-void
 
-    .line 2167
+    .line 2166
     :cond_8
     :try_start_3
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mHandler:Landroid/os/Handler;
@@ -4503,14 +4513,14 @@
     .locals 4
 
     .prologue
-    .line 2845
+    .line 2844
     invoke-static {p1}, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
 
     move-result v0
 
     if-nez v0, :cond_0
 
-    .line 2846
+    .line 2845
     const-string/jumbo v0, "com.sonimtech.autostart"
 
     invoke-virtual {p1, v0}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
@@ -4519,15 +4529,15 @@
 
     if-eqz v0, :cond_0
 
-    .line 2847
+    .line 2846
     new-instance v0, Landroid/content/Intent;
 
     invoke-direct {v0}, Landroid/content/Intent;-><init>()V
 
-    .line 2848
+    .line 2847
     new-instance v1, Landroid/content/ComponentName;
 
-    .line 2849
+    .line 2848
     new-instance v2, Ljava/lang/StringBuilder;
 
     invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
@@ -4546,21 +4556,21 @@
 
     move-result-object v2
 
-    .line 2848
+    .line 2847
     invoke-direct {v1, p1, v2}, Landroid/content/ComponentName;-><init>(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 2850
+    .line 2849
     invoke-virtual {v0, v1}, Landroid/content/Intent;->setComponent(Landroid/content/ComponentName;)Landroid/content/Intent;
 
-    .line 2851
+    .line 2850
     const/high16 v1, 0x10000000
 
     invoke-virtual {v0, v1}, Landroid/content/Intent;->setFlags(I)Landroid/content/Intent;
 
-    .line 2852
+    .line 2851
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->startActivitySafely(Landroid/content/Intent;)V
 
-    .line 2855
+    .line 2854
     :cond_0
     return-void
 .end method
@@ -4585,30 +4595,30 @@
 
     const/4 v4, 0x1
 
-    .line 1440
+    .line 1439
     iget-boolean v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsClingVisible:Z
 
     if-eqz v0, :cond_1
 
-    .line 1441
+    .line 1440
     invoke-virtual {p1}, Landroid/view/KeyEvent;->getAction()I
 
     move-result v0
 
     if-ne v0, v4, :cond_0
 
-    .line 1442
+    .line 1441
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->handleCling()Z
 
     move-result v0
 
     return v0
 
-    .line 1444
+    .line 1443
     :cond_0
     return v4
 
-    .line 1449
+    .line 1448
     :cond_1
     iget-boolean v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->isLongPressonStar:Z
 
@@ -4622,16 +4632,16 @@
 
     if-eq v0, v1, :cond_2
 
-    .line 1450
+    .line 1449
     return v4
 
-    .line 1452
+    .line 1451
     :cond_2
     invoke-virtual {p1}, Landroid/view/KeyEvent;->getKeyCode()I
 
     move-result v1
 
-    .line 1453
+    .line 1452
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->isAppTrayVisible()Z
 
     move-result v0
@@ -4646,7 +4656,7 @@
 
     if-ne v0, v4, :cond_d
 
-    .line 1456
+    .line 1455
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mContext:Landroid/content/Context;
 
     invoke-static {v0}, Lcom/sonim/borqs/launcher/AccessibilityUtil;->isTalkBackEnabled(Landroid/content/Context;)Z
@@ -4655,15 +4665,15 @@
 
     if-eqz v0, :cond_6
 
-    .line 1457
+    .line 1456
     invoke-direct {p0, v1}, Lcom/sonim/borqs/launcher/LauncherActivity;->requireAccessibleKeyHandling(I)Z
 
     move-result v0
 
-    .line 1456
+    .line 1455
     if-eqz v0, :cond_6
 
-    .line 1462
+    .line 1461
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mKeyEventInfo:Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;
 
     iget v0, v0, Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;->count:I
@@ -4676,7 +4686,7 @@
 
     if-eq v0, v1, :cond_4
 
-    .line 1463
+    .line 1462
     :cond_3
     invoke-virtual {p1}, Landroid/view/KeyEvent;->getAction()I
 
@@ -4684,37 +4694,37 @@
 
     if-nez v0, :cond_4
 
-    .line 1464
+    .line 1463
     const/4 v0, 0x0
 
-    .line 1465
+    .line 1464
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mKeyEventInfo:Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;
 
     invoke-virtual {v2}, Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;->reset()V
 
-    .line 1467
+    .line 1466
     sparse-switch v1, :sswitch_data_0
 
-    .line 1493
+    .line 1492
     :goto_0
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPager:Landroid/support/v4/view/ViewPager;
 
     invoke-static {v2, v0}, Lcom/sonim/borqs/launcher/AccessibilityUtil;->announceForAccessibility(Landroid/view/View;Ljava/lang/CharSequence;)V
 
-    .line 1495
+    .line 1494
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mKeyEventInfo:Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;
 
     iput v4, v0, Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;->count:I
 
-    .line 1496
+    .line 1495
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mKeyEventInfo:Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;
 
     iput v1, v0, Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;->keyCode:I
 
-    .line 1497
+    .line 1496
     return v4
 
-    .line 1469
+    .line 1468
     :sswitch_0
     invoke-virtual {p0, v3}, Lcom/sonim/borqs/launcher/LauncherActivity;->getString(I)Ljava/lang/String;
 
@@ -4722,7 +4732,7 @@
 
     new-array v2, v4, [Ljava/lang/Object;
 
-    .line 1471
+    .line 1470
     iget-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADUpPkgName:Ljava/lang/String;
 
     invoke-direct {p0, v3}, Lcom/sonim/borqs/launcher/LauncherActivity;->getPackageName(Ljava/lang/String;)Ljava/lang/String;
@@ -4731,14 +4741,14 @@
 
     aput-object v3, v2, v5
 
-    .line 1469
+    .line 1468
     invoke-static {v0, v2}, Ljava/lang/String;->format(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;
 
     move-result-object v0
 
     goto :goto_0
 
-    .line 1475
+    .line 1474
     :sswitch_1
     invoke-virtual {p0, v3}, Lcom/sonim/borqs/launcher/LauncherActivity;->getString(I)Ljava/lang/String;
 
@@ -4746,7 +4756,7 @@
 
     new-array v2, v4, [Ljava/lang/Object;
 
-    .line 1477
+    .line 1476
     iget-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADCenterPkgName:Ljava/lang/String;
 
     invoke-direct {p0, v3}, Lcom/sonim/borqs/launcher/LauncherActivity;->getPackageName(Ljava/lang/String;)Ljava/lang/String;
@@ -4755,14 +4765,14 @@
 
     aput-object v3, v2, v5
 
-    .line 1475
+    .line 1474
     invoke-static {v0, v2}, Ljava/lang/String;->format(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;
 
     move-result-object v0
 
     goto :goto_0
 
-    .line 1480
+    .line 1479
     :sswitch_2
     invoke-virtual {p0, v3}, Lcom/sonim/borqs/launcher/LauncherActivity;->getString(I)Ljava/lang/String;
 
@@ -4770,7 +4780,7 @@
 
     new-array v2, v4, [Ljava/lang/Object;
 
-    .line 1482
+    .line 1481
     iget-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADDownPkgName:Ljava/lang/String;
 
     invoke-direct {p0, v3}, Lcom/sonim/borqs/launcher/LauncherActivity;->getPackageName(Ljava/lang/String;)Ljava/lang/String;
@@ -4779,36 +4789,36 @@
 
     aput-object v3, v2, v5
 
-    .line 1480
+    .line 1479
     invoke-static {v0, v2}, Ljava/lang/String;->format(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;
 
     move-result-object v0
 
     goto :goto_0
 
-    .line 1486
+    .line 1485
     :sswitch_3
     const v0, 0x7f0b004e
 
-    .line 1485
+    .line 1484
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getString(I)Ljava/lang/String;
 
     move-result-object v0
 
     goto :goto_0
 
-    .line 1490
+    .line 1489
     :sswitch_4
     const v0, 0x7f0b004f
 
-    .line 1489
+    .line 1488
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getString(I)Ljava/lang/String;
 
     move-result-object v0
 
     goto :goto_0
 
-    .line 1500
+    .line 1499
     :cond_4
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mKeyEventInfo:Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;
 
@@ -4816,29 +4826,29 @@
 
     if-ne v0, v4, :cond_6
 
-    .line 1501
+    .line 1500
     invoke-virtual {p1}, Landroid/view/KeyEvent;->getAction()I
 
     move-result v0
 
     if-ne v0, v4, :cond_5
 
-    .line 1502
+    .line 1501
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mKeyEventInfo:Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;
 
     iget v0, v0, Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;->keyUpCount:I
 
     if-gtz v0, :cond_5
 
-    .line 1503
+    .line 1502
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mKeyEventInfo:Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;
 
     iput v4, v0, Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;->keyUpCount:I
 
-    .line 1504
+    .line 1503
     return v4
 
-    .line 1508
+    .line 1507
     :cond_5
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mKeyEventInfo:Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;
 
@@ -4846,12 +4856,12 @@
 
     if-ne v0, v1, :cond_6
 
-    .line 1509
+    .line 1508
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mKeyEventInfo:Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;
 
     invoke-virtual {v0}, Lcom/sonim/borqs/launcher/LauncherActivity$KeyEventInfo;->reset()V
 
-    .line 1517
+    .line 1516
     :cond_6
     invoke-virtual {p1}, Landroid/view/KeyEvent;->getKeyCode()I
 
@@ -4861,47 +4871,47 @@
 
     if-ne v0, v1, :cond_8
 
-    .line 1519
+    .line 1518
     invoke-virtual {p1}, Landroid/view/KeyEvent;->getAction()I
 
     move-result v0
 
     if-ne v0, v4, :cond_7
 
-    .line 1522
+    .line 1521
     invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->startDPADUpAction()V
 
-    .line 1524
+    .line 1523
     :cond_7
     return v4
 
-    .line 1526
+    .line 1525
     :cond_8
     invoke-virtual {p1}, Landroid/view/KeyEvent;->getKeyCode()I
 
     move-result v0
 
-    .line 1527
+    .line 1526
     const/16 v1, 0x14
 
-    .line 1526
+    .line 1525
     if-ne v0, v1, :cond_a
 
-    .line 1528
+    .line 1527
     invoke-virtual {p1}, Landroid/view/KeyEvent;->getAction()I
 
     move-result v0
 
     if-ne v0, v4, :cond_9
 
-    .line 1532
+    .line 1531
     invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->startDPADDownAction()V
 
-    .line 1534
+    .line 1533
     :cond_9
     return v4
 
-    .line 1536
+    .line 1535
     :cond_a
     invoke-virtual {p1}, Landroid/view/KeyEvent;->getKeyCode()I
 
@@ -4911,7 +4921,7 @@
 
     if-eq v0, v1, :cond_b
 
-    .line 1537
+    .line 1536
     invoke-virtual {p1}, Landroid/view/KeyEvent;->getKeyCode()I
 
     move-result v0
@@ -4920,39 +4930,39 @@
 
     if-ne v0, v1, :cond_d
 
-    .line 1538
+    .line 1537
     :cond_b
     iget-boolean v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsClingVisible:Z
 
     xor-int/lit8 v0, v0, 0x1
 
-    .line 1536
+    .line 1535
     if-eqz v0, :cond_d
 
-    .line 1539
+    .line 1538
     invoke-virtual {p1}, Landroid/view/KeyEvent;->getAction()I
 
     move-result v0
 
     if-ne v0, v4, :cond_c
 
-    .line 1543
+    .line 1542
     invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->startDPADCenterAction()V
 
-    .line 1546
+    .line 1545
     :cond_c
     return v4
 
-    .line 1552
+    .line 1551
     :cond_d
     invoke-super {p0, p1}, Landroid/app/Activity;->dispatchKeyEvent(Landroid/view/KeyEvent;)Z
 
     move-result v0
 
-    .line 1553
+    .line 1552
     return v0
 
-    .line 1467
+    .line 1466
     nop
 
     :sswitch_data_0
@@ -4970,7 +4980,7 @@
     .locals 1
 
     .prologue
-    .line 3067
+    .line 3066
     const/4 v0, 0x1
 
     return v0
@@ -4980,7 +4990,7 @@
     .locals 2
 
     .prologue
-    .line 1700
+    .line 1699
     new-instance v0, Ljava/lang/StringBuilder;
 
     invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
@@ -5001,10 +5011,10 @@
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getSystemTimeInSecond(Ljava/lang/String;)V
 
-    .line 1701
+    .line 1700
     invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->finish()V
 
-    .line 1702
+    .line 1701
     return-void
 .end method
 
@@ -5012,7 +5022,7 @@
     .locals 1
 
     .prologue
-    .line 1783
+    .line 1782
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADCenterPkgName:Ljava/lang/String;
 
     return-object v0
@@ -5022,7 +5032,7 @@
     .locals 1
 
     .prologue
-    .line 1779
+    .line 1778
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADDownPkgName:Ljava/lang/String;
 
     return-object v0
@@ -5032,7 +5042,7 @@
     .locals 1
 
     .prologue
-    .line 1775
+    .line 1774
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADUpPkgName:Ljava/lang/String;
 
     return-object v0
@@ -5044,7 +5054,7 @@
     .prologue
     const/4 v2, 0x0
 
-    .line 2070
+    .line 2069
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     const-string/jumbo v1, "current_theme"
@@ -5053,15 +5063,15 @@
 
     move-result v0
 
-    .line 2074
+    .line 2073
     const/4 v1, 0x1
 
     if-ne v0, v1, :cond_1
 
-    .line 2075
+    .line 2074
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->initializeColorfulThemeDrawables()V
 
-    .line 2076
+    .line 2075
     invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getResources()Landroid/content/res/Resources;
 
     move-result-object v0
@@ -5072,7 +5082,7 @@
 
     move-result-object v0
 
-    .line 2077
+    .line 2076
     invoke-static {v0}, Ljava/util/Arrays;->asList([Ljava/lang/Object;)Ljava/util/List;
 
     move-result-object v0
@@ -5085,10 +5095,10 @@
 
     move-result v0
 
-    .line 2078
+    .line 2077
     if-ltz v0, :cond_0
 
-    .line 2079
+    .line 2078
     invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getResources()Landroid/content/res/Resources;
 
     move-result-object v1
@@ -5103,7 +5113,7 @@
 
     return-object v0
 
-    .line 2081
+    .line 2080
     :cond_0
     const-string/jumbo v0, "LauncherActivity"
 
@@ -5127,7 +5137,7 @@
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/Log;->e(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 2084
+    .line 2083
     :cond_1
     const/4 v0, 0x0
 
@@ -5138,7 +5148,7 @@
     .locals 0
 
     .prologue
-    .line 1708
+    .line 1707
     return-void
 .end method
 
@@ -5397,7 +5407,7 @@
 
     move-result v0
 
-    if-lez v0, :cond_2
+    if-ltz v0, :cond_2
 
     .line 520
     new-instance v0, Lcom/sonim/borqs/launcher/MyEventsItem;
@@ -7582,10 +7592,7 @@
     invoke-virtual {v0, v4}, Landroid/widget/GridView;->setSelection(I)V
 
     .line 936
-    iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDrawerFolderGrid:Landroid/widget/GridView;
-
-    # FEAT(tray): open on the first entry (v4 = 0)
-    invoke-virtual {v0, v4}, Landroid/widget/GridView;->smoothScrollToPosition(I)V
+    # FEAT(tray): no smooth scroll after setSelection
 
     .line 937
     iput-boolean v4, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mGoToWorkspace:Z
@@ -8415,12 +8422,12 @@
     .locals 1
 
     .prologue
-    .line 3143
+    .line 3142
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mProfileChangeCallback:Ljava/util/ArrayList;
 
     invoke-virtual {v0, p1}, Ljava/util/ArrayList;->remove(Ljava/lang/Object;)Z
 
-    .line 3144
+    .line 3143
     return-void
 .end method
 
@@ -8444,19 +8451,19 @@
 
     const/4 v2, 0x0
 
-    .line 2255
+    .line 2254
     const-string/jumbo v0, "LauncherActivity"
 
     const-string/jumbo v3, "setAppsAndFolderList - start"
 
     invoke-static {v0, v3}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 2256
+    .line 2255
     const-string/jumbo v0, " setAppsAndFolderList - start "
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getSystemTimeInSecond(Ljava/lang/String;)V
 
-    .line 2260
+    .line 2259
     const-string/jumbo v0, "com.borqs.camera/com.borqs.camera.CameraActivity"
 
     const-string/jumbo v3, "/"
@@ -8467,7 +8474,7 @@
 
     aget-object v6, v0, v1
 
-    .line 2262
+    .line 2261
     :try_start_0
     iget-object v7, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
@@ -8475,7 +8482,7 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_1
 
-    .line 2263
+    .line 2262
     :try_start_1
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
@@ -8489,12 +8496,12 @@
 
     if-lez v0, :cond_0
 
-    .line 2264
+    .line 2263
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
     invoke-virtual {v0}, Ljava/util/ArrayList;->clear()V
 
-    .line 2266
+    .line 2265
     :cond_0
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderCursor:Landroid/database/Cursor;
 
@@ -8508,7 +8515,7 @@
 
     if-gtz v0, :cond_4
 
-    .line 2267
+    .line 2266
     :cond_1
     const-string/jumbo v0, " setAppsAndFolderList - Returning since cursor count will be zero "
 
@@ -8521,7 +8528,7 @@
     :try_end_2
     .catchall {:try_start_2 .. :try_end_2} :catchall_1
 
-    .line 2379
+    .line 2378
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDataBaseHelpler:Lcom/sonim/borqs/launcher/helper/DatabaseHelper;
 
     if-eqz v0, :cond_2
@@ -8530,7 +8537,7 @@
 
     invoke-virtual {v0}, Lcom/sonim/borqs/launcher/helper/DatabaseHelper;->close()V
 
-    .line 2380
+    .line 2379
     :cond_2
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderCursor:Landroid/database/Cursor;
 
@@ -8540,14 +8547,14 @@
 
     invoke-interface {v0}, Landroid/database/Cursor;->close()V
 
-    .line 2269
+    .line 2268
     :cond_3
     return-void
 
     :cond_4
     move v3, v1
 
-    .line 2272
+    .line 2271
     :goto_0
     :try_start_3
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderCursor:Landroid/database/Cursor;
@@ -8558,15 +8565,15 @@
 
     if-eqz v0, :cond_f
 
-    .line 2273
+    .line 2272
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderCursor:Landroid/database/Cursor;
 
     iget-object v4, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderCursor:Landroid/database/Cursor;
 
-    .line 2274
+    .line 2273
     const-string/jumbo v8, "folder"
 
-    .line 2273
+    .line 2272
     invoke-interface {v4, v8}, Landroid/database/Cursor;->getColumnIndex(Ljava/lang/String;)I
 
     move-result v4
@@ -8575,12 +8582,12 @@
 
     move-result-object v0
 
-    .line 2275
+    .line 2274
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->setFolderName(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 
-    .line 2276
+    .line 2275
     const-string/jumbo v4, "LauncherActivity"
 
     new-instance v8, Ljava/lang/StringBuilder;
@@ -8603,7 +8610,7 @@
 
     invoke-static {v4, v8}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 2279
+    .line 2278
     invoke-virtual {v0}, Ljava/lang/String;->isEmpty()Z
 
     move-result v4
@@ -8612,16 +8619,16 @@
 
     if-nez v0, :cond_b
 
-    .line 2280
+    .line 2279
     :cond_5
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderCursor:Landroid/database/Cursor;
 
     iget-object v4, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderCursor:Landroid/database/Cursor;
 
-    .line 2281
+    .line 2280
     const-string/jumbo v8, "pkgname"
 
-    .line 2280
+    .line 2279
     invoke-interface {v4, v8}, Landroid/database/Cursor;->getColumnIndex(Ljava/lang/String;)I
 
     move-result v4
@@ -8630,37 +8637,37 @@
 
     move-result-object v0
 
-    .line 2284
+    .line 2283
     if-nez v1, :cond_7
 
-    .line 2286
+    .line 2285
     invoke-virtual {v0}, Ljava/lang/String;->isEmpty()Z
 
     move-result v4
 
     if-eqz v4, :cond_6
 
-    .line 2288
+    .line 2287
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
 
     move-result-object v0
 
-    .line 2289
+    .line 2288
     const-string/jumbo v1, "camera_postion"
 
     invoke-interface {v0, v1, v3}, Landroid/content/SharedPreferences$Editor;->putInt(Ljava/lang/String;I)Landroid/content/SharedPreferences$Editor;
 
-    .line 2290
+    .line 2289
     invoke-interface {v0}, Landroid/content/SharedPreferences$Editor;->commit()Z
 
     move v1, v5
 
-    .line 2292
+    .line 2291
     goto :goto_0
 
-    .line 2293
+    .line 2292
     :cond_6
     invoke-virtual {v0, v6}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
 
@@ -8668,24 +8675,24 @@
 
     if-eqz v4, :cond_7
 
-    .line 2295
+    .line 2294
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     invoke-interface {v1}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
 
     move-result-object v1
 
-    .line 2296
+    .line 2295
     const-string/jumbo v4, "camera_postion"
 
     invoke-interface {v1, v4, v3}, Landroid/content/SharedPreferences$Editor;->putInt(Ljava/lang/String;I)Landroid/content/SharedPreferences$Editor;
 
-    .line 2297
+    .line 2296
     invoke-interface {v1}, Landroid/content/SharedPreferences$Editor;->commit()Z
 
     move v1, v5
 
-    .line 2301
+    .line 2300
     :cond_7
     const-string/jumbo v4, "LauncherActivity"
 
@@ -8709,14 +8716,14 @@
 
     invoke-static {v4, v8}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 2302
+    .line 2301
     new-instance v4, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;
 
     invoke-direct {v4}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;-><init>()V
     :try_end_3
     .catchall {:try_start_3 .. :try_end_3} :catchall_0
 
-    .line 2304
+    .line 2303
     :try_start_4
     invoke-virtual {v0}, Ljava/lang/String;->trim()Ljava/lang/String;
 
@@ -8726,7 +8733,7 @@
 
     move-result-object v8
 
-    .line 2306
+    .line 2305
     const-string/jumbo v9, "LauncherActivity"
 
     new-instance v10, Ljava/lang/StringBuilder;
@@ -8753,29 +8760,29 @@
 
     invoke-static {v9, v10}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 2307
+    .line 2306
     invoke-virtual {v4, v0}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setPackageAndClassName(Ljava/lang/String;)V
 
-    .line 2309
+    .line 2308
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getPkgIconForTheme(Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
 
-    .line 2310
+    .line 2309
     if-nez v0, :cond_8
 
-    .line 2311
+    .line 2310
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
     invoke-virtual {v0, v8}, Landroid/content/pm/PackageManager;->getActivityIcon(Landroid/content/ComponentName;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
 
-    .line 2313
+    .line 2312
     :cond_8
     invoke-virtual {v4, v0}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setIcon(Landroid/graphics/drawable/Drawable;)V
 
-    .line 2314
+    .line 2313
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
     const/4 v9, 0x0
@@ -8784,10 +8791,10 @@
 
     move-result-object v0
 
-    .line 2315
+    .line 2314
     iget-object v9, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
-    .line 2314
+    .line 2313
     invoke-virtual {v0, v9}, Landroid/content/pm/ActivityInfo;->loadLabel(Landroid/content/pm/PackageManager;)Ljava/lang/CharSequence;
 
     move-result-object v0
@@ -8796,22 +8803,22 @@
 
     invoke-virtual {v4, v0}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setName(Ljava/lang/String;)V
 
-    .line 2316
+    .line 2315
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
-    .line 2317
+    .line 2316
     invoke-virtual {v8}, Landroid/content/ComponentName;->getPackageName()Ljava/lang/String;
 
     move-result-object v9
 
-    .line 2316
+    .line 2315
     invoke-virtual {v0, v9}, Landroid/content/pm/PackageManager;->getLaunchIntentForPackage(Ljava/lang/String;)Landroid/content/Intent;
 
     move-result-object v0
 
     invoke-virtual {v4, v0}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setIntent(Landroid/content/Intent;)V
 
-    .line 2318
+    .line 2317
     invoke-virtual {v8}, Landroid/content/ComponentName;->getPackageName()Ljava/lang/String;
 
     move-result-object v0
@@ -8821,13 +8828,13 @@
     .catch Landroid/content/pm/PackageManager$NameNotFoundException; {:try_start_4 .. :try_end_4} :catch_0
     .catchall {:try_start_4 .. :try_end_4} :catchall_0
 
-    .line 2324
+    .line 2323
     :try_start_5
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
     invoke-virtual {v0, v4}, Ljava/util/ArrayList;->add(Ljava/lang/Object;)Z
 
-    .line 2325
+    .line 2324
     const/4 v0, 0x0
 
     invoke-static {v0}, Ljava/lang/Boolean;->valueOf(Z)Ljava/lang/Boolean;
@@ -8836,7 +8843,7 @@
 
     iput-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mfolderFlag:Ljava/lang/Boolean;
 
-    .line 2326
+    .line 2325
     add-int/lit8 v0, v3, 0x1
 
     move v12, v1
@@ -8852,14 +8859,14 @@
 
     goto/16 :goto_0
 
-    .line 2319
+    .line 2318
     :catch_0
     move-exception v0
 
-    .line 2320
+    .line 2319
     invoke-virtual {v0}, Landroid/content/pm/PackageManager$NameNotFoundException;->printStackTrace()V
 
-    .line 2321
+    .line 2320
     const-string/jumbo v4, "LauncherActivity"
 
     new-instance v8, Ljava/lang/StringBuilder;
@@ -8886,7 +8893,7 @@
 
     goto/16 :goto_0
 
-    .line 2262
+    .line 2261
     :catchall_0
     move-exception v0
 
@@ -8897,11 +8904,11 @@
     :try_end_6
     .catchall {:try_start_6 .. :try_end_6} :catchall_1
 
-    .line 2378
+    .line 2377
     :catchall_1
     move-exception v0
 
-    .line 2379
+    .line 2378
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDataBaseHelpler:Lcom/sonim/borqs/launcher/helper/DatabaseHelper;
 
     if-eqz v1, :cond_9
@@ -8910,7 +8917,7 @@
 
     invoke-virtual {v1}, Lcom/sonim/borqs/launcher/helper/DatabaseHelper;->close()V
 
-    .line 2380
+    .line 2379
     :cond_9
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderCursor:Landroid/database/Cursor;
 
@@ -8920,11 +8927,11 @@
 
     invoke-interface {v1}, Landroid/database/Cursor;->close()V
 
-    .line 2378
+    .line 2377
     :cond_a
     throw v0
 
-    .line 2330
+    .line 2329
     :cond_b
     :try_start_7
     iget-object v4, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mfolderFlag:Ljava/lang/Boolean;
@@ -8945,13 +8952,13 @@
 
     if-eqz v4, :cond_13
 
-    .line 2331
+    .line 2330
     :cond_c
     new-instance v4, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;
 
     invoke-direct {v4, p0}, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;-><init>(Lcom/sonim/borqs/launcher/LauncherActivity;)V
 
-    .line 2332
+    .line 2331
     const-string/jumbo v2, "LauncherActivity"
 
     new-instance v8, Ljava/lang/StringBuilder;
@@ -8974,30 +8981,30 @@
 
     invoke-static {v2, v8}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 2333
+    .line 2332
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->setFolderName(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 
-    .line 2334
+    .line 2333
     invoke-direct {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getFolderIcon(Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v2
 
     invoke-virtual {v4, v2}, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;->setIcon(Landroid/graphics/drawable/Drawable;)V
 
-    .line 2335
+    .line 2334
     invoke-virtual {v4, v0}, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;->setName(Ljava/lang/String;)V
 
-    .line 2336
+    .line 2335
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
     invoke-virtual {v2, v4}, Ljava/util/ArrayList;->add(Ljava/lang/Object;)Z
 
-    .line 2337
+    .line 2336
     iput-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mFolderName:Ljava/lang/String;
 
-    .line 2338
+    .line 2337
     const/4 v2, 0x1
 
     invoke-static {v2}, Ljava/lang/Boolean;->valueOf(Z)Ljava/lang/Boolean;
@@ -9006,7 +9013,7 @@
 
     iput-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mfolderFlag:Ljava/lang/Boolean;
 
-    .line 2339
+    .line 2338
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getToolsFolderName()Ljava/lang/String;
 
     move-result-object v2
@@ -9017,16 +9024,16 @@
 
     if-eqz v2, :cond_d
 
-    .line 2340
+    .line 2339
     invoke-direct {p0, v3}, Lcom/sonim/borqs/launcher/LauncherActivity;->setToolsFolderPosition(I)V
 
-    .line 2342
+    .line 2341
     :cond_d
     add-int/lit8 v2, v3, 0x1
 
     move-object v3, v4
 
-    .line 2346
+    .line 2345
     :goto_2
     iget-object v4, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mFolderName:Ljava/lang/String;
 
@@ -9036,20 +9043,20 @@
 
     if-eqz v0, :cond_12
 
-    .line 2347
+    .line 2346
     new-instance v4, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;
 
     invoke-direct {v4}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;-><init>()V
 
-    .line 2348
+    .line 2347
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderCursor:Landroid/database/Cursor;
 
     iget-object v8, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderCursor:Landroid/database/Cursor;
 
-    .line 2349
+    .line 2348
     const-string/jumbo v9, "pkgname"
 
-    .line 2348
+    .line 2347
     invoke-interface {v8, v9}, Landroid/database/Cursor;->getColumnIndex(Ljava/lang/String;)I
 
     move-result v8
@@ -9060,7 +9067,7 @@
 
     move-result-object v0
 
-    .line 2351
+    .line 2350
     :try_start_8
     invoke-virtual {v0}, Ljava/lang/String;->trim()Ljava/lang/String;
 
@@ -9070,7 +9077,7 @@
 
     move-result-object v8
 
-    .line 2353
+    .line 2352
     const-string/jumbo v9, "LauncherActivity"
 
     new-instance v10, Ljava/lang/StringBuilder;
@@ -9093,7 +9100,7 @@
 
     invoke-static {v9, v10}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 2354
+    .line 2353
     const-string/jumbo v9, "LauncherActivity"
 
     new-instance v10, Ljava/lang/StringBuilder;
@@ -9116,7 +9123,7 @@
 
     invoke-static {v9, v10}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 2355
+    .line 2354
     const-string/jumbo v9, "LauncherActivity"
 
     new-instance v10, Ljava/lang/StringBuilder;
@@ -9141,29 +9148,29 @@
 
     invoke-static {v9, v10}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 2356
+    .line 2355
     invoke-virtual {v4, v0}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setPackageAndClassName(Ljava/lang/String;)V
 
-    .line 2358
+    .line 2357
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getPkgIconForTheme(Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
 
-    .line 2359
+    .line 2358
     if-nez v0, :cond_e
 
-    .line 2360
+    .line 2359
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
     invoke-virtual {v0, v8}, Landroid/content/pm/PackageManager;->getActivityIcon(Landroid/content/ComponentName;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
 
-    .line 2362
+    .line 2361
     :cond_e
     invoke-virtual {v4, v0}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setIcon(Landroid/graphics/drawable/Drawable;)V
 
-    .line 2363
+    .line 2362
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
     const/4 v9, 0x0
@@ -9172,10 +9179,10 @@
 
     move-result-object v0
 
-    .line 2364
+    .line 2363
     iget-object v9, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
-    .line 2363
+    .line 2362
     invoke-virtual {v0, v9}, Landroid/content/pm/ActivityInfo;->loadLabel(Landroid/content/pm/PackageManager;)Ljava/lang/CharSequence;
 
     move-result-object v0
@@ -9184,7 +9191,7 @@
 
     invoke-virtual {v4, v0}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setName(Ljava/lang/String;)V
 
-    .line 2365
+    .line 2364
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
     invoke-virtual {v8}, Landroid/content/ComponentName;->getPackageName()Ljava/lang/String;
@@ -9197,7 +9204,7 @@
 
     invoke-virtual {v4, v0}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setIntent(Landroid/content/Intent;)V
 
-    .line 2366
+    .line 2365
     invoke-virtual {v8}, Landroid/content/ComponentName;->getPackageName()Ljava/lang/String;
 
     move-result-object v0
@@ -9207,7 +9214,7 @@
     .catch Landroid/content/pm/PackageManager$NameNotFoundException; {:try_start_8 .. :try_end_8} :catch_1
     .catchall {:try_start_8 .. :try_end_8} :catchall_0
 
-    .line 2372
+    .line 2371
     :try_start_9
     invoke-virtual {v3, v4}, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;->setAppListInsideFolder(Lcom/sonim/borqs/launcher/LauncherActivity$Apps;)V
 
@@ -9219,14 +9226,14 @@
 
     goto/16 :goto_1
 
-    .line 2367
+    .line 2366
     :catch_1
     move-exception v0
 
-    .line 2368
+    .line 2367
     invoke-virtual {v0}, Landroid/content/pm/PackageManager$NameNotFoundException;->printStackTrace()V
 
-    .line 2369
+    .line 2368
     const-string/jumbo v4, "LauncherActivity"
 
     new-instance v8, Ljava/lang/StringBuilder;
@@ -9257,7 +9264,7 @@
 
     move v3, v12
 
-    .line 2370
+    .line 2369
     goto/16 :goto_0
 
     :cond_f
@@ -9266,7 +9273,7 @@
     :try_end_a
     .catchall {:try_start_a .. :try_end_a} :catchall_1
 
-    .line 2379
+    .line 2378
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDataBaseHelpler:Lcom/sonim/borqs/launcher/helper/DatabaseHelper;
 
     if-eqz v0, :cond_10
@@ -9275,7 +9282,7 @@
 
     invoke-virtual {v0}, Lcom/sonim/borqs/launcher/helper/DatabaseHelper;->close()V
 
-    .line 2380
+    .line 2379
     :cond_10
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderCursor:Landroid/database/Cursor;
 
@@ -9285,7 +9292,7 @@
 
     invoke-interface {v0}, Landroid/database/Cursor;->close()V
 
-    .line 2383
+    .line 2382
     :cond_11
     new-instance v0, Ljava/lang/StringBuilder;
 
@@ -9313,13 +9320,13 @@
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getSystemTimeInSecond(Ljava/lang/String;)V
 
-    .line 2384
+    .line 2383
     invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->setInstalledApps()V
 
-    .line 2385
+    .line 2384
     invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->setSTKApp()V
 
-    .line 2386
+    .line 2385
     invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getApplication()Landroid/app/Application;
 
     move-result-object v0
@@ -9330,19 +9337,19 @@
 
     invoke-virtual {v0, v1}, Lcom/sonim/borqs/launcher/AccessArrayList;->setAppsAndFolderListForShorcut(Ljava/util/ArrayList;)V
 
-    .line 2387
+    .line 2386
     const-string/jumbo v0, " setAppsAndFolderList - end "
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getSystemTimeInSecond(Ljava/lang/String;)V
 
-    .line 2388
+    .line 2387
     const-string/jumbo v0, "LauncherActivity"
 
     const-string/jumbo v1, "setAppsAndFolderList - end"
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 2389
+    .line 2388
     return-void
 
     :cond_12
@@ -9368,7 +9375,7 @@
     .locals 1
 
     .prologue
-    .line 2185
+    .line 2184
     const-string/jumbo v0, "Applications"
 
     invoke-virtual {p1, v0}, Ljava/lang/String;->equalsIgnoreCase(Ljava/lang/String;)Z
@@ -9377,17 +9384,17 @@
 
     if-nez v0, :cond_0
 
-    .line 2186
+    .line 2185
     const-string/jumbo v0, "Aplicaciones"
 
     invoke-virtual {p1, v0}, Ljava/lang/String;->equalsIgnoreCase(Ljava/lang/String;)Z
 
     move-result v0
 
-    .line 2185
+    .line 2184
     if-eqz v0, :cond_2
 
-    .line 2187
+    .line 2186
     :cond_0
     const v0, 0x7f0b0018
 
@@ -9395,12 +9402,12 @@
 
     move-result-object p1
 
-    .line 2195
+    .line 2194
     :cond_1
     :goto_0
     return-object p1
 
-    .line 2188
+    .line 2187
     :cond_2
     const-string/jumbo v0, "Tools"
 
@@ -9410,17 +9417,17 @@
 
     if-nez v0, :cond_3
 
-    .line 2189
+    .line 2188
     const-string/jumbo v0, "Outils"
 
     invoke-virtual {p1, v0}, Ljava/lang/String;->equalsIgnoreCase(Ljava/lang/String;)Z
 
     move-result v0
 
-    .line 2188
+    .line 2187
     if-eqz v0, :cond_4
 
-    .line 2190
+    .line 2189
     :cond_3
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getToolsFolderName()Ljava/lang/String;
 
@@ -9428,7 +9435,7 @@
 
     goto :goto_0
 
-    .line 2191
+    .line 2190
     :cond_4
     const-string/jumbo v0, "Music"
 
@@ -9438,17 +9445,17 @@
 
     if-nez v0, :cond_5
 
-    .line 2192
+    .line 2191
     const-string/jumbo v0, "M\u00fasica"
 
     invoke-virtual {p1, v0}, Ljava/lang/String;->equalsIgnoreCase(Ljava/lang/String;)Z
 
     move-result v0
 
-    .line 2191
+    .line 2190
     if-eqz v0, :cond_1
 
-    .line 2193
+    .line 2192
     :cond_5
     const v0, 0x7f0b0020
 
@@ -9469,7 +9476,7 @@
 
     monitor-enter p0
 
-    .line 1865
+    .line 1864
     :try_start_0
     const-string/jumbo v0, "LauncherActivity"
 
@@ -9477,17 +9484,17 @@
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1866
+    .line 1865
     const-string/jumbo v0, " setInstalledApps - start "
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getSystemTimeInSecond(Ljava/lang/String;)V
 
-    .line 1867
+    .line 1866
     iget-boolean v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsSafeMode:Z
 
     if-eqz v0, :cond_0
 
-    .line 1868
+    .line 1867
     const-string/jumbo v0, " setInstalledApps - SAFE mode, return "
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getSystemTimeInSecond(Ljava/lang/String;)V
@@ -9496,10 +9503,10 @@
 
     monitor-exit p0
 
-    .line 1869
+    .line 1868
     return-void
 
-    .line 1872
+    .line 1871
     :cond_0
     :try_start_1
     iget-object v7, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
@@ -9508,7 +9515,7 @@
     :try_end_1
     .catchall {:try_start_1 .. :try_end_1} :catchall_1
 
-    .line 1873
+    .line 1872
     :try_start_2
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
@@ -9520,7 +9527,7 @@
 
     move-result v0
 
-    .line 1875
+    .line 1874
     const-string/jumbo v1, "LauncherActivity"
 
     new-instance v2, Ljava/lang/StringBuilder;
@@ -9543,7 +9550,7 @@
 
     invoke-static {v1, v2}, Lcom/sonim/borqs/launcher/Log;->e(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1879
+    .line 1878
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
     invoke-virtual {v1, v0}, Ljava/util/ArrayList;->get(I)Ljava/lang/Object;
@@ -9552,15 +9559,15 @@
 
     check-cast v0, Lcom/sonim/borqs/launcher/LauncherActivity$AppsAndFolder;
 
-    .line 1880
+    .line 1879
     instance-of v1, v0, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;
 
     if-eqz v1, :cond_3
 
-    .line 1881
+    .line 1880
     check-cast v0, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;
 
-    .line 1886
+    .line 1885
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
     const/4 v2, 0x0
@@ -9571,7 +9578,7 @@
 
     move v6, v4
 
-    .line 1888
+    .line 1887
     :goto_0
     invoke-interface {v8}, Ljava/util/List;->size()I
 
@@ -9579,14 +9586,14 @@
 
     if-ge v6, v1, :cond_6
 
-    .line 1889
+    .line 1888
     invoke-interface {v8, v6}, Ljava/util/List;->get(I)Ljava/lang/Object;
 
     move-result-object v1
 
     check-cast v1, Landroid/content/pm/ApplicationInfo;
 
-    .line 1891
+    .line 1890
     iget v2, v1, Landroid/content/pm/ApplicationInfo;->flags:I
 
     and-int/lit8 v2, v2, 0x1
@@ -9595,31 +9602,31 @@
 
     move v2, v5
 
-    .line 1893
+    .line 1892
     :goto_1
     if-nez v2, :cond_5
 
-    .line 1895
+    .line 1894
     new-instance v2, Landroid/content/Intent;
 
     invoke-direct {v2}, Landroid/content/Intent;-><init>()V
 
-    .line 1896
+    .line 1895
     const-string/jumbo v3, "android.intent.category.LAUNCHER"
 
     invoke-virtual {v2, v3}, Landroid/content/Intent;->addCategory(Ljava/lang/String;)Landroid/content/Intent;
 
-    .line 1897
+    .line 1896
     const-string/jumbo v3, "android.intent.action.MAIN"
 
     invoke-virtual {v2, v3}, Landroid/content/Intent;->setAction(Ljava/lang/String;)Landroid/content/Intent;
 
-    .line 1898
+    .line 1897
     iget-object v3, v1, Landroid/content/pm/ApplicationInfo;->packageName:Ljava/lang/String;
 
     invoke-virtual {v2, v3}, Landroid/content/Intent;->setPackage(Ljava/lang/String;)Landroid/content/Intent;
 
-    .line 1899
+    .line 1898
     iget-object v3, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
     const/4 v9, 0x0
@@ -9628,14 +9635,14 @@
 
     move-result-object v9
 
-    .line 1900
+    .line 1899
     invoke-interface {v9}, Ljava/util/List;->size()I
 
     move-result v2
 
     if-lez v2, :cond_5
 
-    .line 1902
+    .line 1901
     const-string/jumbo v2, "LauncherActivity"
 
     new-instance v3, Ljava/lang/StringBuilder;
@@ -9664,7 +9671,7 @@
 
     move v3, v4
 
-    .line 1903
+    .line 1902
     :goto_2
     invoke-interface {v9}, Ljava/util/List;->size()I
 
@@ -9672,7 +9679,7 @@
 
     if-ge v3, v2, :cond_5
 
-    .line 1904
+    .line 1903
     invoke-interface {v9, v3}, Ljava/util/List;->get(I)Ljava/lang/Object;
 
     move-result-object v2
@@ -9683,7 +9690,7 @@
 
     iget-object v2, v2, Landroid/content/pm/ActivityInfo;->name:Ljava/lang/String;
 
-    .line 1905
+    .line 1904
     new-instance v10, Ljava/lang/StringBuilder;
 
     invoke-direct {v10}, Ljava/lang/StringBuilder;-><init>()V
@@ -9708,12 +9715,12 @@
 
     move-result-object v2
 
-    .line 1906
+    .line 1905
     new-instance v10, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;
 
     invoke-direct {v10}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;-><init>()V
 
-    .line 1907
+    .line 1906
     const-string/jumbo v11, "LauncherActivity"
 
     new-instance v12, Ljava/lang/StringBuilder;
@@ -9740,43 +9747,43 @@
     :try_end_2
     .catchall {:try_start_2 .. :try_end_2} :catchall_0
 
-    .line 1908
+    .line 1907
     if-eqz v2, :cond_2
 
-    .line 1911
+    .line 1910
     :try_start_3
     invoke-virtual {v2}, Ljava/lang/String;->trim()Ljava/lang/String;
 
     move-result-object v11
 
-    .line 1910
+    .line 1909
     invoke-static {v11}, Landroid/content/ComponentName;->unflattenFromString(Ljava/lang/String;)Landroid/content/ComponentName;
 
     move-result-object v11
 
-    .line 1912
+    .line 1911
     invoke-virtual {v10, v2}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setPackageAndClassName(Ljava/lang/String;)V
 
-    .line 1914
+    .line 1913
     invoke-virtual {p0, v2}, Lcom/sonim/borqs/launcher/LauncherActivity;->getPkgIconForTheme(Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v2
 
-    .line 1915
+    .line 1914
     if-nez v2, :cond_1
 
-    .line 1916
+    .line 1915
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
     invoke-virtual {v2, v11}, Landroid/content/pm/PackageManager;->getActivityIcon(Landroid/content/ComponentName;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v2
 
-    .line 1918
+    .line 1917
     :cond_1
     invoke-virtual {v10, v2}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setIcon(Landroid/graphics/drawable/Drawable;)V
 
-    .line 1919
+    .line 1918
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
     const/4 v12, 0x0
@@ -9785,10 +9792,10 @@
 
     move-result-object v2
 
-    .line 1920
+    .line 1919
     iget-object v11, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
-    .line 1919
+    .line 1918
     invoke-virtual {v2, v11}, Landroid/content/pm/ActivityInfo;->loadLabel(Landroid/content/pm/PackageManager;)Ljava/lang/CharSequence;
 
     move-result-object v2
@@ -9797,7 +9804,7 @@
 
     invoke-virtual {v10, v2}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setName(Ljava/lang/String;)V
 
-    .line 1924
+    .line 1923
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
     iget-object v11, v1, Landroid/content/pm/ApplicationInfo;->packageName:Ljava/lang/String;
@@ -9808,21 +9815,21 @@
 
     invoke-virtual {v10, v2}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setIntent(Landroid/content/Intent;)V
 
-    .line 1925
+    .line 1924
     iget-object v2, v1, Landroid/content/pm/ApplicationInfo;->packageName:Ljava/lang/String;
 
     invoke-virtual {v10, v2}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setPackageName(Ljava/lang/String;)V
 
-    .line 1926
+    .line 1925
     if-eqz v0, :cond_2
 
-    .line 1927
+    .line 1926
     invoke-virtual {v0, v10}, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;->setAppListInsideFolder(Lcom/sonim/borqs/launcher/LauncherActivity$Apps;)V
     :try_end_3
     .catch Landroid/content/pm/PackageManager$NameNotFoundException; {:try_start_3 .. :try_end_3} :catch_0
     .catchall {:try_start_3 .. :try_end_3} :catchall_0
 
-    .line 1903
+    .line 1902
     :cond_2
     :goto_3
     add-int/lit8 v2, v3, 0x1
@@ -9839,24 +9846,24 @@
 
     monitor-exit p0
 
-    .line 1883
+    .line 1882
     return-void
 
     :cond_4
     move v2, v4
 
-    .line 1891
+    .line 1890
     goto/16 :goto_1
 
-    .line 1929
+    .line 1928
     :catch_0
     move-exception v2
 
-    .line 1930
+    .line 1929
     :try_start_5
     invoke-virtual {v2}, Landroid/content/pm/PackageManager$NameNotFoundException;->printStackTrace()V
 
-    .line 1931
+    .line 1930
     const-string/jumbo v10, "LauncherActivity"
 
     new-instance v11, Ljava/lang/StringBuilder;
@@ -9883,7 +9890,7 @@
 
     goto :goto_3
 
-    .line 1872
+    .line 1871
     :catchall_0
     move-exception v0
 
@@ -9901,7 +9908,7 @@
 
     throw v0
 
-    .line 1888
+    .line 1887
     :cond_5
     add-int/lit8 v1, v6, 0x1
 
@@ -9913,14 +9920,14 @@
     :try_start_7
     monitor-exit v7
 
-    .line 1941
+    .line 1940
     const-string/jumbo v0, "LauncherActivity"
 
     const-string/jumbo v1, "setInstalledApps - end"
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1942
+    .line 1941
     const-string/jumbo v0, " setInstalledApps - end "
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getSystemTimeInSecond(Ljava/lang/String;)V
@@ -9929,7 +9936,7 @@
 
     monitor-exit p0
 
-    .line 1943
+    .line 1942
     return-void
 .end method
 
@@ -9948,12 +9955,12 @@
     .locals 1
 
     .prologue
-    .line 3139
+    .line 3138
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mProfileChangeCallback:Ljava/util/ArrayList;
 
     invoke-virtual {v0, p1}, Ljava/util/ArrayList;->add(Ljava/lang/Object;)Z
 
-    .line 3140
+    .line 3139
     return-void
 .end method
 
@@ -9967,7 +9974,7 @@
 
     monitor-enter p0
 
-    .line 1949
+    .line 1948
     :try_start_0
     iget-object v6, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
@@ -9975,7 +9982,7 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_1
 
-    .line 1950
+    .line 1949
     :try_start_1
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->isSTKReady()Z
 
@@ -9989,17 +9996,17 @@
 
     if-eqz v0, :cond_a
 
-    .line 1952
+    .line 1951
     const-string/jumbo v0, " setSTKApp - start "
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getSystemTimeInSecond(Ljava/lang/String;)V
 
-    .line 1953
+    .line 1952
     new-instance v7, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;
 
     invoke-direct {v7}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;-><init>()V
 
-    .line 1959
+    .line 1958
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
     if-eqz v0, :cond_0
@@ -10012,7 +10019,7 @@
 
     if-eqz v0, :cond_1
 
-    .line 1960
+    .line 1959
     :cond_0
     const-string/jumbo v0, "LauncherActivity"
 
@@ -10020,7 +10027,7 @@
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1961
+    .line 1960
     const-string/jumbo v0, " setSTKApp - list not ready -return "
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getSystemTimeInSecond(Ljava/lang/String;)V
@@ -10034,10 +10041,10 @@
 
     monitor-exit p0
 
-    .line 1962
+    .line 1961
     return-void
 
-    .line 1964
+    .line 1963
     :cond_1
     :try_start_3
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
@@ -10050,7 +10057,7 @@
 
     move-result v0
 
-    .line 1965
+    .line 1964
     const-string/jumbo v1, "LauncherActivity"
 
     new-instance v2, Ljava/lang/StringBuilder;
@@ -10073,7 +10080,7 @@
 
     invoke-static {v1, v2}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1967
+    .line 1966
     if-eq v0, v5, :cond_2
 
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
@@ -10086,7 +10093,7 @@
 
     if-le v0, v1, :cond_3
 
-    .line 1968
+    .line 1967
     :cond_2
     const-string/jumbo v0, "LauncherActivity"
 
@@ -10094,7 +10101,7 @@
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1969
+    .line 1968
     const-string/jumbo v0, " setSTKApp - tools folder postion is wrong -return "
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->getSystemTimeInSecond(Ljava/lang/String;)V
@@ -10108,10 +10115,10 @@
 
     monitor-exit p0
 
-    .line 1970
+    .line 1969
     return-void
 
-    .line 1972
+    .line 1971
     :cond_3
     :try_start_5
     const-string/jumbo v1, "LauncherActivity"
@@ -10120,7 +10127,7 @@
 
     invoke-static {v1, v2}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1973
+    .line 1972
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
     invoke-virtual {v1, v0}, Ljava/util/ArrayList;->get(I)Ljava/lang/Object;
@@ -10131,7 +10138,7 @@
 
     if-eqz v1, :cond_6
 
-    .line 1974
+    .line 1973
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mAppsAndFolderList:Ljava/util/ArrayList;
 
     invoke-virtual {v1, v0}, Ljava/util/ArrayList;->get(I)Ljava/lang/Object;
@@ -10140,51 +10147,51 @@
 
     check-cast v0, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;
 
-    .line 1979
+    .line 1978
     const-string/jumbo v8, "com.android.stk"
     :try_end_5
     .catchall {:try_start_5 .. :try_end_5} :catchall_0
 
-    .line 1983
+    .line 1982
     :try_start_6
     new-instance v1, Landroid/content/Intent;
 
     invoke-direct {v1}, Landroid/content/Intent;-><init>()V
 
-    .line 1984
+    .line 1983
     const-string/jumbo v2, "android.intent.category.LAUNCHER"
 
     invoke-virtual {v1, v2}, Landroid/content/Intent;->addCategory(Ljava/lang/String;)Landroid/content/Intent;
 
-    .line 1985
+    .line 1984
     const-string/jumbo v2, "android.intent.action.MAIN"
 
     invoke-virtual {v1, v2}, Landroid/content/Intent;->setAction(Ljava/lang/String;)Landroid/content/Intent;
 
-    .line 1986
+    .line 1985
     const-string/jumbo v2, "com.android.stk"
 
     invoke-virtual {v1, v2}, Landroid/content/Intent;->setPackage(Ljava/lang/String;)Landroid/content/Intent;
 
-    .line 1987
+    .line 1986
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
-    .line 1988
+    .line 1987
     const/4 v3, 0x0
 
-    .line 1987
+    .line 1986
     invoke-virtual {v2, v1, v3}, Landroid/content/pm/PackageManager;->queryIntentActivities(Landroid/content/Intent;I)Ljava/util/List;
 
     move-result-object v9
 
-    .line 1989
+    .line 1988
     invoke-interface {v9}, Ljava/util/List;->size()I
 
     move-result v1
 
     if-lez v1, :cond_9
 
-    .line 1991
+    .line 1990
     const-string/jumbo v1, "LauncherActivity"
 
     new-instance v2, Ljava/lang/StringBuilder;
@@ -10213,7 +10220,7 @@
 
     move v5, v4
 
-    .line 1992
+    .line 1991
     :goto_0
     invoke-interface {v9}, Ljava/util/List;->size()I
 
@@ -10221,7 +10228,7 @@
 
     if-ge v5, v1, :cond_9
 
-    .line 1993
+    .line 1992
     const-string/jumbo v1, "LauncherActivity"
 
     new-instance v2, Ljava/lang/StringBuilder;
@@ -10244,7 +10251,7 @@
 
     invoke-static {v1, v2}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1994
+    .line 1993
     invoke-interface {v9, v5}, Ljava/util/List;->get(I)Ljava/lang/Object;
 
     move-result-object v1
@@ -10255,7 +10262,7 @@
 
     iget-object v1, v1, Landroid/content/pm/ActivityInfo;->name:Ljava/lang/String;
 
-    .line 1995
+    .line 1994
     new-instance v2, Ljava/lang/StringBuilder;
 
     invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
@@ -10274,7 +10281,7 @@
 
     move-result-object v1
 
-    .line 1996
+    .line 1995
     const-string/jumbo v2, "LauncherActivity"
 
     new-instance v3, Ljava/lang/StringBuilder;
@@ -10297,42 +10304,42 @@
 
     invoke-static {v2, v3}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 1997
+    .line 1996
     if-eqz v1, :cond_5
 
-    .line 1999
+    .line 1998
     invoke-virtual {v1}, Ljava/lang/String;->trim()Ljava/lang/String;
 
     move-result-object v2
 
-    .line 1998
+    .line 1997
     invoke-static {v2}, Landroid/content/ComponentName;->unflattenFromString(Ljava/lang/String;)Landroid/content/ComponentName;
 
     move-result-object v2
 
-    .line 2000
+    .line 1999
     invoke-virtual {v7, v1}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setPackageAndClassName(Ljava/lang/String;)V
 
-    .line 2002
+    .line 2001
     invoke-virtual {p0, v8}, Lcom/sonim/borqs/launcher/LauncherActivity;->getPkgIconForTheme(Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v1
 
-    .line 2003
+    .line 2002
     if-nez v1, :cond_4
 
-    .line 2004
+    .line 2003
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
     invoke-virtual {v1, v2}, Landroid/content/pm/PackageManager;->getActivityIcon(Landroid/content/ComponentName;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v1
 
-    .line 2006
+    .line 2005
     :cond_4
     invoke-virtual {v7, v1}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setIcon(Landroid/graphics/drawable/Drawable;)V
 
-    .line 2007
+    .line 2006
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
     const/4 v3, 0x0
@@ -10341,10 +10348,10 @@
 
     move-result-object v1
 
-    .line 2008
+    .line 2007
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
-    .line 2007
+    .line 2006
     invoke-virtual {v1, v2}, Landroid/content/pm/ActivityInfo;->loadLabel(Landroid/content/pm/PackageManager;)Ljava/lang/CharSequence;
 
     move-result-object v1
@@ -10353,7 +10360,7 @@
 
     invoke-virtual {v7, v1}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setName(Ljava/lang/String;)V
 
-    .line 2011
+    .line 2010
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPackageManager:Landroid/content/pm/PackageManager;
 
     const-string/jumbo v2, "com.android.stk"
@@ -10364,12 +10371,12 @@
 
     invoke-virtual {v7, v1}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setIntent(Landroid/content/Intent;)V
 
-    .line 2012
+    .line 2011
     const-string/jumbo v1, "com.android.stk"
 
     invoke-virtual {v7, v1}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->setPackageName(Ljava/lang/String;)V
 
-    .line 2016
+    .line 2015
     :cond_5
     new-instance v1, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;
 
@@ -10379,7 +10386,7 @@
 
     move v2, v4
 
-    .line 2021
+    .line 2020
     :goto_1
     invoke-static {v0}, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;->-get0(Lcom/sonim/borqs/launcher/LauncherActivity$Folder;)Ljava/util/ArrayList;
 
@@ -10391,7 +10398,7 @@
 
     if-ge v3, v1, :cond_7
 
-    .line 2022
+    .line 2021
     invoke-static {v0}, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;->-get0(Lcom/sonim/borqs/launcher/LauncherActivity$Folder;)Ljava/util/ArrayList;
 
     move-result-object v1
@@ -10402,24 +10409,24 @@
 
     check-cast v1, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;
 
-    .line 2023
+    .line 2022
     invoke-virtual {v1}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->getPackageAndClassName()Ljava/lang/String;
 
     move-result-object v1
 
-    .line 2024
+    .line 2023
     invoke-virtual {v7}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->getPackageAndClassName()Ljava/lang/String;
 
     move-result-object v10
 
-    .line 2023
+    .line 2022
     invoke-virtual {v1, v10}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
 
     move-result v1
 
     if-eqz v1, :cond_b
 
-    .line 2025
+    .line 2024
     const-string/jumbo v1, "LauncherActivity"
 
     new-instance v2, Ljava/lang/StringBuilder;
@@ -10432,12 +10439,12 @@
 
     move-result-object v2
 
-    .line 2027
+    .line 2026
     invoke-virtual {v7}, Lcom/sonim/borqs/launcher/LauncherActivity$Apps;->getPackageAndClassName()Ljava/lang/String;
 
     move-result-object v10
 
-    .line 2025
+    .line 2024
     invoke-virtual {v2, v10}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v2
@@ -10451,10 +10458,10 @@
     .catch Landroid/content/pm/PackageManager$NameNotFoundException; {:try_start_6 .. :try_end_6} :catch_0
     .catchall {:try_start_6 .. :try_end_6} :catchall_0
 
-    .line 2029
+    .line 2028
     const/4 v1, 0x1
 
-    .line 2021
+    .line 2020
     :goto_2
     add-int/lit8 v2, v3, 0x1
 
@@ -10464,7 +10471,7 @@
 
     goto :goto_1
 
-    .line 1976
+    .line 1975
     :cond_6
     :try_start_7
     const-string/jumbo v0, " setSTKApp - tool-postion is not instance of folder-return "
@@ -10480,21 +10487,21 @@
 
     monitor-exit p0
 
-    .line 1977
+    .line 1976
     return-void
 
-    .line 2033
+    .line 2032
     :cond_7
     if-nez v2, :cond_8
 
-    .line 2034
+    .line 2033
     :try_start_9
     invoke-virtual {v0, v7}, Lcom/sonim/borqs/launcher/LauncherActivity$Folder;->setAppListInsideFolder(Lcom/sonim/borqs/launcher/LauncherActivity$Apps;)V
     :try_end_9
     .catch Landroid/content/pm/PackageManager$NameNotFoundException; {:try_start_9 .. :try_end_9} :catch_0
     .catchall {:try_start_9 .. :try_end_9} :catchall_0
 
-    .line 1992
+    .line 1991
     :cond_8
     add-int/lit8 v1, v5, 0x1
 
@@ -10502,15 +10509,15 @@
 
     goto/16 :goto_0
 
-    .line 2038
+    .line 2037
     :catch_0
     move-exception v0
 
-    .line 2039
+    .line 2038
     :try_start_a
     invoke-virtual {v0}, Landroid/content/pm/PackageManager$NameNotFoundException;->printStackTrace()V
 
-    .line 2040
+    .line 2039
     const-string/jumbo v1, "LauncherActivity"
 
     new-instance v2, Ljava/lang/StringBuilder;
@@ -10542,10 +10549,10 @@
 
     monitor-exit p0
 
-    .line 2042
+    .line 2041
     return-void
 
-    .line 2044
+    .line 2043
     :cond_9
     :try_start_c
     const-string/jumbo v0, " setSTKApp - end "
@@ -10562,10 +10569,10 @@
 
     monitor-exit p0
 
-    .line 2047
+    .line 2046
     return-void
 
-    .line 1949
+    .line 1948
     :catchall_0
     move-exception v0
 
@@ -10593,10 +10600,10 @@
     .locals 0
 
     .prologue
-    .line 1808
+    .line 1807
     iput-object p1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mShortcutUpdateListener:Lcom/sonim/borqs/launcher/LauncherActivity$ShortcutUpdateListener;
 
-    .line 1809
+    .line 1808
     return-void
 .end method
 
@@ -10604,10 +10611,10 @@
     .locals 0
 
     .prologue
-    .line 2059
+    .line 2058
     iput-object p1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mThemeChangedListener:Lcom/sonim/borqs/launcher/LauncherActivity$ThemeChangedListener;
 
-    .line 2060
+    .line 2059
     return-void
 .end method
 
@@ -10617,13 +10624,13 @@
     .prologue
     const/4 v0, 0x1
 
-    .line 2418
+    .line 2417
     iput-boolean v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsClingVisible:Z
 
-    .line 2419
+    .line 2418
     iput-boolean v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mIsFirstPageCling:Z
 
-    .line 2422
+    .line 2421
     const/high16 v0, 0x7f0e0000
 
     invoke-virtual {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->findViewById(I)Landroid/view/View;
@@ -10632,27 +10639,27 @@
 
     check-cast v0, Landroid/widget/RelativeLayout;
 
-    .line 2423
+    .line 2422
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mInflater:Landroid/view/LayoutInflater;
 
     const v2, 0x7f030002
 
-    .line 2424
+    .line 2423
     const/4 v3, 0x0
 
-    .line 2423
+    .line 2422
     invoke-virtual {v1, v2, v0, v3}, Landroid/view/LayoutInflater;->inflate(ILandroid/view/ViewGroup;Z)Landroid/view/View;
 
     move-result-object v1
 
     iput-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mCustomCling:Landroid/view/View;
 
-    .line 2426
+    .line 2425
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mCustomCling:Landroid/view/View;
 
     invoke-virtual {v0, v1}, Landroid/widget/RelativeLayout;->addView(Landroid/view/View;)V
 
-    .line 2427
+    .line 2426
     return-void
 .end method
 
@@ -10660,7 +10667,7 @@
     .locals 3
 
     .prologue
-    .line 2406
+    .line 2405
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mSharedPrefs:Landroid/content/SharedPreferences;
 
     const-string/jumbo v1, "cling.workspace.cling"
@@ -10673,20 +10680,20 @@
 
     if-nez v0, :cond_0
 
-    .line 2407
+    .line 2406
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->initUserPrefService()V
 
-    .line 2408
+    .line 2407
     invoke-virtual {p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->showFTU()V
 
-    .line 2409
+    .line 2408
     const-string/jumbo v0, "LauncherActivity"
 
     const-string/jumbo v1, "FTU called "
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 2412
+    .line 2411
     :cond_0
     return-void
 .end method
@@ -10727,33 +10734,33 @@
     if-eqz p1, :cond_0
 
     .line 1394
-    const/high16 v0, 0x10200000
+    const/high16 v0, 0x10000000
 
     :try_start_0
     invoke-virtual {p1, v0}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
 
-    .line 1396
+    .line 1395
     invoke-virtual {p0, p1}, Lcom/sonim/borqs/launcher/LauncherActivity;->startActivity(Landroid/content/Intent;)V
     :try_end_0
     .catch Landroid/content/ActivityNotFoundException; {:try_start_0 .. :try_end_0} :catch_1
     .catch Ljava/lang/SecurityException; {:try_start_0 .. :try_end_0} :catch_0
 
-    .line 1413
+    .line 1412
     :goto_0
     return-void
 
-    .line 1400
+    .line 1399
     :catch_0
     move-exception v0
 
-    .line 1401
+    .line 1400
     invoke-static {p0, v2, v1}, Landroid/widget/Toast;->makeText(Landroid/content/Context;II)Landroid/widget/Toast;
 
     move-result-object v1
 
     invoke-virtual {v1}, Landroid/widget/Toast;->show()V
 
-    .line 1403
+    .line 1402
     const-string/jumbo v1, "LauncherActivity"
 
     new-instance v2, Ljava/lang/StringBuilder;
@@ -10770,26 +10777,26 @@
 
     move-result-object v2
 
-    .line 1405
+    .line 1404
     const-string/jumbo v3, ". Make sure to create a MAIN intent-filter for the corresponding activity "
 
-    .line 1403
+    .line 1402
+    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v2
+
+    .line 1405
+    const-string/jumbo v3, "or use the exported attribute for this activity. "
+
+    .line 1402
     invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v2
 
     .line 1406
-    const-string/jumbo v3, "or use the exported attribute for this activity. "
-
-    .line 1403
-    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v2
-
-    .line 1407
     const-string/jumbo v3, " intent="
 
-    .line 1403
+    .line 1402
     invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v2
@@ -10806,11 +10813,11 @@
 
     goto :goto_0
 
-    .line 1397
+    .line 1396
     :catch_1
     move-exception v0
 
-    .line 1398
+    .line 1397
     invoke-static {p0, v2, v1}, Landroid/widget/Toast;->makeText(Landroid/content/Context;II)Landroid/widget/Toast;
 
     move-result-object v0
@@ -10819,7 +10826,7 @@
 
     goto :goto_0
 
-    .line 1410
+    .line 1409
     :cond_0
     invoke-static {p0, v2, v1}, Landroid/widget/Toast;->makeText(Landroid/content/Context;II)Landroid/widget/Toast;
 
@@ -10834,12 +10841,12 @@
     .locals 1
 
     .prologue
-    .line 1566
+    .line 1565
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADCenterPkgName:Ljava/lang/String;
 
     invoke-direct {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->startAction(Ljava/lang/String;)V
 
-    .line 1567
+    .line 1566
     return-void
 .end method
 
@@ -10847,12 +10854,12 @@
     .locals 1
 
     .prologue
-    .line 1562
+    .line 1561
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADDownPkgName:Ljava/lang/String;
 
     invoke-direct {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->startAction(Ljava/lang/String;)V
 
-    .line 1563
+    .line 1562
     return-void
 .end method
 
@@ -10862,7 +10869,7 @@
     .prologue
     const/4 v2, 0x1
 
-    .line 1583
+    .line 1582
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPager:Landroid/support/v4/view/ViewPager;
 
     invoke-virtual {v0}, Landroid/support/v4/view/ViewPager;->getCurrentItem()I
@@ -10871,18 +10878,18 @@
 
     if-nez v0, :cond_0
 
-    .line 1584
+    .line 1583
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPager:Landroid/support/v4/view/ViewPager;
 
     const/4 v1, 0x2
 
     invoke-virtual {v0, v1, v2}, Landroid/support/v4/view/ViewPager;->setCurrentItem(IZ)V
 
-    .line 1588
+    .line 1587
     :goto_0
     return-void
 
-    .line 1586
+    .line 1585
     :cond_0
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPager:Landroid/support/v4/view/ViewPager;
 
@@ -10905,7 +10912,7 @@
     .prologue
     const/4 v2, 0x1
 
-    .line 1592
+    .line 1591
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPager:Landroid/support/v4/view/ViewPager;
 
     invoke-virtual {v0}, Landroid/support/v4/view/ViewPager;->getCurrentItem()I
@@ -10916,18 +10923,18 @@
 
     if-ne v0, v1, :cond_0
 
-    .line 1593
+    .line 1592
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPager:Landroid/support/v4/view/ViewPager;
 
     const/4 v1, 0x0
 
     invoke-virtual {v0, v1, v2}, Landroid/support/v4/view/ViewPager;->setCurrentItem(IZ)V
 
-    .line 1597
+    .line 1596
     :goto_0
     return-void
 
-    .line 1595
+    .line 1594
     :cond_0
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mPager:Landroid/support/v4/view/ViewPager;
 
@@ -10948,12 +10955,12 @@
     .locals 1
 
     .prologue
-    .line 1558
+    .line 1557
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity;->mDPADUpPkgName:Ljava/lang/String;
 
     invoke-direct {p0, v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->startAction(Ljava/lang/String;)V
 
-    .line 1559
+    .line 1558
     return-void
 .end method
 

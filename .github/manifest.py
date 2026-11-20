@@ -27,8 +27,6 @@ import re
 import subprocess
 import sys
 
-# Release names whose sources aren't in a directory of the same name.
-DIRS = {"AppDrawer": "launcher"}
 NOTES = 10
 # Files in an app's directory that aren't built into its APK (SPEC.md,
 # AGENTS.md, mockups): a commit touching only these isn't what's new in it.
@@ -76,7 +74,7 @@ def note(app, label, sha, time, subject):
 
 
 def notes(app, label):
-    directory = DIRS.get(app, app)
+    directory = app
     if not os.path.isdir(directory):
         return []
     log = subprocess.run(

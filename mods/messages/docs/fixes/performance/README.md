@@ -71,6 +71,6 @@ fixes 2 and 4 additionally remove one MMSC round trip before every notification 
 bring-up for MMS arriving within 5 s of each other.
 
 ## Verification
-`tools/testing/mms_suite.sh` 8/8 and `tools/rcs/device_suite.sh` 13/13 on the build with all of
+`tools/testing/mms_suite.sh` 8/8 and the historical Argon RCS suite 13/13 on the build with all of
 the above; one notification (sound) per MMS checked in logcat (`updateNotification: new message`
 once per message).

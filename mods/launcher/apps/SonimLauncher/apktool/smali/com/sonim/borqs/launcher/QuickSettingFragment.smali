@@ -26,6 +26,8 @@
 
 
 # instance fields
+# FEAT(tray): pending or active Quick Settings for this resume
+.field private mWaveQuickSettings:Lcom/sonim/borqs/launcher/WaveQuickSettings;
 .field private final EXTRA_AVAILABLE:Ljava/lang/String;
 
 .field private final EXTRA_ENABLED:Ljava/lang/String;
@@ -4440,7 +4442,7 @@
 .end method
 
 .method public onPause()V
-    .locals 1
+    .locals 2
 
     .prologue
     .line 232
@@ -4466,6 +4468,21 @@
 
     .line 236
     :cond_0
+    # FEAT(tray): cancel pending startup, or fall through to tear down active listeners
+    iget-object v0, p0, Lcom/sonim/borqs/launcher/QuickSettingFragment;->mWaveQuickSettings:Lcom/sonim/borqs/launcher/WaveQuickSettings;
+
+    const/4 v1, 0x0
+
+    iput-object v1, p0, Lcom/sonim/borqs/launcher/QuickSettingFragment;->mWaveQuickSettings:Lcom/sonim/borqs/launcher/WaveQuickSettings;
+
+    if-eqz v0, :wave_settings_paused
+
+    invoke-virtual {v0}, Lcom/sonim/borqs/launcher/WaveQuickSettings;->stop()Z
+
+    move-result v0
+
+    if-eqz v0, :wave_settings_paused
+
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/QuickSettingFragment;->unregisterReceivers()V
 
     .line 237
@@ -4478,6 +4495,7 @@
     invoke-virtual {v0, p0}, Lcom/sonim/borqs/launcher/LauncherActivity;->removeProfileUpdateListener(Lcom/sonim/borqs/launcher/LauncherActivity$OnProfileChangeListener;)V
 
     .line 238
+    :wave_settings_paused
     return-void
 .end method
 
@@ -5182,6 +5200,20 @@
     const/4 v0, 0x0
 
     iput-boolean v0, p0, Lcom/sonim/borqs/launcher/QuickSettingFragment;->mHasUserInput:Z
+
+    # FEAT(tray): only initialize Quick Settings when its page is shown
+    new-instance v0, Lcom/sonim/borqs/launcher/WaveQuickSettings;
+
+    invoke-direct {v0, p0}, Lcom/sonim/borqs/launcher/WaveQuickSettings;-><init>(Lcom/sonim/borqs/launcher/QuickSettingFragment;)V
+
+    iput-object v0, p0, Lcom/sonim/borqs/launcher/QuickSettingFragment;->mWaveQuickSettings:Lcom/sonim/borqs/launcher/WaveQuickSettings;
+
+    return-void
+.end method
+
+# FEAT(tray): the stock Quick Settings startup, called by WaveQuickSettings
+.method waveStartSettings()V
+    .locals 2
 
     .line 204
     invoke-direct {p0}, Lcom/sonim/borqs/launcher/QuickSettingFragment;->registerReceivers()V

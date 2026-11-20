@@ -1,4 +1,4 @@
-# Code map: stock messaging stack (XP3800, firmware 3A.0.0-01-8.1.0-11.17.00)
+# Code map: stock messaging stack (XP3800, firmware 3A.0.1-02-8.1.0-11.20.00)
 
 Read the Java in `decompiled/<App>/sources/` (jadx; some methods fail to decompile; rerun jadx
 with `--show-bad-code` or read the smali). Edit the smali in `apps/<App>/apktool/`.
@@ -13,7 +13,7 @@ with `--show-bad-code` or read the smali). Edit the smali in `apps/<App>/apktool
 | Conversation list | `ui.ConversationList`, `ConversationListAdapter/Item`, `NotificationConversationList` (China-only filter, disabled) |
 | Conversation view / compose | `ui.ComposeMessageActivity` (~7k lines), `MessageListAdapter`, `MessageItem`, `MessageListItem`, `data.WorkingMessage` |
 | Data model / caches | `data.Conversation` (+ in-memory `Cache` keyed by thread id / recipients), `data.Contact`, `ContactList`, `util.DraftCache`, `util.Recycler` (message limits) |
-| Misc | `ui.MessageUtils` (grab-bag helpers), `ui.MessagingPreferenceActivity` (settings), `MmsConfig`, `widget.*`, `rcs.*` (stock RCS stubs, unused; `RcsMessageStatusService` now hosts our engine) |
+| Misc | `ui.MessageUtils` (grab-bag helpers), `ui.MessagingPreferenceActivity` (settings), `MmsConfig`, `widget.*`, `rcs.*` (unused stock RCS stubs) |
 
 Config booleans in `apktool/res/values/bools.xml` (read-only for now; resources can't be rebuilt yet).
 
@@ -40,16 +40,12 @@ Config booleans in `apktool/res/values/bools.xml` (read-only for now; resources 
 
 | File (`apps/BMms/java/com/android/mms/…`) | What |
 |---|---|
-| `wave/WaveInit` (`MmsApp.onCreate`), `wave/WaveHooks` | app start: receipt prefs, held-MMS sweep, RCS start |
+| `wave/WaveInit` (`MmsApp.onCreate`) | app start: receipt prefs, held-MMS sweep |
 | `wave/Wave` | dev switches (`debug.wave.*` props) |
 | `wave/WaveConfig` (`MmsConfig`) | recipient limit |
 | `wave/WaveSelf` (`MessageUtils.getLocalNumber`, persist call sites) | own number, group thread filing |
 | `transaction/WaveMmsReceive` (`PushReceiver`, `TransactionService`, ack composers) | held placeholder, reveal/sweep, Report-Allowed, MMS test network |
 | `transaction/WavePerf` (`MessagingNotification`, `NotificationTransaction`, `TransactionService`, `PushReceiver`, `DownloadManager`) | receive latency |
-| `wave/RcsHost` (`RcsMessageStatusService`, `MessageUtils.getActivatedIccCardCount`) | RCS engine host, platform, config import |
-| `wave/WaveRcsSettings` (`MessagingPreferenceActivity`, `MessagingReportsPreferenceActivity`) | RCS settings screen |
-| `transaction/WaveRcsStore`, `transaction/WaveRcsSend` (`SmsSingleRecipientSender`, `SendTransaction`, `SmsReceiverService`) | RCS storage and routing |
-| `org/wave/rcs/…` | RCS engine (pure Java, docs/rcs/engine.md) |
 | `ui/WaveComposePerf`, `ui/WaveHistory`, `ui/WaveStreetAddress`, `ui/WaveTextMms` | Conversation load, lightweight address links, inline text MMS |
 
 TelephonyProvider: `apps/TelephonyProvider/java/…/ThreadIntegrity` (docs/fixes/sms-orphaned-threads)

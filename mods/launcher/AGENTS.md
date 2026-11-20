@@ -9,8 +9,10 @@ Read [the shared constraints](../AGENTS.md) for building, signing and testing.
 ## Code conventions
 * Small smali hooks + Java. Every smali edit is marked `# FEAT(tray)` and made by
   `tools/patches/tray.py` (`smalipatch.patch`: each anchor must match exactly once). The script
-  was applied once to the stock project; the patched smali is committed. To redo it:
-  `git restore --source=stock-launcher -- apps/SonimLauncher/apktool && python3 tools/patches/tray.py`.
+  was applied to the stock project; the patched smali is committed. To redo it, decode the pinned
+  `../firmware/system/priv-app/SonimLauncher/SonimLauncher.apk` with `apktool d -r` in a temporary
+  directory, replace `apps/SonimLauncher/apktool/smali` with its `smali/`, then run
+  `python3 tools/patches/tray.py`. The `stock-launcher` tag is the older 11.17.00 baseline.
 * Java needs private stock members through package-private `wave*` bridges appended to
   `LauncherActivity.smali` (declared for javac in `stubs/`).
 * Stock classes replaced wholesale by Java have their smali deleted (dexcheck enforces it):
@@ -21,5 +23,4 @@ Read [the shared constraints](../AGENTS.md) for building, signing and testing.
 * Commits: author thooton; never name Claude/Anthropic or add AI attribution.
 
 * The tray's arrangement lives in `/data/data/com.sonim.borqs.launcher/files/wave_tray.txt`
-  (docs/tray.md). The old `com.custom.appdrawer` app stays installed (it's in the System folder):
-  the PTT/convenience key that opened it can't open the stock tray (no new activities allowed).
+  (docs/tray.md). The PTT/convenience key cannot open the stock tray directly.

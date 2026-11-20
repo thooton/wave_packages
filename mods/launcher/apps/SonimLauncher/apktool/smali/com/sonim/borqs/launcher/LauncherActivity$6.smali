@@ -26,7 +26,7 @@
     .line 1
     iput-object p1, p0, Lcom/sonim/borqs/launcher/LauncherActivity$6;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
-    .line 3057
+    .line 3056
     invoke-direct {p0, p2}, Landroid/database/ContentObserver;-><init>(Landroid/os/Handler;)V
 
     .line 1
@@ -39,11 +39,11 @@
     .locals 1
 
     .prologue
-    .line 3060
+    .line 3059
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity$6;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     invoke-static {v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->-wrap5(Lcom/sonim/borqs/launcher/LauncherActivity;)V
 
-    .line 3061
+    .line 3060
     return-void
 .end method

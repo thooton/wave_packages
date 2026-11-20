@@ -26,7 +26,7 @@
     .line 1
     iput-object p1, p0, Lcom/sonim/borqs/launcher/NotificationHelper$1;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
-    .line 139
+    .line 142
     invoke-direct {p0}, Lcom/borqs/eventnotifier/EventCallback;-><init>()V
 
     .line 1
@@ -44,7 +44,7 @@
     .end annotation
 
     .prologue
-    .line 143
+    .line 146
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$1;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     new-instance v1, Ljava/lang/StringBuilder;
@@ -71,48 +71,48 @@
 
     move-result-object v1
 
-    .line 144
+    .line 147
     invoke-virtual {p1}, Lcom/borqs/easervice/EventInfo;->getCount()I
 
     move-result v2
 
-    .line 143
+    .line 146
     invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
 
     move-result-object v1
 
-    .line 144
+    .line 147
     const-string/jumbo v2, ", "
 
-    .line 143
+    .line 146
     invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v1
 
-    .line 144
+    .line 147
     invoke-virtual {p1}, Lcom/borqs/easervice/EventInfo;->getText()Ljava/lang/String;
 
     move-result-object v2
 
-    .line 143
+    .line 146
     invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v1
 
-    .line 144
+    .line 147
     const-string/jumbo v2, ", "
 
-    .line 143
+    .line 146
     invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v1
 
-    .line 145
+    .line 148
     invoke-virtual {p1}, Lcom/borqs/easervice/EventInfo;->getEventType()I
 
     move-result v2
 
-    .line 143
+    .line 146
     invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
 
     move-result-object v1
@@ -123,18 +123,18 @@
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/NotificationHelper;->-wrap1(Lcom/sonim/borqs/launcher/NotificationHelper;Ljava/lang/String;)V
 
-    .line 147
+    .line 150
     invoke-virtual {p1}, Lcom/borqs/easervice/EventInfo;->getEventType()I
 
     move-result v0
 
     sparse-switch v0, :sswitch_data_0
 
-    .line 168
+    .line 171
     :goto_0
     return-void
 
-    .line 151
+    .line 154
     :sswitch_0
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$1;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
@@ -142,7 +142,7 @@
 
     move-result v2
 
-    .line 152
+    .line 155
     iget-object v1, p0, Lcom/sonim/borqs/launcher/NotificationHelper$1;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     invoke-static {v1, p1}, Lcom/sonim/borqs/launcher/NotificationHelper;->-wrap0(Lcom/sonim/borqs/launcher/NotificationHelper;Lcom/borqs/easervice/EventInfo;)Ljava/lang/String;
@@ -157,19 +157,19 @@
 
     move-result-object v5
 
-    .line 153
+    .line 156
     invoke-virtual {p1}, Lcom/borqs/easervice/EventInfo;->getLastEventTime()J
 
     move-result-wide v6
 
-    .line 151
+    .line 154
     const/16 v1, 0x3ea
 
     invoke-static/range {v0 .. v7}, Lcom/sonim/borqs/launcher/NotificationHelper;->-wrap2(Lcom/sonim/borqs/launcher/NotificationHelper;IILjava/lang/String;Ljava/lang/String;Landroid/app/PendingIntent;J)V
 
     goto :goto_0
 
-    .line 157
+    .line 160
     :sswitch_1
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$1;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
@@ -177,7 +177,7 @@
 
     move-result v2
 
-    .line 158
+    .line 161
     invoke-virtual {p1}, Lcom/borqs/easervice/EventInfo;->getTitleTxt()Ljava/lang/String;
 
     move-result-object v3
@@ -190,19 +190,19 @@
 
     move-result-object v5
 
-    .line 159
+    .line 162
     invoke-virtual {p1}, Lcom/borqs/easervice/EventInfo;->getLastEventTime()J
 
     move-result-wide v6
 
-    .line 157
+    .line 160
     const/16 v1, 0x3ec
 
     invoke-static/range {v0 .. v7}, Lcom/sonim/borqs/launcher/NotificationHelper;->-wrap2(Lcom/sonim/borqs/launcher/NotificationHelper;IILjava/lang/String;Ljava/lang/String;Landroid/app/PendingIntent;J)V
 
     goto :goto_0
 
-    .line 162
+    .line 165
     :sswitch_2
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$1;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
@@ -210,7 +210,7 @@
 
     goto :goto_0
 
-    .line 147
+    .line 150
     :sswitch_data_0
     .sparse-switch
         0x4 -> :sswitch_1

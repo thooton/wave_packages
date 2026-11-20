@@ -26,7 +26,7 @@
     .line 1
     iput-object p1, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
-    .line 2997
+    .line 2996
     invoke-direct {p0}, Landroid/content/BroadcastReceiver;-><init>()V
 
     .line 1
@@ -41,12 +41,12 @@
     .prologue
     const/4 v4, 0x0
 
-    .line 3000
+    .line 2999
     invoke-virtual {p2}, Landroid/content/Intent;->getAction()Ljava/lang/String;
 
     move-result-object v0
 
-    .line 3001
+    .line 3000
     if-eqz v0, :cond_2
 
     const-string/jumbo v1, "com.sonim.borqs.KEY_SHORTCUT"
@@ -57,15 +57,15 @@
 
     if-eqz v0, :cond_2
 
-    .line 3006
+    .line 3005
     const-string/jumbo v0, "short_cut_change"
 
-    .line 3005
+    .line 3004
     invoke-virtual {p2, v0}, Landroid/content/Intent;->getStringExtra(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 
-    .line 3007
+    .line 3006
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     const v2, 0x7f0b0023
@@ -80,7 +80,7 @@
 
     if-eqz v1, :cond_0
 
-    .line 3008
+    .line 3007
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
@@ -99,7 +99,7 @@
 
     invoke-static {v1, v2}, Lcom/sonim/borqs/launcher/LauncherActivity;->-set4(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)Ljava/lang/String;
 
-    .line 3009
+    .line 3008
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
@@ -112,7 +112,7 @@
 
     invoke-static {v1, v2, v3}, Lcom/sonim/borqs/launcher/LauncherActivity;->-wrap6(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;I)V
 
-    .line 3014
+    .line 3013
     :cond_0
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
@@ -128,7 +128,7 @@
 
     if-eqz v1, :cond_1
 
-    .line 3015
+    .line 3014
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
@@ -147,7 +147,7 @@
 
     invoke-static {v1, v2}, Lcom/sonim/borqs/launcher/LauncherActivity;->-set3(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)Ljava/lang/String;
 
-    .line 3017
+    .line 3016
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     iget-object v2, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
@@ -160,7 +160,7 @@
 
     invoke-static {v1, v2, v3}, Lcom/sonim/borqs/launcher/LauncherActivity;->-wrap6(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;I)V
 
-    .line 3022
+    .line 3021
     :cond_1
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
@@ -176,7 +176,7 @@
 
     if-eqz v0, :cond_2
 
-    .line 3023
+    .line 3022
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
@@ -195,7 +195,7 @@
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/LauncherActivity;->-set2(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)Ljava/lang/String;
 
-    .line 3025
+    .line 3024
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity$5;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
@@ -208,7 +208,7 @@
 
     invoke-static {v0, v1, v2}, Lcom/sonim/borqs/launcher/LauncherActivity;->-wrap6(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;I)V
 
-    .line 3029
+    .line 3028
     :cond_2
     return-void
 .end method

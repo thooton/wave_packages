@@ -17,9 +17,6 @@ The user's rules:
 * `transaction/PushReceiver.smali`: `findThreadId` returns -1 for incoming M-Delivery.ind and
   M-Read-Orig.ind, which makes the stock code drop them (it skips reports it can't match).
 
-## RCS
-`RcsConfig.Policy` defaults: no delivery/display notification requests on outgoing messages,
-delivery notifications sent for incoming ones, never "displayed", never isComposing.
 
 ## Settings
 `WaveInit.applyReceiptPolicy` (every app start) mirrors the policy into the settings so the
@@ -32,5 +29,3 @@ on first run `pref_key_mms_send_delivery_report` on (the user may switch that on
 * Injected M-Delivery.ind with the Message-ID of a sent MMS: nothing stored (no `m_type=134` row),
   no crash.
 * MMS acknowledgements carry Report-Allowed=128 (`mms_suite.sh` test 5).
-* RCS: `tools/rcs/device_suite.sh` 1b (only "delivered" IMDNs sent back) and 4b (outgoing chat
-  messages carry no Disposition-Notification header).

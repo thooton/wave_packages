@@ -26,7 +26,7 @@
     .line 1
     iput-object p1, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
-    .line 223
+    .line 232
     invoke-direct {p0}, Landroid/os/Handler;-><init>()V
 
     .line 1
@@ -37,7 +37,7 @@
     .locals 1
 
     .prologue
-    .line 291
+    .line 300
     const-string/jumbo v0, "launchIntent"
 
     invoke-virtual {p1, v0}, Landroid/os/Bundle;->getParcelable(Ljava/lang/String;)Landroid/os/Parcelable;
@@ -57,7 +57,7 @@
     .prologue
     const/4 v3, 0x0
 
-    .line 226
+    .line 235
     const-string/jumbo v0, "NotificationUpdate"
 
     new-instance v1, Ljava/lang/StringBuilder;
@@ -82,16 +82,16 @@
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 227
+    .line 236
     iget v0, p1, Landroid/os/Message;->what:I
 
     packed-switch v0, :pswitch_data_0
 
-    .line 281
+    .line 290
     :pswitch_0
     invoke-super {p0, p1}, Landroid/os/Handler;->handleMessage(Landroid/os/Message;)V
 
-    .line 285
+    .line 294
     :goto_0
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
@@ -101,10 +101,10 @@
 
     invoke-virtual {v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->loadMissedEventInfoFromNotification()V
 
-    .line 287
+    .line 296
     return-void
 
-    .line 229
+    .line 238
     :pswitch_1
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
@@ -112,7 +112,7 @@
 
     goto :goto_0
 
-    .line 233
+    .line 242
     :pswitch_2
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
@@ -120,7 +120,7 @@
 
     invoke-virtual {v0, v3}, Lcom/borqs/easervice/EventInfo;->setCount(I)V
 
-    .line 234
+    .line 243
     const-string/jumbo v0, "NotificationUpdate"
 
     new-instance v1, Ljava/lang/StringBuilder;
@@ -145,12 +145,12 @@
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 235
+    .line 244
     iget v0, p1, Landroid/os/Message;->arg1:I
 
     if-lez v0, :cond_0
 
-    .line 236
+    .line 245
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v1, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
@@ -161,7 +161,7 @@
 
     iput v1, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mEventCount:I
 
-    .line 237
+    .line 246
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mAlramCount:Lcom/borqs/easervice/EventInfo;
@@ -170,7 +170,7 @@
 
     invoke-virtual {v0, v1}, Lcom/borqs/easervice/EventInfo;->setCount(I)V
 
-    .line 238
+    .line 247
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mAlramCount:Lcom/borqs/easervice/EventInfo;
@@ -187,7 +187,7 @@
 
     invoke-virtual {v0, v1}, Lcom/borqs/easervice/EventInfo;->setTitleTxt(Ljava/lang/String;)V
 
-    .line 239
+    .line 248
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mAlramCount:Lcom/borqs/easervice/EventInfo;
@@ -204,7 +204,7 @@
 
     invoke-virtual {v0, v1}, Lcom/borqs/easervice/EventInfo;->setText(Ljava/lang/String;)V
 
-    .line 240
+    .line 249
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mAlramCount:Lcom/borqs/easervice/EventInfo;
@@ -221,7 +221,7 @@
 
     invoke-virtual {v0, v2, v3}, Lcom/borqs/easervice/EventInfo;->setLastEventTime(J)V
 
-    .line 241
+    .line 250
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mAlramCount:Lcom/borqs/easervice/EventInfo;
@@ -238,7 +238,7 @@
 
     goto/16 :goto_0
 
-    .line 243
+    .line 252
     :cond_0
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
@@ -252,7 +252,7 @@
 
     goto/16 :goto_0
 
-    .line 249
+    .line 258
     :pswitch_3
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
@@ -260,12 +260,12 @@
 
     invoke-virtual {v0, v3}, Lcom/borqs/easervice/EventInfo;->setCount(I)V
 
-    .line 250
+    .line 259
     iget v0, p1, Landroid/os/Message;->arg1:I
 
     if-lez v0, :cond_1
 
-    .line 251
+    .line 260
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v1, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
@@ -276,7 +276,7 @@
 
     iput v1, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mEventCount:I
 
-    .line 252
+    .line 261
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mCalendarCount:Lcom/borqs/easervice/EventInfo;
@@ -285,7 +285,7 @@
 
     invoke-virtual {v0, v1}, Lcom/borqs/easervice/EventInfo;->setCount(I)V
 
-    .line 253
+    .line 262
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mCalendarCount:Lcom/borqs/easervice/EventInfo;
@@ -302,7 +302,7 @@
 
     invoke-virtual {v0, v1}, Lcom/borqs/easervice/EventInfo;->setTitleTxt(Ljava/lang/String;)V
 
-    .line 254
+    .line 263
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mCalendarCount:Lcom/borqs/easervice/EventInfo;
@@ -319,7 +319,7 @@
 
     invoke-virtual {v0, v1}, Lcom/borqs/easervice/EventInfo;->setText(Ljava/lang/String;)V
 
-    .line 255
+    .line 264
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mCalendarCount:Lcom/borqs/easervice/EventInfo;
@@ -336,7 +336,7 @@
 
     invoke-virtual {v0, v2, v3}, Lcom/borqs/easervice/EventInfo;->setLastEventTime(J)V
 
-    .line 256
+    .line 265
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mCalendarCount:Lcom/borqs/easervice/EventInfo;
@@ -351,7 +351,7 @@
 
     invoke-virtual {v0, v1}, Lcom/borqs/easervice/EventInfo;->setContentIntent(Landroid/app/PendingIntent;)V
 
-    .line 262
+    .line 271
     :goto_1
     const-string/jumbo v1, "NotificationUpdate"
 
@@ -381,7 +381,7 @@
 
     goto/16 :goto_0
 
-    .line 259
+    .line 268
     :cond_1
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
@@ -395,15 +395,17 @@
 
     goto :goto_1
 
-    .line 266
+    .line 275
     :pswitch_4
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mVoicemailCount:Lcom/borqs/easervice/EventInfo;
 
-    invoke-virtual {v0, v3}, Lcom/borqs/easervice/EventInfo;->setCount(I)V
+    const/4 v1, -0x1
 
-    .line 267
+    invoke-virtual {v0, v1}, Lcom/borqs/easervice/EventInfo;->setCount(I)V
+
+    .line 276
     const-string/jumbo v0, "NotificationUpdate"
 
     new-instance v1, Ljava/lang/StringBuilder;
@@ -428,12 +430,12 @@
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 268
+    .line 277
     iget v0, p1, Landroid/os/Message;->arg1:I
 
-    if-lez v0, :cond_2
+    if-ltz v0, :cond_2
 
-    .line 269
+    .line 278
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v1, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
@@ -444,7 +446,7 @@
 
     iput v1, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mEventCount:I
 
-    .line 270
+    .line 279
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mVoicemailCount:Lcom/borqs/easervice/EventInfo;
@@ -453,7 +455,7 @@
 
     invoke-virtual {v0, v1}, Lcom/borqs/easervice/EventInfo;->setCount(I)V
 
-    .line 271
+    .line 280
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mVoicemailCount:Lcom/borqs/easervice/EventInfo;
@@ -470,7 +472,7 @@
 
     invoke-virtual {v0, v1}, Lcom/borqs/easervice/EventInfo;->setTitleTxt(Ljava/lang/String;)V
 
-    .line 272
+    .line 281
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mVoicemailCount:Lcom/borqs/easervice/EventInfo;
@@ -487,7 +489,7 @@
 
     invoke-virtual {v0, v1}, Lcom/borqs/easervice/EventInfo;->setText(Ljava/lang/String;)V
 
-    .line 273
+    .line 282
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mVoicemailCount:Lcom/borqs/easervice/EventInfo;
@@ -504,7 +506,7 @@
 
     invoke-virtual {v0, v2, v3}, Lcom/borqs/easervice/EventInfo;->setLastEventTime(J)V
 
-    .line 274
+    .line 283
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/NotificationHelper;->mVoicemailCount:Lcom/borqs/easervice/EventInfo;
@@ -519,7 +521,7 @@
 
     invoke-virtual {v0, v1}, Lcom/borqs/easervice/EventInfo;->setContentIntent(Landroid/app/PendingIntent;)V
 
-    .line 278
+    .line 287
     :goto_2
     const-string/jumbo v1, "NotificationUpdate"
 
@@ -549,7 +551,7 @@
 
     goto/16 :goto_0
 
-    .line 276
+    .line 285
     :cond_2
     iget-object v0, p0, Lcom/sonim/borqs/launcher/NotificationHelper$2;->this$0:Lcom/sonim/borqs/launcher/NotificationHelper;
 
@@ -563,7 +565,9 @@
 
     goto :goto_2
 
-    .line 227
+    .line 236
+    nop
+
     :pswitch_data_0
     .packed-switch 0x3e8
         :pswitch_1

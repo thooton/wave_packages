@@ -1,7 +1,9 @@
 # Messages Improved
 
-Modified stock Messages app (BMms) and TelephonyProvider for the Sonim XP3800 (Android 8.1),
-deployed as a Magisk module. Goal: a revamped messaging system on top of the stock apps.
+Systemless improvements to the stock Messages app, TelephonyProvider and ContactsProvider
+on the Sonim XP3800 (Android 8.1). This build is SMS/MMS-only; the original Argon checkout
+retains the custom RCS work. The experimental [SQLite overlay](../sqlite/README.md)
+is separate and not required.
 
 * How to work in this repo (build, deploy, constraints): [AGENTS.md](AGENTS.md)
 * Where things are in the stock code: [docs/code-map.md](docs/code-map.md)
@@ -10,12 +12,6 @@ deployed as a Magisk module. Goal: a revamped messaging system on top of the sto
 
 What it changes (the UI stays as it is):
 
-* **RCS chat** (GSMA Universal Profile): 1:1 and group chat, file transfer, delivery receipts sent but
-  never requested, no read receipts or typing notices. Falls back to SMS/MMS whenever RCS can't
-  deliver. Needs an imported configuration because Bell's Jibe can't provision a phone without
-  Google services. On/off, delivery reports and status under Settings > Advanced settings.
-  [Design](docs/rcs/design.md), [engine](docs/rcs/engine.md),
-  [on the phone](docs/rcs/android.md)
 * **Group MMS appears once, in the right conversation** (no 1:1 "Downloading..." first):
   [mms-receive-placeholder](docs/fixes/mms-receive-placeholder/README.md),
   [self-number](docs/fixes/self-number/README.md)

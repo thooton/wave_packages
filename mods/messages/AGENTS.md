@@ -18,12 +18,11 @@ Read [the shared constraints](../AGENTS.md) for building, signing and testing.
 * Write-ups for non-trivial fixes/features go in `docs/fixes/<name>/README.md`.
 
 ## Testing
-Full guide: docs/testing.md. Regression suites: `tools/testing/mms_suite.sh` (MMS receive),
-`tools/rcs/device_suite.sh` (RCS on the phone), `tools/rcs/run_tests.sh` (RCS engine on the host).
+Full guide: docs/testing.md. Regression suite: `tools/testing/mms_suite.sh` (MMS receive).
 * `tools/testing/push.sh` pushes `smsinject.dex` + `race.sh` to `/data/local/tmp`.
 * Fake incoming SMS (real PDU through `SMS_DELIVER`):
   `adb shell su -c 'CLASSPATH=/data/local/tmp/smsinject.dex app_process /system/bin SmsInject 22000 "text" [count] [delayMs]'`
 * `tools/testing/dumpdb.sh | tools/testing/orphans.py`: DB state and orphaned SMS.
-* Logs: `adb logcat -s Mms Wave WaveMms WaveSelf WaveRcs WavePerf MmsSmsProvider SmsProvider ThreadIntegrity`.
+* Logs: `adb logcat -s Mms Wave WaveMms WaveSelf WavePerf MmsSmsProvider SmsProvider ThreadIntegrity`.
 * Always verify on the device after deploy (build, deploy, exercise the flow, check logcat for
   `FATAL`/`ANR`). Leave the device clean: delete test messages, reset appops, remove temp files.

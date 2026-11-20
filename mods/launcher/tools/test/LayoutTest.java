@@ -125,9 +125,9 @@ public final class LayoutTest {
                 "!com.android.music/com.android.music.MusicBrowserActivity",
                 "!com.android.deskclock/com.android.deskclock.DeskClock",
                 "com.other.app/com.other.app.Main"), WaveDefaults.INBOX);
-        eq(show(r.tree), "com.todo.xp3/com.canvas.xp3.MainActivity | com.list.xp3/com.list.xp3.MainActivity | "
-                + "Media[com.android.music/com.android.music.MusicBrowserActivity] | "
-                + "Tools[com.android.deskclock/com.android.deskclock.DeskClock] | "
+        eq(show(r.tree), "com.todo.xp3/com.canvas.xp3.MainActivity | "
+                + "com.android.music/com.android.music.MusicBrowserActivity | "
+                + "Tools[com.list.xp3/com.list.xp3.MainActivity, com.android.deskclock/com.android.deskclock.DeskClock] | "
                 + "Files[nextapp.fx/nextapp.fx.ui.ExplorerActivity, nextapp.fx/nextapp.fx.ui.textedit.TextEditorActivity] | "
                 + "Applications[com.android.browser/com.android.browser.BrowserActivity, com.other.app/com.other.app.Main]",
                 "defaults on the phone");

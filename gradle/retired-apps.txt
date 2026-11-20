@@ -1,4 +1,5 @@
 # Source stays for reference; these are not Gradle projects or releases.
 hbsa
 installer
+launcher
 updater

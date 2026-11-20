@@ -90,7 +90,7 @@ def gradle_task(dir_):
 
 def build(apps, tree=ROOT):
     """Builds apps in tree and returns {dir: apk path}."""
-    gradle = [a for a in apps if a != "launcher"]
+    gradle = [a for a in apps if a != "launcher"]  # retired in new trees; keep old revisions buildable
     if gradle:
         run(["./gradlew", "--no-daemon", "-q", *[gradle_task(a) for a in gradle]], cwd=tree, timeout=3600)
     apks = {}
@@ -99,7 +99,7 @@ def build(apps, tree=ROOT):
                     tree / a / "app/build/outputs/apk/release/app-release.apk"):
             if apk.exists():
                 apks[a] = apk
-    if "launcher" in apps:
+    if "launcher" in apps and (tree / "launcher/build.sh").is_file():
         env = dict(os.environ, PATH=f"{SDK}/build-tools/{BUILD_TOOLS}:{os.environ['PATH']}")
         p = subprocess.run(["./launcher/build.sh"], cwd=tree, env=env, capture_output=True)
         if p.returncode != 0:

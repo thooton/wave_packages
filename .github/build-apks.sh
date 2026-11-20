@@ -41,7 +41,4 @@ for app in "${apps[@]}"; do
         python3 .github/release_package.py "$app" "apks/$app.apk" --check
     fi
 done
-./launcher/build.sh
-cp launcher/AppDrawer.apk apks/
-python3 .github/release_package.py launcher apks/AppDrawer.apk --check
 python3 .github/manifest.py apks "$(command -v aapt2)"

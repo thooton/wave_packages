@@ -82,6 +82,11 @@ final class WaveTray {
     private WaveTray() {
     }
 
+    /** The stock PTT-disabled shuffle must not change the arranged tray. */
+    static boolean usesStockTray() {
+        return sFallback;
+    }
+
     // ---- building -------------------------------------------------------------------------------
 
     /** Replaces LauncherActivity.setAppsAndFolderList(). */

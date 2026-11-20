@@ -15,8 +15,7 @@ Fix (`transaction/PduParserUtil.smali`, `# FIX(mms crash)`): a null bundle retur
 `TransactionService.beginMmsConnectivity` and `releaseNetworkRequest` index per-phone arrays with
 `SubscriptionManager.getPhoneId(subId)`, which is -1 without an active subscription:
 `ArrayIndexOutOfBoundsException` on the `SendTransaction` thread, app crash. Found when sending an
-MMS on the test phone; reachable for users since sending is allowed while RCS is registered without
-a SIM (see docs/rcs/android.md).
+MMS without an active subscription on the historical test build.
 
 Fix (`transaction/TransactionService.smali`, `# FIX(mms no subscription)`):
 * `releaseNetworkRequest`: returns when the phone id is invalid (nothing was requested).

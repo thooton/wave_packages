@@ -11,7 +11,7 @@ can't be changed.
 skipped).
 
 Caveat: the carrier's MMSC may still refuse very large MMS groups (Bell's AOSP carrier config lists
-20 recipients and 600 KB). RCS group chats use the server's limit instead.
+20 recipients and 600 KB).
 
 ## Verification (device)
 Compose to 12 recipients (`+1555888xxxx`), Send: no warning, thread "12 people", M-Send.req at the

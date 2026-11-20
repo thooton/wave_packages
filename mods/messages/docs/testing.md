@@ -2,7 +2,7 @@
 
 These procedures assume an authorized, recoverable test XP3800 with the
 signed module already approved for device testing. They are not suitable
-for a personal phone's normal SMS/RCS data. Build and run host checks from
+for a personal phone's normal SMS/MMS data. Build and run host checks from
 `mods/messages/` first (`tools/test.sh`); see [the shared mod guide](../../AGENTS.md)
 for packaging and the verification boundary. For simulated network tests,
 use a test phone without a SIM or carrier connection. The `debug.*` switches
@@ -53,27 +53,19 @@ reset on reboot.
 * `race.sh`, `ProviderHammer`, `dumpdb.sh`, `orphans.py`: orphaned-thread race
   (docs/fixes/sms-orphaned-threads).
 
-## RCS
-* `python3 -m tools.rcs.mock --no-otp`: mock RCS network (ACS, SIP, MSRP, FT, control API on
-  127.0.0.1:8099); host tests `tools/rcs/run_tests.sh`.
-* `tools/rcs/testnet.sh on|off`, `tools/rcs/import_config.sh`, `tools/rcs/device_status.sh`,
-  `tools/rcs/device_suite.sh`: docs/rcs/android.md.
-
 ## Helpers
 * `tools/testing/db.sh "<sql>"`: sqlite3 on a fresh copy of the phone's `mmssms.db` (root; copy in
   `build/testdb/`).
 * `tools/testing/ui_dump.sh`: visible UI nodes (text, bounds) of the current screen.
 
 ## Test numbers
-`+155500xx` (MMS suite), `+1555777000x` (RCS virtual users), `+1555888xxxx` (non-RCS / large
-groups). 9-digit numbers like `+15550010` count as short codes, which compose refuses in group
+`+155500xx` (MMS suite), `+1555888xxxx` (large groups). 9-digit numbers like `+15550010` count as short codes, which compose refuses in group
 messages.
 
 ## Cleaning up the phone
 ```
-tools/testing/testnet.sh off; tools/rcs/testnet.sh off
+tools/testing/testnet.sh off
 adb shell su -c "'setprop debug.wave.self_number \"\"'"
-tools/rcs/import_config.sh clear=1 enabled=0            # if a test RCS config was imported
 # delete test threads (Messages UI or content delete on content://mms-sms/conversations/<id>)
 adb shell appops set com.android.shell WRITE_SMS default
 adb shell rm -f /data/local/tmp/smsinject.dex /data/local/tmp/race.sh /sdcard/ui.xml

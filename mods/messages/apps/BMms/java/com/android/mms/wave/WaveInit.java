@@ -39,8 +39,7 @@ public final class WaveInit {
             Log.w(TAG, "mms sweep", t);
         }
         try {
-            WaveHooks.onAppCreate(app);
-        } catch (Throwable t) {
+            } catch (Throwable t) {
             Log.w(TAG, "hooks", t);
         }
     }

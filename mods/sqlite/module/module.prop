@@ -1,0 +1,6 @@
+id=sqlite_improved
+name=SQLite Improved (experimental)
+version=1.0.0
+versionCode=1
+author=thooton
+description=Optional 32-bit SQLite 3.44.4 system library overlay for tested Sonim XP3800 firmware.

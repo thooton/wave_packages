@@ -1690,8 +1690,6 @@
     .line 560
     invoke-static {p0, v0, v8, p2}, Landroid/provider/Telephony$Sms;->moveMessageToFolder(Landroid/content/Context;Landroid/net/Uri;II)Z
 
-    # FEAT(rcs): no cellular service: queued messages to RCS contacts still go out over RCS
-    invoke-static {p0}, Lcom/android/mms/transaction/WaveRcsSend;->drainQueuedAsync(Landroid/content/Context;)V
 
     .line 561
     iget-object v0, p0, Lcom/android/mms/transaction/SmsReceiverService;->mToastHandler:Landroid/os/Handler;

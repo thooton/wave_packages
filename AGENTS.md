@@ -24,8 +24,6 @@ raise its version in the same commit:
 - Gradle apps: `versionName` **and** `versionCode` in
   `<app>/android/app/build.gradle` (`dictionary/app/build.gradle` for
   Dictionary).
-- AppDrawer: `android:versionName` **and** `android:versionCode` in
-  `launcher/AndroidManifest.xml`. This is not the stock Launcher Improved mod.
 - System mods: `version` **and** `versionCode` in `mods/<mod>/module/module.prop`.
 
 `versionName` is `major.minor.patch`: patch for fixes and small tweaks, minor
@@ -120,9 +118,7 @@ that test target). `./gradlew selfTest assembleRelease` builds and tests all
 active Gradle apps. `gradle/retired-apps.txt` excludes archived source from
 Gradle and releases without deleting it.
 
-AppDrawer uses `launcher/build.sh`, which needs `aapt` on `PATH` from the
-same SDK's build-tools. It writes `launcher/AppDrawer.apk`. Do not confuse
-it with Launcher Improved. The mods do not use Gradle; use the commands in
+The mods do not use Gradle; use the commands in
 [mods/AGENTS.md](mods/AGENTS.md).
 
 - `gradle/app.gradle`: what every app shares (SDK levels, Java 8, lint,
@@ -187,8 +183,7 @@ use the `retry-publish` dispatch input to publish the original asset bytes.
 The legacy `latest` release is the rolling exception to immutable versioned
 assets. Its `manifest.json` (plus `versions.txt` and `packages.txt`) stays until the legacy-device migration in Wave task 17 is
 verified. HBSA is not built. Source and Tablet are on the legacy channel
-only until task 16 confirms private releases. AppDrawer stays because the
-stock tray cannot open from the programmable key. Updater and Installer
+only until task 16 confirms private releases. AppDrawer, Updater and Installer
 are retired: no Gradle targets or new release assets, including in `latest`.
 Their code and any already-versioned releases remain for reference. Wave's
 manifest replaces both. Give up Installer's device-owner role from its
@@ -209,8 +204,7 @@ and `mods/tools/setup.sh` then `mods/<mod>/tools/{test,build}.sh`.
 ## Shared rules
 
 - Debug and release builds use the checked-in public `signing/debug.keystore`,
-  with no signing secrets. AppDrawer keeps its own checked-in public key so
-  existing copies can update. Anyone can sign an APK Android will accept as
+  with no signing secrets. Anyone can sign an APK Android will accept as
   an update; use binaries only from sources you trust. Keep the shared
   signing Gradle script and keystore identical in the Wave repository.
 - Installs on Wave-enabled phones are handled by Wave. Installer's old

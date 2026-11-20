@@ -26,7 +26,7 @@
     .locals 0
 
     .prologue
-    .line 2971
+    .line 2970
     iput-object p1, p0, Lcom/sonim/borqs/launcher/LauncherActivity$TextViewImageGetter;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
@@ -50,10 +50,10 @@
     .prologue
     const/4 v3, 0x0
 
-    .line 2974
+    .line 2973
     const v0, 0x7f020058
 
-    .line 2976
+    .line 2975
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity$TextViewImageGetter;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     invoke-virtual {v1}, Lcom/sonim/borqs/launcher/LauncherActivity;->getResources()Landroid/content/res/Resources;
@@ -64,7 +64,7 @@
 
     move-result-object v0
 
-    .line 2977
+    .line 2976
     invoke-virtual {v0}, Landroid/graphics/drawable/Drawable;->getIntrinsicWidth()I
 
     move-result v1
@@ -75,6 +75,6 @@
 
     invoke-virtual {v0, v3, v3, v1, v2}, Landroid/graphics/drawable/Drawable;->setBounds(IIII)V
 
-    .line 2978
+    .line 2977
     return-object v0
 .end method

@@ -19,7 +19,9 @@ install/uninstall. A folder opens `FolderLaunchActivity` (a dialog, 2 columns) w
 | `onCreateOptionsMenu` (after super) / `onOptionsItemSelected` | our menu items (ids 101-107; stock uses 2-9) |
 | `onPause` | a move in progress is put down |
 | `getFolderIcon(name)` | `WaveTray.folderIconHook`: drawn icon for the user's folders, stock icon for stock ones |
-| `LauncherActivity$2`, `onNewIntent` | opening the tray selects entry 0 (stock: 4) |
+| `updateAppTrayList()` | disabled PTT moves Calculator to the main tray only in stock fallback |
+| `LauncherActivity$2`, `onNewIntent` | opening the tray selects entry 0 (stock: 4) without also queuing a smooth scroll |
+| `QuickSettingFragment.onResume` / `onPause` | `WaveQuickSettings` starts receiver registration and preference refresh on the first draw of the selected, visible page; pause cancels pending work or runs the stock teardown |
 | `wave*` static methods appended | bridges to private fields/methods for the Java code |
 | `DrawerAdapter`, `FolderLaunchActivity` (+`FolderDrawerClickListener`) | replaced by Java with the same names and ctor/extras |
 
@@ -80,9 +82,5 @@ adb push tray.txt /data/local/tmp/ && adb shell su -c 'cp /data/local/tmp/tray.t
   ```
 
 ## Known limits
-* PTT/convenience key: the old `com.custom.appdrawer` app was opened by a key. We can't add an
-  activity to the stock launcher, so that app stays installed (System folder) and the key still opens it.
+* PTT/convenience key: it can open apps, but cannot open the stock tray directly.
 * UI strings we add are English only (no resource edits).
-* With `hide_bell_PTT_app` (true on this firmware), stock `updateAppTrayList()` rearranges the live
-  list when the PTT app is *disabled*. Our build leaves out disabled apps anyway; that stock
-  shuffle still runs on top and would be saved with the user's next edit. PTT is enabled now.

@@ -23,7 +23,7 @@
     .locals 0
 
     .prologue
-    .line 3152
+    .line 3151
     iput-object p1, p0, Lcom/sonim/borqs/launcher/LauncherActivity$AppTrayListChangedReceiver;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     invoke-direct {p0}, Landroid/content/BroadcastReceiver;-><init>()V
@@ -37,7 +37,7 @@
     .locals 3
 
     .prologue
-    .line 3155
+    .line 3154
     const-string/jumbo v0, "LauncherActivity"
 
     new-instance v1, Ljava/lang/StringBuilder;
@@ -60,7 +60,7 @@
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/Log;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 3156
+    .line 3155
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity$AppTrayListChangedReceiver;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     iget-object v1, p0, Lcom/sonim/borqs/launcher/LauncherActivity$AppTrayListChangedReceiver;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
@@ -75,7 +75,7 @@
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/LauncherActivity;->-set1(Lcom/sonim/borqs/launcher/LauncherActivity;Landroid/database/Cursor;)Landroid/database/Cursor;
 
-    .line 3157
+    .line 3156
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity$AppTrayListChangedReceiver;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     invoke-static {v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->-get0(Lcom/sonim/borqs/launcher/LauncherActivity;)Landroid/database/Cursor;
@@ -84,14 +84,14 @@
 
     if-nez v0, :cond_0
 
-    .line 3158
+    .line 3157
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity$AppTrayListChangedReceiver;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     const-string/jumbo v1, " Getting cursor failed, finishing launcher"
 
     invoke-virtual {v0, v1}, Lcom/sonim/borqs/launcher/LauncherActivity;->finsihOnFatalError(Ljava/lang/String;)V
 
-    .line 3160
+    .line 3159
     :cond_0
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity$AppTrayListChangedReceiver;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
@@ -99,17 +99,17 @@
 
     invoke-static {v0, v1}, Lcom/sonim/borqs/launcher/LauncherActivity;->-set7(Lcom/sonim/borqs/launcher/LauncherActivity;Z)Z
 
-    .line 3161
+    .line 3160
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity$AppTrayListChangedReceiver;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     invoke-virtual {v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->setAppsAndFolderList()V
 
-    .line 3162
+    .line 3161
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity$AppTrayListChangedReceiver;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     invoke-static {v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->-wrap4(Lcom/sonim/borqs/launcher/LauncherActivity;)V
 
-    .line 3163
+    .line 3162
     iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity$AppTrayListChangedReceiver;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
 
     iget-object v0, v0, Lcom/sonim/borqs/launcher/LauncherActivity;->mHandler:Landroid/os/Handler;
@@ -118,6 +118,6 @@
 
     invoke-virtual {v0, v1}, Landroid/os/Handler;->sendEmptyMessage(I)Z
 
-    .line 3164
+    .line 3163
     return-void
 .end method

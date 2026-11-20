@@ -126,14 +126,87 @@ patch(LA, ".method private getFolderIcon(Ljava/lang/String;)Landroid/graphics/dr
 
 # 7. Opening the tray selects its first entry (stock: the 5th, the middle of the first 3x3).
 p2 = f"{D}/LauncherActivity$2.smali"
-for call in ["setSelection", "smoothScrollToPosition"]:
-    patch(p2, f"    const/4 v2, 0x4\n\n    invoke-virtual {{v0, v2}}, Landroid/widget/GridView;->{call}(I)V\n",
-          f"    # FEAT(tray): open on the first entry\n    const/4 v2, 0x0\n\n"
-          f"    invoke-virtual {{v0, v2}}, Landroid/widget/GridView;->{call}(I)V\n")
-    # onNewIntent: v5 is 4 (also INVISIBLE for the home screen), v4 is 0 (VISIBLE, just used)
-    patch(LA, f"    invoke-virtual {{v0, v5}}, Landroid/widget/GridView;->{call}(I)V\n",
-          f"    # FEAT(tray): open on the first entry (v4 = 0)\n"
-          f"    invoke-virtual {{v0, v4}}, Landroid/widget/GridView;->{call}(I)V\n")
+patch(p2, "    const/4 v2, 0x4\n\n    invoke-virtual {v0, v2}, Landroid/widget/GridView;->setSelection(I)V\n",
+      "    # FEAT(tray): open on the first entry\n    const/4 v2, 0x0\n\n"
+      "    invoke-virtual {v0, v2}, Landroid/widget/GridView;->setSelection(I)V\n")
+# onNewIntent: v5 is 4 (also INVISIBLE for the home screen), v4 is 0 (VISIBLE, just used).
+patch(LA, "    invoke-virtual {v0, v5}, Landroid/widget/GridView;->setSelection(I)V\n",
+      "    # FEAT(tray): open on the first entry (v4 = 0)\n"
+      "    invoke-virtual {v0, v4}, Landroid/widget/GridView;->setSelection(I)V\n")
+# setSelection already sets the position for the next layout. Don't queue an animated scroll too.
+for file, grid_and_call in [
+        (p2, f"    iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity$2;->this$0:{L}\n\n"
+             f"    invoke-static {{v0}}, {L}->-get12({L})Landroid/widget/GridView;\n\n"
+             "    move-result-object v0\n\n    const/4 v2, 0x4\n\n"
+             "    invoke-virtual {v0, v2}, Landroid/widget/GridView;->smoothScrollToPosition(I)V\n"),
+        (LA, f"    iget-object v0, p0, {L}->mDrawerFolderGrid:Landroid/widget/GridView;\n\n"
+             "    invoke-virtual {v0, v5}, Landroid/widget/GridView;->smoothScrollToPosition(I)V\n")]:
+    patch(file, grid_and_call, "    # FEAT(tray): no smooth scroll after setSelection\n")
+
+# FragmentPagerAdapter resumes offscreen pages too. Start Quick Settings on its first visible
+# draw instead. Keep the stock setup/teardown and do not unregister anything if setup never ran.
+qs = f"{D}/QuickSettingFragment.smali"
+Q = "Lcom/sonim/borqs/launcher/QuickSettingFragment;"
+W = "Lcom/sonim/borqs/launcher/WaveQuickSettings;"
+patch(qs, "# instance fields\n", f"""# instance fields
+# FEAT(tray): pending or active Quick Settings for this resume
+.field private mWaveQuickSettings:{W}
+""")
+patch(qs, "    .line 204\n    invoke-direct {p0}, " + Q + "->registerReceivers()V\n", f"""    # FEAT(tray): only initialize Quick Settings when its page is shown
+    new-instance v0, {W}
+
+    invoke-direct {{v0, p0}}, {W}-><init>({Q})V
+
+    iput-object v0, p0, {Q}->mWaveQuickSettings:{W}
+
+    return-void
+.end method
+
+# FEAT(tray): the stock Quick Settings startup, called by WaveQuickSettings
+.method waveStartSettings()V
+    .locals 2
+
+    .line 204
+    invoke-direct {{p0}}, {Q}->registerReceivers()V
+""")
+patch(qs, "    :cond_0\n    invoke-direct {p0}, " + Q + "->unregisterReceivers()V\n", f"""    :cond_0
+    # FEAT(tray): cancel pending startup, or fall through to tear down active listeners
+    iget-object v0, p0, {Q}->mWaveQuickSettings:{W}
+
+    const/4 v1, 0x0
+
+    iput-object v1, p0, {Q}->mWaveQuickSettings:{W}
+
+    if-eqz v0, :wave_settings_paused
+
+    invoke-virtual {{v0}}, {W}->stop()Z
+
+    move-result v0
+
+    if-eqz v0, :wave_settings_paused
+
+    invoke-direct {{p0}}, {Q}->unregisterReceivers()V
+""")
+patch(qs, ".method public onPause()V\n    .locals 1\n", ".method public onPause()V\n    .locals 2\n")
+patch(qs, "    .line 238\n    return-void\n.end method\n", "    .line 238\n    :wave_settings_paused\n    return-void\n.end method\n")
+
+# Keep the stock PTT-disabled shuffle from moving Calculator out of Tools in the arranged tray.
+patch(LA, ".method private updateAppTrayList()V\n    .locals 9\n\n    .prologue\n",
+      f""".method private updateAppTrayList()V
+    .locals 9
+
+    .prologue
+    # FEAT(tray): disabled PTT only promotes Calculator in the stock fallback
+    invoke-static {{}}, {T}->usesStockTray()Z
+
+    move-result v0
+
+    if-nez v0, :wave_stock_ptt
+
+    return-void
+
+    :wave_stock_ptt
+""")
 
 # 8. Bridges: Java can't reach LauncherActivity's private members.
 def getter(name, field, typ):

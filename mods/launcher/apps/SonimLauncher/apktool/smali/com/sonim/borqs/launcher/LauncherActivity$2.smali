@@ -161,16 +161,7 @@
     invoke-virtual {v0, v2}, Landroid/widget/GridView;->setSelection(I)V
 
     .line 717
-    iget-object v0, p0, Lcom/sonim/borqs/launcher/LauncherActivity$2;->this$0:Lcom/sonim/borqs/launcher/LauncherActivity;
-
-    invoke-static {v0}, Lcom/sonim/borqs/launcher/LauncherActivity;->-get12(Lcom/sonim/borqs/launcher/LauncherActivity;)Landroid/widget/GridView;
-
-    move-result-object v0
-
-    # FEAT(tray): open on the first entry
-    const/4 v2, 0x0
-
-    invoke-virtual {v0, v2}, Landroid/widget/GridView;->smoothScrollToPosition(I)V
+    # FEAT(tray): no smooth scroll after setSelection
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_0
 

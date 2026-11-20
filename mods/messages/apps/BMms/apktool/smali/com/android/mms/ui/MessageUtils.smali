@@ -2059,10 +2059,6 @@
 
     .line 2296
     :cond_1
-    # FEAT(rcs): sending is possible without a SIM while RCS is registered
-    invoke-static {v0}, Lcom/android/mms/wave/RcsHost;->activatedIccCardCount(I)I
-
-    move-result v0
 
     return v0
 .end method

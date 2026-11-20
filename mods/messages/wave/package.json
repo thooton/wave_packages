@@ -2,8 +2,8 @@
   "id": "messages_improved",
   "type": "module",
   "name": "Messages Improved",
-  "summary": "Group MMS fixes, a faster inbox and optional RCS",
-  "description": "Improves the stock Messages app and its providers. Group MMS goes to the right thread, opening conversations is faster, and RCS can use an imported configuration.",
+  "summary": "Group MMS fixes and a faster inbox",
+  "description": "Improves the stock Messages app and its providers. Group MMS goes to the right thread, and conversations open faster.",
   "author": "thooton",
   "homepage": "https://github.com/thooton/wave_packages/tree/master/mods/messages",
   "requires": {
@@ -12,7 +12,7 @@
     ],
     "sdk": 27,
     "firmware": [
-      "Sonim/XP3832/XP3800:8.1.0/3A.0.0-01-8.1.0-11.17.00/1:user/release-keys"
+      "Sonim/XP3832/XP3800:8.1.0/3A.0.1-02-8.1.0-11.20.00/22:user/release-keys"
     ]
   },
   "depends": [],
