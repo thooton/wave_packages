@@ -189,13 +189,10 @@ Their code and any already-versioned releases remain for reference. Wave's
 manifest replaces both. Give up Installer's device-owner role from its
 status screen before uninstalling it.
 
-The mod matrix builds and tests **unsigned** signing requests. Opt in to
-`release-mods` from master by dispatching with `signed-run-id`, the ID of
-an authorized signing run in this repo. Per-mod artifact names are
-`{launcher,messages,music}-improved-oem-signed-apks`, each containing the
-signed `<App>.apk` files at the artifact root. The workflow verifies that
-OEM signatures and the local unsigned build payload match. OEM private keys
-never belong in repo files or GitHub Actions secrets. See `mods/AGENTS.md`.
+The mod matrix builds each mod's stock-signed APKs and packages
+`{launcher,messages,music}-improved-<version>.zip`. The build splices the new
+dex into the pinned stock APKs and keeps their stock certificate; see
+`mods/AGENTS.md`.
 
 Local checks: `.github/build-apks.sh` (optionally pass a list of Gradle
 app paths), `python3 -m unittest discover -s .github -p 'test_*.py'`,

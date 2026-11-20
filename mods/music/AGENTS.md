@@ -2,6 +2,10 @@
 
 Read [the shared constraints](../AGENTS.md) for building, signing and testing.
 
+**No re-signing.** `tools/build.sh` splices the new dex into the stock APK and keeps its
+`META-INF` (`../tools/splice_apk.py`); Android 8.1 verifies system APKs by v1 on the manifest
+only, so the package keeps the stock certificate. `tools/deploy.sh` installs that build.
+
 The whitelist is a Music-only preference (`wave_library`). Directory entries are paths relative
 to mounted, removable, non-emulated volumes. MediaProvider on this firmware indexes removable
 volumes as `/storage/<UUID>`. The stock audio selection is ANDed with escaped directory-prefix

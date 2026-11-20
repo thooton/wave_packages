@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Splice compiled dex into the stock, OEM-signed system APK.
+"""Splice compiled dex into the stock system APK.
 
 The stock APKs are signed with Sonim's key, which we do not have. Android 8.1
 (PackageParser.collectCertificates, android-8.1.0_r1) verifies an APK from the

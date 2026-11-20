@@ -24,5 +24,4 @@ What it changes (the UI stays as it is):
   [invisible unread SMS / stuck Missed Events (orphaned threads)](docs/fixes/sms-orphaned-threads/README.md)
 
 Build and test with `tools/setup.sh`, `tools/build.sh`, `tools/test.sh`. `tools/deploy.sh`
-installs the stock-signed test build on a reserved device; releases need OEM signing
-([shared requirements](../AGENTS.md)).
+installs the stock-signed APK ([shared requirements](../AGENTS.md)).

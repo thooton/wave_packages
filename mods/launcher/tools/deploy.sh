@@ -9,9 +9,6 @@ if [ "${1:-}" = --remove ]; then
     exit 0
 fi
 source "$SHARED/admit.sh"
-# A reserved test device takes the stock-signed spliced build; set OEM_SIGNED_APKS
-# or WAVE_SPLICE=0 to require authorized OEM-signed APKs instead.
-WAVE_SPLICE=${WAVE_SPLICE:-1}
 admit
 [ -d "$ROOT/out/system" ] || { echo "nothing in out/system: run tools/build.sh"; exit 1; }
 STAGE=/data/local/tmp/$MODULE_ID

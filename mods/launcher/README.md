@@ -19,5 +19,4 @@ systemless Magisk module that replaces `/system/priv-app/SonimLauncher`.
   animation. Quick Settings starts on its first visible frame.
 
 Build and test with `tools/setup.sh`, `tools/build.sh`, `tools/test.sh`. `tools/deploy.sh`
-installs the stock-signed test build on a reserved device; releases need OEM signing
-([shared requirements](../AGENTS.md)).
+installs the stock-signed APK ([shared requirements](../AGENTS.md)).

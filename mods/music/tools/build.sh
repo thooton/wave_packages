@@ -1,5 +1,7 @@
 #!/bin/bash
-# Compile dex, check symbol references, and produce an unsigned request for the OEM signer.
+# Compile dex, check symbol references, and build the stock-signed APK by splicing
+# the dex into the stock APK (tools/splice_apk.py; system APKs are verified by v1
+# on the manifest only).
 source "$(dirname "$0")/lib/env.sh"
 apps=("$@"); [ ${#apps[@]} -gt 0 ] || mapfile -t apps < <(all_apps)
 for app in "${apps[@]}"; do
@@ -23,8 +25,11 @@ for app in "${apps[@]}"; do
         # Nothing from stubs/ may end up in the APK, and no class may be defined twice.
         python3 "$SHARED/dexcheck.py" "$B/dex" "$B/classes"
     fi
-    python3 "$SHARED/unsigned.py" "$(stock_apk "$app")" "$B/dex" "$B/request.apk"
-    "$BT/zipalign" -f -p 4 "$B/request.apk" "$B/unsigned.apk"
-    ANDROID_JAR="$ANDROID_JAR" python3 "$SHARED/linkcheck.py" "$B/unsigned.apk" "Lcom/android/music/"
-    echo "$app: built unsigned signing request ($B/unsigned.apk)"
+    # Stock resources and META-INF, built dex (tools/splice_apk.py).
+    python3 "$SHARED/splice_apk.py" "$(stock_apk "$app")" "$B/dex" "$B/stock-signed.apk"
+    "$BT/zipalign" -f -p 4 "$B/stock-signed.apk" "$B/$app.apk"
+    python3 "$SHARED/verify_splice.py" "$(stock_apk "$app")" "$B/dex" "$B/$app.apk"
+    "$BT/zipalign" -c -p 4 "$B/$app.apk"
+    ANDROID_JAR="$ANDROID_JAR" python3 "$SHARED/linkcheck.py" "$B/$app.apk" "Lcom/android/music/"
+    echo "$app: built stock-signed APK ($B/$app.apk)"
 done

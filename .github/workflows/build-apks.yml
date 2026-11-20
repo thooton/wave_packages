@@ -10,10 +10,6 @@ on:
         type: boolean
         description: Retry mirroring unchanged packages from their existing releases
         default: false
-      signed-run-id:
-        type: string
-        description: Optional workflow run ID with authorized OEM-signed APK artifacts
-        default: ''
 
 permissions:
   contents: read
@@ -122,7 +118,7 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: platforms;android-35 build-tools;35.0.1
-      - name: Host tests and unsigned signing requests
+      - name: Host tests and module package
         env:
           PACKAGE_PATH: ${{ matrix.package.path }}
         run: |
@@ -132,21 +128,15 @@ jobs:
           mods/tools/build-module.sh "${PACKAGE_PATH##*/}"
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.package.name }}-unsigned-not-for-install
-          path: ${{ matrix.package.path }}/build/*/unsigned.apk
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.package.name }}-signing-request-zip
-          path: ${{ matrix.package.path }}/build/*-signing-request.zip
+          name: ${{ matrix.package.name }}-module
+          path: ${{ matrix.package.path }}/out/*.zip
           if-no-files-found: error
 
   release-mods:
     needs: [inventory, mods]
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.signed-run-id != ''
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
-      actions: read
       contents: write
     strategy:
       fail-fast: false
@@ -158,33 +148,15 @@ jobs:
           fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.package.name }}-unsigned-not-for-install
-          path: ${{ matrix.package.path }}/build
-      - name: Validate signing run reference
-        env:
-          SIGNED_RUN_ID: ${{ inputs.signed-run-id }}
-        run: '[[ "$SIGNED_RUN_ID" =~ ^[0-9]+$ ]]'
-      - uses: actions/download-artifact@v4
-        with:
-          name: ${{ matrix.package.name }}-oem-signed-apks
-          path: signed-apks
-          github-token: ${{ github.token }}
-          run-id: ${{ inputs.signed-run-id }}
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-      - uses: android-actions/setup-android@v3
-        with:
-          packages: platforms;android-35 build-tools;35.0.1
+          name: ${{ matrix.package.name }}-module
+          path: module
       - id: release
         env:
           GH_TOKEN: ${{ github.token }}
           PACKAGE_PATH: ${{ matrix.package.path }}
           RETRY_PUBLISH: ${{ inputs.retry-publish }}
         run: |
-          OEM_SIGNED_APKS="$PWD/signed-apks" "$PACKAGE_PATH/tools/package.sh"
-          zip=$(find "$PACKAGE_PATH/out" -maxdepth 1 -name '*.zip' -print -quit)
+          zip=$(find module -maxdepth 1 -name '*.zip' -print -quit)
           retry=(); [[ "$RETRY_PUBLISH" != true ]] || retry+=(--retry-publish)
           python3 .github/release_package.py "$PACKAGE_PATH" "$zip" "${retry[@]}"
       - uses: thooton/wave/publish@v1

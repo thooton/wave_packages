@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Check that a spliced APK keeps the stock signer and exactly the requested payload.
+"""Check that a spliced APK keeps the stock signature and exactly the built dex.
 
 A spliced APK is not a properly signed APK: its dex no longer matches the stock
-v1 digests. It installs only because Android 8.1 checks system-partition APKs by
-v1 on AndroidManifest.xml only (see splice_apk.py). So apksigner refuses it and
-this checker stands in for it:
+v1 digests. It installs because Android 8.1 checks system-partition APKs by v1
+on AndroidManifest.xml only (see splice_apk.py). apksigner therefore refuses
+it, and this checker stands in for it:
 
 * no APK Signature Scheme v2 block (it would be verified in full and fail);
 * META-INF signature files byte-identical to the stock APK, which keeps the
   stock signer identity and the v1 signature over the manifest;
-* every non-signature entry byte-identical to the unsigned build request, so
-  the manifest, resources and dex are exactly what was built;
+* every non-signature entry byte-identical to the stock APK except the dex,
+  which must be exactly the compiled dex from the build;
 * the manifest still matches its v1 digest.
 
-usage: verify_splice.py <stock.apk> <unsigned-request.apk> <candidate.apk>
+usage: verify_splice.py <stock.apk> <compiled-dex-dir> <candidate.apk>
 """
 import base64
 import hashlib
@@ -24,6 +24,7 @@ import zipfile
 from pathlib import Path
 
 SIG_RE = re.compile(r'META-INF/(?:[^/]+\.(?:SF|RSA|EC|DSA)|MANIFEST\.MF|SIG-[^/]+)', re.I)
+DEX_RE = re.compile(r'classes\d*\.dex$')
 
 
 def files(apk):
@@ -62,30 +63,42 @@ def manifest_digest(manifest_mf):
     return None
 
 
-def main(stock, request, candidate):
+def expected_payload(stock, dexdir):
+    with zipfile.ZipFile(stock) as z:
+        payload = {name: z.read(name) for name in z.namelist()
+                   if not name.endswith('/') and not SIG_RE.fullmatch(name)
+                   and not DEX_RE.fullmatch(name)}
+    dexes = sorted(Path(dexdir).glob('classes*.dex'))
+    if not dexes:
+        sys.exit(f'{dexdir}: no classes*.dex; run tools/build.sh first')
+    for dex in dexes:
+        payload[dex.name] = dex.read_bytes()
+    return payload
+
+
+def main(stock, dexdir, candidate):
     if has_v2_block(candidate):
         sys.exit(f'{candidate}: has an APK Signature Scheme v2 block; Android 8.1 would verify it in full')
 
     stock_files = files(stock)
-    request_files = files(request)
     candidate_files = files(candidate)
 
     stock_sig = {n: b for n, b in stock_files.items() if SIG_RE.fullmatch(n)}
     candidate_sig = {n: b for n, b in candidate_files.items() if SIG_RE.fullmatch(n)}
     if candidate_sig != stock_sig:
-        sys.exit(f'{candidate}: signature files differ from {stock.name}; OEM authorization required')
+        sys.exit(f'{candidate}: signature files differ from {stock.name}')
 
+    expected = expected_payload(stock, dexdir)
     payload = {n: b for n, b in candidate_files.items() if not SIG_RE.fullmatch(n)}
-    if payload != request_files:
-        missing = sorted(request_files.keys() - payload.keys())
-        extra = sorted(payload.keys() - request_files.keys())
-        changed = sorted(n for n in request_files.keys() & payload.keys()
-                         if request_files[n] != payload[n])
+    if payload != expected:
+        missing = sorted(expected.keys() - payload.keys())
+        extra = sorted(payload.keys() - expected.keys())
+        changed = sorted(n for n in expected.keys() & payload.keys() if expected[n] != payload[n])
         detail = ', '.join(filter(None, [
             f'missing {missing}' if missing else '',
             f'extra {extra}' if extra else '',
             f'changed {changed}' if changed else '']))
-        sys.exit(f'{candidate}: payload differs from the build request ({detail})')
+        sys.exit(f'{candidate}: payload differs from the build ({detail})')
 
     manifest = candidate_files.get('AndroidManifest.xml')
     manifest_mf = candidate_files.get('META-INF/MANIFEST.MF')
@@ -94,10 +107,10 @@ def main(stock, request, candidate):
     found = manifest_digest(manifest_mf)
     if not found:
         sys.exit(f'{candidate}: no v1 digest for AndroidManifest.xml')
-    algorithm, expected = found
+    algorithm, expected_digest = found
     digest = hashlib.sha256(manifest).digest() if algorithm == 'SHA-256' \
         else hashlib.sha1(manifest).digest()
-    if base64.b64encode(digest).decode() != expected:
+    if base64.b64encode(digest).decode() != expected_digest:
         sys.exit(f'{candidate}: AndroidManifest.xml does not match its v1 digest')
 
     print(f'{candidate.name}: stock signer, v1 manifest digest OK ({algorithm}), payload matches')

@@ -12,4 +12,5 @@ The setting filters the Music library, including search, tracks in playlists, an
 It doesn't alter Android's media index, delete files, change saved playlists, clear the playback
 queue, or prevent explicitly opening an audio file from another app.
 
-Build and test with `tools/setup.sh`, `tools/build.sh`, `tools/test.sh`. See [shared signing and packaging requirements](../AGENTS.md) before attempting to install.
+Build and test with `tools/setup.sh`, `tools/build.sh`, `tools/test.sh`. `tools/deploy.sh`
+installs the stock-signed APK ([shared requirements](../AGENTS.md)).
