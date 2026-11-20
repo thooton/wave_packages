@@ -264,9 +264,13 @@ Starting a charge (real money; never press Start in QA):
   line like "62%  ·  4.27 kWh  ·  $1.84" ("  ·  reconnecting…" appended
   after a failed poll; "Connecting…" before the first reading). Tapping it
   returns to the app on the tab that was open. It polls every 4 s while the
-  app is in front, every 30 s otherwise, every 8 s after a failure, and
-  gives up (notification removed) after 20 failures in a row. The
-  notification goes away when the session ends.
+  app is in front and every 30 s otherwise. After a failure it waits 8 s
+  while the app is in front, and otherwise 8, 16, 32, then 60 s between
+  tries. It stops at once when Tesla refuses the sign-in (asking again
+  can't succeed), or after 10 minutes of failures in a row; either way the
+  ongoing notification is replaced by a dismissable "No longer following
+  the charge" line saying why, which opens the app. The notification goes
+  away when the session ends.
 - Permissions: internet only; no runtime permission prompts.
 - Portrait only; rotation and keyboard changes do not restart the screen.
 

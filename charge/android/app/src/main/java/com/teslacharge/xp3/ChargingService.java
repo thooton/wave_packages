@@ -10,7 +10,9 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 
+import com.teslacharge.xp3.data.ApiException;
 import com.teslacharge.xp3.data.ChargingRepository;
 
 import org.json.JSONObject;
@@ -47,11 +49,15 @@ public final class ChargingService extends Service {
     /** In a pocket, where the only reader is the notification and nothing on it
      *  moves fast enough to be worth more than this. */
     private static final long BACKGROUND_POLL_MS = 30_000L;
+    /** After a failed poll, the next waits this long, doubling with each
+     *  failure in a row up to {@link #MAX_FAILURE_POLL_MS}: a dead zone in a
+     *  garage costs a handful of requests, not one every few seconds. */
     private static final long FAILURE_POLL_MS = 8_000L;
-    /** Roughly two and a half minutes of failures. A charge outlasts a tunnel,
-     *  so a gap is worth waiting out, but a session that can never be read
-     *  again must not leave an ongoing notification pinned forever. */
-    private static final int MAX_FAILURES = 20;
+    private static final long MAX_FAILURE_POLL_MS = 60_000L;
+    /** Ten minutes of failures. A charge outlasts a tunnel or a garage, so a
+     *  gap is worth waiting out, but a session that can never be read again
+     *  must not leave an ongoing notification pinned forever. */
+    private static final long GIVE_UP_MS = 10 * 60_000L;
 
     interface Listener {
         void onSessionUpdate(JSONObject session, String error);
@@ -76,6 +82,8 @@ public final class ChargingService extends Service {
     private volatile String sessionId;
     private volatile boolean stopped;
     private int consecutiveFailures;
+    /** When the current run of failures began (elapsed realtime), 0 while polls succeed. */
+    private long failingSince;
 
     static void start(Context context, String sessionId) {
         if (sessionId == null || sessionId.length() == 0) return;
@@ -138,6 +146,7 @@ public final class ChargingService extends Service {
 
         sessionId = id;
         consecutiveFailures = 0;
+        failingSince = 0;
         startForeground(NOTIFICATION, notification(latest, null));
         schedule(0);
         return START_REDELIVER_INTENT;
@@ -192,25 +201,34 @@ public final class ChargingService extends Service {
         if (stopped) return;
         JSONObject session = null;
         String error = null;
+        boolean signedOut = false;
         try {
             session = ChargingRepository.get(this).session(sessionId);
         } catch (Exception failure) {
             error = failure.getMessage();
+            // Refused sign-in (expired, revoked, or replaced by a new setup):
+            // asking again sends the same dead token to Tesla and can't succeed.
+            signedOut = failure instanceof ApiException
+                && (((ApiException) failure).status == 401 || ((ApiException) failure).status == 409);
         }
         final JSONObject result = session;
         final String message = error;
-        main.post(() -> publish(result, message));
+        final boolean refused = signedOut;
+        main.post(() -> publish(result, message, refused));
     };
 
-    private void publish(JSONObject session, String error) {
+    private void publish(JSONObject session, String error, boolean signedOut) {
         if (stopped) return;
+        long now = SystemClock.elapsedRealtime();
         if (session != null) {
             latest = session;
             latestError = null;
             consecutiveFailures = 0;
+            failingSince = 0;
         } else {
             latestError = error;
             consecutiveFailures++;
+            if (failingSince == 0) failingSince = now;
         }
         if (listener != null) listener.onSessionUpdate(latest, latestError);
 
@@ -220,22 +238,48 @@ public final class ChargingService extends Service {
             finish();
             return;
         }
-        if (consecutiveFailures >= MAX_FAILURES) {
+        if (signedOut || (session == null && now - failingSince >= GIVE_UP_MS)) {
             finish();
+            // Said rather than vanishing: a notification that just went away
+            // mid-charge reads as "the charge ended".
+            notifications.notify(NOTIFICATION, gaveUp(signedOut ? error : null));
             return;
         }
         notifications.notify(NOTIFICATION, notification(latest, latestError));
         schedule(
             session == null
-                ? FAILURE_POLL_MS
+                ? failureDelay(consecutiveFailures, listener != null)
                 : listener != null ? WATCHED_POLL_MS : BACKGROUND_POLL_MS
         );
+    }
+
+    /** The wait after the nth failure in a row: 8 s, 16 s, 32 s, then a minute. Someone on
+     *  the Session screen gets the quickest retry, which they can also ask for by reopening it. */
+    static long failureDelay(int failures, boolean watched) {
+        if (watched) return FAILURE_POLL_MS;
+        long delay = FAILURE_POLL_MS << Math.min(Math.max(failures - 1, 0), 4);
+        return Math.min(delay, MAX_FAILURE_POLL_MS);
     }
 
     private void finish() {
         stopped = true;
         stopForeground(true);
         stopSelf();
+    }
+
+    /** The one line left after giving up on a session, dismissable, opening the app. */
+    private Notification gaveUp(String reason) {
+        PendingIntent tap = PendingIntent.getActivity(this, 0,
+            new Intent(this, MainActivity.class).setAction(Intent.ACTION_MAIN)
+                .addCategory(Intent.CATEGORY_LAUNCHER)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT);
+        return new Notification.Builder(this, CHANNEL).setSmallIcon(R.drawable.ic_notification)
+            .setColor(getResources().getColor(R.color.primary))
+            .setContentTitle("No longer following the charge")
+            .setContentText(reason != null ? reason + " Open Charge to check the session."
+                : "Lost contact with Tesla. Open Charge to check the session.")
+            .setContentIntent(tap).setAutoCancel(true).setShowWhen(true).build();
     }
 
     private Notification notification(JSONObject session, String error) {
