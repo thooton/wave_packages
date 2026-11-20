@@ -40,6 +40,8 @@ class ReleaseCheck(unittest.TestCase):
         self.assertEqual(release_state('books', 'books-1.0.0', '1.0.0'), 'existing')
         self.commit('gradle/retired-apps.txt', 'video\n')
         self.assertEqual(release_state('books', 'books-1.0.0', '1.0.0'), 'existing')
+        self.commit('books/wave/package.json', '{"section":"reading-study"}')
+        self.assertEqual(release_state('books', 'books-1.0.0', '1.0.0'), 'existing')
         self.commit('common/core.java', 'shared change')
         with self.assertRaisesRegex(ValueError, 'require a versionName and versionCode bump'):
             release_state('books', 'books-1.0.0', '1.0.0')
