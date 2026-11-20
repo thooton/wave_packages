@@ -2,6 +2,11 @@
 
 Read [the shared constraints](../AGENTS.md) for building, signing and testing.
 
+**No re-signing.** `tools/build.sh` splices the new dex into the stock APK and keeps its
+`META-INF` (`../tools/splice_apk.py`); Android 8.1 verifies system APKs by v1 on the manifest
+only, so the package keeps the stock certificate. `tools/deploy.sh` installs that build on a
+reserved test device (`WAVE_SPLICE=1`); releases still need OEM-signed APKs.
+
 ## Code conventions
 * Prefer **small smali hooks + Java**: put logic in `apps/<App>/java/` (same package as the stock
   class if you need package-private access) and make the smali change a single `invoke-static`.

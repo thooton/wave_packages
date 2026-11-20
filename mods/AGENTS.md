@@ -40,17 +40,35 @@ Swap `messages` for `launcher` or `music` to work on those mods. To build a
 single APK, pass its directory name such as `BMms` to the mod-specific
 `tools/build.sh`. The shared command builds all of the mod’s APKs into
 `mods/<mod>/build/<mod>-improved-signing-request.zip`, together with SHA-256
-checksums. This archive is **not installable**. The host checks
-catch duplicate classes, unresolved hook targets and some behavior
+checksums. This archive is **not installable**. Each build also writes
+`build/<App>/<App>.apk`, the stock-signed test build described below. The host
+checks catch duplicate classes, unresolved hook targets and some behavior
 regressions; they are not tests on hardware.
+
+## Deploying without the OEM key (test devices)
+
+The test build is the stock APK with only its dex entries replaced
+(`mods/tools/splice_apk.py`): resources and `META-INF` stay byte-identical and
+the APK Signature Scheme v2 block is dropped. Android 8.1 verifies a
+system-partition APK with v1 against `AndroidManifest.xml` only, so the
+package keeps its original stock certificate. `mods/tools/verify_splice.py`
+checks that the signature files are the stock ones and that every other entry
+is exactly the unsigned build. For a reserved, recoverable test device only:
+
+```bash
+mods/messages/tools/build.sh
+mods/messages/tools/deploy.sh          # WAVE_SPLICE defaults to 1
+```
+
+`WAVE_SPLICE=1 tools/package.sh` makes a test-only flashable zip the same way.
+Never publish that zip; it is not OEM-signed.
 
 ## OEM signing and release
 
-The patched system APKs keep their stock package IDs and shared UIDs. They
+The patched system APKs keep their stock package IDs and shared UIDs. Releases
 need genuine signatures from the OEM keys for the corresponding original
-APKs, not the app key in `signing/`. Earlier builds substituted DEX and left
-stale signer records, which did not sign the modified code. That helper was
-not imported; the build never takes or distributes private keys.
+APKs, not the app key in `signing/`. The build never takes or distributes
+private keys.
 
 If an authorized signer returns **all** signed APKs for a mod as `<App>.apk`
 in a directory, package them from the repo root as follows:
@@ -67,8 +85,9 @@ existing request without rebuilding, run
 `OEM_SIGNED_APKS=/path/to/signed/apks mods/messages/tools/package.sh`. Bump both
 `version` and `versionCode` in that mod's `module/module.prop`. Its `wave/`
 metadata records package identity, compatibility and legacy ID replacements.
-Don't install or release unsigned requests. `tools/deploy.sh` also requires
-verified inputs; only use a reserved, recoverable test device.
+Don't install or release unsigned requests. `tools/deploy.sh` takes either
+OEM-signed APKs (`OEM_SIGNED_APKS`) or the stock-signed test build
+(`WAVE_SPLICE=1`, the default); only use a reserved, recoverable test device.
 
 Pull requests and pushes build and test unsigned requests in the [package
 workflow](../.github/workflows/build-apks.yml). An authorized maintainer can

@@ -18,4 +18,6 @@ systemless Magisk module that replaces `/system/priv-app/SonimLauncher`.
 * **Faster tray and home resume.** Opening the tray selects the first entry without a scroll
   animation. Quick Settings starts on its first visible frame.
 
-Build and test with `tools/setup.sh`, `tools/build.sh`, `tools/test.sh`. See [shared signing and packaging requirements](../AGENTS.md) before attempting to install.
+Build and test with `tools/setup.sh`, `tools/build.sh`, `tools/test.sh`. `tools/deploy.sh`
+installs the stock-signed test build on a reserved device; releases need OEM signing
+([shared requirements](../AGENTS.md)).

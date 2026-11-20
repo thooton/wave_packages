@@ -27,4 +27,7 @@ printf 'Unsigned request: %s\n' "$output"
 # package.sh checks the signer, signature, alignment and exact non-signature payload.
 if [[ -n ${2:-${OEM_SIGNED_APKS:-}} ]]; then
     OEM_SIGNED_APKS="${2:-$OEM_SIGNED_APKS}" "$root/tools/package.sh"
+elif [[ ${WAVE_SPLICE:-0} == 1 ]]; then
+    # Test-only zip: the same stock-signed splice deploy.sh installs. Never publish it.
+    WAVE_SPLICE=1 "$root/tools/package.sh"
 fi

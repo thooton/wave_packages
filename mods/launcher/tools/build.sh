@@ -1,5 +1,7 @@
 #!/bin/bash
-# Compile dex, check symbol references, and produce an unsigned request for the OEM signer.
+# Compile dex, check symbol references, produce an unsigned request for the OEM signer,
+# and a deployable test build that keeps the stock certificate by splicing the dex
+# (tools/splice_apk.py; system APKs are verified by v1 on the manifest only).
 source "$(dirname "$0")/lib/env.sh"
 apps=("$@"); [ ${#apps[@]} -gt 0 ] || mapfile -t apps < <(all_apps)
 for app in "${apps[@]}"; do
@@ -24,6 +26,11 @@ for app in "${apps[@]}"; do
     fi
     python3 "$SHARED/unsigned.py" "$(stock_apk "$app")" "$B/dex" "$B/request.apk"
     "$BT/zipalign" -f -p 4 "$B/request.apk" "$B/unsigned.apk"
-    ANDROID_JAR="$ANDROID_JAR" python3 "$SHARED/linkcheck.py" "$B/unsigned.apk" "Lcom/sonim/borqs/launcher/"
-    echo "$app: built unsigned signing request ($B/unsigned.apk)"
+    # Test build for a reserved phone: stock resources/META-INF + this dex, no OEM key.
+    python3 "$SHARED/splice_apk.py" "$(stock_apk "$app")" "$B/dex" "$B/stock-signed.apk"
+    "$BT/zipalign" -f -p 4 "$B/stock-signed.apk" "$B/$app.apk"
+    python3 "$SHARED/verify_splice.py" "$(stock_apk "$app")" "$B/unsigned.apk" "$B/$app.apk"
+    "$BT/zipalign" -c -p 4 "$B/$app.apk"
+    ANDROID_JAR="$ANDROID_JAR" python3 "$SHARED/linkcheck.py" "$B/$app.apk" "Lcom/sonim/borqs/launcher/"
+    echo "$app: built unsigned signing request and stock-signed test APK ($B/$app.apk)"
 done
