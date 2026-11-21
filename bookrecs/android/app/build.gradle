@@ -1,0 +1,24 @@
+plugins {
+    id "com.android.application"
+}
+
+apply from: rootProject.file("gradle/app.gradle")
+
+// No login is built in: the service's address (and its token, if it asks for
+// one) is imported on the phone from a setup file (common/ui's Setup). The
+// OpenRouter key stays with the service and never reaches the phone.
+
+android {
+    namespace "com.bookrecs.xp3"
+
+    defaultConfig {
+        applicationId "com.bookrecs.xp3"
+        versionCode 1
+        versionName "1.0.0"
+    }
+}
+
+dependencies {
+    implementation project(":bookrecs:core")
+    implementation project(":common:ui")
+}
