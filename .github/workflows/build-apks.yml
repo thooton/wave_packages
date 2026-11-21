@@ -101,6 +101,14 @@ jobs:
           binary: ${{ steps.release.outputs.binary }}
           url: ${{ steps.release.outputs.url }}
           changes-path: ${{ matrix.package.path }}
+      - name: Flag a release that is not yet in the catalog
+        if: steps.release.outputs.binary != '' && vars.WAVE_PUBLISH_ENABLED != 'true'
+        env:
+          BINARY: ${{ steps.release.outputs.binary }}
+        run: |
+          msg="Released ${BINARY##*/}, but CI did not publish it: WAVE_PUBLISH_ENABLED is off. Mirror it into thooton/wave_repository with Wave's wavesrc publish, then run Wave's tools/ship/ship check."
+          echo "::warning title=Not published to the catalog::$msg"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
 
   mods:
     needs: inventory
@@ -171,6 +179,14 @@ jobs:
           binary: ${{ steps.release.outputs.binary }}
           url: ${{ steps.release.outputs.url }}
           changes-path: ${{ matrix.package.path }}
+      - name: Flag a release that is not yet in the catalog
+        if: steps.release.outputs.binary != '' && vars.WAVE_PUBLISH_ENABLED != 'true'
+        env:
+          BINARY: ${{ steps.release.outputs.binary }}
+        run: |
+          msg="Released ${BINARY##*/}, but CI did not publish it: WAVE_PUBLISH_ENABLED is off. Mirror it into thooton/wave_repository with Wave's wavesrc publish, then run Wave's tools/ship/ship check."
+          echo "::warning title=Not published to the catalog::$msg"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
 
   legacy-latest:
     needs: build-apks
