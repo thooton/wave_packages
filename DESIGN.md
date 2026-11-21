@@ -343,3 +343,31 @@ theme (`res/values/colors.xml`):
 - **No key labels.** Anki's buttons don't show their keys, so neither do
   these: OK, 1 to 4, Menu and Back do what they do in Anki's keyboard
   shortcuts and in every other app here.
+
+## Notes: Apple Notes, on a flip phone
+
+Notes takes its look from Apple Notes (iOS 17, light) rather than the
+family, as people know it from their iPhones. It was drawn first in
+`notes/mockups/index.html`, which is what the app follows:
+
+- **Apple's grouped page.** The page and status bar are `#F2F2F7` with
+  dark icons; folders and notes sit on white cards 8dp from the sides with
+  10dp corners, hairlines `#C6C6C8` inset to the text (or to the folder
+  name, past its icon). A note itself is a white page.
+- **Large titles and bold headings.** "‹ Folders" in a deepened Notes
+  yellow (`#B88600`, 13sp), then the folder's name at 22sp bold, and the
+  date sections (Pinned, Today, Previous 7 Days, …) at 13.5sp bold, as iOS
+  sets them, setting aside rule 3's "never bold".
+- **Notes' yellow.** Icons, the back arrow and the caret are
+  `#E0A500`; small yellow text is the deeper `#B88600` to be readable. The
+  row under the d-pad, which iOS doesn't have, is a `#FFE9A6` wash 3dp
+  inside its card with 7dp corners; a search match is marked `#FFD84D`.
+- **A row is Apple's.** The title in medium 13.5sp, then the date in
+  `#3C3C43` and the preview in a muted `#6E6E73` (deeper than iOS's, to be
+  read at 11.5sp). A note's first line is its title, 18sp bold.
+- **Apple's toolbar and menus.** A 26dp `#F9F9F9` bar at the foot with the
+  note count (Apple's, so rule 8 gives way) and the compose icon. Menu
+  raises Apple's context menu at the bottom, over the left soft key: a
+  `#FAFAFA` panel, 12dp corners, rows with their icons on the right,
+  destructive ones red `#FF3B30`, groups split by a 6dp `#E5E5EA` band.
+  Confirmations are iOS alerts with Cancel and a red action side by side.

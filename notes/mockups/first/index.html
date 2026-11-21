@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notes mockups, first pass</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* First pass: Apple Notes (iOS 17 light) translated straight onto the
+     XP3's 240x320 mdpi screen, 1 CSS px = 1 dp. Kept as the record of what
+     the refinement in ../index.html changed. */
+  :root {
+    --page: #F2F2F7; --card: #FFFFFF; --ink: #000000; --muted: #8A8A8E;
+    --rule: #C6C6C8; --tint: #E5AF00; --fill: #E3E3E8; --red: #FF3B30;
+    --focus: #D1D1D6;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #ddd; font: 14px/1.4 Roboto, sans-serif; color: #222; }
+  header.doc { max-width: 1100px; margin: 0 auto; padding: 24px 16px 4px; }
+  header.doc h1 { font-size: 22px; font-weight: 500; margin: 0 0 6px; }
+  header.doc p { margin: 0 0 8px; color: #555; max-width: 760px; }
+  .grid { max-width: 1100px; margin: 0 auto; padding: 8px 16px 32px; display: flex; flex-wrap: wrap; gap: 24px 20px; }
+  figure { margin: 0; width: 360px; }
+  figcaption { font-size: 12px; color: #555; margin-top: 6px; }
+  figcaption b { color: #111; font-weight: 500; }
+  .phone { width: 240px; height: 320px; zoom: 1.5; overflow: hidden; position: relative; background: var(--page);
+           box-shadow: 0 0 0 1px rgba(0,0,0,.3); font-size: 13px; line-height: 1.3; color: var(--ink); }
+  .status { height: 24px; display: flex; align-items: center; justify-content: space-between; padding: 0 6px; font-size: 11px; font-weight: 500; }
+  .nav { height: 22px; display: flex; align-items: center; padding: 0 8px; color: var(--tint); font-size: 13px; }
+  .big { font-size: 24px; font-weight: 700; padding: 0 12px; margin: 0 0 6px; }
+  .search { margin: 0 10px 8px; height: 26px; border-radius: 8px; background: var(--fill); color: var(--muted);
+            display: flex; align-items: center; gap: 4px; padding: 0 7px; font-size: 13px; }
+  .sh { font-size: 15px; font-weight: 700; padding: 4px 12px 4px; }
+  .card { background: var(--card); margin: 0 10px 8px; border-radius: 10px; overflow: hidden; }
+  .row { padding: 6px 10px; border-bottom: 1px solid var(--rule); margin-left: 0; }
+  .row:last-child { border-bottom: 0; }
+  .row.focus { background: var(--focus); }
+  .t { font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .s { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .s b { color: #000; font-weight: 400; }
+  .toolbar { position: absolute; left: 0; right: 0; bottom: 0; height: 30px; background: rgba(249,249,249,.94);
+             border-top: 1px solid var(--rule); display: flex; align-items: center; justify-content: center; font-size: 11px; }
+  .toolbar .r { position: absolute; right: 10px; top: 6px; }
+  .toolbar .l { position: absolute; left: 10px; top: 6px; }
+  svg.i { width: 18px; height: 18px; fill: none; stroke: var(--tint); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .frow { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--rule); font-size: 14px; }
+  .frow:last-child { border-bottom: 0; }
+  .frow .n { margin-left: auto; color: var(--muted); }
+  .frow .c { color: #C4C4C7; font-size: 16px; }
+  .frow.focus { background: var(--focus); }
+  .date { text-align: center; color: var(--muted); font-size: 11px; margin: 2px 0 8px; }
+  .body { padding: 0 12px; font-size: 14px; }
+  .body h2 { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+  .body p { margin: 0 0 2px; }
+  .caret { display: inline-block; width: 2px; height: 16px; background: var(--tint); vertical-align: -3px; }
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.2); }
+  .menu { position: absolute; right: 10px; width: 170px; background: rgba(250,250,250,.98); border-radius: 12px;
+          box-shadow: 0 6px 24px rgba(0,0,0,.25); overflow: hidden; font-size: 13.5px; }
+  .menu div { display: flex; justify-content: space-between; align-items: center; padding: 7px 12px; border-bottom: 1px solid #DDD; }
+  .menu div:last-child { border-bottom: 0; }
+  .menu .focus { background: #E5E5EA; }
+  .menu .red { color: var(--red); }
+  .alert { position: absolute; left: 22px; right: 22px; top: 90px; background: rgba(250,250,250,.98); border-radius: 12px; text-align: center; overflow: hidden; }
+  .alert h3 { font-size: 14px; margin: 12px 10px 2px; }
+  .alert p { font-size: 12px; margin: 0 10px 10px; }
+  .alert .b { display: flex; border-top: 1px solid var(--rule); }
+  .alert .b span { flex: 1; padding: 8px; color: #007AFF; }
+  .alert .b span + span { border-left: 1px solid var(--rule); }
+  .empty { position: absolute; top: 150px; left: 0; right: 0; text-align: center; color: var(--muted); font-size: 16px; }
+  mark { background: #FFE066; color: inherit; }
+</style>
+</head>
+<body>
+<header class="doc">
+  <h1>Notes for the Sonim XP3: first pass</h1>
+  <p>Apple Notes' screens copied as directly as the 240×320 screen allows, before review. See <a href="../index.html">the refined mockups</a> for what changed and why.</p>
+</header>
+<div class="grid">
+
+<figure><div class="phone">
+  <div class="status"><span>10:41</span><span>▮▮▮ 85%</span></div>
+  <div class="nav">‹ Folders</div>
+  <div class="big">Notes</div>
+  <div class="search">⌕ Search</div>
+  <div class="sh">Pinned</div>
+  <div class="card">
+    <div class="row focus"><div class="t">Groceries</div><div class="s"><b>10:41 AM</b> Milk, eggs, bread</div></div>
+  </div>
+  <div class="sh">Today</div>
+  <div class="card">
+    <div class="row"><div class="t">Call the plumber</div><div class="s"><b>9:02 AM</b> Ask about Thursday</div></div>
+    <div class="row"><div class="t">Gate code</div><div class="s"><b>8:15 AM</b> 4471#</div></div>
+  </div>
+  <div class="toolbar">12 Notes<span class="r"><svg class="i" viewBox="0 0 18 18"><path d="M8 3H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4"/><path d="M13 2.5l2.5 2.5L9 11.5H6.5V9z"/></svg></span></div>
+</div><figcaption><b>1. Notes.</b> The folder's notes: Pinned, then by date. Toolbar with the count and compose.</figcaption></figure>
+
+<figure><div class="phone">
+  <div class="status"><span>10:41</span><span>▮▮▮ 85%</span></div>
+  <div class="nav">‹ Notes</div>
+  <div class="date">November 20, 2026 at 10:41 AM</div>
+  <div class="body">
+    <h2>Groceries</h2>
+    <p>Milk</p><p>Eggs</p><p>Bread<span class="caret"></span></p>
+  </div>
+  <div class="toolbar"><span class="l">☑</span>&nbsp;<span class="r"><svg class="i" viewBox="0 0 18 18"><path d="M8 3H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4"/><path d="M13 2.5l2.5 2.5L9 11.5H6.5V9z"/></svg></span></div>
+</div><figcaption><b>2. A note.</b> First line is the title. Yellow caret. Toolbar as Apple's.</figcaption></figure>
+
+<figure><div class="phone">
+  <div class="status"><span>10:41</span><span>▮▮▮ 85%</span></div>
+  <div class="big" style="margin-top:22px">Folders</div>
+  <div class="sh">On My Phone</div>
+  <div class="card">
+    <div class="frow focus"><svg class="i" viewBox="0 0 18 18"><path d="M2 5h5l1.5 2H16v7H2z"/></svg>Notes<span class="n">9</span><span class="c">›</span></div>
+    <div class="frow"><svg class="i" viewBox="0 0 18 18"><path d="M2 5h5l1.5 2H16v7H2z"/></svg>Recipes<span class="n">3</span><span class="c">›</span></div>
+    <div class="frow"><svg class="i" viewBox="0 0 18 18"><path d="M3 5h12M7 5V3h4v2M5 5l1 10h6l1-10"/></svg>Recently Deleted<span class="n">2</span><span class="c">›</span></div>
+  </div>
+  <div class="toolbar"><span class="l"><svg class="i" viewBox="0 0 18 18"><path d="M2 5h5l1.5 2H16v7H2z"/><path d="M9 9v4M7 11h4"/></svg></span>&nbsp;<span class="r"><svg class="i" viewBox="0 0 18 18"><path d="M8 3H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4"/><path d="M13 2.5l2.5 2.5L9 11.5H6.5V9z"/></svg></span></div>
+</div><figcaption><b>3. Folders.</b> Apple's grouped list.</figcaption></figure>
+
+<figure><div class="phone">
+  <div class="status"><span>10:41</span><span>▮▮▮ 85%</span></div>
+  <div class="nav">‹ Folders</div>
+  <div class="big">Notes</div>
+  <div class="search">⌕ Search</div>
+  <div class="sh">Pinned</div>
+  <div class="card"><div class="row focus"><div class="t">Groceries</div><div class="s"><b>10:41 AM</b> Milk, eggs, bread</div></div></div>
+  <div class="scrim"></div>
+  <div class="menu" style="top:150px">
+    <div class="focus">New Note<span>✎</span></div><div>Unpin Note<span>⌖</span></div><div>Move…<span>▭</span></div><div class="red">Delete<span>🗑</span></div>
+  </div>
+</div><figcaption><b>4. Menu.</b> iOS context menu.</figcaption></figure>
+
+<figure><div class="phone">
+  <div class="status"><span>10:41</span><span>▮▮▮ 85%</span></div>
+  <div class="nav">‹ Folders</div>
+  <div class="big">Notes</div>
+  <div class="search" style="color:#000">⌕ milk<span class="caret"></span></div>
+  <div class="sh">Top Hits</div>
+  <div class="card">
+    <div class="row focus"><div class="t">Groceries</div><div class="s"><b>10:41 AM</b> <mark>Milk</mark>, eggs, bread</div></div>
+    <div class="row"><div class="t">Pancakes</div><div class="s"><b>11/2/26</b> 1 cup <mark>milk</mark></div></div>
+  </div>
+</div><figcaption><b>5. Search.</b> Matches marked in yellow.</figcaption></figure>
+
+<figure><div class="phone">
+  <div class="status"><span>10:41</span><span>▮▮▮ 85%</span></div>
+  <div class="nav">‹ Folders</div>
+  <div class="big">Recipes</div>
+  <div class="search">⌕ Search</div>
+  <div class="empty">No Notes</div>
+  <div class="toolbar">No Notes<span class="r"><svg class="i" viewBox="0 0 18 18"><path d="M8 3H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4"/><path d="M13 2.5l2.5 2.5L9 11.5H6.5V9z"/></svg></span></div>
+</div><figcaption><b>6. Empty folder.</b></figcaption></figure>
+
+<figure><div class="phone">
+  <div class="status"><span>10:41</span><span>▮▮▮ 85%</span></div>
+  <div class="big" style="margin-top:22px">Folders</div>
+  <div class="scrim"></div>
+  <div class="alert"><h3>Delete Folder?</h3><p>This folder will be deleted and its notes moved to Recently Deleted.</p><div class="b"><span>Cancel</span><span style="color:var(--red)">Delete</span></div></div>
+</div><figcaption><b>7. Confirm.</b> iOS alert.</figcaption></figure>
+
+</div>
+</body>
+</html>

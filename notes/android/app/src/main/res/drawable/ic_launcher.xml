@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A notepad in Apple Notes' manner: white sheet, yellow band, ruled grey lines. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#FFFFFF" android:pathData="M11,4h26a7,7 0,0 1,7 7v26a7,7 0,0 1,-7 7h-26a7,7 0,0 1,-7 -7v-26a7,7 0,0 1,7 -7z" />
+    <path android:fillColor="#F7C53A" android:pathData="M11,4h26a7,7 0,0 1,7 7v4h-40v-4a7,7 0,0 1,7 -7z" />
+    <path android:fillColor="#D8D8DC" android:pathData="M4,15h40v1h-40z" />
+    <path android:fillColor="#C7C7CC" android:pathData="M9,22h30v1.2h-30zM9,28h30v1.2h-30zM9,34h22v1.2h-22z" />
+    <path android:fillColor="#B4B4B9" android:pathData="M11,4h26a7,7 0,0 1,7 7v26a7,7 0,0 1,-7 7h-26a7,7 0,0 1,-7 -7v-26a7,7 0,0 1,7 -7zM11,5a6,6 0,0 0,-6 6v26a6,6 0,0 0,6 6h26a6,6 0,0 0,6 -6v-26a6,6 0,0 0,-6 -6z" />
+</vector>

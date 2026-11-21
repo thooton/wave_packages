@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notes mockups</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* The design for Notes, refined from first/index.html. 1 CSS px = 1 dp on
+     the XP3's 240x320 mdpi screen; every size and colour here is the app's
+     (res/values/colors.xml and dimens.xml use the same names). */
+  :root {
+    --page: #F2F2F7;      /* iOS grouped background, and the status bar */
+    --card: #FFFFFF;
+    --ink: #000000;
+    --ink2: #3C3C43;      /* a row's date */
+    --muted: #6E6E73;     /* previews, counts, the note's date */
+    --rule: #C6C6C8;      /* hairlines */
+    --tint: #E0A500;      /* Notes' yellow: icons, the caret, the back label */
+    --tint-text: #B88600; /* the yellow, deepened, where it is small text */
+    --wash: #FFE9A6;      /* focus */
+    --mark: #FFD84D;      /* a search match */
+    --field: #E3E3E8;     /* the search field */
+    --bar: #F9F9F9;       /* the toolbar */
+    --red: #FF3B30;
+    --chev: #C4C4C7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #DCDCE0; font: 14px/1.45 Roboto, sans-serif; color: #1C1C1E; }
+  header.doc, section.doc { max-width: 1120px; margin: 0 auto; padding: 24px 16px 4px; }
+  header.doc h1 { font-size: 22px; font-weight: 500; margin: 0 0 6px; }
+  .doc p, .doc li { color: #444; max-width: 820px; }
+  .doc h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #666; font-weight: 500; margin: 20px 0 8px; }
+  .doc table { border-collapse: collapse; font-size: 13px; }
+  .doc td { padding: 3px 16px 3px 0; vertical-align: top; color: #444; }
+  .doc td:first-child { color: #111; font-weight: 500; white-space: nowrap; }
+  .grid { max-width: 1120px; margin: 0 auto; padding: 8px 16px 24px; display: flex; flex-wrap: wrap; gap: 24px 20px; }
+  figure { margin: 0; width: 360px; }
+  figcaption { font-size: 12px; color: #555; margin-top: 6px; }
+  figcaption b { color: #111; font-weight: 500; }
+
+  .phone { width: 240px; height: 320px; zoom: 1.5; overflow: hidden; position: relative; background: var(--page);
+           box-shadow: 0 0 0 1px rgba(0,0,0,.3); font-size: 13px; line-height: 1.25; color: var(--ink); }
+  .status { height: 24px; display: flex; align-items: center; justify-content: flex-end; gap: 5px; padding: 0 6px;
+            font-size: 11px; color: #222; }
+  .status i { display: inline-block; width: 12px; height: 9px; background: #222; clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+  .status u { display: inline-block; width: 6px; height: 11px; border: 1.3px solid #222; border-radius: 1px; text-decoration: none; }
+
+  .nav { height: 22px; display: flex; align-items: center; padding: 0 6px; color: var(--tint-text); font-size: 13px; gap: 3px; }
+  .nav svg { width: 8px; height: 13px; fill: none; stroke: var(--tint); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .big { font-size: 22px; font-weight: 700; padding: 0 12px; height: 30px; line-height: 28px; }
+  .sh { font-size: 13.5px; font-weight: 700; padding: 6px 12px 4px; }
+  .card { background: var(--card); margin: 0 8px 4px; border-radius: 10px; overflow: hidden; }
+  .row { position: relative; height: 40px; padding: 5px 10px 0; }
+  .row + .row::before { content: ""; position: absolute; left: 10px; right: 0; top: 0; border-top: 1px solid var(--rule); }
+  .row.focus::after { content: ""; position: absolute; inset: 3px; border-radius: 7px; background: var(--wash); z-index: 0; }
+  .row.focus + .row::before, .row.focus::before { border-color: transparent; }
+  .row > * { position: relative; z-index: 1; }
+  .row.tall { height: 54px; }
+  .t { font-weight: 500; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .s { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .s b { color: var(--ink2); font-weight: 400; margin-right: 5px; }
+  .f { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 3px; margin-top: 2px; }
+  .f svg { width: 11px; height: 11px; fill: none; stroke: var(--muted); stroke-width: 1.3; }
+  mark { background: var(--mark); color: inherit; border-radius: 2px; }
+
+  .toolbar { z-index: 5; position: absolute; left: 0; right: 0; bottom: 0; height: 26px; background: var(--bar);
+             border-top: 1px solid var(--rule); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--ink2); }
+  .toolbar .r { position: absolute; right: 8px; top: 3px; }
+  .toolbar .l { position: absolute; left: 8px; top: 3px; }
+  svg.i { width: 19px; height: 19px; fill: none; stroke: var(--tint); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  .frow { position: relative; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 10px; font-size: 13.5px; }
+  .frow + .frow::before { content: ""; position: absolute; left: 37px; right: 0; top: 0; border-top: 1px solid var(--rule); }
+  .frow.focus::after { content: ""; position: absolute; inset: 3px; border-radius: 7px; background: var(--wash); z-index: 0; }
+  .frow.focus + .frow::before, .frow.focus::before { border-color: transparent; }
+  .frow > * { position: relative; z-index: 1; }
+  .frow .n { margin-left: auto; color: var(--muted); }
+  .frow .c { width: 6px; height: 10px; fill: none; stroke: var(--chev); stroke-width: 1.8; }
+
+  .date { text-align: center; color: var(--muted); font-size: 11px; margin: 0 0 6px; }
+  .body { padding: 0 12px; font-size: 14px; line-height: 19px; }
+  .body h2 { font-size: 18px; line-height: 23px; font-weight: 700; margin: 0; }
+  .body p { margin: 0; }
+  .caret { display: inline-block; width: 2px; height: 16px; background: var(--tint); vertical-align: -3px; margin-left: 1px; }
+  .readonly { color: #333; }
+
+  .search { display: flex; align-items: center; gap: 8px; padding: 0 8px; height: 34px; }
+  .search .box { flex: 1; height: 26px; border-radius: 8px; background: var(--field); display: flex; align-items: center; gap: 4px; padding: 0 6px; font-size: 13px; }
+  .search .box svg { width: 13px; height: 13px; fill: none; stroke: var(--muted); stroke-width: 1.7; stroke-linecap: round; }
+  .search .cancel { color: var(--tint-text); font-size: 13px; }
+
+  .scrim { z-index: 6; position: absolute; inset: 0; background: rgba(0,0,0,.22); }
+  .menu { z-index: 7; position: absolute; left: 8px; right: 8px; bottom: 8px; background: #FAFAFA; border-radius: 12px;
+          box-shadow: 0 4px 18px rgba(0,0,0,.28); overflow: hidden; font-size: 13.5px; padding: 0; }
+  .menu .h { font-size: 11px; color: var(--muted); padding: 6px 12px 4px; border-bottom: 1px solid #DCDCE0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .menu .m { position: relative; height: 32px; display: flex; justify-content: space-between; align-items: center; padding: 0 12px; }
+  .menu .m + .m::before { content: ""; position: absolute; left: 0; right: 0; top: 0; border-top: 1px solid #DCDCE0; }
+  .menu .m.focus::after { content: ""; position: absolute; inset: 3px; border-radius: 7px; background: var(--wash); z-index: 0; }
+  .menu .m.focus + .m::before, .menu .m.focus::before { border-color: transparent; }
+  .menu .m > * { position: relative; z-index: 1; }
+  .menu .m svg { width: 16px; height: 16px; fill: none; stroke: #000; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .menu .red { color: var(--red); }
+  .menu .red svg { stroke: var(--red); }
+  .menu .thick { border-top: 6px solid #E5E5EA; }
+  .menu .m.thick::before { display: none; }
+  .tick { width: 14px; height: 14px; fill: none; stroke: var(--tint) !important; stroke-width: 2 !important; }
+
+  .alert { z-index: 7; position: absolute; left: 20px; right: 20px; top: 92px; background: #FAFAFA; border-radius: 12px; text-align: center; overflow: hidden; }
+  .alert h3 { font-size: 14px; font-weight: 700; margin: 12px 12px 3px; }
+  .alert p { font-size: 11.5px; margin: 0 12px 11px; line-height: 1.3; }
+  .alert .b { display: flex; border-top: 1px solid var(--rule); height: 32px; }
+  .alert .b span { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; font-size: 13.5px; color: var(--tint-text); }
+  .alert .b span + span { border-left: 1px solid var(--rule); }
+  .alert .b .red { color: var(--red); font-weight: 500; }
+  .alert .b .focus::after { content: ""; position: absolute; inset: 3px; border-radius: 7px; background: var(--wash); z-index: -1; }
+  .alert .b span { z-index: 0; }
+
+  .empty { position: absolute; top: 132px; left: 0; right: 0; text-align: center; color: var(--muted); font-size: 15px; font-weight: 500; }
+  .field { margin: 0 8px; background: #fff; border-radius: 10px; height: 34px; display: flex; align-items: center; padding: 0 10px; font-size: 13.5px; }
+  .center { text-align: center; font-size: 13.5px; font-weight: 500; height: 30px; line-height: 30px; position: relative; }
+  .center .l { position: absolute; left: 10px; color: var(--tint-text); font-weight: 400; }
+  .center .r { position: absolute; right: 10px; color: var(--tint-text); font-weight: 500; }
+  .ic { width: 19px; height: 19px; fill: none; stroke: var(--tint); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; flex: none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="back" viewBox="0 0 8 13"><path d="M6.5 1.5 1.5 6.5l5 5"/></symbol>
+    <symbol id="chev" viewBox="0 0 6 10"><path d="M1 1l4 4-4 4"/></symbol>
+    <symbol id="compose" viewBox="0 0 19 19"><path d="M9 3H4.5A1.5 1.5 0 0 0 3 4.5v10A1.5 1.5 0 0 0 4.5 16h10a1.5 1.5 0 0 0 1.5-1.5V10"/><path d="M14 2.5l2.5 2.5-7 7H7v-2.5z"/></symbol>
+    <symbol id="folder" viewBox="0 0 19 19"><path d="M2.5 5.5a1 1 0 0 1 1-1h4l1.6 1.8h6.4a1 1 0 0 1 1 1v7.2a1 1 0 0 1-1 1h-12a1 1 0 0 1-1-1z"/><path d="M2.5 8h14"/></symbol>
+    <symbol id="newfolder" viewBox="0 0 19 19"><path d="M2.5 5.5a1 1 0 0 1 1-1h4l1.6 1.8h6.4a1 1 0 0 1 1 1v7.2a1 1 0 0 1-1 1h-12a1 1 0 0 1-1-1z"/><path d="M9.5 9v4.6M7.2 11.3h4.6"/></symbol>
+    <symbol id="trash" viewBox="0 0 19 19"><path d="M3.5 5h12M7.5 5V3.5h4V5M5 5l.9 10.5h7.2L14 5M8 8v5M11 8v5"/></symbol>
+    <symbol id="pin" viewBox="0 0 16 16"><path d="M5.5 2h5l-.8 4 2.3 2.5H4L6.3 6z"/><path d="M8 8.5V14"/></symbol>
+    <symbol id="unpin" viewBox="0 0 16 16"><path d="M5.5 2h5l-.8 4 2.3 2.5H4L6.3 6z"/><path d="M8 8.5V14M2.5 2.5l11 11"/></symbol>
+    <symbol id="move" viewBox="0 0 16 16"><path d="M1.5 4.2a.8.8 0 0 1 .8-.8h3.5l1.3 1.4h6.6a.8.8 0 0 1 .8.8v6.6a.8.8 0 0 1-.8.8H2.3a.8.8 0 0 1-.8-.8z"/><path d="M6 8.5h5M9 6.5l2 2-2 2"/></symbol>
+    <symbol id="new" viewBox="0 0 16 16"><path d="M7.5 2.5H3.5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8.5"/><path d="M12 2l2 2-6 6H6V8z"/></symbol>
+    <symbol id="bin" viewBox="0 0 16 16"><path d="M2.5 4h11M6 4V2.5h4V4M4 4l.8 9.5h6.4L12 4"/></symbol>
+    <symbol id="pencil" viewBox="0 0 16 16"><path d="M11 2.5l2.5 2.5L5.5 13H3v-2.5z"/></symbol>
+    <symbol id="restore" viewBox="0 0 16 16"><path d="M3 8a5 5 0 1 0 1.5-3.6"/><path d="M4.3 2v2.6h2.6"/></symbol>
+    <symbol id="search" viewBox="0 0 13 13"><circle cx="5.5" cy="5.5" r="4"/><path d="M8.5 8.5l3 3"/></symbol>
+    <symbol id="tickmark" viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></symbol>
+  </defs>
+</svg>
+
+<header class="doc">
+  <h1>Notes for the Sonim XP3</h1>
+  <p>Apple Notes (iOS 17, light) laid out for a 240×320 screen, a d-pad, two soft keys and a T9 keypad. Drawn at 1 px = 1 dp; the app uses these sizes and colours. Refined from <a href="first/index.html">the first pass</a>; what changed and why is listed under the screens.</p>
+</header>
+
+<div class="grid">
+
+<!-- 1. The folder's notes -->
+<figure><div class="phone">
+  <div class="status"><i></i><u></u>10:41</div>
+  <div class="nav"><svg><use href="#back"/></svg>Folders</div>
+  <div class="big">Notes</div>
+  <div class="sh">Pinned</div>
+  <div class="card">
+    <div class="row focus"><div class="t">Groceries</div><div class="s"><b>10:41 AM</b>Milk, eggs, bread, coffee</div></div>
+  </div>
+  <div class="sh">Today</div>
+  <div class="card">
+    <div class="row"><div class="t">Call the plumber</div><div class="s"><b>9:02 AM</b>Ask about Thursday morning</div></div>
+    <div class="row"><div class="t">Gate code</div><div class="s"><b>8:15 AM</b>No additional text</div></div>
+  </div>
+  <div class="sh">Previous 7 Days</div>
+  <div class="card">
+    <div class="row"><div class="t">Gift ideas</div><div class="s"><b>Tuesday</b>Mum: the blue scarf</div></div>
+  </div>
+  <div class="toolbar">9 Notes<span class="r"><svg class="i"><use href="#compose"/></svg></span></div>
+</div><figcaption><b>1. A folder's notes</b>, which open on launch. Pinned first, then by when each was last changed. The compose icon is what Menu's first choice does.</figcaption></figure>
+
+<!-- 2. A note being written -->
+<figure><div class="phone" style="background:#fff">
+  <div class="status" style="background:#fff"><i></i><u></u>10:41</div>
+  <div class="nav"><svg><use href="#back"/></svg>Notes</div>
+  <div class="date">November 20, 2026 at 10:41 AM</div>
+  <div class="body">
+    <h2>Groceries</h2>
+    <p>Milk, eggs, bread, coffee</p>
+    <p>Oat milk for Sam</p>
+    <p>Lemons<span class="caret"></span></p>
+  </div>
+</div><figcaption><b>2. A note.</b> White, like Apple's page. The first line is the title, 18sp bold, as Apple sets it; the caret is Notes' yellow. Saved as it is typed; Back returns to the list.</figcaption></figure>
+
+<!-- 3. Folders -->
+<figure><div class="phone">
+  <div class="status"><i></i><u></u>10:41</div>
+  <div class="nav"></div>
+  <div class="big">Folders</div>
+  <div class="sh">On My Phone</div>
+  <div class="card">
+    <div class="frow focus"><svg class="ic"><use href="#folder"/></svg><span>Notes</span><span class="n">9</span><svg class="c"><use href="#chev"/></svg></div>
+    <div class="frow"><svg class="ic"><use href="#folder"/></svg><span>Recipes</span><span class="n">3</span><svg class="c"><use href="#chev"/></svg></div>
+    <div class="frow"><svg class="ic"><use href="#folder"/></svg><span>Work</span><span class="n">5</span><svg class="c"><use href="#chev"/></svg></div>
+    <div class="frow"><svg class="ic"><use href="#trash"/></svg><span>Recently Deleted</span><span class="n">2</span><svg class="c"><use href="#chev"/></svg></div>
+  </div>
+  <div class="toolbar"><span class="l"><svg class="i"><use href="#newfolder"/></svg></span><span class="r"><svg class="i"><use href="#compose"/></svg></span></div>
+</div><figcaption><b>3. Folders</b>, one Back (or Left) from a folder. Recently Deleted shows only while it holds something. New folder at left, new note at right, as Apple's toolbar has them.</figcaption></figure>
+
+<!-- 4. Menu on a note -->
+<figure><div class="phone">
+  <div class="status"><i></i><u></u>10:41</div>
+  <div class="nav"><svg><use href="#back"/></svg>Folders</div>
+  <div class="big">Notes</div>
+  <div class="sh">Pinned</div>
+  <div class="card"><div class="row focus"><div class="t">Groceries</div><div class="s"><b>10:41 AM</b>Milk, eggs, bread, coffee</div></div></div>
+  <div class="scrim"></div>
+  <div class="menu">
+    <div class="m focus"><span>New Note</span><svg><use href="#new"/></svg></div>
+    <div class="m thick"><span>Unpin Note</span><svg><use href="#unpin"/></svg></div>
+    <div class="m"><span>Move Note</span><svg><use href="#move"/></svg></div>
+    <div class="m red"><span>Delete</span><svg><use href="#bin"/></svg></div>
+  </div>
+</div><figcaption><b>4. Menu</b> (the left soft key). Apple's context menu, risen from the soft key's corner: New Note, then what acts on the picked note after a thick rule; Delete in red. Back closes it.</figcaption></figure>
+
+<!-- 5. Search -->
+<figure><div class="phone">
+  <div class="status"><i></i><u></u>10:41</div>
+  <div class="search"><div class="box"><svg><use href="#search"/></svg>milk<span class="caret" style="height:14px"></span></div><span class="cancel">Cancel</span></div>
+  <div class="sh">Top Hits</div>
+  <div class="card">
+    <div class="row tall focus"><div class="t">Groceries</div><div class="s"><b>10:41 AM</b><mark>Milk</mark>, eggs, bread, coffee</div><div class="f"><svg><use href="#folder"/></svg>Notes</div></div>
+    <div class="row tall"><div class="t">Pancakes</div><div class="s"><b>11/2/26</b>1 cup <mark>milk</mark>, 2 eggs</div><div class="f"><svg><use href="#folder"/></svg>Recipes</div></div>
+    <div class="row tall"><div class="t">Shopping for Sam</div><div class="s"><b>10/14/26</b>Oat <mark>milk</mark></div><div class="f"><svg><use href="#folder"/></svg>Notes</div></div>
+  </div>
+</div><figcaption><b>5. Search</b>: typing on a list, or Up from its top, searches every folder. Matches are marked in yellow, and each hit says its folder. Down moves into the hits; Back (or Cancel's Back) leaves.</figcaption></figure>
+
+<!-- 6. Empty folder -->
+<figure><div class="phone">
+  <div class="status"><i></i><u></u>10:41</div>
+  <div class="nav"><svg><use href="#back"/></svg>Folders</div>
+  <div class="big">Recipes</div>
+  <div class="empty">No Notes</div>
+  <div class="toolbar"><span class="r"><svg class="i"><use href="#compose"/></svg></span></div>
+</div><figcaption><b>6. An empty folder.</b> "No Notes", as Apple puts it, and nothing else. OK here starts a note.</figcaption></figure>
+
+<!-- 7. Recently Deleted -->
+<figure><div class="phone">
+  <div class="status"><i></i><u></u>10:41</div>
+  <div class="nav"><svg><use href="#back"/></svg>Folders</div>
+  <div class="big">Recently Deleted</div>
+  <div class="sh">Previous 7 Days</div>
+  <div class="card">
+    <div class="row focus"><div class="t">Old gate code</div><div class="s"><b>Monday</b>1180#</div></div>
+    <div class="row"><div class="t">Parking</div><div class="s"><b>Sunday</b>Level 3, row F</div></div>
+  </div>
+  <div class="scrim"></div>
+  <div class="menu">
+    <div class="m focus"><span>Recover</span><svg><use href="#restore"/></svg></div>
+    <div class="m red"><span>Delete Now</span><svg><use href="#bin"/></svg></div>
+    <div class="m red thick"><span>Delete All</span><svg><use href="#bin"/></svg></div>
+  </div>
+</div><figcaption><b>7. Recently Deleted</b> keeps notes 30 days. Its Menu recovers a note to the folder it came from, or deletes it for good. A deleted note opens read-only.</figcaption></figure>
+
+<!-- 8. Move to a folder -->
+<figure><div class="phone">
+  <div class="status"><i></i><u></u>10:41</div>
+  <div class="center"><span class="l">Cancel</span>Select a folder</div>
+  <div class="sh" style="font-weight:400;color:var(--muted);font-size:11.5px">Moving "Groceries"</div>
+  <div class="card">
+    <div class="frow"><svg class="ic"><use href="#folder"/></svg><span>Notes</span><span class="n"><svg class="tick"><use href="#tickmark"/></svg></span></div>
+    <div class="frow focus"><svg class="ic"><use href="#folder"/></svg><span>Recipes</span><span class="n">3</span></div>
+    <div class="frow"><svg class="ic"><use href="#folder"/></svg><span>Work</span><span class="n">5</span></div>
+    <div class="frow"><svg class="ic"><use href="#newfolder"/></svg><span style="color:var(--tint-text)">New Folder</span></div>
+  </div>
+</div><figcaption><b>8. Move Note</b>: Apple's folder picker as a page. The note's own folder has a tick; New Folder makes one and moves the note into it.</figcaption></figure>
+
+<!-- 9. New folder -->
+<figure><div class="phone">
+  <div class="status"><i></i><u></u>10:41</div>
+  <div class="center"><span class="l">Cancel</span>New Folder<span class="r">Save</span></div>
+  <div style="height:10px"></div>
+  <div class="field">Recipes<span class="caret"></span></div>
+</div><figcaption><b>9. New Folder</b> (and Rename Folder): a page with the name in a white field; OK saves, Back cancels. A name already in use is refused with "Name Taken".</figcaption></figure>
+
+<!-- 10. Delete folder -->
+<figure><div class="phone">
+  <div class="status"><i></i><u></u>10:41</div>
+  <div class="nav"></div>
+  <div class="big">Folders</div>
+  <div class="sh">On My Phone</div>
+  <div class="card">
+    <div class="frow"><svg class="ic"><use href="#folder"/></svg><span>Notes</span><span class="n">9</span><svg class="c"><use href="#chev"/></svg></div>
+    <div class="frow focus"><svg class="ic"><use href="#folder"/></svg><span>Recipes</span><span class="n">3</span><svg class="c"><use href="#chev"/></svg></div>
+  </div>
+  <div class="scrim"></div>
+  <div class="alert"><h3>Delete Folder?</h3><p>Its 3 notes will be moved to Recently Deleted.</p><div class="b"><span>Cancel</span><span class="red focus">Delete</span></div></div>
+</div><figcaption><b>10. Delete Folder</b>, an iOS alert. Left and Right choose; OK confirms; Back cancels.</figcaption></figure>
+
+</div>
+
+<section class="doc">
+  <h2>Keys</h2>
+  <table>
+    <tr><td>Up / Down</td><td>Move one row; on a note, the cursor. Up from a list's first row opens the search.</td></tr>
+    <tr><td>OK</td><td>Open the folder or note; in a note, a new line; on an empty folder, a new note.</td></tr>
+    <tr><td>Keypad</td><td>On a list, starts a search with that key; in a note, types (T9).</td></tr>
+    <tr><td>Menu (left soft key)</td><td>The menu for where you are (on release).</td></tr>
+    <tr><td>Back (right soft key), Left</td><td>Back one page: note → folder → Folders → out. Left only on lists. A note is already saved; an empty one is thrown away.</td></tr>
+  </table>
+
+  <h2>What the refinement changed</h2>
+  <ul>
+    <li><b>Room for notes.</b> The first pass spent 110 of 320 dp on chrome before the first note. The search field now hides until it is used (typing on a list, or Up from the top), so a folder shows four notes, not two and a half; the back row is 22 dp and the large title 22sp in 30 dp.</li>
+    <li><b>Focus you can see.</b> iOS's grey pressed state (#D1D1D6) barely shows on the XP3's panel; the picked row is now a yellow wash (#FFE9A6) inset 3 dp in the card with 7 dp corners, as Notes highlights the selected note on iPad and Mac, and the hairlines either side of it give way.</li>
+    <li><b>Readable greys and yellow.</b> iOS's #8A8A8E secondary text is too faint at 11.5sp on this screen; previews use #6E6E73. Notes' yellow stays #E0A500 for icons and the caret, and is deepened to #B88600 where it is text (Folders, Cancel, Save).</li>
+    <li><b>No decoy controls.</b> The first pass carried Apple's checklist button in the note's toolbar, which the app would not have; the note is now the whole page, with no toolbar. The empty folder no longer says "No Notes" twice.</li>
+    <li><b>A menu that rises from the soft key.</b> The menu now sits at the foot of the screen, full width, over the soft key that opens it, with Apple's thick rule between New Note and what acts on the note, and real line icons in place of characters.</li>
+    <li><b>Search says where.</b> Search covers every folder, so each hit gets Apple's third line with its folder.</li>
+    <li><b>Missing pages added.</b> Recently Deleted (with Recover), the folder picker for Move, New Folder and the Delete Folder alert, whose buttons use Notes' yellow rather than iOS blue.</li>
+    <li><b>Android's status bar.</b> The XP3's own bar, on the page's grey with dark icons, rather than an iPhone's.</li>
+  </ul>
+</section>
+</body>
+</html>

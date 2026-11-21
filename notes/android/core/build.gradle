@@ -1,0 +1,6 @@
+// The notes, their folders, their dates and their storage: plain Java.
+apply from: rootProject.file("gradle/core.gradle")
+
+dependencies {
+    api project(":common:core")
+}

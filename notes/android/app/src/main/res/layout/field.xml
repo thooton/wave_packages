@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Every text field in the app: a bare EditText with Notes' yellow caret,
+     which only XML can give it on Android 8. The code sizes and places it. -->
+<EditText xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@null"
+    android:padding="0dp"
+    android:textColor="@color/ink"
+    android:textCursorDrawable="@drawable/cursor"
+    android:includeFontPadding="false" />
