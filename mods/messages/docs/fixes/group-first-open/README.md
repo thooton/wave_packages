@@ -1,10 +1,11 @@
 # Stable group conversation opening
 
-An SMS/MMS group title used the color cached on its first recipient. That value
-could change when an avatar was drawn elsewhere, so the same conversation could
-open with the blue default or the gray palette. Groups now use the existing
-neutral gray swatch and use the phone snapshot for the title, like the inbox.
-Single-recipient titles keep their existing behavior.
+An SMS/MMS group title now uses the phone snapshot for its names, like the
+inbox. Its colors are stock: like a one-to-one conversation, a group takes the
+color its first recipient's inbox avatar cached, or the stock blue when that
+recipient has none yet. Messages Improved 1.1.1 painted every group gray
+instead, which also turned its received bubbles gray; 1.1.2 removed that
+override. `tools/testing/title_color_test.py` keeps the color path stock.
 
 On a normal first open, the list corrects any clipping of its last visible row
 against the available history area. This also covers late height changes as MMS

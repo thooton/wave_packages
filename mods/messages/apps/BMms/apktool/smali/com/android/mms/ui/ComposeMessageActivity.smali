@@ -23410,13 +23410,6 @@
     .line 2897
     if-lt v3, v8, :cond_f
 
-    # FIX(group first open): use the stock gray swatch for a group, not whichever
-    # color the first recipient's avatar happened to cache in the inbox.
-    if-eq v3, v8, :wave_single_palette
-    const v0, -0x8a8a8b    # #757575, stock neutral letter tile
-    goto :cond_8
-
-    :wave_single_palette
     .line 2898
     invoke-virtual {p1, v6}, Lcom/android/mms/data/ContactList;->get(I)Ljava/lang/Object;
 
