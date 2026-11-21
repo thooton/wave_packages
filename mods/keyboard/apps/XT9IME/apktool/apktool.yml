@@ -1,0 +1,22 @@
+version: 2.11.0
+apkFileName: XT9IME.apk
+isFrameworkApk: false
+usesFramework:
+  ids:
+  tag: null
+sdkInfo:
+packageInfo:
+  forcedPackageId: null
+  renameManifestPackage: null
+versionInfo:
+  versionCode: null
+  versionName: null
+sharedLibrary: false
+sparseResources: false
+compactEntries: false
+doNotCompress:
+- arsc
+- ogg
+- png
+- wav
+- assets/EN.txt

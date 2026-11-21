@@ -7,7 +7,7 @@ from pathlib import Path
 
 RETIRED = {line for line in map(str.strip, (Path(__file__).resolve().parents[1] /
            'gradle/retired-apps.txt').read_text().splitlines()) if line and not line.startswith('#')}
-MODULES = ['mods/launcher', 'mods/messages', 'mods/music']
+MODULES = ['mods/keyboard', 'mods/launcher', 'mods/messages', 'mods/music']
 
 
 def metadata(path):

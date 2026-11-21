@@ -133,7 +133,9 @@ jobs:
           mods/tools/setup.sh
           mods/tools/test.sh
           "$PACKAGE_PATH/tools/test.sh"
-          mods/tools/build-module.sh "${PACKAGE_PATH##*/}"
+          # What mods/tools/build-module.sh does, for every mod.
+          "$PACKAGE_PATH/tools/build.sh"
+          "$PACKAGE_PATH/tools/package.sh"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.package.name }}-module

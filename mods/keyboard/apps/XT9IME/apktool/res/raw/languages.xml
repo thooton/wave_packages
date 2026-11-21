@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<languages>
+    <language id="0x0109" value="en_US" />
+    <language id="0x0809" value="en_GB" />
+    <language id="0x0107" value="de_DE" />
+    <language id="0x00C0" value="fr_FR" />
+    <language id="0x010C" value="fr_FR" />
+    <language id="0x0110" value="it_IT" />
+    <language id="0x010A" value="es_ES" />
+    <language id="0x080A" value="es_ES" />
+
+    <language id="0x0105" value="cs_CS" />
+    <language id="0x0115" value="pl_PL" />
+    <language id="0x0106" value="da_DA" />
+    <language id="0x0113" value="nl_NL" />
+    <language id="0x0114" value="no_NO" />
+    <language id="0x011F" value="tr_TR" />
+    <language id="0x010B" value="fi_FI" />
+    <language id="0x011D" value="sv_SV" />
+    <language id="0x0116" value="pt_PT" />
+
+    <language id="0x0101" value="ar_AR" />
+    <language id="0x010D" value="iw_IW" />
+    <language id="0x0119" value="ru_RU" />
+    <language id="0x011E" value="th_TH" />
+
+</languages>

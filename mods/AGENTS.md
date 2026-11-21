@@ -8,6 +8,7 @@ separate from the Wave app:
 | Messages Improved | BMms, TelephonyProvider, ContactsProvider | `stock-messages` |
 | Launcher Improved | SonimLauncher | `stock-launcher` |
 | Music Improved | BMusic | `stock-music` |
+| Keyboard Improved | XT9IME (not in `firmware/`; spliced on the phone) | 11.20.00 |
 | SQLite Improved | None; native library overlay | 11.17.00 and 11.20.00 |
 
 Each mod's `apps/<App>/apktool/` is the smali source tree; `java/` adds
@@ -36,9 +37,10 @@ mods/messages/tools/test.sh
 mods/tools/build-module.sh messages
 ```
 
-Swap `messages` for `launcher` or `music` to work on those mods. To build a
-single APK, pass its directory name such as `BMms` to the mod-specific
-`tools/build.sh`. The shared command builds every APK and packages the module:
+Swap `messages` for `launcher` or `music` to work on those mods. Keyboard
+Improved builds with its own `tools/build.sh` and `tools/package.sh` (see
+[its AGENTS.md](keyboard/AGENTS.md)). To build a single APK, pass its
+directory name such as `BMms` to the mod-specific `tools/build.sh`. The shared command builds every APK and packages the module:
 `mods/tools/build-module.sh messages` writes
 `mods/messages/out/messages-improved-<version>.zip`. The host checks catch
 duplicate classes, unresolved hook targets and some behavior regressions; they

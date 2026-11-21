@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Speech info for OEM build.
+
+    speech_info:
+        app_name="name application name provided by speech team"
+
+        default_gateway_ip_addr="speech sever provided by speech team"
+
+        default_port_id="port id provided by speech team"
+
+        app_key = IS BINARY DATA AND IS DEFINED IN the Dictation.java for OEM BUILD
+
+        language:
+            lang_id=<ID>
+                ID: as used in the xml/inputmethods.xml
+
+            lang_name = <name>
+                name: as defined and used by speech server
+
+            lang_server = <server> [optional]
+                server: the default_gateway_ip_addr is used if the speech server for that language is not specify
+
+ -->
+
+<speech_info app_name="NEXTGEN_UNIVERSAL_NMAID_20100723" default_gateway_ip_addr="mtl-ovs1.nuance.com" default_port_id="8911" >
+    <language lang_id="0x0109" lang_name="en_US" lang_server="mtl-ovs1.nuance.com" />
+    <language lang_id="0x0809" lang_name="en_GB" />
+    <language lang_id="0x00C0" lang_name="fr_FR" />
+    <language lang_id="0x010C" lang_name="fr_FR" />
+    <language lang_id="0x0107" lang_name="de_DE" />
+    <language lang_id="0x0110" lang_name="it_IT" />
+    <language lang_id="0x010A" lang_name="es_ES" />
+    <language lang_id="0x080A" lang_name="es_ES" />
+</speech_info>
