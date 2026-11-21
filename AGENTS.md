@@ -36,6 +36,15 @@ requires a higher versionCode for an update to be offered reliably. A change
 touching several apps bumps each of them. For a change to `common/` or
 `gradle/`, bump each shipped app whose APK changes.
 
+## Interactive emulator for Wave workers
+
+For a d-pad UI check from an Oak worker, use `tools/qa/emulator` from the
+sibling Wave checkout with `--repo ../wave_packages start <app-directory>`.
+See [the setup and commands](https://github.com/thooton/wave/blob/master/tools/qa/README.md#interactive-github-actions-emulator).
+Use a trusted local commit and synthetic data: commands and captures in
+this repository's temporary session refs are public. This is separate
+from Delta's scheduled QA and does not need its secrets.
+
 ## Nightly QA
 
 Every night the Delta command center has cloud sessions go through each app
