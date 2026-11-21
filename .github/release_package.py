@@ -56,7 +56,8 @@ def release_state(path, tag, version):
         scope = [path, 'common', 'gradle', 'signing', 'build.gradle', 'settings.gradle', 'gradle.properties',
                  'gradlew', 'gradlew.bat']
     non_build_inputs = [':(glob,exclude)**/*.md', ':(glob,exclude)**/mockups/**',
-                        ':(exclude)gradle/retired-apps.txt', f':(exclude){path}/wave/package.json']
+                        ':(exclude)gradle/retired-apps.txt', f':(exclude){path}/wave/package.json',
+                        f':(exclude){path}/wave/icon.png']
     if subprocess.run(['git', 'diff', '--quiet', tag + '^{commit}', 'HEAD', '--', *scope, *non_build_inputs]).returncode:
         raise ValueError(f'{path}: changes to {tag} require a versionName and versionCode bump; assets are immutable')
     return 'existing'
