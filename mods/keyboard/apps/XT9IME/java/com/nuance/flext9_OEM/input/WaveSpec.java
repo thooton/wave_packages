@@ -1242,4 +1242,24 @@ public final class WaveSpec {
     static boolean inKey() {
         return sKeyDepth > 0;
     }
+
+    /**
+     * WaveEarly: the space is being typed a moment after its key went down, outside the stock
+     * key handler. The stock code is doing key handling work, so the text-field answers come
+     * from the copy (as during any key) and the look-ahead is started afterwards like
+     * keyDownEnd does.
+     */
+    static void beginVirtualKey() {
+        sKeyDepth++;
+    }
+
+    static void endVirtualKey() {
+        sKeyDepth--;
+        boolean mutated;
+        synchronized (LOCK) {
+            mutated = sMutated;
+            sMutated = false;
+        }
+        if (mutated && !inKey()) schedule(sIme, 5);
+    }
 }

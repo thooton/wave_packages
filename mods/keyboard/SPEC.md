@@ -21,6 +21,9 @@ changes.
 - A letter key shows its letter and suggestions when it goes down, not when it is released.
   If the key is held for the popup, the letter is taken back first and the popup opens as on
   stock.
+- The space key commits the word and shows the next word's suggestions as it goes down too
+  (a fifth of the text's keys are spaces). A space is typed early only when the key was not
+  held; holding 0 still opens the key's popup and types a single 0, as on stock.
 - Suggestions are worked out ahead while the user is between keys, so the bar usually updates
   on the next screen refresh after a key press; the space after a word, and the next word's
   first letter, are worked out ahead too.

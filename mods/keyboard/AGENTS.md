@@ -40,7 +40,13 @@ every engine call goes through `WaveSpec.enter/exit` or one of its answering met
   state is copied out and the engine put back whole; the copy is compared with its base on
   the `WaveCmp` thread while the look-ahead goes on, and the record is kept once that is
   done (`drain` before a base changes and before a look-ahead ends).
-- `WaveEarly`: letters on key down (stock types them on release).
+- `WaveEarly`: letters on key down (stock types them on release), and the space too: its
+  Release event commits the word and stock only sends it on key up, so every space otherwise
+  waited out the key's hold (~80 ms). A space is dispatched a moment after the key goes down
+  and only when it isn't held; if the Hold does arrive (holding 0 opens the key's popup and
+  types the digit), the space it typed is deleted and the stock Hold runs, so the digit
+  appears once. Dispatch of an early space counts as key handling (`WaveSpec.beginVirtualKey`)
+  so the text field answers come from the copy rather than the app.
 - `WaveFrame`: draws as soon as the suggestions are set; skips drawing words outside the bar;
   remembers candidate widths across keys (`measure`, keyed by text and every width-relevant
   Paint setting; a miss calls `Paint.measureText`, and with debug on every hit is checked).
