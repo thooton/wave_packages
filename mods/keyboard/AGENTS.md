@@ -56,7 +56,11 @@ every engine call goes through `WaveSpec.enter/exit` or one of its answering met
   The look-ahead's candidates are measured ahead on the `WaveMeasure` thread (`prepare`) with
   copies of the Paints seen.
 - `WaveConnection`, `WaveStatus`, `WaveDisplay`, the `checkEULAInfo` reorder: no synchronous
-  IPC while a key is handled, with the same answers.
+  IPC while a key is handled, with the same answers. After an answered key the connection
+  knows the field text that key leaves (from the record), so the stock refresh that follows
+  each key confirms the copy against that text instead of asking the app: a session's app
+  round trips drop from ~190 to a handful. Each text is checked against the field once; a
+  field the copy can't follow goes back to asking the app.
 - `WaveBoost`: CPU minimum frequency at the top while typing (BoostFramework perf lock), and
   the main thread and RenderThread(s) at audio priority from a key event until 120 ms after
   the last one (threads started meanwhile get the main thread's priority back). The

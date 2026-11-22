@@ -131,6 +131,13 @@ public final class WaveSpec {
         char[] inline = new char[WORDLEN];
         /** Engine state after the key's calls, the build and the reads. */
         WaveMem.Delta built;
+        /**
+         * Text the key left (the composing text and word the bar shows), made when the record is
+         * made; the text-field answers around a pressed key are computed from it instead of
+         * copying the field text again.
+         */
+        String text;
+        int margin;
 
         /** Number of stock calls before the build. */
         int ops() {
@@ -254,7 +261,7 @@ public final class WaveSpec {
             // The stock code changed the engine outside key handling: work ahead from the new
             // state (shortly: the stock code may be about to make more calls). After keys, the
             // key hooks start the look-ahead.
-            if (!inKey()) schedule(sIme, 5);
+            if (!inKey()) schedule(sIme, RESCHEDULE_DELAY_MS);
         }
     }
 
@@ -342,6 +349,7 @@ public final class WaveSpec {
                     sSeq = s;
                     sSeqDone = 1;
                     sServed++;
+                    textHint(s);
                     Trace.beginSection("wave.served");
                     Trace.endSection();
                     return s.ok;
@@ -357,6 +365,20 @@ public final class WaveSpec {
         } finally {
             exit();
         }
+    }
+
+    /**
+     * The field text a pressed key leaves, for WaveConnection to check the app against instead
+     * of asking it (null when it can't know: not mid-word). LOCK held.
+     */
+    private static void textHint(Snap s) {
+        String t = null;
+        if (s != null && s.ok && s.built != null && s.nWords > 0 && s.wordOk[0] && s.lens[0] != null
+                && s.lens[0][0] > 0 && s.word[0] != null && s.key != SPACE) {
+            int n = Math.min(s.lens[0][0], s.word[0].length);
+            t = new String(s.word[0], 0, n);
+        }
+        WaveConnection.expectedKey(t);
     }
 
     static void wordSelected(int ctx, int index, boolean flag) {
@@ -1265,14 +1287,20 @@ public final class WaveSpec {
     }
 
     /**
-     * WaveEarly: the space is being typed a moment after its key went down, outside the stock
-     * key handler. The stock code is doing key handling work, so the text-field answers come
-     * from the copy (as during any key) and the look-ahead is started afterwards like
-     * keyDownEnd does.
+     * WaveEarly: the space is being typed on its key down, from the key-down hook rather than
+     * the stock key handler. The text-field answers come from the copy as during any key, and
+     * the look-ahead is started afterwards like keyDownEnd does.
      */
     static void beginVirtualKey() {
         sKeyDepth++;
     }
+
+    /**
+     * The look-ahead starts this long after a key when the stock code changed the engine outside
+     * key handling: short enough that the work still gets done within the usual key gap, long
+     * enough not to join whatever the stock code is still doing.
+     */
+    private static final int RESCHEDULE_DELAY_MS = 5;
 
     static void endVirtualKey() {
         sKeyDepth--;
@@ -1281,6 +1309,6 @@ public final class WaveSpec {
             mutated = sMutated;
             sMutated = false;
         }
-        if (mutated && !inKey()) schedule(sIme, 5);
+        if (mutated && !inKey()) schedule(sIme, RESCHEDULE_DELAY_MS);
     }
 }
