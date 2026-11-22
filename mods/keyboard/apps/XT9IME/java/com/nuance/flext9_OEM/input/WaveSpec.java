@@ -65,12 +65,13 @@ public final class WaveSpec {
     static final ReentrantLock ENGINE = new ReentrantLock();
 
     /**
-     * The look-ahead thread's priority: below the apps' threads (nice 9, which on Android 8.1
-     * still isn't the background group), so it never delays the keyboard or the app drawing
-     * a key's frame; it uses the CPU left over between keys. While a thread waits for it (a
-     * record the stock call needs now, or the engine it holds) it runs at display priority.
+     * The look-ahead thread's priority between keys: the background group. Nice 9 alone does
+     * not take it out of the foreground threads' way on this kernel, so at a key every ~150 ms
+     * it starved the keyboard's own RenderThread (its frames stretched to 40..77 ms). When a
+     * thread waits for it (a record the stock call needs now, or the engine it holds) it runs
+     * at display priority instead, so a miss still costs only that one engine pass.
      */
-    private static final int LA_NICE = 9;
+    private static final int LA_NICE = Process.THREAD_PRIORITY_BACKGROUND;
     private static int sLaTid;
 
     private static void urgent(boolean on) {
@@ -817,6 +818,14 @@ public final class WaveSpec {
                 boolean space = base.keyCount > 0 && wsIndex >= 0 && base.ok && base.nWords > 0;
                 int[] plan = plan(base, space, null);
                 boolean[] done = new boolean[NEXT + 10];
+                // Work ahead only as far as the typing leaves time for. Each item costs an
+                // engine pass, and the look-ahead's thread competes with the main thread for
+                // the CPU: a fast typist (a key every ~100 ms) who races ahead of the plan pays
+                // more in a slower key than the extra records save. Measured at a key every
+                // 300 ms the plan fits comfortably; at 100 ms it does not.
+                final long started = SystemClock.uptimeMillis();
+                final long budget = Math.max(FAST_ITEMS * ITEM_MS, (long) (sGap * BUDGET_ITEMS));
+                int costed = 0;
                 while (true) {
                     int item = 0;
                     synchronized (LOCK) {
@@ -834,12 +843,17 @@ public final class WaveSpec {
                         if (item >= NEXT && SystemClock.uptimeMillis() + COST_NEXT > sKeyAt + sGap) {
                             for (int x : plan) if (x < SPACE_ITEM && !done[x]) { item = x; break; }
                         }
+                        // Only what the typing leaves time for (always at least the keys of
+                        // this word that follow the likeliest next one).
+                        if (item != 0 && item < NEXT && costed >= FAST_ITEMS
+                                && SystemClock.uptimeMillis() - started >= budget) item = 0;
                     }
                     if (item == 0) {
                         synchronized (LOCK) { if (!stale()) sDoneVer = ver; }
                         break;
                     }
                     done[item] = true;
+                    if (item < NEXT) costed++;
                     if (item >= NEXT) {
                         if (!next(item - NEXT + '0')) return;
                     } else if (!key(item == SPACE_ITEM ? SPACE : item + '0')) {
@@ -880,6 +894,13 @@ public final class WaveSpec {
     private static final float[] FIRST = {0, 0, 21.3f, 8.7f, 15.1f, 3.6f, 14.3f, 13.7f, 18.0f, 6.3f};
     /** Rough cost (ms) of working out a key, and what not having it costs the user (ms). */
     private static final float COST_KEY = 25, COST_SPACE = 13, COST_NEXT = 55;
+    /**
+     * How far ahead to work, from the usual gap between keys: items worth roughly this share of
+     * it, a key taking ITEM_MS (measured: a key record is about 23 ms), and the fewest items
+     * worth having anyway (the likeliest next key, the space, the keys after both).
+     */
+    private static final float BUDGET_ITEMS = 0.7f;
+    private static final int ITEM_MS = 23, FAST_ITEMS = 3;
     private static final float MISS_KEY = 30, MISS_SPACE = 15, MISS_NEXT = 70;
 
     /** Of English words at least k letters long, the share exactly k long (k = 0..10+). */

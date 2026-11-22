@@ -11,7 +11,7 @@ and several synchronous calls to the app and the system. With Keyboard Improved:
 | Key press to suggestions on screen | Stock | Improved |
 | --- | --- | --- |
 | Letters (from key down), median | 172 ms | about 19 ms |
-| Letters, 95th percentile | 212 ms | about 31 ms (2 frames) |
+| Letters, 95th percentile | 212 ms | about 25 ms (2 frames) |
 | Letters, 99th percentile |  | about 40–50 ms |
 | Letters, slowest | 247 ms | 57–94 ms (an unlikely next letter, about 1 in 200) |
 | Space (from key down), median |  | about 19 ms (1 frame) |

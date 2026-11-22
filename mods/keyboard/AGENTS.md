@@ -32,6 +32,9 @@ every engine call goes through `WaveSpec.enter/exit` or one of its answering met
 
 - `WaveSpec`: the engine look-ahead (see its class comment). Its invariant: the engine's
   state and every answer the stock code gets are exactly what stock calls would have given.
+  How far ahead it works is bounded by the typing interval (`BUDGET_ITEMS`, measured: worth
+  ~5 ms of p95 at a key every 300 ms): each record is an engine pass (~23 ms) and the work
+  competes with the keyboard's own drawing.
   Calls are either answered from a record (processKey, wordSelected, clearAllKeys, the build,
   pure reads) or made for real after `settle()` (which applies recorded states and replays
   answered calls). A call that isn't known to be pure invalidates the records.
