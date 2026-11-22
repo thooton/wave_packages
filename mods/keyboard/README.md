@@ -14,7 +14,7 @@ and several synchronous calls to the app and the system. With Keyboard Improved:
 | Letters, 95th percentile | 212 ms | about 31 ms (2 frames) |
 | Letters, 99th percentile |  | about 40–50 ms |
 | Letters, slowest | 247 ms | 57–94 ms (an unlikely next letter, about 1 in 200) |
-| Space (from key down), median |  | about 34 ms (2 frames) |
+| Space (from key down), median |  | about 19 ms (1 frame) |
 | Space and other keys (from key up), 95th percentile | 131 ms | about 23–29 ms |
 
 Measured in Messages, typing a 208-key text at a key every 300 ms. The suggestions

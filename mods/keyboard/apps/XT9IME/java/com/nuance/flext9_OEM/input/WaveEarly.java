@@ -24,12 +24,12 @@ import java.util.Map;
  * so the popup works as before.
  *
  * The space (key 0) gets the same treatment, which matters more: its Release event commits
- * the word and is dispatched on key up, so every space would otherwise wait for the key to
- * come up (~80 ms, as long as the key is held) before the next word's predictions appear.
- * Its Release event is a Virtual one, and unlike a letter the key also has a Hold event
- * (the key's popup: the digit 0). A space is typed early only after it has been down for a
- * moment and wasn't held, and if the Hold does arrive later the space is taken back and the
- * Hold is dispatched as stock would have, so holding 0 still types the digit once.
+ * the word and is dispatched on key up, so every space waited for the key to come up (~80 ms,
+ * as long as the key is held) before the next word's predictions appeared -- as long as a
+ * letter took in the first version. Its Release event is a Virtual one, and unlike a letter
+ * the key also has a Hold event (the key's popup: the digit 0). A space is typed early on the
+ * key down, and if the Hold does arrive later the space is taken back and the Hold runs as
+ * stock would have, so holding 0 still types the digit once.
  *
  * Only plain cases are handled early: predictive (ambig) page, a single key down, a key whose
  * Release events are all Character events, or the space. Everything else is left to stock.
@@ -50,19 +50,11 @@ public final class WaveEarly {
     private static Object sSpaceRelease, sSpaceHold, sSpaceKey;
     /** The space key down and typing it early hasn't happened yet. */
     private static boolean sSpaceDown;
-    /**
-     * How long the space must be down before it is typed early (ms). The stock code opens the
-     * key's popup on a press repeat (the first arrives ~50 ms in), and flags the key as held
-     * before that; this stays under that so the popup decision is still made by stock.
-     */
-    private static final long SPACE_DELAY = 16;
     private static Field fCurrentPage, fListener, fMode, fPressedKeys, fKeys, fKeyCode, fMapEvents, fIsHold, fIsCombo,
             fEventClass, fStringData;
     private static Method mHandleEvent, mGetIc;
     private static Object tRelease, tPress, tHold, cCharacter, cVirtual;
     private static Class<?> cAlphaInputView;
-    /** Runs the space's early typing just after the key goes down (on the main thread). */
-    private static final android.os.Handler sHandler = new android.os.Handler(Looper.getMainLooper());
 
     private WaveEarly() { }
 
@@ -149,8 +141,8 @@ public final class WaveEarly {
     }
 
     /**
-     * The space key went down: type it early once it has been down SPACE_DELAY ms, unless it
-     * is held (that opens the key's popup and types the digit after all).
+     * The space key went down: dispatch its Release event now, as for a letter. Only when the
+     * key isn't (already) held: a held key opens its popup and types the digit instead.
      */
     private static void spaceDown(Object hk) {
         try {
@@ -170,46 +162,16 @@ public final class WaveEarly {
             sSpaceHold = hold;
             sSpaceKey = key;
             sSpaceDown = true;
-            final Object h = hk, l = listener;
-            sHandler.postDelayed(new Runnable() {
-                @Override public void run() {
-                    spaceEarly(h, l);
-                }
-            }, SPACE_DELAY);
-        } catch (Throwable t) {
-            Log.e(TAG, "early space disabled", t);
-            sSpaceDown = false;
-        }
-    }
-
-    /** The space has been down a moment: dispatch its Release event as stock does on key up. */
-    private static void spaceEarly(Object hk, Object listener) {
-        if (sDisabled || !sSpaceDown) return;
-        sSpaceDown = false;
-        if (WaveSpec.inKey() || !sEarly.isEmpty()) return;
-        try {
-            Object page = fCurrentPage.get(hk);
-            if (page == null || fListener.get(hk) != listener) return;
-            Object key = pressedKey(page, KeyEvent.KEYCODE_0);
-            // Held: the stock code has shown the popup (or is about to); it types the digit.
-            if (key == null || fIsHold.getBoolean(key) || fIsCombo.getBoolean(key)) return;
-            // As during any key: the text-field answers come from the copy, not the app.
-            WaveSpec.beginVirtualKey();
-            try {
-                if (!(Boolean) mHandleEvent.invoke(hk, sSpaceRelease)) {
-                    ((HardKeyboard.HardKeyEventListener) listener).onHardKeyEvent((HardKeyboardEvent) sSpaceRelease);
-                }
-            } finally {
-                WaveSpec.endVirtualKey();
+            if (!(Boolean) mHandleEvent.invoke(hk, release)) {
+                ((HardKeyboard.HardKeyEventListener) listener).onHardKeyEvent((HardKeyboardEvent) release);
             }
             Early x = new Early();
-            x.keyCode = KeyEvent.KEYCODE_0; x.events = new ArrayList<Object>(java.util.Collections.singletonList(sSpaceRelease));
+            x.keyCode = KeyEvent.KEYCODE_0; x.events = new ArrayList<Object>(java.util.Collections.singletonList(release));
             x.hk = hk; x.listener = listener; x.page = page;
             sEarly.add(x);
         } catch (Throwable t) {
             Log.e(TAG, "early space disabled", t);
-            sDisabled = true;
-            sEarly.clear();
+            sSpaceDown = false;
         }
     }
 
