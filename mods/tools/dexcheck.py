@@ -38,7 +38,8 @@ compiled = set()
 for root, _, files in os.walk(cdir):
     for f in files:
         if f.endswith(".class"):
-            compiled.add("L" + os.path.relpath(os.path.join(root, f), cdir)[:-6] + ";")
+            rel = os.path.relpath(os.path.join(root, f), cdir).replace(os.sep, "/")
+            compiled.add("L" + rel[:-6] + ";")
 for c, f in seen.items():
     if f == last and c not in compiled and "$$ExternalSynthetic" not in c: bad.append(f"{c} in {f} but not compiled from java/")
 if bad:
