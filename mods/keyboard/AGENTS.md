@@ -53,6 +53,19 @@ every engine call goes through `WaveSpec.enter/exit` or one of its answering met
   the last one (threads started meanwhile get the main thread's priority back). The
   look-ahead thread runs at nice 9 and at display priority while a key waits for it.
 
+## The engine library
+
+`module/xt9lib.patch` speeds up the phone's own `libjni_xt9input.so` with bit-identical
+results (float helpers on VFP with exact fallbacks, direct PLT branches, a pow table); see
+[native/README.md](native/README.md). `native/gen.py` regenerates it from the stock library
+in `mods/firmware/system/lib/` (needs LLVM clang and ld.lld; `--check` compares). The installer
+applies it with `LibPatch` (hashes checked before and after) and skips it on any other
+library. `tools/test.sh` tests `LibPatch` and, with the stock library at hand, applies the
+committed patch. New code must stay below 0x169000 (the code mapping size `WaveMem` accepts)
+and must not add data: `WaveMem` copies the library's data pages as engine state. A patch
+change is checked with the engine-call replay (same results for a recorded typing session)
+and the parity check below with the patched library mounted.
+
 ## Debugging and parity
 
 `setprop debug.wave.keyboard 1` (then restart the keyboard) logs to tag `WaveKeyboard`:

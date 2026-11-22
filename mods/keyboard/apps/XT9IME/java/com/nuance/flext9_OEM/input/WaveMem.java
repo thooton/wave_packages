@@ -25,6 +25,11 @@ final class WaveMem {
     private static final String TAG = WaveSpec.TAG;
     /** Offsets in the stock libjni_xt9input.so (sha1 4d14cdefba7a5984cbad684b9c9444f50d4ce69d). */
     private static final long TEXT_SIZE = 0x168000, SINGLETON = 0x16a284, VTABLE = 0x16967c + 8;
+    /**
+     * Its code mapping as the module installs it (module/xt9lib.patch: new code at the end of the
+     * code segment's last page and the next one; data and its layout as stock).
+     */
+    private static final long TEXT_SIZE_PATCHED = 0x169000;
     /** The library's .data/.bss (to the end of its last page, which the library alone uses). */
     private static final long LIB_DATA = 0x16a000, LIB_DATA_SIZE = 0x2ac;
     /** alpha_data: its size, the fields holding its blocks and their sizes (from the calloc calls). */
@@ -61,7 +66,7 @@ final class WaveMem {
                     if (line.endsWith("/libjni_xt9input.so") && line.contains(" 00000000 ") && line.contains("r-xp")) {
                         base = Long.parseLong(line.substring(0, line.indexOf('-')), 16);
                         long end = Long.parseLong(line.substring(line.indexOf('-') + 1, line.indexOf(' ')), 16);
-                        if (end - base != TEXT_SIZE) {
+                        if (end - base != TEXT_SIZE && end - base != TEXT_SIZE_PATCHED) {
                             Log.w(TAG, "unexpected engine library size " + (end - base));
                             return false;
                         }

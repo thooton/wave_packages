@@ -33,6 +33,9 @@ How:
   knows.
 - The CPU stays at full speed while you type, and the keyboard's drawing runs ahead of the
   app's own work for the key.
+- The XT9 engine library itself is sped up (hardware float arithmetic and direct calls instead
+  of software routines and indirect ones), giving bit-identical results: the phone's own copy
+  is patched when the module is installed ([how](native/README.md)).
 
 See [SPEC.md](SPEC.md) for the behavior it keeps, and [AGENTS.md](AGENTS.md) for how it is
 built. Needs firmware 11.20.00 with its stock keyboard: the module is built on the phone from

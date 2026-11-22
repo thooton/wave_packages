@@ -30,6 +30,9 @@ changes.
 - While typing, the CPU is held at its top frequency (released about 0.4 s after the last key),
   and while a key is handled and drawn the keyboard's own threads run ahead of the app's
   (for about 0.1 s per key). Candidate widths are remembered between keys.
+- The XT9 engine itself runs faster: the phone's own engine library is patched when the
+  module is installed (float arithmetic in hardware, direct calls), with every engine result
+  bit-identical to stock. On any other library the module installs without this.
 
 ## Phone checks
 
