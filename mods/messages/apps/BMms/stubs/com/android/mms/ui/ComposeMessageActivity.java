@@ -5,4 +5,5 @@ public class ComposeMessageActivity extends android.app.Activity {
     Object mWaveHistory;
     public MessageListAdapter mMsgListAdapter;
     boolean waveScrollOnSend() { return false; }
+    void waveUpdateComposeHint() {}
 }

@@ -11,6 +11,10 @@ retains the custom RCS work.
 
 What it changes (the UI stays as it is):
 
+* **Apple (iMessage) bridge support** with low-power dynamic keepalive, setup wizard in
+  Settings > Advanced settings > Apple (iMessage) settings, and dynamic compose box hint
+  (`Type SMS message` / `Type MMS message` / `Type iMessage`):
+  [imessage](docs/fixes/imessage/README.md)
 * **Group MMS appears once, in the right conversation** (no 1:1 "Downloading..." first):
   [mms-receive-placeholder](docs/fixes/mms-receive-placeholder/README.md),
   [self-number](docs/fixes/self-number/README.md)

@@ -16200,6 +16200,9 @@
 
     invoke-virtual {v0, v1}, Landroid/widget/EditText;->setHint(I)V
 
+    # FEAT(imessage): dynamic compose hint ("Type SMS message" / "Type MMS message" / "Type iMessage")
+    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->waveUpdateComposeHint()V
+
     goto :goto_1
 
     .line 3831
@@ -16236,6 +16239,9 @@
     const v1, 0x7f070170
 
     invoke-virtual {v0, v1}, Landroid/widget/EditText;->setHint(I)V
+
+    # FEAT(imessage): dynamic compose hint in closed-keyboard branch too
+    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->waveUpdateComposeHint()V
 
     goto :goto_1
 .end method
@@ -21688,6 +21694,19 @@
     return v0
 .end method
 
+# FEAT(imessage): package bridge for WaveIMessageUi compose hint
+.method waveUpdateComposeHint()V
+    .locals 6
+    move-object v0, p0
+    iget-object v1, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mTextEditor:Landroid/widget/EditText;
+    iget-boolean v2, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mIsSmsEnabled:Z
+    iget-object v3, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mWorkingMessage:Lcom/android/mms/data/WorkingMessage;
+    iget-object v4, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mConversation:Lcom/android/mms/data/Conversation;
+    iget-object v5, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mRecipientsEditor:Lcom/android/mms/ui/RecipientsEditor;
+    invoke-static/range {v0 .. v5}, Lcom/android/mms/ui/WaveIMessageUi;->updateComposeHint(Lcom/android/mms/ui/ComposeMessageActivity;Landroid/widget/EditText;ZLcom/android/mms/data/WorkingMessage;Lcom/android/mms/data/Conversation;Lcom/android/mms/ui/RecipientsEditor;)V
+    return-void
+.end method
+
 .method private startMsgListQuery()V
     .locals 1
 
@@ -22786,6 +22805,9 @@
     :cond_0
     :goto_1
     invoke-direct {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->setSendButtonImage()V
+
+    # FEAT(imessage): keep compose hint synced with SMS / MMS / iMessage state
+    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->waveUpdateComposeHint()V
 
     .line 7311
     return-void

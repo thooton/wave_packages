@@ -591,6 +591,16 @@
     .locals 4
 
     .prologue
+    # FEAT(imessage): sticky foreground host for low-power PushClient
+    invoke-static {p0, p1}, Lcom/android/mms/wave/WaveIMessageHost;->onStartCommand(Landroid/app/Service;Landroid/content/Intent;)I
+
+    move-result v0
+
+    if-ltz v0, :wave_imsg_stock
+
+    return v0
+
+    :wave_imsg_stock
     .line 90
     sget-wide v0, Lcom/android/mms/rcs/RcsMessageStatusService;->taskCount:J
 

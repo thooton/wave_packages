@@ -2059,6 +2059,10 @@
 
     .line 2296
     :cond_1
+    # FEAT(imessage): allow sending over Wi-Fi without a SIM when iMessage is connected
+    invoke-static {v0}, Lcom/android/mms/wave/WaveIMessageHost;->activatedIccCardCount(I)I
+
+    move-result v0
 
     return v0
 .end method

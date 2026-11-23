@@ -315,6 +315,30 @@
 
     .line 114
     :cond_2
+    # FEAT(imessage): send text/email/group MMS over iMessage when applicable
+    iget-object v2, p0, Lcom/android/mms/transaction/SendTransaction;->mContext:Landroid/content/Context;
+
+    iget-object v3, p0, Lcom/android/mms/transaction/SendTransaction;->mSendReqURI:Landroid/net/Uri;
+
+    invoke-static {v2, v8, v3}, Lcom/android/mms/transaction/WaveIMessageSend;->interceptMms(Landroid/content/Context;Lcom/google/android/mms/pdu/SendReq;Landroid/net/Uri;)Landroid/net/Uri;
+
+    move-result-object v2
+
+    if-eqz v2, :wave_imsg_mms
+
+    iget-object v3, p0, Lcom/android/mms/transaction/SendTransaction;->mTransactionState:Lcom/android/mms/transaction/TransactionState;
+
+    const/4 v4, 0x1
+
+    invoke-virtual {v3, v4}, Lcom/android/mms/transaction/TransactionState;->setState(I)V
+
+    invoke-virtual {v3, v2}, Lcom/android/mms/transaction/TransactionState;->setContentUri(Landroid/net/Uri;)V
+
+    invoke-virtual {p0}, Lcom/android/mms/transaction/SendTransaction;->notifyObservers()V
+
+    return-void
+
+    :wave_imsg_mms
     iget-object v2, p0, Lcom/android/mms/transaction/SendTransaction;->mSendReqURI:Landroid/net/Uri;
 
     invoke-static {v2}, Landroid/content/ContentUris;->parseId(Landroid/net/Uri;)J

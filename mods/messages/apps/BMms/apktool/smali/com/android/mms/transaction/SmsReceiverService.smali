@@ -1690,6 +1690,8 @@
     .line 560
     invoke-static {p0, v0, v8, p2}, Landroid/provider/Telephony$Sms;->moveMessageToFolder(Landroid/content/Context;Landroid/net/Uri;II)Z
 
+    # FEAT(imessage): no cellular service: drain queued SMS to iMessage contacts over Wi-Fi
+    invoke-static {p0}, Lcom/android/mms/transaction/WaveIMessageSend;->drainQueuedAsync(Landroid/content/Context;)V
 
     .line 561
     iget-object v0, p0, Lcom/android/mms/transaction/SmsReceiverService;->mToastHandler:Landroid/os/Handler;

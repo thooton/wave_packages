@@ -964,6 +964,8 @@
 
     iput-object v0, p0, Lcom/android/mms/ui/MessagingPreferenceActivity;->mAdvancedPrefCategory:Landroid/preference/PreferenceCategory;
 
+    # FEAT(imessage): "Apple (iMessage) settings" entry under Advanced settings
+    invoke-static {p0, v0}, Lcom/android/mms/ui/WaveIMessageSettings;->addEntry(Landroid/preference/PreferenceActivity;Landroid/preference/PreferenceCategory;)V
 
     .line 396
     const-string/jumbo v0, "pref_key_memory_status"
@@ -4533,6 +4535,9 @@
 
     .line 333
     invoke-direct {p0}, Lcom/android/mms/ui/MessagingPreferenceActivity;->updateSMSCPref()V
+
+    # FEAT(imessage): refresh Apple (iMessage) settings status summary
+    invoke-static {p0}, Lcom/android/mms/ui/WaveIMessageSettings;->refreshEntry(Landroid/preference/PreferenceActivity;)V
 
     .line 334
     return-void

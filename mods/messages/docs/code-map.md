@@ -47,6 +47,7 @@ Config booleans in `apktool/res/values/bools.xml` (read-only for now; resources 
 | `transaction/WaveMmsReceive` (`PushReceiver`, `TransactionService`, ack composers) | held placeholder, reveal/sweep, Report-Allowed, MMS test network |
 | `transaction/WavePerf` (`MessagingNotification`, `NotificationTransaction`, `TransactionService`, `PushReceiver`, `DownloadManager`) | receive latency |
 | `ui/WaveComposePerf`, `ui/WaveHistory`, `ui/WaveStreetAddress`, `ui/WaveTextMms` | Conversation load, lightweight address links, inline text MMS |
+| `wave/imsg/*`, `wave/WaveIMessageConfig`, `wave/WaveIMessageHost`, `transaction/WaveIMessageStore`, `transaction/WaveIMessageSend`, `ui/WaveIMessageUi`, `ui/WaveIMessageSettings` | Apple (iMessage) bridge client, foreground low-power service, routing, compose hint, settings & setup wizard |
 
 TelephonyProvider: `apps/TelephonyProvider/java/…/ThreadIntegrity` (docs/fixes/sms-orphaned-threads)
 and `WaveConversationSchema` / `WaveConversationQuery` (docs/fixes/conversation-load).

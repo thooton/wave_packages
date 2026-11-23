@@ -39,8 +39,9 @@ public final class WaveInit {
             Log.w(TAG, "mms sweep", t);
         }
         try {
-            } catch (Throwable t) {
-            Log.w(TAG, "hooks", t);
+            WaveIMessageHost.onAppCreate(app);
+        } catch (Throwable t) {
+            Log.w(TAG, "imessage init", t);
         }
     }
 

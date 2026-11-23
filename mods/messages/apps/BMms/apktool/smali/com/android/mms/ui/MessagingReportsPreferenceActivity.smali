@@ -164,6 +164,10 @@
     .line 65
     invoke-direct {p0}, Lcom/android/mms/ui/MessagingReportsPreferenceActivity;->createResource()V
 
+    # FEAT(imessage): host Apple (iMessage) settings & setup wizard
+    iget-object v0, p0, Lcom/android/mms/ui/MessagingReportsPreferenceActivity;->mMsgType:Ljava/lang/String;
+
+    invoke-static {p0, v0}, Lcom/android/mms/ui/WaveIMessageSettings;->onCreate(Landroid/preference/PreferenceActivity;Ljava/lang/String;)V
 
     .line 66
     invoke-virtual {p0}, Lcom/android/mms/ui/MessagingReportsPreferenceActivity;->getActionBar()Landroid/app/ActionBar;
@@ -176,6 +180,24 @@
     invoke-virtual {v0, v1}, Landroid/app/ActionBar;->setDisplayOptions(I)V
 
     .line 69
+    return-void
+.end method
+
+# FEAT(imessage): allow setup wizard to step backward on Back key
+.method public onBackPressed()V
+    .locals 1
+
+    invoke-static {p0}, Lcom/android/mms/ui/WaveIMessageSettings;->onBackPressed(Landroid/app/Activity;)Z
+
+    move-result v0
+
+    if-eqz v0, :cond_0
+
+    return-void
+
+    :cond_0
+    invoke-super {p0}, Landroid/preference/PreferenceActivity;->onBackPressed()V
+
     return-void
 .end method
 

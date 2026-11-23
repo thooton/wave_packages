@@ -324,6 +324,9 @@
     .line 115
     invoke-static {p1}, Lcom/android/mms/transaction/MmsSystemEventReceiver;->wakeUpService(Landroid/content/Context;)V
 
+    # FEAT(imessage): start persistent iMessage service on boot if enabled
+    invoke-static {p1, p2}, Lcom/android/mms/wave/WaveIMessageHost;->onSystemEvent(Landroid/content/Context;Landroid/content/Intent;)V
+
     .line 117
     invoke-virtual {p1}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
 

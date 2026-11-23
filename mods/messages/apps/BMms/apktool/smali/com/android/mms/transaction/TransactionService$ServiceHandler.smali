@@ -481,6 +481,16 @@
     invoke-static {v3}, Lcom/android/mms/LogTag;->debugD(Ljava/lang/String;)V
 
 
+    # FEAT(imessage): skip carrier MMS APN when iMessage can send this text/email/group message
+    invoke-static {p1}, Lcom/android/mms/transaction/WaveIMessageSend;->imessageReadyForMms(Lcom/android/mms/transaction/Transaction;)Z
+
+    move-result v3
+
+    if-eqz v3, :wave_imsg_mms_conn
+
+    goto :cond_4
+
+    :wave_imsg_mms_conn
     .line 1310
     iget-object v3, p0, Lcom/android/mms/transaction/TransactionService$ServiceHandler;->this$0:Lcom/android/mms/transaction/TransactionService;
 

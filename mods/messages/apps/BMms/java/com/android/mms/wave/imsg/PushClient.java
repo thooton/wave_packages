@@ -1,0 +1,863 @@
+package com.android.mms.wave.imsg;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import javax.net.ssl.SSLSocket;
+
+/**
+ * Low-power Push Protocol Spec v1 client for Android 8.1 (API 27) and desktop JVM.
+ *
+ * Uses WakeupClock (elapsedRealtime + AlarmManager.setExactAndAllowWhileIdle + brief partial
+ * WakeLock) so the CPU sleeps completely between dynamic keepalives without 30s polling wakeups.
+ */
+public final class PushClient {
+
+    public enum Status {
+        OFFLINE,
+        CONNECTING,
+        CONNECTED,
+        AUTH_FAILED,
+        ERROR
+    }
+
+    public static final class Config {
+        public String mainHost = "127.0.0.1";
+        public int mainPort = 443;
+        public String probeHost = null;
+        public int probePort = 0;
+        public String sniMain = "push.example.com";
+        public String sniProbe = "probe.example.com";
+        public String tokenHex;
+        public String pinnedSha256Hex;
+        public File stateFile;
+        public double probeScale = 1.0;
+        public boolean autoProbe = true;
+        public NetworkInfoProvider networkInfoProvider = new NetworkInfoProvider.StaticProvider("default");
+        public WakeupClock wakeupClock = new WakeupClock.DefaultClock();
+    }
+
+    public interface Listener {
+        void onStatusChanged(Status status, String detail);
+        void onConnected(int intervalS, String networkKey);
+        void onDisconnected(String reason);
+        void onBody(long seq, Body body);
+        void onIntervalUpdated(int intervalS, String networkKey);
+        void onLog(String message);
+    }
+
+    private final Config config;
+    private final Listener listener;
+    private final TlsHelper tlsHelper;
+    private final ClientState state;
+    private final WakeupClock clock;
+    private final SecureRandom rng = new SecureRandom();
+
+    private final Object writeLock = new Object();
+    private final Object watchdogLock = new Object();
+    private final Object reconnectLock = new Object();
+
+    private volatile boolean running = false;
+    private volatile Status status = Status.OFFLINE;
+    private volatile String statusDetail = "";
+    private Thread mainThread;
+    private Thread watchdogThread;
+    private Thread probeThread;
+
+    // Guarded by watchdogLock (timestamps in WakeupClock.elapsedRealtimeMs())
+    private SSLSocket activeSocket;
+    private OutputStream activeOut;
+    private boolean connected = false;
+    private long connectedAtElapsedMs = 0L;
+    private long lastTrafficElapsedMs = 0L;
+    private boolean pingInFlight = false;
+    private int pendingPingNonce = 0;
+    private long pingDeadlineElapsedMs = 0L;
+    private int currentIntervalS = Frame.FALLBACK_INTERVAL_S;
+    private boolean usingLearnedInterval = false;
+    private String activeNetworkKey = "";
+    private boolean probeRunning = false;
+    private long nextProbeRetryElapsedMs = 0L;
+    private long lastScheduledAlarmElapsedMs = 0L;
+
+    public PushClient(Config config, Listener listener) throws IOException, GeneralSecurityException {
+        if (config.tokenHex == null || config.tokenHex.isEmpty()) {
+            throw new IllegalArgumentException("tokenHex is required");
+        }
+        if (config.pinnedSha256Hex == null || config.pinnedSha256Hex.isEmpty()) {
+            throw new IllegalArgumentException("pinnedSha256Hex is required");
+        }
+        this.config = config;
+        this.listener = listener;
+        this.clock = config.wakeupClock != null ? config.wakeupClock : new WakeupClock.DefaultClock();
+        this.tlsHelper = new TlsHelper(config.pinnedSha256Hex);
+        this.state = ClientState.loadOrDefault(config.stateFile);
+    }
+
+    public synchronized void start() {
+        if (running) {
+            return;
+        }
+        running = true;
+
+        String netKey = safeNetworkKey();
+        synchronized (watchdogLock) {
+            activeNetworkKey = netKey;
+            Integer learned = state.getLearnedInterval(netKey);
+            if (learned != null && learned > Frame.FALLBACK_INTERVAL_S) {
+                currentIntervalS = learned;
+                usingLearnedInterval = true;
+            } else {
+                currentIntervalS = Frame.FALLBACK_INTERVAL_S;
+                usingLearnedInterval = false;
+            }
+            lastScheduledAlarmElapsedMs = 0L;
+        }
+
+        setStatus(Status.CONNECTING, "Connecting...");
+
+        mainThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                runConnectionLoop();
+            }
+        }, "imsg-main-reader");
+        mainThread.start();
+
+        watchdogThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                runWatchdogLoop();
+            }
+        }, "imsg-watchdog");
+        watchdogThread.setDaemon(true);
+        watchdogThread.start();
+    }
+
+    public synchronized void stop() {
+        if (!running) {
+            return;
+        }
+        running = false;
+        clock.cancelWakeup();
+        sendFrameQuietly(Frame.bye(Frame.BYE_NORMAL));
+        closeActiveSocket();
+        synchronized (watchdogLock) {
+            watchdogLock.notifyAll();
+        }
+        synchronized (reconnectLock) {
+            reconnectLock.notifyAll();
+        }
+        if (probeThread != null) {
+            probeThread.interrupt();
+        }
+        if (mainThread != null) {
+            mainThread.interrupt();
+        }
+        if (watchdogThread != null) {
+            watchdogThread.interrupt();
+        }
+        clock.releaseWakeLock();
+        setStatus(Status.OFFLINE, "Stopped");
+    }
+
+    /** Called by Android's AlarmManager wakeup receiver during Doze/deep sleep. */
+    public void onWakeupTick() {
+        synchronized (watchdogLock) {
+            lastScheduledAlarmElapsedMs = 0L;
+            watchdogLock.notifyAll();
+        }
+        synchronized (reconnectLock) {
+            reconnectLock.notifyAll();
+        }
+    }
+
+    /** Called immediately by ConnectivityManager.NetworkCallback when active network changes. */
+    public void notifyNetworkChanged() {
+        if (!running) {
+            return;
+        }
+        String newNet = safeNetworkKey();
+        boolean wasConnected;
+        boolean netChanged;
+        synchronized (watchdogLock) {
+            wasConnected = connected;
+            netChanged = !newNet.equals(activeNetworkKey);
+            if (netChanged) {
+                activeNetworkKey = newNet;
+                Integer learned = state.getLearnedInterval(newNet);
+                if (learned != null && learned > Frame.FALLBACK_INTERVAL_S) {
+                    currentIntervalS = learned;
+                    usingLearnedInterval = true;
+                } else {
+                    currentIntervalS = Frame.FALLBACK_INTERVAL_S;
+                    usingLearnedInterval = false;
+                }
+            }
+            watchdogLock.notifyAll();
+        }
+        synchronized (reconnectLock) {
+            reconnectLock.notifyAll();
+        }
+        if (netChanged) {
+            log("Network changed to " + newNet + " (connected=" + wasConnected + ")");
+            if (wasConnected) {
+                // Close old socket so we immediately re-bind on the new network interface and re-probe.
+                closeActiveSocket();
+            }
+            if (config.autoProbe && config.networkInfoProvider.isNetworkAvailable()) {
+                startProbeAsync(newNet, true);
+            }
+        }
+    }
+
+    /** Forces an immediate reconnect (e.g. user pressed Reconnect in settings). */
+    public void reconnectNow() {
+        if (!running) {
+            return;
+        }
+        closeActiveSocket();
+        synchronized (reconnectLock) {
+            reconnectLock.notifyAll();
+        }
+        synchronized (watchdogLock) {
+            watchdogLock.notifyAll();
+        }
+    }
+
+    public boolean isConnected() {
+        synchronized (watchdogLock) {
+            return connected;
+        }
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    public String getStatusDetail() {
+        return statusDetail;
+    }
+
+    public int getCurrentIntervalSeconds() {
+        synchronized (watchdogLock) {
+            return currentIntervalS;
+        }
+    }
+
+    public boolean isProbeRunning() {
+        synchronized (watchdogLock) {
+            return probeRunning;
+        }
+    }
+
+    public String getActiveNetworkKey() {
+        synchronized (watchdogLock) {
+            return activeNetworkKey;
+        }
+    }
+
+    public int getOutboxSize() {
+        return state.outboxSize();
+    }
+
+    public String getStateSummary() {
+        synchronized (watchdogLock) {
+            return state.summary() + ", connected=" + connected + ", intervalS=" + currentIntervalS
+                    + ", net=" + activeNetworkKey;
+        }
+    }
+
+    public String sendText(String target, String text, String senderGuid) throws IOException {
+        String clientMsgId = "c-" + UUID.randomUUID().toString();
+        Body body = Body.sendText(clientMsgId, target, text, senderGuid);
+        sendBody(body);
+        return clientMsgId;
+    }
+
+    public String sendGroupText(List<String> participants, String text, String senderGuid) throws IOException {
+        String clientMsgId = "g-" + UUID.randomUUID().toString();
+        Body body = Body.sendGroupText(clientMsgId, participants, text, senderGuid);
+        sendBody(body);
+        return clientMsgId;
+    }
+
+    public String checkTargets(List<String> targets) throws IOException {
+        String reqId = "q-" + UUID.randomUUID().toString();
+        Body body = Body.checkTargets(reqId, targets);
+        sendBody(body);
+        return reqId;
+    }
+
+    public long requestHandles() throws IOException {
+        return sendBody(Body.getHandles());
+    }
+
+    public long sendBody(Body body) throws IOException {
+        byte[] encoded = body.encode();
+        long seq = state.enqueue(encoded);
+        state.save(config.stateFile);
+        if (isConnected()) {
+            try {
+                writeFrame(Frame.msg(seq, encoded));
+            } catch (IOException e) {
+                log("Write failed while sending seq " + seq + ": " + e.getMessage());
+                closeActiveSocket();
+            }
+        }
+        return seq;
+    }
+
+    public void triggerProbeNow() {
+        String netKey = safeNetworkKey();
+        startProbeAsync(netKey, true);
+    }
+
+    private void runConnectionLoop() {
+        int backoffS = 0;
+
+        while (running) {
+            if (!config.networkInfoProvider.isNetworkAvailable()) {
+                setStatus(Status.OFFLINE, "No network");
+                waitReconnect(30_000L);
+                continue;
+            }
+
+            String netKey = safeNetworkKey();
+            int connectInterval;
+            boolean connectLearned;
+            synchronized (watchdogLock) {
+                if (!netKey.equals(activeNetworkKey)) {
+                    activeNetworkKey = netKey;
+                    Integer learned = state.getLearnedInterval(netKey);
+                    if (learned != null && learned > Frame.FALLBACK_INTERVAL_S) {
+                        currentIntervalS = learned;
+                        usingLearnedInterval = true;
+                    } else {
+                        currentIntervalS = Frame.FALLBACK_INTERVAL_S;
+                        usingLearnedInterval = false;
+                    }
+                }
+                connectInterval = currentIntervalS;
+                connectLearned = usingLearnedInterval;
+            }
+
+            boolean receivedByeReplaced = false;
+            boolean receivedAuthError = false;
+            boolean hadConnected = false;
+            long sessionStartElapsedMs = 0L;
+            String disconnectReason = "connection closed";
+
+            setStatus(Status.CONNECTING, "Connecting...");
+            SSLSocket socket = null;
+            clock.acquireBriefWakeLock(20_000L);
+            try {
+                log("Connecting main to " + config.mainHost + ":" + config.mainPort
+                        + " (interval=" + connectInterval + "s, net=" + netKey + ")");
+                socket = tlsHelper.connect(config.mainHost, config.mainPort, config.sniMain, 10_000, 10_000);
+                InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream();
+
+                socket.setSoTimeout(15_000);
+                Frame hello = Frame.hello(Frame.ROLE_MAIN, config.tokenHex, state.getLastRxSeq(), connectInterval);
+                synchronized (writeLock) {
+                    hello.writeTo(out);
+                }
+                Frame first = Frame.readFrom(in);
+                if (first == null) {
+                    throw new IOException("EOF waiting for WELCOME");
+                }
+                if (first.type == Frame.TYPE_BYE) {
+                    disconnectReason = "server BYE(" + Frame.byeReasonName(first.reason) + ")";
+                    if (first.reason == Frame.BYE_AUTH_FAILED || first.reason == Frame.BYE_BAD_VERSION) {
+                        receivedAuthError = true;
+                    } else if (first.reason == Frame.BYE_REPLACED) {
+                        receivedByeReplaced = true;
+                    }
+                    throw new IOException(disconnectReason);
+                }
+                if (first.type != Frame.TYPE_WELCOME) {
+                    throw new IOException("Expected WELCOME, got " + first);
+                }
+                socket.setSoTimeout(0);
+
+                long serverLastRxSeq = first.seq;
+                if (state.ackUpTo(serverLastRxSeq) > 0) {
+                    state.save(config.stateFile);
+                }
+
+                long nowElapsed = clock.elapsedRealtimeMs();
+                sessionStartElapsedMs = nowElapsed;
+                hadConnected = true;
+                synchronized (watchdogLock) {
+                    activeSocket = socket;
+                    activeOut = out;
+                    connected = true;
+                    connectedAtElapsedMs = nowElapsed;
+                    lastTrafficElapsedMs = nowElapsed;
+                    pingInFlight = false;
+                    pingDeadlineElapsedMs = 0L;
+                    lastScheduledAlarmElapsedMs = 0L;
+                    watchdogLock.notifyAll();
+                }
+
+                setStatus(Status.CONNECTED, "Connected");
+                log("Connected (TLS=" + socket.getSession().getProtocol()
+                        + ", serverLastRxSeq=" + serverLastRxSeq + ", interval=" + connectInterval + "s)");
+                if (listener != null) {
+                    listener.onConnected(connectInterval, netKey);
+                }
+
+                // Resend any unACKed MSGs with seq > serverLastRxSeq
+                Map<Long, byte[]> pending = state.pendingAfter(serverLastRxSeq);
+                for (Map.Entry<Long, byte[]> e : pending.entrySet()) {
+                    writeFrame(Frame.msg(e.getKey(), e.getValue()));
+                }
+
+                if (config.autoProbe) {
+                    maybeScheduleProbe(netKey);
+                }
+
+                // Handshake & pending resend complete: allow CPU to enter deep sleep while blocked on read!
+                clock.releaseWakeLock();
+
+                while (running) {
+                    Frame frame = Frame.readFrom(in);
+                    if (frame == null) {
+                        disconnectReason = "EOF";
+                        break;
+                    }
+                    // Radio woke CPU with incoming packet: hold a brief partial wakelock until handled + ACKed.
+                    clock.acquireBriefWakeLock(15_000L);
+                    try {
+                        recordTraffic();
+
+                        switch (frame.type) {
+                            case Frame.TYPE_MSG:
+                                handleIncomingMsg(frame.seq, frame.body);
+                                break;
+                            case Frame.TYPE_ACK:
+                                if (state.ackUpTo(frame.seq) > 0) {
+                                    state.save(config.stateFile);
+                                }
+                                break;
+                            case Frame.TYPE_PONG:
+                                synchronized (watchdogLock) {
+                                    if (pingInFlight && frame.nonce == pendingPingNonce) {
+                                        pingInFlight = false;
+                                        pingDeadlineElapsedMs = 0L;
+                                        lastScheduledAlarmElapsedMs = 0L;
+                                        watchdogLock.notifyAll();
+                                    }
+                                }
+                                break;
+                            case Frame.TYPE_BYE:
+                                disconnectReason = "BYE(" + Frame.byeReasonName(frame.reason) + ")";
+                                if (frame.reason == Frame.BYE_REPLACED) {
+                                    receivedByeReplaced = true;
+                                } else if (frame.reason == Frame.BYE_AUTH_FAILED
+                                        || frame.reason == Frame.BYE_BAD_VERSION) {
+                                    receivedAuthError = true;
+                                }
+                                break;
+                            default:
+                                log("Ignoring unexpected frame from server: " + frame);
+                                break;
+                        }
+                    } finally {
+                        clock.releaseWakeLock();
+                    }
+                    if (frame.type == Frame.TYPE_BYE) {
+                        break;
+                    }
+                }
+            } catch (IOException e) {
+                if (disconnectReason.equals("connection closed")) {
+                    disconnectReason = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                }
+            } finally {
+                clock.releaseWakeLock();
+                boolean wasConnected;
+                synchronized (watchdogLock) {
+                    wasConnected = connected;
+                    connected = false;
+                    activeSocket = null;
+                    activeOut = null;
+                    pingInFlight = false;
+                    pingDeadlineElapsedMs = 0L;
+                    lastScheduledAlarmElapsedMs = 0L;
+                    watchdogLock.notifyAll();
+                }
+                closeSocketQuietly(socket);
+                if (wasConnected && listener != null) {
+                    listener.onDisconnected(disconnectReason);
+                }
+            }
+
+            if (!running) {
+                break;
+            }
+
+            if (receivedAuthError) {
+                log("Fatal handshake error (" + disconnectReason + "); stopping reconnect loop");
+                running = false;
+                setStatus(Status.AUTH_FAILED, "Authentication failed");
+                if (listener != null) {
+                    listener.onDisconnected("fatal: " + disconnectReason);
+                }
+                break;
+            }
+
+            if (hadConnected) {
+                long uptimeMs = clock.elapsedRealtimeMs() - sessionStartElapsedMs;
+                if (uptimeMs >= 2L * connectInterval * 1000L) {
+                    backoffS = 0;
+                }
+            }
+
+            if (receivedByeReplaced) {
+                log("Disconnected due to replacement; waiting 5s before reconnect");
+                setStatus(Status.CONNECTING, "Reconnecting...");
+                waitReconnect(5_000L);
+                continue;
+            }
+
+            if (connectLearned && connectInterval > Frame.FALLBACK_INTERVAL_S) {
+                log("Main failed on learned interval (" + connectInterval
+                        + "s); falling back to " + Frame.FALLBACK_INTERVAL_S + "s and starting probe");
+                synchronized (watchdogLock) {
+                    currentIntervalS = Frame.FALLBACK_INTERVAL_S;
+                    usingLearnedInterval = false;
+                    watchdogLock.notifyAll();
+                }
+                if (listener != null) {
+                    listener.onIntervalUpdated(Frame.FALLBACK_INTERVAL_S, netKey);
+                }
+                if (config.autoProbe) {
+                    startProbeAsync(netKey, true);
+                }
+                continue;
+            }
+
+            backoffS = (backoffS == 0) ? 2 : Math.min(300, backoffS * 2);
+            log("Main failed on FALLBACK (" + disconnectReason + "); reconnecting in " + backoffS + "s");
+            setStatus(Status.ERROR, disconnectReason);
+            waitReconnect(backoffS * 1000L);
+        }
+    }
+
+    private void handleIncomingMsg(long seq, byte[] rawBody) throws IOException {
+        long lastRx = state.getLastRxSeq();
+        if (seq <= lastRx) {
+            writeFrame(Frame.ack(lastRx));
+            return;
+        }
+        if (seq > lastRx + 1) {
+            log("Incoming MSG seq gap: expected " + (lastRx + 1) + ", got " + seq);
+        }
+        state.setLastRxSeq(seq);
+        // Persist BEFORE sending ACK!
+        state.save(config.stateFile);
+        writeFrame(Frame.ack(seq));
+
+        try {
+            Body decoded = Body.decode(rawBody);
+            if (listener != null) {
+                listener.onBody(seq, decoded);
+            }
+        } catch (Exception e) {
+            log("Failed to handle incoming body seq " + seq + ": " + e.getMessage());
+        }
+    }
+
+    private void runWatchdogLoop() {
+        while (running) {
+            boolean shouldSendPing = false;
+            int pingNonce = 0;
+            boolean pongTimedOut = false;
+            long waitMs = 0L; // 0 = wait indefinitely until notified
+            long alarmTargetElapsed = 0L;
+
+            synchronized (watchdogLock) {
+                if (!running) {
+                    break;
+                }
+                long now = clock.elapsedRealtimeMs();
+                if (connected) {
+                    if (pingInFlight) {
+                        if (now >= pingDeadlineElapsedMs) {
+                            pongTimedOut = true;
+                        } else {
+                            waitMs = Math.max(100L, pingDeadlineElapsedMs - now);
+                            alarmTargetElapsed = pingDeadlineElapsedMs;
+                        }
+                    } else {
+                        long nextPingAt = lastTrafficElapsedMs + (currentIntervalS * 1000L);
+                        if (now >= nextPingAt) {
+                            shouldSendPing = true;
+                            pingInFlight = true;
+                            pendingPingNonce = rng.nextInt();
+                            pingNonce = pendingPingNonce;
+                            pingDeadlineElapsedMs = now + (Frame.PONG_TIMEOUT_S * 1000L);
+                            waitMs = Frame.PONG_TIMEOUT_S * 1000L;
+                            alarmTargetElapsed = pingDeadlineElapsedMs;
+                        } else {
+                            waitMs = Math.max(100L, nextPingAt - now);
+                            alarmTargetElapsed = nextPingAt;
+                        }
+                    }
+                } else {
+                    waitMs = 0L;
+                }
+            }
+
+            if (pongTimedOut) {
+                log("PONG timeout (" + Frame.PONG_TIMEOUT_S + "s); closing main socket");
+                clock.releaseWakeLock();
+                closeActiveSocket();
+                continue;
+            }
+
+            if (shouldSendPing) {
+                clock.acquireBriefWakeLock((Frame.PONG_TIMEOUT_S + 5) * 1000L);
+                try {
+                    clock.scheduleWakeup(Frame.PONG_TIMEOUT_S * 1000L);
+                    writeFrame(Frame.ping(pingNonce));
+                } catch (IOException e) {
+                    log("Failed to write PING: " + e.getMessage());
+                    clock.releaseWakeLock();
+                    closeActiveSocket();
+                }
+                continue;
+            }
+
+            if (waitMs > 0L && alarmTargetElapsed > 0L) {
+                boolean needSchedule;
+                synchronized (watchdogLock) {
+                    needSchedule = Math.abs(alarmTargetElapsed - lastScheduledAlarmElapsedMs) > 1000L;
+                    if (needSchedule) {
+                        lastScheduledAlarmElapsedMs = alarmTargetElapsed;
+                    }
+                }
+                if (needSchedule) {
+                    clock.scheduleWakeup(waitMs);
+                }
+                // Release wakelock if not waiting for an in-flight PONG so CPU can sleep until the alarm!
+                boolean keepAwake;
+                synchronized (watchdogLock) {
+                    keepAwake = pingInFlight;
+                }
+                if (!keepAwake) {
+                    clock.releaseWakeLock();
+                }
+            }
+
+            synchronized (watchdogLock) {
+                if (!running) {
+                    break;
+                }
+                try {
+                    if (waitMs > 0L) {
+                        watchdogLock.wait(waitMs);
+                    } else {
+                        watchdogLock.wait();
+                    }
+                } catch (InterruptedException ignored) {
+                }
+            }
+        }
+    }
+
+    private void waitReconnect(long delayMs) {
+        long deadline = clock.elapsedRealtimeMs() + delayMs;
+        clock.scheduleWakeup(delayMs);
+        synchronized (reconnectLock) {
+            while (running) {
+                long left = deadline - clock.elapsedRealtimeMs();
+                if (left <= 0L) {
+                    break;
+                }
+                try {
+                    reconnectLock.wait(left);
+                } catch (InterruptedException ignored) {
+                    break;
+                }
+                // If network became available or reconnectNow() was invoked, exit early.
+                if (config.networkInfoProvider.isNetworkAvailable() && (deadline - clock.elapsedRealtimeMs()) < delayMs - 200L) {
+                    break;
+                }
+            }
+        }
+    }
+
+    private void maybeScheduleProbe(String netKey) {
+        long nowWall = System.currentTimeMillis();
+        long lastProbe = state.getLastProbeMs(netKey);
+        boolean due = (lastProbe == 0L) || (nowWall > lastProbe && (nowWall - lastProbe) >= Frame.PROBE_PERIOD_MS);
+        if (!due) {
+            return;
+        }
+        synchronized (watchdogLock) {
+            if (probeRunning || clock.elapsedRealtimeMs() < nextProbeRetryElapsedMs) {
+                return;
+            }
+        }
+        startProbeAsync(netKey, false);
+    }
+
+    private void startProbeAsync(final String netKey, boolean force) {
+        synchronized (watchdogLock) {
+            if (probeRunning) {
+                return;
+            }
+            if (!force && clock.elapsedRealtimeMs() < nextProbeRetryElapsedMs) {
+                return;
+            }
+            probeRunning = true;
+        }
+
+        final String pHost = (config.probeHost != null && !config.probeHost.isEmpty())
+                ? config.probeHost : config.mainHost;
+        final int pPort = config.probePort > 0 ? config.probePort : config.mainPort;
+
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Prober prober = new Prober(
+                            tlsHelper,
+                            pHost,
+                            pPort,
+                            config.sniProbe,
+                            config.tokenHex,
+                            config.probeScale,
+                            clock,
+                            watchdogLock,
+                            new Prober.Logger() {
+                                @Override
+                                public void log(String msg) {
+                                    PushClient.this.log(msg);
+                                }
+                            }
+                    );
+                    Prober.ProbeResult res = prober.run();
+                    if (res.connectFailed) {
+                        synchronized (watchdogLock) {
+                            nextProbeRetryElapsedMs = clock.elapsedRealtimeMs() + 5L * 60L * 1000L;
+                        }
+                        return;
+                    }
+                    state.setLearnedInterval(netKey, res.recommendedIntervalS);
+                    state.setLastProbeMs(netKey, System.currentTimeMillis());
+                    try {
+                        state.save(config.stateFile);
+                    } catch (IOException ioe) {
+                        log("Failed to save probe state: " + ioe.getMessage());
+                    }
+
+                    boolean applyNow;
+                    synchronized (watchdogLock) {
+                        applyNow = netKey.equals(activeNetworkKey);
+                        if (applyNow) {
+                            currentIntervalS = res.recommendedIntervalS;
+                            usingLearnedInterval = (res.recommendedIntervalS > Frame.FALLBACK_INTERVAL_S);
+                            lastScheduledAlarmElapsedMs = 0L;
+                            watchdogLock.notifyAll();
+                        }
+                    }
+                    if (applyNow) {
+                        sendFrameQuietly(Frame.setInterval(res.recommendedIntervalS));
+                        if (listener != null) {
+                            listener.onIntervalUpdated(res.recommendedIntervalS, netKey);
+                        }
+                    }
+                } catch (InterruptedException ignored) {
+                } finally {
+                    synchronized (watchdogLock) {
+                        probeRunning = false;
+                        watchdogLock.notifyAll();
+                    }
+                }
+            }
+        }, "imsg-prober");
+        t.setDaemon(true);
+        synchronized (watchdogLock) {
+            probeThread = t;
+        }
+        t.start();
+    }
+
+    private String safeNetworkKey() {
+        try {
+            String k = config.networkInfoProvider.getNetworkKey();
+            return (k == null || k.isEmpty()) ? "unknown" : k;
+        } catch (Throwable t) {
+            return "unknown";
+        }
+    }
+
+    private void setStatus(Status s, String detail) {
+        status = s;
+        statusDetail = detail == null ? "" : detail;
+        if (listener != null) {
+            listener.onStatusChanged(status, statusDetail);
+        }
+    }
+
+    private void recordTraffic() {
+        synchronized (watchdogLock) {
+            lastTrafficElapsedMs = clock.elapsedRealtimeMs();
+            watchdogLock.notifyAll();
+        }
+    }
+
+    private void writeFrame(Frame frame) throws IOException {
+        OutputStream out;
+        synchronized (watchdogLock) {
+            out = activeOut;
+        }
+        if (out == null) {
+            throw new IOException("Not connected");
+        }
+        synchronized (writeLock) {
+            frame.writeTo(out);
+        }
+        recordTraffic();
+    }
+
+    private void sendFrameQuietly(Frame frame) {
+        try {
+            writeFrame(frame);
+        } catch (IOException ignored) {
+        }
+    }
+
+    private void closeActiveSocket() {
+        SSLSocket s;
+        synchronized (watchdogLock) {
+            s = activeSocket;
+        }
+        closeSocketQuietly(s);
+    }
+
+    private static void closeSocketQuietly(SSLSocket s) {
+        if (s != null) {
+            try {
+                s.close();
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
+    private void log(String msg) {
+        if (listener != null) {
+            listener.onLog(msg);
+        }
+    }
+}
