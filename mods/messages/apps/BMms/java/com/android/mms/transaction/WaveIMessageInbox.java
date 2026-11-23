@@ -26,7 +26,9 @@ import java.util.Arrays;
  */
 public final class WaveIMessageInbox {
     private static final String TAG = "WaveIMsg";
+    /** First retry of a body that can't be stored yet; doubles up to MAX_RETRY_MS. */
     private static final long RETRY_MS = 30_000L;
+    private static final long MAX_RETRY_MS = 15L * 60L * 1000L;
 
     private static WaveIMessageInbox sInstance;
 
@@ -36,6 +38,8 @@ public final class WaveIMessageInbox {
     private final PowerManager.WakeLock wakeLock;
     private long lastName;
     private boolean drainPosted;
+    /** Current retry delay, 0 while nothing is waiting (guarded by this). */
+    private long retryMs;
 
     public static synchronized WaveIMessageInbox get(Context c) {
         if (sInstance == null) sInstance = new WaveIMessageInbox(c.getApplicationContext());
@@ -78,6 +82,14 @@ public final class WaveIMessageInbox {
 
     /** Retries whatever is waiting (called when the push connection comes up). */
     public void kick() {
+        synchronized (this) {
+            retryMs = 0L; // a fresh connection: start the backoff over
+        }
+        kick(0L);
+    }
+
+    /** The retry alarm fired (see {@link #retryLater}). */
+    public void onRetryAlarm() {
         kick(0L);
     }
 
@@ -141,13 +153,45 @@ public final class WaveIMessageInbox {
                 WaveIMessageStore.handle(ctx, WaveIMessageHost.get(ctx), body, ageMs);
                 f.delete();
             } catch (WaveIMessageStore.RetryLater e) {
-                Log.i(TAG, "will retry " + body + ": " + e.getMessage());
-                kick(RETRY_MS);
+                retryLater(body, e.getMessage());
                 return; // keep order: nothing after it goes first
             } catch (Throwable t) {
                 Log.e(TAG, "failed to store " + body + "; dropping it", t);
                 f.delete();
             }
+        }
+        // Drained: nothing waits any more.
+        boolean hadRetry;
+        synchronized (this) {
+            hadRetry = retryMs != 0L;
+            retryMs = 0L;
+        }
+        if (hadRetry) {
+            WaveIMessageHost host = WaveIMessageHost.connected();
+            if (host != null) host.cancelInboxRetry();
+        }
+    }
+
+    /**
+     * Retries with backoff (30 s doubling to 15 min, reset on reconnect) instead of every 30 s for
+     * six hours. While connected the retry has its own wakeup: a Handler delay doesn't run while
+     * the CPU sleeps, so a download that failed once used to wait for the next keepalive (up to
+     * ~48 min) with the screen off. Offline it needs none: reconnecting kicks the queue.
+     */
+    private void retryLater(Body body, String why) {
+        long delay;
+        synchronized (this) {
+            retryMs = retryMs == 0L ? RETRY_MS : Math.min(MAX_RETRY_MS, retryMs * 2L);
+            delay = retryMs;
+        }
+        Log.i(TAG, "will retry " + body + " in " + delay / 1000L + "s: " + why);
+        // One timer, not both: the alarm also fires while awake, and a Handler delay next to it
+        // queued a second, immediate attempt behind the first whenever both fired.
+        WaveIMessageHost host = WaveIMessageHost.connected();
+        if (host != null) {
+            host.scheduleInboxRetry(delay);
+        } else {
+            kick(delay);
         }
     }
 

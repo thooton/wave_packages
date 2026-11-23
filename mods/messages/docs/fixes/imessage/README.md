@@ -88,8 +88,13 @@ resources, or conversation UI.
      server converts them for iPhones. Anything else, or a failed upload, still goes as carrier MMS.
    - **Ordered, durable inbox** (`WaveIMessageInbox`): the push client hands every message-changing
      body to an on-disk queue before it ACKs, and one worker stores them in order. A failed
-     attachment download keeps the message queued and retries (30 s, and on reconnect) for up to
-     6 hours, then stores it with a `[Photo (couldn't download)]` placeholder.
+     attachment download keeps the message queued and retries for up to 6 hours, then stores it
+     with a `[Photo (couldn't download)]` placeholder. Retries back off (30 s doubling to 15 min,
+     back to the start on reconnect); while connected each has its own wakeup (`inbox` on the
+     keyed alarm), since a Handler delay doesn't run while the CPU sleeps and a failed download used
+     to wait for the next keepalive (up to ~48 min); offline the reconnect kicks the queue.
+     Previews fetched before another attachment of the same message failed are kept in the cache
+     (`imsg-media/<id>` + `.meta`) and reused instead of downloaded again.
    - **Tapbacks** (`WaveTapbacks`, `MessageListItem.bind` hook): iPhone-style round tapback bubbles
      hanging off the bubble's top outer corner (right on received bubbles, left on sent ones), with
      the two-dot tail toward the message, older ones stacked behind and a ring of the conversation

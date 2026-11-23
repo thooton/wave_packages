@@ -24,6 +24,7 @@ import com.google.android.mms.pdu.SendReq;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -130,7 +131,9 @@ public final class WaveIMessageStore {
         List<Media> media = new ArrayList<Media>();
         StringBuilder missing = new StringBuilder();
         if (!body.attachments.isEmpty()) {
+            // On RetryLater the previews already fetched stay in the cache for the next attempt.
             fetchMedia(c, host, body, ageMs, media, missing);
+            deleteFetched(c, body);
         }
         if (missing.length() > 0) {
             shown = shown.isEmpty() ? missing.toString() : shown + "\n" + missing;
@@ -165,9 +168,19 @@ public final class WaveIMessageStore {
                 continue;
             }
             File f = new File(dir, safeName(a.mediaId));
+            File meta = new File(dir, safeName(a.mediaId) + ".meta");
             try {
+                // Fetched by an earlier attempt of this message that then waited for another
+                // attachment: don't download it again.
+                if (f.exists() && meta.exists()) {
+                    String[] mn = new String(readAll(meta), "UTF-8").split("\n", 2);
+                    out.add(new Media(a.mediaId, mn[0], mn.length > 1 ? mn[1] : null, readAll(f)));
+                    Log.i(TAG, "reusing fetched " + a.mediaId);
+                    continue;
+                }
                 MediaClient.Result r = mc.download(a.mediaId, false, f, null);
                 out.add(new Media(a.mediaId, r.mime, r.name, readAll(r.file)));
+                writeMeta(meta, r.mime, r.name);
                 Log.i(TAG, "fetched " + a.mediaId + " " + r.mime + " " + r.length + " bytes");
             } catch (MediaClient.ServerError e) {
                 Log.w(TAG, "attachment " + a.mediaId + " unavailable: " + e.getMessage());
@@ -175,9 +188,30 @@ public final class WaveIMessageStore {
             } catch (IOException e) {
                 if (ageMs < MEDIA_RETRY_WINDOW_MS) throw new RetryLater("download " + a.mediaId + ": " + e);
                 appendLine(missing, placeholder(a, true));
-            } finally {
-                f.delete();
             }
+        }
+    }
+
+    private static void writeMeta(File meta, String mime, String name) {
+        try {
+            FileOutputStream o = new FileOutputStream(meta);
+            try {
+                o.write(((mime == null ? "" : mime) + "\n" + (name == null ? "" : name)).getBytes("UTF-8"));
+            } finally {
+                o.close();
+            }
+        } catch (IOException e) {
+            meta.delete();
+        }
+    }
+
+    /** Drops the cached previews of {@code body} once it is stored. */
+    private static void deleteFetched(Context c, Body body) {
+        File dir = new File(c.getCacheDir(), "imsg-media");
+        for (Body.InAttachment a : body.attachments) {
+            if (a.mediaId == null) continue;
+            new File(dir, safeName(a.mediaId)).delete();
+            new File(dir, safeName(a.mediaId) + ".meta").delete();
         }
     }
 

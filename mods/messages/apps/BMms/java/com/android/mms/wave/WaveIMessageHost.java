@@ -110,7 +110,11 @@ public final class WaveIMessageHost implements PushClient.Listener {
         public void onReceive(Context context, Intent intent) {
             // Held until the loop this tick wakes has handled it (it releases HOLD_ALARM).
             wakeupClock.acquireBriefWakeLock(WakeupClock.HOLD_ALARM, 15_000L);
-            wakeupClock.onAlarm();
+            if (wakeupClock.onAlarm().contains(WakeupClock.WAKE_INBOX)) {
+                // kick() takes the inbox's own wakelock before we drop the alarm's.
+                com.android.mms.transaction.WaveIMessageInbox.get(ctx).onRetryAlarm();
+                wakeupClock.releaseWakeLock(WakeupClock.WAKE_INBOX);
+            }
             PushClient c = client;
             if (c != null) {
                 c.onWakeupTick();
@@ -265,6 +269,15 @@ public final class WaveIMessageHost implements PushClient.Listener {
                 }
             }
         });
+    }
+
+    /** Wakes the phone in {@code delayMs} to retry the incoming-message queue. */
+    public void scheduleInboxRetry(long delayMs) {
+        wakeupClock.scheduleWakeup(WakeupClock.WAKE_INBOX, delayMs);
+    }
+
+    public void cancelInboxRetry() {
+        wakeupClock.cancelWakeup(WakeupClock.WAKE_INBOX);
     }
 
     public void triggerProbeNow() {
@@ -1233,7 +1246,8 @@ public final class WaveIMessageHost implements PushClient.Listener {
          * The alarm fired (alarm receiver, before it wakes the loops): drops the due wakeups,
          * takes a wakelock for each due non-main key (its owner releases it) and re-arms.
          */
-        synchronized void onAlarm() {
+        synchronized java.util.Set<String> onAlarm() {
+            java.util.Set<String> due = new java.util.HashSet<String>();
             long now = SystemClock.elapsedRealtime();
             armedAt = 0L;
             java.util.Iterator<Map.Entry<String, Long>> it = deadlines.entrySet().iterator();
@@ -1242,10 +1256,12 @@ public final class WaveIMessageHost implements PushClient.Listener {
                 // 1 s slack: allow-while-idle alarms may fire a little early in batches.
                 if (e.getValue() <= now + 1000L) {
                     if (!WAKE_MAIN.equals(e.getKey())) acquireBriefWakeLock(e.getKey(), 15_000L);
+                    due.add(e.getKey());
                     it.remove();
                 }
             }
             rearm();
+            return due;
         }
 
         private void rearm() {

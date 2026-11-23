@@ -28,6 +28,8 @@ public interface WakeupClock {
 
     /** The main loops' wakeup (keepalive, PONG deadline, reconnect backoff). */
     String WAKE_MAIN = "main";
+    /** The incoming-message queue's retry (a failed attachment download). */
+    String WAKE_INBOX = "inbox";
 
     /** Schedule the main wakeup after delayMs (replaces the previous main wakeup). */
     void scheduleWakeup(long delayMs);

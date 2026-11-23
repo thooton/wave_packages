@@ -12,5 +12,8 @@ local.properties
 /tonal_proposal.zip
 /updater-manifest.patch
 /tmp
+/coordinate/
 /apks/
 /release-assets/
+/coordinate
+
