@@ -80,14 +80,8 @@ public final class WaveIMessageUi {
             Conversation conv,
             RecipientsEditor recipientsEditor
     ) {
+        // Photos, video, audio, contacts and subjects go over iMessage too (WaveIMessageSend).
         boolean requiresMms = wm != null && wm.requiresMms();
-        boolean hasMediaOrSubject = wm != null
-                && (wm.hasAttachment() || wm.hasSlideshow() || wm.hasSubject());
-
-        // Media attachments and subjects currently always go via MMS.
-        if (hasMediaOrSubject) {
-            return HINT_MMS;
-        }
 
         WaveIMessageHost host = WaveIMessageHost.sending();
         if (host == null) {

@@ -53,6 +53,18 @@
     .prologue
     const/4 v3, 0x0
 
+    # FEAT(imessage): pressing a text message that has tapbacks lists who reacted.
+    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$79;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
+
+    invoke-static {v0, p2}, Lcom/android/mms/ui/WaveTapbacks;->onItemClick(Landroid/app/Activity;Landroid/view/View;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_tapback_click_stock
+
+    return-void
+
+    :wave_tapback_click_stock
     .line 6894
     if-eqz p2, :cond_0
 

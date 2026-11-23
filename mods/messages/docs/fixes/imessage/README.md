@@ -55,3 +55,34 @@ resources, or conversation UI.
      fallback on failure.
    - Stores incoming 1:1, group, and self-sent (synced from other Apple devices) messages into
      `mmssms.db` with `apple_msg_id` deduplication and stock notifications.
+
+4. **Rich messages (protocol v2, imsg-server with `[media]`)**:
+   - **Attachments both ways.** Incoming photos, stickers, videos, voice messages, audio and contacts
+     are stored as MMS parts holding the server's screen-size previews (JPEG/PNG up to 640 px, 240p
+     H.264 MP4, AAC); a 1:1 iMessage with media becomes an MMS in the 1:1 thread. They are fetched
+     over a separate short-lived TLS connection (`ROLE_MEDIA`, `MEDIA_GET`/`MEDIA_DATA`, resumable),
+     never over the push connection. **Save attachment** on such a message downloads the full-size
+     file from the server into Download (`WaveIMessageSave`, `ComposeMessageActivity.saveAttachment`
+     hook); with the server unreachable it saves the preview as before. Outgoing MMS with photos,
+     video, audio or a contact go over iMessage (`MEDIA_PUT` uploads, then `SEND_MESSAGE`); the
+     server converts them for iPhones. Anything else, or a failed upload, still goes as carrier MMS.
+   - **Ordered, durable inbox** (`WaveIMessageInbox`): the push client hands every message-changing
+     body to an on-disk queue before it ACKs, and one worker stores them in order. A failed
+     attachment download keeps the message queued and retries (30 s, and on reconnect) for up to
+     6 hours, then stores it with a `[Photo (couldn't download)]` placeholder.
+   - **Tapbacks** (`WaveTapbacks`, `MessageListItem.bind` hook): iPhone-style badges on the top
+     corner of the bubble (blue when one is yours). Pressing a text message with tapbacks lists who
+     reacted with what; the message menu has **React** (the six standard tapbacks; choosing your
+     current one removes it) and **Reactions**.
+   - **Edits** replace the stored text and add ` (edited)`; **unsends** replace it with
+     `This message was unsent` and drop its attachments and tapbacks. **Inline replies** start with
+     a quote of the original (`↩ "..."`).
+   - **Group renames, member and photo changes** are stored as already-read notices in the
+     conversation. Android files a group by its member set, so after a member change new messages
+     arrive in a new thread; the notice says so in both, and replies there reuse the group's id.
+   - `WaveIMessageDb` (`wave_imessage.db`) maps Apple message ids to stored rows (for tapbacks,
+     edits, unsends, quotes and outgoing tapbacks), holds the current tapbacks, and maps MMS parts to
+     server attachment ids. Rows older than 180 days are dropped.
+   - Host tests: `tools/testing/imessage_test.py` (framing and bodies) and
+     `tools/testing/imessage_interop_test.py` (this client code against `imsg-server run --no-apple`:
+     media upload/preview/full-size/resume, HEIC, tapbacks, replies, edits, unsends, group events).

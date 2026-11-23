@@ -264,18 +264,24 @@ public final class PushClient {
         }
     }
 
-    public String sendText(String target, String text, String senderGuid) throws IOException {
+    /** Sends a message to {@code participants} (one for a 1:1 chat) with already-uploaded attachments. */
+    public String sendMessage(List<String> participants, String text, String senderGuid,
+                              List<Body.OutAttachment> attachments) throws IOException {
         String clientMsgId = "c-" + UUID.randomUUID().toString();
-        Body body = Body.sendText(clientMsgId, target, text, senderGuid);
-        sendBody(body);
+        sendBody(Body.sendMessage(clientMsgId, participants, text, senderGuid, attachments));
         return clientMsgId;
     }
 
-    public String sendGroupText(List<String> participants, String text, String senderGuid) throws IOException {
-        String clientMsgId = "g-" + UUID.randomUUID().toString();
-        Body body = Body.sendGroupText(clientMsgId, participants, text, senderGuid);
-        sendBody(body);
+    public String sendReaction(List<String> participants, String senderGuid, String targetId, int reaction,
+                               String emoji, boolean enable, String targetText) throws IOException {
+        String clientMsgId = "r-" + UUID.randomUUID().toString();
+        sendBody(Body.sendReaction(clientMsgId, participants, senderGuid, targetId, reaction, emoji, enable, targetText));
         return clientMsgId;
+    }
+
+    /** A client for attachment transfers to the same server with the same credentials. */
+    public MediaClient mediaClient() {
+        return new MediaClient(config.mainHost, config.mainPort, config.tokenHex);
     }
 
     public String checkTargets(List<String> targets) throws IOException {
@@ -555,11 +561,8 @@ public final class PushClient {
         if (seq > lastRx + 1) {
             log("Incoming MSG seq gap: expected " + (lastRx + 1) + ", got " + seq);
         }
-        state.setLastRxSeq(seq);
-        // Persist BEFORE sending ACK!
-        state.save(config.stateFile);
-        writeFrame(Frame.ack(seq));
-
+        // The listener persists what it must keep (the inbox queue) before we ACK, so a crash
+        // between the two re-delivers the body instead of losing it (stores dedupe by Apple id).
         try {
             Body decoded = Body.decode(rawBody);
             if (listener != null) {
@@ -568,6 +571,10 @@ public final class PushClient {
         } catch (Exception e) {
             log("Failed to handle incoming body seq " + seq + ": " + e.getMessage());
         }
+        state.setLastRxSeq(seq);
+        // Persist BEFORE sending ACK!
+        state.save(config.stateFile);
+        writeFrame(Frame.ack(seq));
     }
 
     private void runWatchdogLoop() {

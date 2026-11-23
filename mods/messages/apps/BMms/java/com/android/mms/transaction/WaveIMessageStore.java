@@ -2,14 +2,19 @@ package com.android.mms.transaction;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.net.Uri;
+import android.provider.ContactsContract;
 import android.provider.Telephony;
 import android.telephony.PhoneNumberUtils;
 import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.mms.wave.WaveIMessageConfig;
+import com.android.mms.wave.WaveIMessageDb;
+import com.android.mms.wave.WaveIMessageHost;
 import com.android.mms.wave.imsg.Body;
+import com.android.mms.wave.imsg.MediaClient;
 import com.google.android.mms.pdu.EncodedStringValue;
 import com.google.android.mms.pdu.PduBody;
 import com.google.android.mms.pdu.PduPart;
@@ -17,73 +22,211 @@ import com.google.android.mms.pdu.PduPersister;
 import com.google.android.mms.pdu.RetrieveConf;
 import com.google.android.mms.pdu.SendReq;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /**
  * FEAT(imessage): Stores incoming iMessages (and self-sent sync messages from other Apple devices)
  * into the stock Android telephony database so the stock Messages UI, search, notifications, and
  * SonimLauncher Missed Events all display them seamlessly.
+ *
+ * Text-only 1:1 messages become SMS rows; anything with media, and every group message, becomes
+ * an MMS whose parts hold the server's screen-size previews. Tapbacks, edits, unsends and group
+ * changes are applied to the stored rows (see {@link WaveIMessageDb}).
  */
 public final class WaveIMessageStore {
     private static final String TAG = "WaveIMsg";
+    /** Keep retrying a failed attachment download this long before storing a placeholder. */
+    private static final long MEDIA_RETRY_WINDOW_MS = 6L * 3600L * 1000L;
+    private static final String EDITED = " (edited)";
+    public static final String UNSENT = "This message was unsent";
 
     private WaveIMessageStore() {}
 
-    public static void storeIncoming(Context c, WaveIMessageConfig cfg, Body body) throws Exception {
-        if (body == null || body.kind != Body.KIND_INCOMING_TEXT) return;
-        if (!cfg.markAppleMsgIdSeen(body.appleMsgId)) {
+    /** The body can't be stored yet (attachment download failed); keep it queued. */
+    public static final class RetryLater extends Exception {
+        public RetryLater(String m) {
+            super(m);
+        }
+    }
+
+    private static final class Media {
+        final String mediaId;
+        final String mime;
+        final String name;
+        final byte[] data;
+
+        Media(String mediaId, String mime, String name, byte[] data) {
+            this.mediaId = mediaId;
+            this.mime = mime;
+            this.name = name;
+            this.data = data;
+        }
+    }
+
+    /** Where a conversation lives on the phone. */
+    private static final class Conv {
+        final List<String> targets = new ArrayList<String>();
+        final Set<String> addrs = new LinkedHashSet<String>();
+    }
+
+    static void handle(Context c, WaveIMessageHost host, Body body, long ageMs) throws Exception {
+        WaveIMessageConfig cfg = host.config();
+        switch (body.kind) {
+            case Body.KIND_INCOMING_MESSAGE:
+                storeIncoming(c, host, cfg, body, ageMs);
+                break;
+            case Body.KIND_REACTION:
+                applyReaction(c, cfg, body);
+                break;
+            case Body.KIND_EDIT:
+                applyEdit(c, body);
+                break;
+            case Body.KIND_UNSEND:
+                applyUnsend(c, body);
+                break;
+            case Body.KIND_GROUP_EVENT:
+                storeGroupEvent(c, cfg, body);
+                break;
+            default:
+                break;
+        }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Messages
+
+    private static void storeIncoming(Context c, WaveIMessageHost host, WaveIMessageConfig cfg, Body body,
+                                      long ageMs) throws Exception {
+        if (cfg.isAppleMsgIdSeen(body.appleMsgId)) {
             Log.d(TAG, "Skipping duplicate/already-sent iMessage " + body.appleMsgId);
             return;
         }
-
         List<String> myHandles = cfg.getHandles();
         String senderRaw = body.sender != null ? body.sender : "";
         boolean selfSent = WaveIMessageConfig.isOwnHandle(senderRaw, myHandles);
-
-        // Collect all non-self participants (normalized targets + bare addresses for mmssms.db).
-        List<String> otherTargets = new ArrayList<String>();
-        Set<String> otherAddrs = new LinkedHashSet<String>();
-
-        if (!selfSent && !TextUtils.isEmpty(senderRaw)) {
-            addParticipant(c, cfg, senderRaw, myHandles, otherTargets, otherAddrs);
-        }
-        for (String p : body.participants) {
-            addParticipant(c, cfg, p, myHandles, otherTargets, otherAddrs);
-        }
-
-        if (otherAddrs.isEmpty()) {
-            // Edge case: message to self or missing participants; fall back to sender.
-            String stripped = WaveIMessageConfig.stripHandlePrefix(senderRaw);
-            if (!TextUtils.isEmpty(stripped)) {
-                otherAddrs.add(stripped);
-            }
-        }
-        if (otherAddrs.isEmpty()) {
+        Conv conv = conversation(c, cfg, senderRaw, body.participants, selfSent);
+        if (conv.addrs.isEmpty()) {
             Log.w(TAG, "Ignoring incoming iMessage with no usable address: " + body.appleMsgId);
             return;
         }
 
         // Persist sender_guid for replies in this conversation.
-        if (!TextUtils.isEmpty(body.senderGuid) && !otherTargets.isEmpty()) {
-            String convKey = WaveIMessageConfig.conversationKeyForTargets(otherTargets);
-            cfg.setSenderGuid(convKey, body.senderGuid);
+        if (!TextUtils.isEmpty(body.senderGuid) && !conv.targets.isEmpty()) {
+            cfg.setSenderGuid(WaveIMessageConfig.conversationKeyForTargets(conv.targets), body.senderGuid);
         }
 
+        WaveIMessageDb db = WaveIMessageDb.get(c);
         String text = body.text != null ? body.text : "";
-        if (otherAddrs.size() == 1) {
-            String peer = otherAddrs.iterator().next();
-            storeOneToOneSms(c, peer, text, body.timestampMs, selfSent);
+        String shown = withReplyQuote(db, body.replyTo, text);
+
+        List<Media> media = new ArrayList<Media>();
+        StringBuilder missing = new StringBuilder();
+        if (!body.attachments.isEmpty()) {
+            fetchMedia(c, host, body, ageMs, media, missing);
+        }
+        if (missing.length() > 0) {
+            shown = shown.isEmpty() ? missing.toString() : shown + "\n" + missing;
+        }
+
+        Uri uri;
+        if (media.isEmpty() && conv.addrs.size() == 1) {
+            uri = storeOneToOneSms(c, conv.addrs.iterator().next(), shown, body.timestampMs, selfSent, true);
         } else {
             String fromAddr = WaveIMessageConfig.stripHandlePrefix(senderRaw);
-            String selfAddr = cfg.getPreferredHandle() != null
-                    ? WaveIMessageConfig.stripHandlePrefix(cfg.getPreferredHandle())
-                    : null;
-            storeGroupMms(c, fromAddr, selfAddr, otherAddrs, text, body.appleMsgId, selfSent);
+            uri = storeMms(c, fromAddr, selfAddr(cfg), conv.addrs, shown, body.appleMsgId, selfSent, media, true);
         }
+        db.recordMessage(body.appleMsgId, uri, text, selfSent ? WaveIMessageDb.ME : senderRaw, conv.targets,
+                body.senderGuid);
+        cfg.markAppleMsgIdSeen(body.appleMsgId);
+    }
+
+    /** Downloads the previews of {@code body}'s attachments; failures become text in {@code missing}. */
+    private static void fetchMedia(Context c, WaveIMessageHost host, Body body, long ageMs, List<Media> out,
+                                   StringBuilder missing) throws RetryLater {
+        MediaClient mc = host.mediaClient();
+        File dir = new File(c.getCacheDir(), "imsg-media");
+        dir.mkdirs();
+        for (Body.InAttachment a : body.attachments) {
+            if (a.kind == Body.ATTACH_FILE) {
+                appendLine(missing, placeholder(a, false));
+                continue;
+            }
+            if (mc == null) {
+                if (ageMs < MEDIA_RETRY_WINDOW_MS) throw new RetryLater("not connected for media");
+                appendLine(missing, placeholder(a, true));
+                continue;
+            }
+            File f = new File(dir, safeName(a.mediaId));
+            try {
+                MediaClient.Result r = mc.download(a.mediaId, false, f, null);
+                out.add(new Media(a.mediaId, r.mime, r.name, readAll(r.file)));
+                Log.i(TAG, "fetched " + a.mediaId + " " + r.mime + " " + r.length + " bytes");
+            } catch (MediaClient.ServerError e) {
+                Log.w(TAG, "attachment " + a.mediaId + " unavailable: " + e.getMessage());
+                appendLine(missing, placeholder(a, true));
+            } catch (IOException e) {
+                if (ageMs < MEDIA_RETRY_WINDOW_MS) throw new RetryLater("download " + a.mediaId + ": " + e);
+                appendLine(missing, placeholder(a, true));
+            } finally {
+                f.delete();
+            }
+        }
+    }
+
+    static String placeholder(Body.InAttachment a, boolean failed) {
+        String what;
+        switch (a.kind) {
+            case Body.ATTACH_IMAGE: what = "Photo"; break;
+            case Body.ATTACH_STICKER: what = "Sticker"; break;
+            case Body.ATTACH_VIDEO: what = "Video"; break;
+            case Body.ATTACH_VOICE: what = "Voice message"; break;
+            case Body.ATTACH_AUDIO: what = "Audio: " + a.name; break;
+            case Body.ATTACH_VCARD: what = "Contact: " + a.name; break;
+            default: what = "File: " + a.name; break;
+        }
+        return "[" + what + (failed ? " (couldn't download)" : "") + "]";
+    }
+
+    private static String withReplyQuote(WaveIMessageDb db, String replyTo, String text) {
+        if (TextUtils.isEmpty(replyTo)) return text;
+        WaveIMessageDb.Msg orig = db.byAppleId(replyTo);
+        if (orig == null || TextUtils.isEmpty(orig.text)) return text;
+        return "\u21A9 \u201C" + snippet(orig.text, 40) + "\u201D\n" + text;
+    }
+
+    public static String snippet(String s, int max) {
+        String one = s.replace('\n', ' ').trim();
+        return one.length() <= max ? one : one.substring(0, max - 1).trim() + "\u2026";
+    }
+
+    private static Conv conversation(Context c, WaveIMessageConfig cfg, String senderRaw, List<String> participants,
+                                     boolean selfSent) {
+        List<String> myHandles = cfg.getHandles();
+        Conv conv = new Conv();
+        if (!selfSent && !TextUtils.isEmpty(senderRaw)) {
+            addParticipant(c, cfg, senderRaw, myHandles, conv.targets, conv.addrs);
+        }
+        for (String p : participants) {
+            addParticipant(c, cfg, p, myHandles, conv.targets, conv.addrs);
+        }
+        if (conv.addrs.isEmpty()) {
+            // Edge case: message to self or missing participants; fall back to sender.
+            String stripped = WaveIMessageConfig.stripHandlePrefix(senderRaw);
+            if (!TextUtils.isEmpty(stripped)) conv.addrs.add(stripped);
+        }
+        return conv;
+    }
+
+    private static String selfAddr(WaveIMessageConfig cfg) {
+        return cfg.getPreferredHandle() != null ? WaveIMessageConfig.stripHandlePrefix(cfg.getPreferredHandle()) : null;
     }
 
     private static void addParticipant(
@@ -107,13 +250,14 @@ public final class WaveIMessageStore {
         String addr = WaveIMessageConfig.stripHandlePrefix(handle);
         if (TextUtils.isEmpty(addr)) return;
         for (String existing : outAddrs) {
-            if (existing.equalsIgnoreCase(addr)) return;
-            if (addr.indexOf('@') < 0 && existing.indexOf('@') < 0
-                    && PhoneNumberUtils.compare(existing, addr)) {
-                return;
-            }
+            if (sameAddress(existing, addr)) return;
         }
         outAddrs.add(addr);
+    }
+
+    private static boolean sameAddress(String a, String b) {
+        if (a.equalsIgnoreCase(b)) return true;
+        return a.indexOf('@') < 0 && b.indexOf('@') < 0 && PhoneNumberUtils.compare(a, b);
     }
 
     private static boolean containsIgnoreCase(List<String> list, String item) {
@@ -123,7 +267,8 @@ public final class WaveIMessageStore {
         return false;
     }
 
-    private static void storeOneToOneSms(Context c, String address, String text, long timestampMs, boolean selfSent) {
+    private static Uri storeOneToOneSms(Context c, String address, String text, long timestampMs, boolean selfSent,
+                                        boolean notify) {
         long tid = Telephony.Threads.getOrCreateThreadId(c, address);
         ContentValues v = new ContentValues();
         v.put("address", address);
@@ -138,30 +283,47 @@ public final class WaveIMessageStore {
             v.put("seen", 1);
             Uri u = c.getContentResolver().insert(Uri.parse("content://sms/sent"), v);
             Log.i(TAG, "Stored self-sent 1:1 iMessage " + u + " thread " + tid);
-        } else {
-            v.put("type", 1 /* INBOX */);
-            v.put("read", 0);
-            v.put("seen", 0);
-            v.put("thread_id", tid);
-            Uri u = c.getContentResolver().insert(Uri.parse("content://sms/inbox"), v);
-            Log.i(TAG, "Stored incoming 1:1 iMessage " + u + " thread " + tid);
-            MessagingNotification.blockingUpdateNewMessageIndicator(c, tid, false);
+            return u;
         }
+        v.put("type", 1 /* INBOX */);
+        v.put("read", notify ? 0 : 1);
+        v.put("seen", notify ? 0 : 1);
+        v.put("thread_id", tid);
+        Uri u = c.getContentResolver().insert(Uri.parse("content://sms/inbox"), v);
+        Log.i(TAG, "Stored incoming 1:1 iMessage " + u + " thread " + tid);
+        if (notify) MessagingNotification.blockingUpdateNewMessageIndicator(c, tid, false);
+        return u;
     }
 
-    private static void storeGroupMms(
+    /**
+     * Stores an MMS in the conversation with {@code otherAddrs} (one address for a 1:1 chat).
+     * {@code notify == false} stores it already read (conversation notices).
+     */
+    private static Uri storeMms(
             Context c,
             String fromAddr,
             String selfAddr,
             Set<String> otherAddrs,
             String text,
             String appleMsgId,
-            boolean selfSent
+            boolean selfSent,
+            List<Media> media,
+            boolean notify
     ) throws Exception {
         PduBody body = new PduBody();
-        body.addPart(textPart(text));
+        List<String> locations = new ArrayList<String>();
+        for (int i = 0; i < media.size(); i++) {
+            Media m = media.get(i);
+            String loc = "imsg" + i + "_" + safeName(m.name);
+            locations.add(loc);
+            body.addPart(mediaPart(m, loc, i));
+        }
+        if (!TextUtils.isEmpty(text) || media.isEmpty()) {
+            body.addPart(textPart(text == null ? "" : text));
+        }
         long nowSec = System.currentTimeMillis() / 1000L;
         long tid = Telephony.Threads.getOrCreateThreadId(c, otherAddrs);
+        Uri u;
 
         if (selfSent) {
             SendReq sr = new SendReq();
@@ -173,8 +335,8 @@ public final class WaveIMessageStore {
             }
             sr.setDate(nowSec);
             sr.setBody(body);
-            Uri u = PduPersister.getPduPersister(c).persist(sr, Telephony.Mms.Sent.CONTENT_URI, false, true, null);
-            if (u == null) throw new IllegalStateException("persist self group MMS returned null");
+            u = PduPersister.getPduPersister(c).persist(sr, Telephony.Mms.Sent.CONTENT_URI, false, true, null);
+            if (u == null) throw new IllegalStateException("persist self MMS returned null");
             long id = Long.parseLong(u.getLastPathSegment());
             ContentValues v = new ContentValues(4);
             v.put("thread_id", tid);
@@ -182,7 +344,7 @@ public final class WaveIMessageStore {
             v.put("read", 1);
             v.put("seen", 1);
             c.getContentResolver().update(Uri.parse("content://mms/" + id), v, null, null);
-            Log.i(TAG, "Stored self-sent group iMessage as mms " + id + " thread " + tid);
+            Log.i(TAG, "Stored self-sent iMessage as mms " + id + " thread " + tid);
         } else {
             RetrieveConf rc = new RetrieveConf();
             if (!TextUtils.isEmpty(fromAddr)) {
@@ -192,10 +354,7 @@ public final class WaveIMessageStore {
                 rc.addTo(new EncodedStringValue(selfAddr));
             }
             for (String p : otherAddrs) {
-                if (!TextUtils.isEmpty(fromAddr) && (p.equalsIgnoreCase(fromAddr)
-                        || (p.indexOf('@') < 0 && fromAddr.indexOf('@') < 0 && PhoneNumberUtils.compare(p, fromAddr)))) {
-                    continue;
-                }
+                if (!TextUtils.isEmpty(fromAddr) && sameAddress(p, fromAddr)) continue;
                 rc.addCc(new EncodedStringValue(p));
             }
             rc.setDate(nowSec);
@@ -204,18 +363,50 @@ public final class WaveIMessageStore {
             rc.setTransactionId(mid);
             rc.setContentType("application/vnd.wap.multipart.related".getBytes(StandardCharsets.UTF_8));
             rc.setBody(body);
-            Uri u = PduPersister.getPduPersister(c).persist(rc, Telephony.Mms.Inbox.CONTENT_URI, false, true, null);
-            if (u == null) throw new IllegalStateException("persist group MMS returned null");
+            u = PduPersister.getPduPersister(c).persist(rc, Telephony.Mms.Inbox.CONTENT_URI, false, true, null);
+            if (u == null) throw new IllegalStateException("persist MMS returned null");
             long id = Long.parseLong(u.getLastPathSegment());
             ContentValues v = new ContentValues(4);
             v.put("thread_id", tid);
             v.put("msg_box", 1);
-            v.put("read", 0);
-            v.put("seen", 0);
+            v.put("read", notify ? 0 : 1);
+            v.put("seen", notify ? 0 : 1);
             c.getContentResolver().update(Uri.parse("content://mms/" + id), v, null, null);
-            Log.i(TAG, "Stored incoming group iMessage as mms " + id + " thread " + tid);
-            MessagingNotification.blockingUpdateNewMessageIndicator(c, tid, false);
+            Log.i(TAG, "Stored incoming iMessage as mms " + id + " thread " + tid + " (" + media.size() + " media)");
+            if (notify) MessagingNotification.blockingUpdateNewMessageIndicator(c, tid, false);
         }
+        Uri msgUri = Uri.parse("content://mms/" + u.getLastPathSegment());
+        if (!media.isEmpty()) recordMediaParts(c, msgUri, media, locations);
+        return msgUri;
+    }
+
+    /** Remembers which server attachment each stored part came from (for "Save attachment"). */
+    private static void recordMediaParts(Context c, Uri msgUri, List<Media> media, List<String> locations) {
+        WaveIMessageDb db = WaveIMessageDb.get(c);
+        Cursor cur = c.getContentResolver().query(Uri.parse(msgUri + "/part"), new String[]{"_id", "cl"},
+                null, null, null);
+        if (cur == null) return;
+        try {
+            while (cur.moveToNext()) {
+                int i = locations.indexOf(cur.getString(1));
+                if (i < 0) continue;
+                Media m = media.get(i);
+                db.recordMedia(Uri.parse("content://mms/part/" + cur.getLong(0)), msgUri, m.mediaId, m.name);
+            }
+        } finally {
+            cur.close();
+        }
+    }
+
+    private static PduPart mediaPart(Media m, String location, int i) {
+        PduPart p = new PduPart();
+        p.setContentType(m.mime.getBytes(StandardCharsets.UTF_8));
+        p.setContentLocation(location.getBytes(StandardCharsets.UTF_8));
+        p.setContentId(("<imsg" + i + ">").getBytes(StandardCharsets.UTF_8));
+        p.setName(m.name.getBytes(StandardCharsets.UTF_8));
+        p.setFilename(m.name.getBytes(StandardCharsets.UTF_8));
+        p.setData(m.data);
+        return p;
     }
 
     private static PduPart textPart(String text) {
@@ -226,5 +417,254 @@ public final class WaveIMessageStore {
         p.setContentId("<text_0>".getBytes(StandardCharsets.UTF_8));
         p.setData(text.getBytes(StandardCharsets.UTF_8));
         return p;
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Tapbacks, edits, unsends
+
+    private static void applyReaction(Context c, WaveIMessageConfig cfg, Body body) {
+        WaveIMessageDb db = WaveIMessageDb.get(c);
+        boolean mine = WaveIMessageConfig.isOwnHandle(body.sender, cfg.getHandles());
+        String who = mine ? WaveIMessageDb.ME : normalizedSender(c, body.sender);
+        db.setReaction(body.targetId, who, body.reaction, body.emoji, body.enable);
+        WaveIMessageDb.Msg m = db.byAppleId(body.targetId);
+        Log.i(TAG, "tapback " + body.reaction + (body.enable ? " from " : " removed by ") + who + " on "
+                + body.targetId + (m == null ? " (message not on this phone)" : " " + m.uri));
+        if (m != null) refresh(c);
+    }
+
+    static String normalizedSender(Context c, String handle) {
+        String t = WaveIMessageConfig.toIMessageTarget(c, handle);
+        return t != null ? t : (handle == null ? "" : handle);
+    }
+
+    private static void applyEdit(Context c, Body body) {
+        WaveIMessageDb db = WaveIMessageDb.get(c);
+        WaveIMessageDb.Msg m = db.byAppleId(body.targetId);
+        if (m == null) {
+            Log.i(TAG, "edit for unknown message " + body.targetId);
+            return;
+        }
+        String text = body.text == null ? "" : body.text;
+        setText(c, m.uri, text + EDITED, false);
+        db.updateText(body.targetId, text);
+        refresh(c);
+    }
+
+    private static void applyUnsend(Context c, Body body) {
+        WaveIMessageDb db = WaveIMessageDb.get(c);
+        WaveIMessageDb.Msg m = db.byAppleId(body.targetId);
+        if (m == null) {
+            Log.i(TAG, "unsend for unknown message " + body.targetId);
+            return;
+        }
+        setText(c, m.uri, UNSENT, true);
+        db.updateText(body.targetId, "");
+        db.clearReactions(body.targetId);
+        refresh(c);
+    }
+
+    /** Replaces the text of a stored SMS/MMS; {@code dropMedia} also deletes its attachments. */
+    private static void setText(Context c, Uri uri, String text, boolean dropMedia) {
+        if ("sms".equals(uri.getAuthority())) {
+            ContentValues v = new ContentValues(1);
+            v.put("body", text);
+            c.getContentResolver().update(uri, v, null, null);
+            return;
+        }
+        Uri parts = Uri.parse(uri + "/part");
+        Cursor cur = c.getContentResolver().query(parts, new String[]{"_id", "ct"}, null, null, null);
+        long textPart = -1;
+        if (cur != null) {
+            try {
+                while (cur.moveToNext()) {
+                    String ct = cur.getString(1) == null ? "" : cur.getString(1).toLowerCase(Locale.ROOT);
+                    long id = cur.getLong(0);
+                    if ("text/plain".equals(ct)) {
+                        if (textPart < 0) textPart = id;
+                    } else if (dropMedia && !"application/smil".equals(ct)) {
+                        c.getContentResolver().delete(Uri.parse("content://mms/part/" + id), null, null);
+                    }
+                }
+            } finally {
+                cur.close();
+            }
+        }
+        ContentValues v = new ContentValues(3);
+        v.put("text", text);
+        if (textPart >= 0) {
+            c.getContentResolver().update(Uri.parse("content://mms/part/" + textPart), v, null, null);
+        } else {
+            v.put("ct", "text/plain");
+            v.put("chset", 106);
+            v.put("cl", "text_0.txt");
+            c.getContentResolver().insert(parts, v);
+        }
+        // Thread snippets and the conversation list read the message again.
+        c.getContentResolver().notifyChange(uri, null);
+    }
+
+    /** Makes open conversations re-read their messages (tapback badges, edits). */
+    static void refresh(Context c) {
+        com.android.mms.ui.WaveTapbacks.changed(c);
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Group renames, member changes, photo changes
+
+    private static void storeGroupEvent(Context c, WaveIMessageConfig cfg, Body body) throws Exception {
+        if (cfg.isAppleMsgIdSeen(body.appleMsgId)) return;
+        List<String> myHandles = cfg.getHandles();
+        boolean selfSent = WaveIMessageConfig.isOwnHandle(body.sender, myHandles);
+        String who = selfSent ? "You" : displayName(c, body.sender);
+        Conv before = conversation(c, cfg, body.sender, body.participants, selfSent);
+        String notice;
+        Conv after = null;
+        switch (body.event) {
+            case Body.GROUP_RENAMED:
+                notice = TextUtils.isEmpty(body.name)
+                        ? who + " removed the name from the conversation."
+                        : who + " named the conversation \u201C" + body.name + "\u201D.";
+                break;
+            case Body.GROUP_ICON:
+                notice = TextUtils.isEmpty(body.name)
+                        ? who + " removed the group photo."
+                        : who + " changed the group photo.";
+                break;
+            case Body.GROUP_PARTICIPANTS: {
+                notice = membershipNotice(c, myHandles, who, body);
+                boolean stillIn = false;
+                for (String p : body.newParticipants) {
+                    if (WaveIMessageConfig.isOwnHandle(p, myHandles)) stillIn = true;
+                }
+                if (stillIn) {
+                    after = conversation(c, cfg, "", body.newParticipants, true);
+                    if (!TextUtils.isEmpty(body.senderGuid) && !after.targets.isEmpty()) {
+                        cfg.setSenderGuid(WaveIMessageConfig.conversationKeyForTargets(after.targets), body.senderGuid);
+                    }
+                }
+                break;
+            }
+            default:
+                return;
+        }
+        String fromAddr = WaveIMessageConfig.stripHandlePrefix(body.sender);
+        if (!before.addrs.isEmpty()) {
+            String text = notice;
+            if (after != null && !after.addrs.isEmpty() && !sameSet(before.addrs, after.addrs)) {
+                text = notice + " New messages appear in the conversation with "
+                        + (after.addrs.size() == 1 ? "1 other person." : after.addrs.size() + " other people.");
+            }
+            storeMms(c, fromAddr, selfAddr(cfg), before.addrs, text, body.appleMsgId, selfSent,
+                    new ArrayList<Media>(), false);
+        }
+        if (after != null && !after.addrs.isEmpty() && !sameSet(before.addrs, after.addrs)) {
+            storeMms(c, fromAddr, selfAddr(cfg), after.addrs, notice, body.appleMsgId + "-new", selfSent,
+                    new ArrayList<Media>(), false);
+        }
+        cfg.markAppleMsgIdSeen(body.appleMsgId);
+        Log.i(TAG, "group event " + body.event + ": " + notice);
+    }
+
+    private static String membershipNotice(Context c, List<String> myHandles, String who, Body body) {
+        List<String> added = new ArrayList<String>();
+        List<String> removed = new ArrayList<String>();
+        for (String p : body.newParticipants) {
+            if (!containsHandle(body.participants, p)) added.add(p);
+        }
+        for (String p : body.participants) {
+            if (!containsHandle(body.newParticipants, p)) removed.add(p);
+        }
+        boolean senderLeft = removed.size() == 1 && sameHandle(removed.get(0), body.sender) && added.isEmpty();
+        if (senderLeft) return who + " left the conversation.";
+        StringBuilder sb = new StringBuilder();
+        if (!added.isEmpty()) sb.append(who).append(" added ").append(names(c, myHandles, added)).append('.');
+        if (!removed.isEmpty()) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(who).append(" removed ").append(names(c, myHandles, removed)).append('.');
+        }
+        if (sb.length() == 0) sb.append(who).append(" changed the people in the conversation.");
+        return sb.toString();
+    }
+
+    private static String names(Context c, List<String> myHandles, List<String> handles) {
+        List<String> out = new ArrayList<String>();
+        for (String h : handles) {
+            out.add(WaveIMessageConfig.isOwnHandle(h, myHandles) ? "you" : displayName(c, h));
+        }
+        if (out.size() <= 1) return TextUtils.join("", out);
+        return TextUtils.join(", ", out.subList(0, out.size() - 1)) + " and " + out.get(out.size() - 1);
+    }
+
+    private static boolean containsHandle(List<String> list, String h) {
+        for (String s : list) {
+            if (sameHandle(s, h)) return true;
+        }
+        return false;
+    }
+
+    private static boolean sameHandle(String a, String b) {
+        return sameAddress(WaveIMessageConfig.stripHandlePrefix(a), WaveIMessageConfig.stripHandlePrefix(b));
+    }
+
+    private static boolean sameSet(Set<String> a, Set<String> b) {
+        if (a.size() != b.size()) return false;
+        outer:
+        for (String x : a) {
+            for (String y : b) {
+                if (sameAddress(x, y)) continue outer;
+            }
+            return false;
+        }
+        return true;
+    }
+
+    /** The contact's name for a handle, else the number or address. */
+    public static String displayName(Context c, String handle) {
+        String addr = WaveIMessageConfig.stripHandlePrefix(handle);
+        if (TextUtils.isEmpty(addr)) return "Someone";
+        Uri lookup = addr.indexOf('@') >= 0
+                ? Uri.withAppendedPath(ContactsContract.CommonDataKinds.Email.CONTENT_LOOKUP_URI, Uri.encode(addr))
+                : Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(addr));
+        String col = addr.indexOf('@') >= 0
+                ? ContactsContract.Contacts.DISPLAY_NAME : ContactsContract.PhoneLookup.DISPLAY_NAME;
+        try {
+            Cursor cur = c.getContentResolver().query(lookup, new String[]{col}, null, null, null);
+            if (cur != null) {
+                try {
+                    if (cur.moveToFirst() && !TextUtils.isEmpty(cur.getString(0))) return cur.getString(0);
+                } finally {
+                    cur.close();
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return addr;
+    }
+
+    // -----------------------------------------------------------------------------------------
+
+    private static void appendLine(StringBuilder sb, String line) {
+        if (sb.length() > 0) sb.append('\n');
+        sb.append(line);
+    }
+
+    static String safeName(String s) {
+        if (s == null || s.isEmpty()) return "attachment";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < s.length() && sb.length() < 60; i++) {
+            char ch = s.charAt(i);
+            sb.append(Character.isLetterOrDigit(ch) || ch == '.' || ch == '-' || ch == '_' ? ch : '_');
+        }
+        return sb.toString();
+    }
+
+    private static byte[] readAll(File f) throws IOException {
+        FileInputStream in = new FileInputStream(f);
+        try {
+            return MediaClient.readAll(in);
+        } finally {
+            in.close();
+        }
     }
 }

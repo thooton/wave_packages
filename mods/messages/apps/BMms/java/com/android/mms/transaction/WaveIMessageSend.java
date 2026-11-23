@@ -14,7 +14,10 @@ import android.util.Log;
 import com.android.mms.MmsApp;
 import com.android.mms.ui.WaveIMessageUi;
 import com.android.mms.wave.WaveIMessageConfig;
+import com.android.mms.wave.WaveIMessageDb;
 import com.android.mms.wave.WaveIMessageHost;
+import com.android.mms.wave.imsg.Body;
+import com.android.mms.wave.imsg.MediaClient;
 import com.google.android.mms.pdu.EncodedStringValue;
 import com.google.android.mms.pdu.PduBody;
 import com.google.android.mms.pdu.PduPart;
@@ -39,16 +42,20 @@ import java.util.Set;
  * - 1:1 text (SmsSingleRecipientSender.sendMessage hook): routes over iMessage when connected
  *   and recipient isn't known-unregistered. On failure ("not registered on iMessage" or timeout),
  *   caches negative capability when appropriate and falls back to stock SMS if enabled.
- * - Text MMS / Email recipients / Group text (TransactionService + SendTransaction hooks):
- *   bypasses carrier MMS APN when iMessage can take the message (1:1 email, 1:1 text, or group
- *   where every participant is registered on iMessage) and sends via iMessage; falls back to
- *   MMS on failure.
+ * - MMS (photos, video, audio, contacts), email recipients and group messages (TransactionService
+ *   + SendTransaction hooks): bypasses carrier MMS APN when iMessage can take the message (1:1
+ *   email, 1:1 number, or a group where every participant is registered on iMessage), uploads the
+ *   attachments over a media connection and sends via iMessage; falls back to MMS on failure.
  * - No-service queued SMS (SmsReceiverService hook): drains queued SMS to iMessage recipients
  *   over Wi-Fi when cellular service is unavailable.
  */
 public final class WaveIMessageSend {
     private static final String TAG = "WaveIMsg";
     private static final long SEND_TIMEOUT_MS = 25_000L;
+    /** Attachments go to Apple before the server answers; a video over cellular takes a while. */
+    private static final long MEDIA_SEND_TIMEOUT_MS = 180_000L;
+    /** Larger attachments go as carrier MMS (iPhones get them as MMS too). */
+    private static final long MAX_IMESSAGE_MEDIA_BYTES = 30L * 1024L * 1024L;
 
     private static final ThreadLocal<Boolean> BYPASS = new ThreadLocal<Boolean>();
     private static final Set<Uri> BYPASSED_MMS = new HashSet<Uri>();
@@ -92,6 +99,8 @@ public final class WaveIMessageSend {
             String senderGuid = cfg.getSenderGuid(convKey);
             String clientMsgId = host.sendText(target, text, senderGuid);
             Log.i(TAG, "sms " + uri + " -> imessage " + clientMsgId + " to " + target);
+            final String sentText = text;
+            final String sentGuid = senderGuid;
 
             host.expectSendResult(clientMsgId, new WaveIMessageHost.SendCallback() {
                 @Override
@@ -99,6 +108,7 @@ public final class WaveIMessageSend {
                     if (r.ok) {
                         cfg.setCapability(target, true);
                         cfg.recordSentAppleMsgId(r.appleMsgId, uri);
+                        recordSent(c, r.appleMsgId, uri, sentText, Collections.singletonList(target), sentGuid);
                         WaveIMessageUi.refreshActiveComposeHint();
                         reportSent(c, uri, subId, -1 /* Activity.RESULT_OK */);
                     } else {
@@ -224,11 +234,13 @@ public final class WaveIMessageSend {
 
                 try {
                     String convKey = WaveIMessageConfig.conversationKeyForTargets(Collections.singletonList(target));
-                    String clientId = host.sendText(target, text, cfg.getSenderGuid(convKey));
+                    String guid = cfg.getSenderGuid(convKey);
+                    String clientId = host.sendText(target, text, guid);
                     WaveIMessageHost.SendOutcome r = host.awaitSendResult(clientId, SEND_TIMEOUT_MS);
                     if (r.ok) {
                         cfg.setCapability(target, true);
                         cfg.recordSentAppleMsgId(r.appleMsgId, uri);
+                        recordSent(c, r.appleMsgId, uri, text, Collections.singletonList(target), guid);
                         moveSms(c, uri, 2 /* SENT */, 0);
                     } else {
                         if (r.isNotRegisteredError()) cfg.setCapability(target, false);
@@ -307,16 +319,20 @@ public final class WaveIMessageSend {
 
             List<String> targets = extractTargets(c, cfg, req);
             String text = extractText(c, req);
-            if (targets == null || targets.isEmpty() || TextUtils.isEmpty(text)) return null;
+            if (targets == null || targets.isEmpty()) return null;
+
+            List<Body.OutAttachment> attachments = uploadMedia(c, host, req);
+            if (attachments == null) return null;
+            if (TextUtils.isEmpty(text) && attachments.isEmpty()) return null;
 
             String convKey = WaveIMessageConfig.conversationKeyForTargets(targets);
             String guid = cfg.getSenderGuid(convKey);
-            String clientMsgId = targets.size() == 1
-                    ? host.sendText(targets.get(0), text, guid)
-                    : host.sendGroupText(targets, text, guid);
+            String clientMsgId = host.sendMessage(targets, text, guid, attachments);
 
-            Log.i(TAG, "mms " + uri + " -> imessage " + clientMsgId + " (" + targets.size() + " recipients)");
-            WaveIMessageHost.SendOutcome r = host.awaitSendResult(clientMsgId, SEND_TIMEOUT_MS);
+            Log.i(TAG, "mms " + uri + " -> imessage " + clientMsgId + " (" + targets.size() + " recipients, "
+                    + attachments.size() + " attachments)");
+            WaveIMessageHost.SendOutcome r = host.awaitSendResult(clientMsgId,
+                    attachments.isEmpty() ? SEND_TIMEOUT_MS : MEDIA_SEND_TIMEOUT_MS);
             if (!r.ok) {
                 if (r.isNotRegisteredError() && targets.size() == 1) {
                     cfg.setCapability(targets.get(0), false);
@@ -332,6 +348,7 @@ public final class WaveIMessageSend {
             v.put("resp_st", 128);
             c.getContentResolver().update(sent, v, null, null);
             cfg.recordSentAppleMsgId(r.appleMsgId, sent);
+            recordSent(c, r.appleMsgId, sent, text, targets, guid);
             WaveIMessageUi.refreshActiveComposeHint();
             return sent;
         } catch (Throwable t) {
@@ -340,24 +357,90 @@ public final class WaveIMessageSend {
         }
     }
 
-    private static boolean canRouteMmsOverIMessage(Context c, WaveIMessageConfig cfg, SendReq req) {
-        if (req == null) return false;
-        // Never intercept media/file attachments (push protocol currently carries text only).
+    private static void recordSent(Context c, String appleMsgId, Uri uri, String text, List<String> targets,
+                                   String guid) {
+        try {
+            Uri row = uri;
+            if (row != null && "mms".equals(row.getAuthority()) && row.getPathSegments().size() > 1) {
+                row = Uri.parse("content://mms/" + row.getLastPathSegment());
+            }
+            WaveIMessageDb.get(c).recordMessage(appleMsgId, row, text, WaveIMessageDb.ME, targets, guid);
+        } catch (Throwable t) {
+            Log.w(TAG, "recordSent", t);
+        }
+    }
+
+    /** True for a part type iMessage carries (the server converts it for iPhones). */
+    static boolean isSendableMedia(String ct) {
+        return ct.startsWith("image/") || ct.startsWith("video/") || ct.startsWith("audio/")
+                || "text/x-vcard".equals(ct) || "text/vcard".equals(ct);
+    }
+
+    private static String partName(PduPart p, int i, String ct) {
+        byte[][] candidates = {p.getFilename(), p.getName(), p.getContentLocation()};
+        for (byte[] b : candidates) {
+            if (b != null && b.length > 0) {
+                String n = new String(b, StandardCharsets.UTF_8).trim();
+                int slash = n.lastIndexOf('/');
+                if (slash >= 0) n = n.substring(slash + 1);
+                if (!n.isEmpty() && !n.startsWith("<")) return n;
+            }
+        }
+        String ext = ct.startsWith("image/") ? ".jpg" : ct.startsWith("video/") ? ".3gp"
+                : ct.startsWith("audio/") ? ".amr" : ".vcf";
+        return "attachment" + (i + 1) + ext;
+    }
+
+    /** Uploads the message's media parts; null if one couldn't be uploaded (send as MMS instead). */
+    private static List<Body.OutAttachment> uploadMedia(Context c, WaveIMessageHost host, SendReq req) {
+        List<Body.OutAttachment> out = new ArrayList<Body.OutAttachment>();
         PduBody body = req.getBody();
         int n = body == null ? 0 : body.getPartsNum();
-        boolean hasText = false;
+        MediaClient mc = null;
         for (int i = 0; i < n; i++) {
-            byte[] ctb = body.getPart(i).getContentType();
+            PduPart p = body.getPart(i);
+            byte[] ctb = p.getContentType();
+            String ct = ctb == null ? "" : new String(ctb, StandardCharsets.UTF_8).toLowerCase(Locale.ROOT);
+            if (!isSendableMedia(ct)) continue;
+            try {
+                byte[] data = readPartData(c, p);
+                if (data == null || data.length == 0) continue;
+                if (mc == null) mc = host.mediaClient();
+                if (mc == null) return null;
+                String name = partName(p, i, ct);
+                String id = mc.upload(data, null);
+                Log.i(TAG, "uploaded " + name + " (" + ct + ", " + data.length + " bytes) as " + id);
+                out.add(new Body.OutAttachment(id, name, ct));
+            } catch (Throwable t) {
+                Log.w(TAG, "attachment upload failed; sending as MMS", t);
+                return null;
+            }
+        }
+        return out;
+    }
+
+    private static boolean canRouteMmsOverIMessage(Context c, WaveIMessageConfig cfg, SendReq req) {
+        if (req == null) return false;
+        PduBody body = req.getBody();
+        int n = body == null ? 0 : body.getPartsNum();
+        boolean hasContent = false;
+        long mediaBytes = 0;
+        for (int i = 0; i < n; i++) {
+            PduPart p = body.getPart(i);
+            byte[] ctb = p.getContentType();
             String ct = ctb == null ? "" : new String(ctb, StandardCharsets.UTF_8).toLowerCase(Locale.ROOT);
             if ("application/smil".equals(ct)) continue;
             if ("text/plain".equals(ct)) {
-                hasText = true;
+                hasContent = true;
                 continue;
             }
-            return false; // binary/media attachment -> real MMS
+            if (!isSendableMedia(ct)) return false; // unknown attachment type -> real MMS
+            hasContent = true;
+            if (p.getData() != null) mediaBytes += p.getData().length;
         }
+        if (mediaBytes > MAX_IMESSAGE_MEDIA_BYTES) return false;
         EncodedStringValue sub = req.getSubject();
-        if (!hasText && (sub == null || TextUtils.isEmpty(sub.getString()))) return false;
+        if (!hasContent && (sub == null || TextUtils.isEmpty(sub.getString()))) return false;
 
         List<String> targets = extractTargets(c, cfg, req);
         if (targets == null || targets.isEmpty()) return false;

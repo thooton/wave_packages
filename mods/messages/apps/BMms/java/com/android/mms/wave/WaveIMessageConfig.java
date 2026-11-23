@@ -307,6 +307,15 @@ public final class WaveIMessageConfig {
         }
     }
 
+    /** True if this id was already stored or sent (doesn't mark it). */
+    public boolean isAppleMsgIdSeen(String appleMsgId) {
+        if (TextUtils.isEmpty(appleMsgId)) return false;
+        synchronized (dedupeLock) {
+            ensureDedupeLoadedLocked();
+            return recentIds.contains(appleMsgId);
+        }
+    }
+
     public void recordSentAppleMsgId(String appleMsgId, Uri uri) {
         if (TextUtils.isEmpty(appleMsgId)) return;
         markAppleMsgIdSeen(appleMsgId);

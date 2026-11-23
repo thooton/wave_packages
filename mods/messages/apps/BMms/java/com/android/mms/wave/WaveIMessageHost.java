@@ -30,7 +30,6 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.mms.transaction.WaveIMessageSend;
-import com.android.mms.transaction.WaveIMessageStore;
 import com.android.mms.ui.WaveIMessageUi;
 import com.android.mms.wave.imsg.Body;
 import com.android.mms.wave.imsg.NetworkInfoProvider;
@@ -693,15 +692,34 @@ public final class WaveIMessageHost implements PushClient.Listener {
     }
 
     public String sendText(String normalizedTarget, String text, String senderGuid) throws Exception {
-        PushClient c = client;
-        if (c == null || !c.isConnected()) throw new IllegalStateException("iMessage not connected");
-        return c.sendText(normalizedTarget, text, senderGuid);
+        return sendMessage(java.util.Collections.singletonList(normalizedTarget), text, senderGuid, null);
     }
 
     public String sendGroupText(List<String> normalizedTargets, String text, String senderGuid) throws Exception {
+        return sendMessage(normalizedTargets, text, senderGuid, null);
+    }
+
+    /** Sends text and already-uploaded attachments to {@code normalizedTargets}. */
+    public String sendMessage(List<String> normalizedTargets, String text, String senderGuid,
+                              List<Body.OutAttachment> attachments) throws Exception {
         PushClient c = client;
         if (c == null || !c.isConnected()) throw new IllegalStateException("iMessage not connected");
-        return c.sendGroupText(normalizedTargets, text, senderGuid);
+        return c.sendMessage(normalizedTargets, text, senderGuid, attachments);
+    }
+
+    /** Adds or removes a tapback on {@code targetId} in the conversation with {@code normalizedTargets}. */
+    public String sendReaction(List<String> normalizedTargets, String senderGuid, String targetId, int reaction,
+                               String emoji, boolean enable, String targetText) throws Exception {
+        PushClient c = client;
+        if (c == null || !c.isConnected()) throw new IllegalStateException("iMessage not connected");
+        return c.sendReaction(normalizedTargets, senderGuid, targetId, reaction, emoji, enable, targetText);
+    }
+
+    /** A client for attachment downloads and uploads, or null while not set up / not running. */
+    public com.android.mms.wave.imsg.MediaClient mediaClient() {
+        PushClient c = client;
+        if (c == null || !config.isConfigured()) return null;
+        return c.mediaClient();
     }
 
     public void expectSendResult(final String clientMsgId, final SendCallback cb, long timeoutMs) {
@@ -815,6 +833,7 @@ public final class WaveIMessageHost implements PushClient.Listener {
         writeStatusFile();
         refreshHandles();
         refreshRegInfo();
+        com.android.mms.transaction.WaveIMessageInbox.get(ctx).kick();
         WaveIMessageSend.drainQueuedAsync(ctx);
         WaveIMessageUi.refreshActiveComposeHint();
     }
@@ -845,6 +864,16 @@ public final class WaveIMessageHost implements PushClient.Listener {
     public void onBody(long seq, Body body) {
         if (body == null) return;
         Log.i(TAG, "rx seq=" + seq + " " + body);
+        if (com.android.mms.transaction.WaveIMessageInbox.handles(body.kind)) {
+            // Stored in order by the inbox worker (attachments can take a while to download).
+            try {
+                com.android.mms.transaction.WaveIMessageInbox.get(ctx).enqueue(body);
+            } catch (Throwable t) {
+                Log.e(TAG, "Failed to queue incoming " + body, t);
+            }
+            WaveIMessageUi.refreshActiveComposeHint();
+            return;
+        }
         switch (body.kind) {
             case Body.KIND_HANDLES:
                 config.setHandles(body.handles, body.preferredHandle);
@@ -856,14 +885,6 @@ public final class WaveIMessageHost implements PushClient.Listener {
                 break;
             case Body.KIND_SEND_RESULT:
                 handleSendResult(body);
-                break;
-            case Body.KIND_INCOMING_TEXT:
-                try {
-                    WaveIMessageStore.storeIncoming(ctx, config, body);
-                } catch (Throwable t) {
-                    Log.e(TAG, "Failed to store incoming iMessage", t);
-                }
-                WaveIMessageUi.refreshActiveComposeHint();
                 break;
             case Body.KIND_RECEIPT:
                 handleReceipt(body);

@@ -10,8 +10,10 @@ public class MessageItem {
     int mAttachmentType, mMessageSize, mMessageType;
     boolean mWaveTextReady, mWaveTimestampPending, mWavePduPending;
     long mWaveTimestampMillis;
+    long mMsgId;
     Context mContext;
     Uri mMessageUri;
     SlideshowModel mSlideshow;
     public boolean isOutgoingMessage() { return false; }
+    public boolean isSms() { return false; }
 }

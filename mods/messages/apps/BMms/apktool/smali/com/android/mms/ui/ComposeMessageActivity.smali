@@ -18467,6 +18467,20 @@
     .locals 2
 
     .prologue
+    # FEAT(imessage): iMessage attachments are saved full-size from the server, not the preview.
+    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mMessageItemForMenu:Lcom/android/mms/ui/MessageItem;
+
+    iget-wide v0, v0, Lcom/android/mms/ui/MessageItem;->mMsgId:J
+
+    invoke-static {p0, v0, v1}, Lcom/android/mms/ui/WaveIMessageSave;->saveFullSize(Landroid/app/Activity;J)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_save_stock
+
+    return-void
+
+    :wave_save_stock
     .line 2722
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mMessageItemForMenu:Lcom/android/mms/ui/MessageItem;
 

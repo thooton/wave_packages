@@ -7390,6 +7390,9 @@
 
     .line 374
     :cond_1
+    # FEAT(imessage): tapback badges on iMessage bubbles.
+    invoke-static {p0}, Lcom/android/mms/ui/WaveTapbacks;->onBind(Lcom/android/mms/ui/MessageListItem;)V
+
     return-void
 
     :cond_2

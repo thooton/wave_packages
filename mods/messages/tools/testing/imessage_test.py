@@ -30,7 +30,12 @@ public class IMessageHostTest {
             Frame.pong(0x12345678),
             Frame.setInterval(1200),
             Frame.bye(Frame.BYE_AUTH_FAILED),
-            Frame.paired("phone-1a2b", "00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff")
+            Frame.paired("phone-1a2b", "00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff"),
+            Frame.mediaGet("m-1", true, 4096L),
+            Frame.mediaData(300000L, 262144L, "image/jpeg", "IMG_0001.jpg", new byte[] {9, 8, 7}),
+            Frame.mediaPut("u-1", 0L, 3L, new byte[] {1, 2, 3}),
+            Frame.mediaPutAck("u-1", 3L),
+            Frame.mediaErr("unknown attachment")
         };
         for (Frame f : frames) {
             byte[] wire = f.encode();
@@ -51,23 +56,43 @@ public class IMessageHostTest {
                 check(d.intervalS == 1200, "setInterval");
             } else if (f.type == Frame.TYPE_BYE) {
                 check(d.reason == Frame.BYE_AUTH_FAILED, "bye reason");
+            } else if (f.type == Frame.TYPE_MEDIA_GET) {
+                check("m-1".equals(d.mediaId) && d.full && d.offset == 4096L, "mediaGet");
+            } else if (f.type == Frame.TYPE_MEDIA_DATA) {
+                check(d.total == 300000L && d.offset == 262144L && "image/jpeg".equals(d.mime)
+                        && "IMG_0001.jpg".equals(d.name) && Arrays.equals(d.body, f.body), "mediaData");
+            } else if (f.type == Frame.TYPE_MEDIA_PUT) {
+                check("u-1".equals(d.mediaId) && d.total == 3L && Arrays.equals(d.body, f.body), "mediaPut");
+            } else if (f.type == Frame.TYPE_MEDIA_PUT_ACK) {
+                check("u-1".equals(d.mediaId) && d.total == 3L, "mediaPutAck");
+            } else if (f.type == Frame.TYPE_MEDIA_ERR) {
+                check("unknown attachment".equals(d.message), "mediaErr");
             }
         }
 
-        // 2. Body encode/decode roundtrips (0x01..0x09)
+        // 2. Body encode/decode roundtrips (protocol v2)
         Body[] bodies = new Body[] {
-            Body.sendText("c-1", "tel:+15551234567", "Hello iMessage!", "guid-1"),
+            Body.sendMessage("c-1", Arrays.asList("tel:+15551234567"), "Hello iMessage!", "guid-1",
+                    Arrays.asList(new Body.OutAttachment("u-1", "IMG_1.jpg", "image/jpeg"))),
             Body.sendResult("c-1", true, "apple-1", null),
             Body.sendResult("c-2", false, null, "target 'tel:+15550000' is not registered on iMessage"),
-            Body.incomingText("apple-2", "mailto:alice@icloud.com",
+            Body.incomingMessage("apple-2", "mailto:alice@icloud.com",
                     Arrays.asList("mailto:alice@icloud.com", "tel:+15559998888"),
-                    "guid-2", 1700000000000L, "Hi from Mac"),
+                    "guid-2", 1700000000000L, "Hi from Mac", "apple-1",
+                    Arrays.asList(new Body.InAttachment("m-1", Body.ATTACH_IMAGE, "IMG_2.HEIC", 2345678L))),
             Body.receipt(Body.RECEIPT_DELIVERED, "apple-1", "tel:+15551234567", 1700000001000L),
             Body.getHandles(),
             Body.handles(Arrays.asList("tel:+15550001111", "mailto:me@icloud.com"), "tel:+15550001111"),
             Body.checkTargets("q-1", Arrays.asList("tel:+15551234567", "mailto:bob@icloud.com")),
             Body.targetStatus("q-1", Arrays.asList("mailto:bob@icloud.com"), Arrays.asList("tel:+15551234567")),
-            Body.sendGroupText("g-1", Arrays.asList("tel:+15551112222", "mailto:bob@icloud.com"), "Group hi", "guid-g"),
+            Body.sendMessage("g-1", Arrays.asList("tel:+15551112222", "mailto:bob@icloud.com"), "Group hi", "guid-g", null),
+            Body.sendReaction("r-1", Arrays.asList("tel:+15551234567"), null, "apple-2", Body.REACT_EMOJI, "\uD83D\uDD25", true, "Hi"),
+            Body.reaction("apple-3", "tel:+15551234567", Arrays.asList("tel:+15551234567"), null, 1L, "apple-2",
+                    Body.REACT_HEART, null, false),
+            Body.edit("apple-4", "tel:+15551234567", 2L, "apple-2", "Hi from Mac!"),
+            Body.unsend("apple-5", "tel:+15551234567", 3L, "apple-2"),
+            Body.groupEvent("apple-6", "tel:+15551234567", Arrays.asList("tel:+15551234567", "mailto:bob@icloud.com"),
+                    "guid-g", 4L, Body.GROUP_PARTICIPANTS, "", Arrays.asList("tel:+15551234567")),
             Body.setupStatus(Body.SETUP_WAITING_SMS, "Waiting for Apple"),
             Body.simInfo("310260", "+15551234567"),
             Body.simInfo("", null),
@@ -90,8 +115,24 @@ public class IMessageHostTest {
                 check("q-1".equals(dec.reqId) && dec.targets.size() == 2, "checkTargets");
             } else if (b.kind == Body.KIND_TARGET_STATUS) {
                 check(dec.registered.size() == 1 && dec.unregistered.size() == 1, "targetStatus");
-            } else if (b.kind == Body.KIND_SEND_GROUP_TEXT) {
-                check("g-1".equals(dec.clientMsgId) && dec.participants.size() == 2 && "Group hi".equals(dec.text), "sendGroupText");
+            } else if (b.kind == Body.KIND_SEND_MESSAGE) {
+                check(b.clientMsgId.equals(dec.clientMsgId) && dec.participants.equals(b.participants)
+                        && b.text.equals(dec.text) && dec.outAttachments.size() == b.outAttachments.size(), "sendMessage");
+            } else if (b.kind == Body.KIND_INCOMING_MESSAGE) {
+                check("apple-1".equals(dec.replyTo) && dec.attachments.size() == 1
+                        && "m-1".equals(dec.attachments.get(0).mediaId) && dec.attachments.get(0).size == 2345678L,
+                        "incomingMessage");
+            } else if (b.kind == Body.KIND_SEND_REACTION) {
+                check("apple-2".equals(dec.targetId) && dec.reaction == Body.REACT_EMOJI && dec.enable
+                        && "\uD83D\uDD25".equals(dec.emoji), "sendReaction");
+            } else if (b.kind == Body.KIND_REACTION) {
+                check(!dec.enable && dec.reaction == Body.REACT_HEART && "apple-2".equals(dec.targetId), "reaction");
+            } else if (b.kind == Body.KIND_EDIT) {
+                check("Hi from Mac!".equals(dec.text) && "apple-2".equals(dec.targetId), "edit");
+            } else if (b.kind == Body.KIND_UNSEND) {
+                check("apple-2".equals(dec.targetId), "unsend");
+            } else if (b.kind == Body.KIND_GROUP_EVENT) {
+                check(dec.event == Body.GROUP_PARTICIPANTS && dec.newParticipants.size() == 1, "groupEvent");
             }
         }
 
@@ -99,8 +140,9 @@ public class IMessageHostTest {
         File tmpDir = new File(args[0]);
         File stFile = new File(tmpDir, "imsg.state");
         ClientState st = ClientState.loadOrDefault(stFile);
-        long s1 = st.enqueue(Body.sendText("c-1", "tel:+15551234567", "one", null).encode());
-        long s2 = st.enqueue(Body.sendText("c-2", "tel:+15551234567", "two", null).encode());
+        List<String> to = Arrays.asList("tel:+15551234567");
+        long s1 = st.enqueue(Body.sendMessage("c-1", to, "one", null, null).encode());
+        long s2 = st.enqueue(Body.sendMessage("c-2", to, "two", null, null).encode());
         check(s1 == 1L && s2 == 2L, "txSeq increments");
         st.setLastRxSeq(5L);
         st.setLearnedInterval("mobile:310260:ipv4", 1500);
@@ -121,7 +163,7 @@ public class IMessageHostTest {
         check("00:AB:FF".equals(ClientState.toColonHex(sample)), "toColonHex");
         check(Arrays.equals(sample, ClientState.fromHex("00:AB:FF")), "fromHex colon");
 
-        System.out.println("PASS: iMessage Frame/Body (0x01..0x0D, PAIRED), ClientState persistence, outbox & hex helpers");
+        System.out.println("PASS: iMessage Frame/Body v2 (messages, media, tapbacks, edits, groups), ClientState persistence, outbox & hex helpers");
     }
 }
 """
@@ -135,7 +177,7 @@ def main():
         classes.mkdir()
         sources = [str(p) for p in sorted(IMSG_DIR.glob("*.java"))] + [str(harness)]
         subprocess.run(
-            ["javac", "-nowarn", "--release", "8", "-d", str(classes)] + sources,
+            ["javac", "-nowarn", "-d", str(classes)] + sources,
             check=True,
         )
         subprocess.run(
