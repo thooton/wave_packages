@@ -209,11 +209,11 @@ public final class Prober {
             }
             socket.setSoTimeout(0);
 
-            long sleepMs = Math.max(100L, Math.round(intervalS * 1000.0 * probeScale));
-            sleepElapsed(sleepMs);
-
-            // Probes run in parallel: each holds its own wakelock.
+            // Probes run in parallel: each has its own wakeup and wakelock.
             String holder = "probe-" + intervalS;
+            long sleepMs = Math.max(100L, Math.round(intervalS * 1000.0 * probeScale));
+            sleepElapsed(holder, sleepMs);
+
             clock.acquireBriefWakeLock(holder, (Frame.PONG_TIMEOUT_S + 3) * 1000L);
             try {
                 int nonce = rng.nextInt();
@@ -245,16 +245,29 @@ public final class Prober {
         }
     }
 
-    private void sleepElapsed(long durationMs) throws InterruptedException {
+    /**
+     * Sleeps for durationMs of elapsed (sleep-inclusive) time. Object.wait's timeout doesn't run
+     * while the CPU is suspended, so the probe sets its own wakeup under {@code key}: without it,
+     * it only woke at the main loop's next alarm, which on a learned 48-minute keepalive turned
+     * a 5-minute probe into a 48-minute one, failed every probe and collapsed the interval to 60 s.
+     * The wakeup's tick notifies sleepLock (PushClient's watchdog lock) and takes a wakelock
+     * named {@code key} for us.
+     */
+    private void sleepElapsed(String key, long durationMs) throws InterruptedException {
         long deadline = clock.elapsedRealtimeMs() + durationMs;
-        while (true) {
-            long left = deadline - clock.elapsedRealtimeMs();
-            if (left <= 0L) {
-                return;
+        clock.scheduleWakeup(key, durationMs);
+        try {
+            while (true) {
+                long left = deadline - clock.elapsedRealtimeMs();
+                if (left <= 0L) {
+                    return;
+                }
+                synchronized (sleepLock) {
+                    sleepLock.wait(left);
+                }
             }
-            synchronized (sleepLock) {
-                sleepLock.wait(left);
-            }
+        } finally {
+            clock.cancelWakeup(key);
         }
     }
 

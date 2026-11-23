@@ -26,10 +26,24 @@ public interface WakeupClock {
     /** Monotonic milliseconds including deep sleep. */
     long elapsedRealtimeMs();
 
-    /** Schedule a wakeup tick after delayMs (replaces any previously scheduled wakeup). */
+    /** The main loops' wakeup (keepalive, PONG deadline, reconnect backoff). */
+    String WAKE_MAIN = "main";
+
+    /** Schedule the main wakeup after delayMs (replaces the previous main wakeup). */
     void scheduleWakeup(long delayMs);
 
-    /** Cancel any pending scheduled wakeup. */
+    /**
+     * Schedule wakeup {@code key} after delayMs, replacing that key's previous one. Keys are
+     * independent (one alarm fires at the earliest of them), so a probe sleeping for 15 minutes
+     * isn't left waiting for the next 48-minute keepalive. When a non-main key fires, the clock
+     * takes a brief wakelock named after the key; its owner releases it.
+     */
+    void scheduleWakeup(String key, long delayMs);
+
+    /** Cancel wakeup {@code key}. */
+    void cancelWakeup(String key);
+
+    /** Cancel every pending wakeup. */
     void cancelWakeup();
 
     /** Acquire (or extend) holder's brief partial wakelock, bounded by maxMs. */
@@ -50,6 +64,14 @@ public interface WakeupClock {
 
         @Override
         public void scheduleWakeup(long delayMs) {
+        }
+
+        @Override
+        public void scheduleWakeup(String key, long delayMs) {
+        }
+
+        @Override
+        public void cancelWakeup(String key) {
         }
 
         @Override

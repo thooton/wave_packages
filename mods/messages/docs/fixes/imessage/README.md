@@ -52,6 +52,16 @@ resources, or conversation UI.
      Closing the socket on purpose (network change, Reconnect) reconnects at once on the new
      network's learned interval; it used to count as a failure (backoff, error status) and, on a
      learned interval, drop to 60 s keepalives and re-probe under the old network's key.
+   - **Probes keep their own time.** A probe sleeps for its interval and then pings; `Object.wait`
+     doesn't run while the CPU is suspended, so each probe now sets its own wakeup (the clock keeps
+     keyed deadlines and arms the one alarm for the earliest, taking a wakelock named after a probe
+     whose wakeup fires). Before, probes only woke at the main loop's next alarm: on a learned
+     48-minute keepalive (the weekly re-probe, or one after a network change) every probe really
+     idled ~48 minutes, so a NAT that drops idle sockets sooner failed them all and the interval
+     collapsed to 60 s keepalives (~60 wakeups an hour instead of ~1.25). A network change no
+     longer forces a full re-probe (7 TLS connections over up to an hour) when the network has a
+     fresh learned interval; it stops a probe of the old network, and the new one is probed on
+     connect when due (weekly, or never probed).
    - Tracks network changes via `ConnectivityManager.registerDefaultNetworkCallback` +
      `TelephonyManager`, learning and persisting per-network optimal keepalive intervals via
      parallel `ROLE_PROBE` NAT probing.

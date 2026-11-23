@@ -64,6 +64,8 @@ public final class PushClient {
      * learned interval and re-probing under the old network's key).
      */
     private volatile boolean deliberateClose = false;
+    /** Network the running probe measures (guarded by watchdogLock). */
+    private String probeNetKey;
     private volatile Status status = Status.OFFLINE;
     private volatile String statusDetail = "";
     private Thread mainThread;
@@ -208,8 +210,16 @@ public final class PushClient {
                 deliberateClose = true;
                 closeActiveSocket();
             }
-            if (config.autoProbe && config.networkInfoProvider.isNetworkAvailable()) {
-                startProbeAsync(newNet, true);
+            // A probe of the old network is meaningless now (its sockets die with it). The new one
+            // is probed on connect if it's due (maybeScheduleProbe): a network we already have a
+            // fresh interval for isn't re-probed on every switch (7 TLS connections, up to an hour).
+            Thread stale = null;
+            synchronized (watchdogLock) {
+                if (probeRunning && !newNet.equals(probeNetKey)) stale = probeThread;
+            }
+            if (stale != null) {
+                log("Stopping the probe of " + probeNetKey + " (network changed)");
+                stale.interrupt();
             }
         }
     }
@@ -751,6 +761,7 @@ public final class PushClient {
                 return;
             }
             probeRunning = true;
+            probeNetKey = netKey;
         }
 
 
@@ -805,9 +816,18 @@ public final class PushClient {
                     }
                 } catch (InterruptedException ignored) {
                 } finally {
+                    String probeNow = null;
                     synchronized (watchdogLock) {
                         probeRunning = false;
+                        probeNetKey = null;
                         watchdogLock.notifyAll();
+                        // The network changed while we probed: its connect couldn't start a probe.
+                        if (running && connected && !netKey.equals(activeNetworkKey)) {
+                            probeNow = activeNetworkKey;
+                        }
+                    }
+                    if (probeNow != null && config.autoProbe) {
+                        maybeScheduleProbe(probeNow);
                     }
                 }
             }

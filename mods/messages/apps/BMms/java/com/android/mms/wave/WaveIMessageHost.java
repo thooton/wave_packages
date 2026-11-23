@@ -110,6 +110,7 @@ public final class WaveIMessageHost implements PushClient.Listener {
         public void onReceive(Context context, Intent intent) {
             // Held until the loop this tick wakes has handled it (it releases HOLD_ALARM).
             wakeupClock.acquireBriefWakeLock(WakeupClock.HOLD_ALARM, 15_000L);
+            wakeupClock.onAlarm();
             PushClient c = client;
             if (c != null) {
                 c.onWakeupTick();
@@ -1202,31 +1203,72 @@ public final class WaveIMessageHost implements PushClient.Listener {
             return SystemClock.elapsedRealtime();
         }
 
+        /** Wakeup key to its elapsedRealtime deadline; the one alarm is armed for the earliest. */
+        private final Map<String, Long> deadlines = new HashMap<String, Long>();
+        private long armedAt = 0L;
+
         @Override
         public void scheduleWakeup(long delayMs) {
-            try {
-                AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
-                if (am == null) return;
-                PendingIntent pi = wakeupPendingIntent();
-                long triggerAt = SystemClock.elapsedRealtime() + Math.max(1000L, delayMs);
-                if (Build.VERSION.SDK_INT >= 23) {
-                    am.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, pi);
-                } else {
-                    am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, pi);
-                }
-            } catch (Throwable t) {
-                Log.w(TAG, "scheduleWakeup", t);
-            }
+            scheduleWakeup(WAKE_MAIN, delayMs);
         }
 
         @Override
-        public void cancelWakeup() {
+        public synchronized void scheduleWakeup(String key, long delayMs) {
+            deadlines.put(key, SystemClock.elapsedRealtime() + Math.max(1000L, delayMs));
+            rearm();
+        }
+
+        @Override
+        public synchronized void cancelWakeup(String key) {
+            if (deadlines.remove(key) != null) rearm();
+        }
+
+        @Override
+        public synchronized void cancelWakeup() {
+            deadlines.clear();
+            rearm();
+        }
+
+        /**
+         * The alarm fired (alarm receiver, before it wakes the loops): drops the due wakeups,
+         * takes a wakelock for each due non-main key (its owner releases it) and re-arms.
+         */
+        synchronized void onAlarm() {
+            long now = SystemClock.elapsedRealtime();
+            armedAt = 0L;
+            java.util.Iterator<Map.Entry<String, Long>> it = deadlines.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry<String, Long> e = it.next();
+                // 1 s slack: allow-while-idle alarms may fire a little early in batches.
+                if (e.getValue() <= now + 1000L) {
+                    if (!WAKE_MAIN.equals(e.getKey())) acquireBriefWakeLock(e.getKey(), 15_000L);
+                    it.remove();
+                }
+            }
+            rearm();
+        }
+
+        private void rearm() {
             try {
                 AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
-                if (am != null) {
-                    am.cancel(wakeupPendingIntent());
+                if (am == null) return;
+                long next = Long.MAX_VALUE;
+                for (long d : deadlines.values()) next = Math.min(next, d);
+                if (next == Long.MAX_VALUE) {
+                    if (armedAt != 0L) am.cancel(wakeupPendingIntent());
+                    armedAt = 0L;
+                    return;
                 }
-            } catch (Throwable ignored) {
+                if (next == armedAt) return;
+                armedAt = next;
+                PendingIntent pi = wakeupPendingIntent();
+                if (Build.VERSION.SDK_INT >= 23) {
+                    am.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, next, pi);
+                } else {
+                    am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, next, pi);
+                }
+            } catch (Throwable t) {
+                Log.w(TAG, "scheduleWakeup", t);
             }
         }
 
