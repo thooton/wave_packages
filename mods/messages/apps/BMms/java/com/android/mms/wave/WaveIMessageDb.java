@@ -26,7 +26,18 @@ import java.util.Locale;
  */
 public final class WaveIMessageDb extends SQLiteOpenHelper {
     private static final String NAME = "wave_imessage.db";
-    private static final int VERSION = 1;
+    /**
+     * 2: msgs.flags, msgs.reply_to (what the UI needs to render edits, unsends, notices, replies)
+     * and the edits table (every earlier version of an edited message).
+     */
+    private static final int VERSION = 2;
+
+    /** {@link Info#flags}: the message was edited at least once. */
+    public static final int FLAG_EDITED = 1;
+    /** The message was unsent (its stored body is the unsent notice). */
+    public static final int FLAG_UNSENT = 2;
+    /** A group rename / member / photo notice, not a message anyone wrote. */
+    public static final int FLAG_NOTICE = 4;
     /** Messages and reactions older than this are forgotten (the server drops media after 30 days). */
     private static final long KEEP_MS = 180L * 24L * 3600L * 1000L;
 
@@ -47,17 +58,30 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE msgs (apple_id TEXT PRIMARY KEY COLLATE NOCASE, uri TEXT NOT NULL,"
-                + " text TEXT, sender TEXT, targets TEXT, guid TEXT, ts INTEGER NOT NULL)");
+                + " text TEXT, sender TEXT, targets TEXT, guid TEXT, ts INTEGER NOT NULL,"
+                + " flags INTEGER NOT NULL DEFAULT 0, reply_to TEXT, edited_at INTEGER)");
         db.execSQL("CREATE INDEX msgs_uri ON msgs(uri)");
         db.execSQL("CREATE TABLE reactions (target TEXT NOT NULL COLLATE NOCASE, sender TEXT NOT NULL COLLATE NOCASE,"
                 + " kind INTEGER NOT NULL, emoji TEXT, ts INTEGER NOT NULL, PRIMARY KEY (target, sender))");
         db.execSQL("CREATE TABLE media (part_uri TEXT PRIMARY KEY, msg_uri TEXT NOT NULL, media_id TEXT NOT NULL,"
                 + " name TEXT, ts INTEGER NOT NULL)");
         db.execSQL("CREATE INDEX media_msg ON media(msg_uri)");
+        createEdits(db);
+    }
+
+    private static void createEdits(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE edits (apple_id TEXT NOT NULL COLLATE NOCASE, text TEXT, ts INTEGER NOT NULL)");
+        db.execSQL("CREATE INDEX edits_msg ON edits(apple_id)");
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE msgs ADD COLUMN flags INTEGER NOT NULL DEFAULT 0");
+            db.execSQL("ALTER TABLE msgs ADD COLUMN reply_to TEXT");
+            db.execSQL("ALTER TABLE msgs ADD COLUMN edited_at INTEGER");
+            createEdits(db);
+        }
     }
 
     /** A message the phone stored or sent. */
@@ -107,12 +131,205 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
         v.put("guid", guid);
         v.put("ts", System.currentTimeMillis());
         getWritableDatabase().insertWithOnConflict("msgs", null, v, SQLiteDatabase.CONFLICT_REPLACE);
+        invalidateInfo();
     }
 
     public void updateText(String appleId, String text) {
         ContentValues v = new ContentValues(1);
         v.put("text", text);
         getWritableDatabase().update("msgs", v, "apple_id=?", new String[]{appleId});
+        invalidateInfo();
+    }
+
+    /**
+     * Edit: keeps the current text as a version in the edit history (stamped with when it was
+     * written: the message's time for the original), then sets the new text and FLAG_EDITED.
+     */
+    public void markEdited(String appleId, String text, long editedAtMs) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            Cursor c = db.query("msgs", new String[]{"text", "ts", "edited_at"}, "apple_id=?",
+                    new String[]{appleId}, null, null, null, "1");
+            try {
+                if (!c.moveToFirst()) return;
+                // The version being replaced was written at its own edit, or with the message.
+                ContentValues v = new ContentValues(3);
+                v.put("apple_id", appleId);
+                v.put("text", c.getString(0));
+                v.put("ts", c.isNull(2) ? c.getLong(1) : c.getLong(2));
+                db.insert("edits", null, v);
+            } finally {
+                c.close();
+            }
+            db.execSQL("UPDATE msgs SET text = ?, edited_at = ?, flags = flags | " + FLAG_EDITED
+                    + " WHERE apple_id = ?", new Object[]{text, editedAtMs, appleId});
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+            invalidateInfo();
+        }
+    }
+
+    /** One version of an edited message. */
+    public static final class Version {
+        public final String text;
+        /** When this version was written (ms since the epoch; the message's time for the original). */
+        public final long ts;
+
+        Version(String text, long ts) {
+            this.text = text == null ? "" : text;
+            this.ts = ts;
+        }
+    }
+
+    /**
+     * Every version of the message, oldest (the original) first, the current text last. Empty for
+     * a message that was never edited.
+     */
+    public List<Version> editHistory(String appleId) {
+        List<Version> out = new ArrayList<Version>();
+        if (TextUtils.isEmpty(appleId)) return out;
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor c = db.query("edits", new String[]{"text", "ts"}, "apple_id=?", new String[]{appleId},
+                null, null, "rowid ASC");
+        try {
+            while (c.moveToNext()) out.add(new Version(c.getString(0), c.getLong(1)));
+        } finally {
+            c.close();
+        }
+        if (out.isEmpty()) return out;
+        Cursor m = db.query("msgs", new String[]{"text", "edited_at"}, "apple_id=?", new String[]{appleId},
+                null, null, null, "1");
+        try {
+            if (m.moveToFirst()) {
+                out.add(new Version(m.getString(0), m.isNull(1) ? out.get(out.size() - 1).ts : m.getLong(1)));
+            }
+        } finally {
+            m.close();
+        }
+        return out;
+    }
+
+    /** Edit history of the message stored at {@code uri} (see {@link #editHistory}). */
+    public List<Version> editHistoryForUri(Uri uri) {
+        Msg m = byUri(uri);
+        return m == null ? new ArrayList<Version>() : editHistory(m.appleId);
+    }
+
+    /** Unsend: FLAG_UNSENT; the text, media and tapbacks stay (shown with an "Unsent" note). */
+    public void markUnsent(String appleId) {
+        getWritableDatabase().execSQL("UPDATE msgs SET flags = flags | " + FLAG_UNSENT + " WHERE apple_id = ?",
+                new Object[]{appleId});
+        invalidateInfo();
+    }
+
+    /** Records a stored group notice (FLAG_NOTICE), so the UI can show it as a system line. */
+    public void recordNotice(String id, Uri uri, String text) {
+        if (TextUtils.isEmpty(id) || uri == null) return;
+        ContentValues v = new ContentValues(5);
+        v.put("apple_id", id);
+        v.put("uri", key(uri));
+        v.put("text", text);
+        v.put("ts", System.currentTimeMillis());
+        v.put("flags", FLAG_NOTICE);
+        getWritableDatabase().insertWithOnConflict("msgs", null, v, SQLiteDatabase.CONFLICT_REPLACE);
+        invalidateInfo();
+    }
+
+    public void setReplyTo(String appleId, String replyTo) {
+        if (TextUtils.isEmpty(replyTo)) return;
+        ContentValues v = new ContentValues(1);
+        v.put("reply_to", replyTo);
+        getWritableDatabase().update("msgs", v, "apple_id=?", new String[]{appleId});
+        invalidateInfo();
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // What the conversation view needs to draw an iMessage row (see Info)
+
+    /** How to draw an iMessage row: {@link #infoForUri}. */
+    public static final class Info {
+        /** FLAG_EDITED / FLAG_UNSENT / FLAG_NOTICE. */
+        public final int flags;
+        /** The text alone: no reply quote line, no " (edited)" (empty when unsent). */
+        public final String text;
+        /** Apple id of the message this one replies to, or null. */
+        public final String replyTo;
+        /** Text of that message (what the stored quote line shows), or null if unknown. */
+        public final String quote;
+
+        Info(int flags, String text, String replyTo, String quote) {
+            this.flags = flags;
+            this.text = text == null ? "" : text;
+            this.replyTo = replyTo;
+            this.quote = quote;
+        }
+
+        public boolean edited() {
+            return (flags & FLAG_EDITED) != 0;
+        }
+
+        public boolean unsent() {
+            return (flags & FLAG_UNSENT) != 0;
+        }
+
+        public boolean notice() {
+            return (flags & FLAG_NOTICE) != 0;
+        }
+    }
+
+    /** Keys of rows with flags or a reply; null until first needed. Most rows have neither. */
+    private volatile java.util.Set<String> infoKeys;
+    private final java.util.Map<String, Info> infoCache = java.util.Collections.synchronizedMap(
+            new java.util.LinkedHashMap<String, Info>(64, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(java.util.Map.Entry<String, Info> e) {
+                    return size() > 300;
+                }
+            });
+
+    private void invalidateInfo() {
+        infoKeys = null;
+        infoCache.clear();
+    }
+
+    /**
+     * How to draw the row stored at {@code uri}, or null when there's nothing special about it
+     * (not an iMessage, or a plain one). Cheap enough for every bind: rows without flags or a
+     * reply cost a set lookup.
+     */
+    public Info infoForUri(Uri uri) {
+        if (uri == null) return null;
+        String k = key(uri);
+        java.util.Set<String> keys = infoKeys;
+        if (keys == null) {
+            keys = new java.util.HashSet<String>();
+            Cursor c = getReadableDatabase().rawQuery(
+                    "SELECT uri FROM msgs WHERE flags != 0 OR reply_to IS NOT NULL", null);
+            try {
+                while (c.moveToNext()) keys.add(c.getString(0));
+            } finally {
+                c.close();
+            }
+            infoKeys = keys;
+        }
+        if (!keys.contains(k)) return null;
+        Info info = infoCache.get(k);
+        if (info != null) return info;
+        Cursor c = getReadableDatabase().rawQuery(
+                "SELECT m.flags, m.text, m.reply_to, o.text FROM msgs m"
+                        + " LEFT JOIN msgs o ON o.apple_id = m.reply_to"
+                        + " WHERE m.uri = ? ORDER BY m.ts DESC LIMIT 1", new String[]{k});
+        try {
+            if (!c.moveToFirst()) return null;
+            String quote = c.isNull(3) || TextUtils.isEmpty(c.getString(3)) ? null : c.getString(3);
+            info = new Info(c.getInt(0), c.getString(1), c.getString(2), quote);
+        } finally {
+            c.close();
+        }
+        infoCache.put(k, info);
+        return info;
     }
 
     public Msg byAppleId(String appleId) {
@@ -241,7 +458,9 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
         String cutoff = String.valueOf(System.currentTimeMillis() - KEEP_MS);
         SQLiteDatabase db = getWritableDatabase();
         db.delete("reactions", "target IN (SELECT apple_id FROM msgs WHERE ts < ?)", new String[]{cutoff});
+        db.delete("edits", "apple_id IN (SELECT apple_id FROM msgs WHERE ts < ?)", new String[]{cutoff});
         db.delete("msgs", "ts < ?", new String[]{cutoff});
+        invalidateInfo();
         db.delete("media", "ts < ?", new String[]{cutoff});
     }
 

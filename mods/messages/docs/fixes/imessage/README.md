@@ -117,9 +117,15 @@ resources, or conversation UI.
      current one removes it) and **Reactions**. When someone reacts to one of your messages you
      get a notification like iPhones show (`Alex Loved "see you at 5"`, `WaveTapbackNotify`; follows
      the stock Notifications setting).
-   - **Edits** replace the stored text and add ` (edited)`; **unsends** replace it with
-     `This message was unsent` and drop its attachments and tapbacks. **Inline replies** start with
-     a quote of the original (`↩ "..."`).
+   - **Edits** replace the stored text and add ` (edited)`, and every earlier version is kept
+     (`WaveIMessageDb.editHistory`: original first, current last, each with when it was written).
+     **Unsends** keep the message (text, attachments, tapbacks) and add a last line `Unsent`;
+     before 1.6.0 they replaced it with `This message was unsent` and dropped its attachments and
+     tapbacks. **Inline replies** start with a quote of the original (`↩ "..."`).
+   - **What the UI draws** (`WaveIMessageDb.infoForUri`, cached, a set lookup for ordinary rows):
+     flags `FLAG_EDITED` / `FLAG_UNSENT` / `FLAG_NOTICE` (group notices), the text alone (no quote,
+     ` (edited)` or `Unsent` line), and the replied-to message's id and text. The stored body keeps
+     the plain-text markers so notifications, inbox snippets and search still read sensibly.
    - **Group renames, member and photo changes** are stored as already-read notices in the
      conversation. Android files a group by its member set, so after a member change new messages
      arrive in a new thread; the notice says so in both, and replies there reuse the group's id.

@@ -47,7 +47,14 @@ public final class WaveIMessageStore {
     /** Keep retrying a failed attachment download this long before storing a placeholder. */
     private static final long MEDIA_RETRY_WINDOW_MS = 6L * 3600L * 1000L;
     private static final String EDITED = " (edited)";
+    /** What unsent messages were replaced with before 1.6.0 (old rows still have it). */
     public static final String UNSENT = "This message was unsent";
+    /**
+     * Last line of an unsent message's stored body: the message itself stays (text, media,
+     * tapbacks), like the user asked, and this marks it until the UI draws its own small label
+     * from WaveIMessageDb.FLAG_UNSENT (WaveIMessageDb.Info.text never contains it).
+     */
+    public static final String UNSENT_NOTE = "Unsent";
 
     private WaveIMessageStore() {}
 
@@ -148,6 +155,7 @@ public final class WaveIMessageStore {
         }
         db.recordMessage(body.appleMsgId, uri, text, selfSent ? WaveIMessageDb.ME : senderRaw, conv.targets,
                 body.senderGuid);
+        db.setReplyTo(body.appleMsgId, body.replyTo);
         cfg.markAppleMsgIdSeen(body.appleMsgId);
     }
 
@@ -500,8 +508,11 @@ public final class WaveIMessageStore {
             return;
         }
         String text = body.text == null ? "" : body.text;
-        setText(c, m.uri, replyQuoteOf(c, m.uri) + text + EDITED, false);
-        db.updateText(body.targetId, text);
+        WaveIMessageDb.Info info = db.infoForUri(m.uri);
+        boolean unsent = info != null && info.unsent();
+        setText(c, m.uri, replyQuoteOf(c, m.uri) + text + EDITED + (unsent ? "\n" + UNSENT_NOTE : ""), false);
+        // Keeps the replaced text: WaveIMessageDb.editHistory lists every version.
+        db.markEdited(body.targetId, text, body.timestampMs > 0 ? body.timestampMs : System.currentTimeMillis());
         refresh(c);
     }
 
@@ -512,9 +523,13 @@ public final class WaveIMessageStore {
             Log.i(TAG, "unsend for unknown message " + body.targetId);
             return;
         }
-        setText(c, m.uri, UNSENT, true);
-        db.updateText(body.targetId, "");
-        db.clearReactions(body.targetId);
+        WaveIMessageDb.Info info = db.infoForUri(m.uri);
+        if (info != null && info.unsent()) return; // already applied (re-delivered)
+        // Keep the message (text, media, tapbacks) and add the note under it.
+        boolean edited = info != null && info.edited();
+        String shown = replyQuoteOf(c, m.uri) + (m.text == null ? "" : m.text) + (edited ? EDITED : "");
+        setText(c, m.uri, shown.isEmpty() ? UNSENT_NOTE : shown + "\n" + UNSENT_NOTE, false);
+        db.markUnsent(body.targetId);
         refresh(c);
     }
 
@@ -645,12 +660,14 @@ public final class WaveIMessageStore {
                 text = notice + " New messages appear in the conversation with "
                         + (after.addrs.size() == 1 ? "1 other person." : after.addrs.size() + " other people.");
             }
-            storeMms(c, fromAddr, selfAddr(cfg), before.addrs, text, body.appleMsgId, selfSent,
+            Uri u = storeMms(c, fromAddr, selfAddr(cfg), before.addrs, text, body.appleMsgId, selfSent,
                     new ArrayList<Media>(), false);
+            WaveIMessageDb.get(c).recordNotice(body.appleMsgId, u, text);
         }
         if (after != null && !after.addrs.isEmpty() && !sameSet(before.addrs, after.addrs)) {
-            storeMms(c, fromAddr, selfAddr(cfg), after.addrs, notice, body.appleMsgId + "-new", selfSent,
+            Uri u = storeMms(c, fromAddr, selfAddr(cfg), after.addrs, notice, body.appleMsgId + "-new", selfSent,
                     new ArrayList<Media>(), false);
+            WaveIMessageDb.get(c).recordNotice(body.appleMsgId + "-new", u, notice);
         }
         cfg.markAppleMsgIdSeen(body.appleMsgId);
         Log.i(TAG, "group event " + body.event + ": " + notice);
