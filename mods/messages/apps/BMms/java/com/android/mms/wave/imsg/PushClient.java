@@ -58,6 +58,12 @@ public final class PushClient {
     private final Object reconnectLock = new Object();
 
     private volatile boolean running = false;
+    /**
+     * Set when we close the main socket on purpose (network change, Reconnect): the loop then
+     * reconnects at once instead of treating it as a failure (backoff, ERROR status, dropping a
+     * learned interval and re-probing under the old network's key).
+     */
+    private volatile boolean deliberateClose = false;
     private volatile Status status = Status.OFFLINE;
     private volatile String statusDetail = "";
     private Thread mainThread;
@@ -153,7 +159,7 @@ public final class PushClient {
         if (watchdogThread != null) {
             watchdogThread.interrupt();
         }
-        clock.releaseWakeLock();
+        clock.releaseAllWakeLocks();
         setStatus(Status.OFFLINE, "Stopped");
     }
 
@@ -199,6 +205,7 @@ public final class PushClient {
             log("Network changed to " + newNet + " (connected=" + wasConnected + ")");
             if (wasConnected) {
                 // Close old socket so we immediately re-bind on the new network interface and re-probe.
+                deliberateClose = true;
                 closeActiveSocket();
             }
             if (config.autoProbe && config.networkInfoProvider.isNetworkAvailable()) {
@@ -211,6 +218,9 @@ public final class PushClient {
     public void reconnectNow() {
         if (!running) {
             return;
+        }
+        synchronized (watchdogLock) {
+            deliberateClose = connected;
         }
         closeActiveSocket();
         synchronized (reconnectLock) {
@@ -325,7 +335,11 @@ public final class PushClient {
         while (running) {
             if (!config.networkInfoProvider.isNetworkAvailable()) {
                 setStatus(Status.OFFLINE, "No network");
-                waitReconnect(30_000L);
+                // No alarm: a network coming up wakes us (notifyNetworkChanged), so the phone can
+                // sleep while offline instead of waking every 30 s to look. The timed recheck only
+                // covers a missed callback while the CPU is awake anyway.
+                clock.releaseWakeLock(WakeupClock.HOLD_ALARM);
+                waitReconnect(30_000L, false);
                 continue;
             }
 
@@ -356,7 +370,9 @@ public final class PushClient {
 
             setStatus(Status.CONNECTING, "Connecting...");
             SSLSocket socket = null;
-            clock.acquireBriefWakeLock(20_000L);
+            clock.acquireBriefWakeLock(WakeupClock.HOLD_CONNECT, 20_000L);
+            // The attempt now keeps the CPU up itself; the alarm that woke the backoff is handled.
+            clock.releaseWakeLock(WakeupClock.HOLD_ALARM);
             try {
                 log("Connecting main to " + config.mainHost + ":" + config.mainPort
                         + " (interval=" + connectInterval + "s, net=" + netKey + ")");
@@ -425,7 +441,7 @@ public final class PushClient {
                 }
 
                 // Handshake & pending resend complete: allow CPU to enter deep sleep while blocked on read!
-                clock.releaseWakeLock();
+                clock.releaseWakeLock(WakeupClock.HOLD_CONNECT);
 
                 while (running) {
                     Frame frame = Frame.readFrom(in);
@@ -434,7 +450,7 @@ public final class PushClient {
                         break;
                     }
                     // Radio woke CPU with incoming packet: hold a brief partial wakelock until handled + ACKed.
-                    clock.acquireBriefWakeLock(15_000L);
+                    clock.acquireBriefWakeLock(WakeupClock.HOLD_RX, 15_000L);
                     try {
                         recordTraffic();
 
@@ -454,6 +470,7 @@ public final class PushClient {
                                         pingDeadlineElapsedMs = 0L;
                                         lastScheduledAlarmElapsedMs = 0L;
                                         watchdogLock.notifyAll();
+                                        clock.releaseWakeLock(WakeupClock.HOLD_PING);
                                     }
                                 }
                                 break;
@@ -471,7 +488,7 @@ public final class PushClient {
                                 break;
                         }
                     } finally {
-                        clock.releaseWakeLock();
+                        clock.releaseWakeLock(WakeupClock.HOLD_RX);
                     }
                     if (frame.type == Frame.TYPE_BYE) {
                         break;
@@ -482,7 +499,9 @@ public final class PushClient {
                     disconnectReason = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
                 }
             } finally {
-                clock.releaseWakeLock();
+                clock.releaseWakeLock(WakeupClock.HOLD_CONNECT);
+                clock.releaseWakeLock(WakeupClock.HOLD_RX);
+                clock.releaseWakeLock(WakeupClock.HOLD_PING);
                 boolean wasConnected;
                 synchronized (watchdogLock) {
                     wasConnected = connected;
@@ -518,6 +537,16 @@ public final class PushClient {
                 long uptimeMs = clock.elapsedRealtimeMs() - sessionStartElapsedMs;
                 if (uptimeMs >= 2L * connectInterval * 1000L) {
                     backoffS = 0;
+                }
+            }
+
+            if (deliberateClose) {
+                deliberateClose = false;
+                if (hadConnected) {
+                    log("Reconnecting (" + disconnectReason + " after a deliberate close)");
+                    backoffS = 0;
+                    setStatus(Status.CONNECTING, "Reconnecting...");
+                    continue;
                 }
             }
 
@@ -620,19 +649,19 @@ public final class PushClient {
 
             if (pongTimedOut) {
                 log("PONG timeout (" + Frame.PONG_TIMEOUT_S + "s); closing main socket");
-                clock.releaseWakeLock();
+                clock.releaseWakeLock(WakeupClock.HOLD_PING);
                 closeActiveSocket();
                 continue;
             }
 
             if (shouldSendPing) {
-                clock.acquireBriefWakeLock((Frame.PONG_TIMEOUT_S + 5) * 1000L);
+                clock.acquireBriefWakeLock(WakeupClock.HOLD_PING, (Frame.PONG_TIMEOUT_S + 5) * 1000L);
                 try {
                     clock.scheduleWakeup(Frame.PONG_TIMEOUT_S * 1000L);
                     writeFrame(Frame.ping(pingNonce));
                 } catch (IOException e) {
                     log("Failed to write PING: " + e.getMessage());
-                    clock.releaseWakeLock();
+                    clock.releaseWakeLock(WakeupClock.HOLD_PING);
                     closeActiveSocket();
                 }
                 continue;
@@ -649,14 +678,9 @@ public final class PushClient {
                 if (needSchedule) {
                     clock.scheduleWakeup(waitMs);
                 }
-                // Release wakelock if not waiting for an in-flight PONG so CPU can sleep until the alarm!
-                boolean keepAwake;
-                synchronized (watchdogLock) {
-                    keepAwake = pingInFlight;
-                }
-                if (!keepAwake) {
-                    clock.releaseWakeLock();
-                }
+                // The next wakeup is scheduled: the alarm that woke us is handled (an in-flight PING
+                // keeps its own wakelock until the PONG), so the CPU can sleep until the alarm.
+                clock.releaseWakeLock(WakeupClock.HOLD_ALARM);
             }
 
             synchronized (watchdogLock) {
@@ -676,8 +700,14 @@ public final class PushClient {
     }
 
     private void waitReconnect(long delayMs) {
+        waitReconnect(delayMs, true);
+    }
+
+    private void waitReconnect(long delayMs, boolean wake) {
         long deadline = clock.elapsedRealtimeMs() + delayMs;
-        clock.scheduleWakeup(delayMs);
+        if (wake) {
+            clock.scheduleWakeup(delayMs);
+        }
         synchronized (reconnectLock) {
             while (running) {
                 long left = deadline - clock.elapsedRealtimeMs();

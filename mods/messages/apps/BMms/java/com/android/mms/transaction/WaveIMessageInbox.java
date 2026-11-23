@@ -83,6 +83,9 @@ public final class WaveIMessageInbox {
 
     private synchronized void kick(long delayMs) {
         if (drainPosted && delayMs > 0L) return;
+        // Bridge the hand-off: the push reader ACKs and drops its wakelock right after enqueue(),
+        // before the inbox thread has picked the body up, and the CPU must not sleep in between.
+        if (delayMs == 0L) wakeLock.acquire(60_000L);
         handler.removeCallbacks(drain);
         drainPosted = true;
         handler.postDelayed(drain, delayMs);

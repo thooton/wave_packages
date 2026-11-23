@@ -212,7 +212,9 @@ public final class Prober {
             long sleepMs = Math.max(100L, Math.round(intervalS * 1000.0 * probeScale));
             sleepElapsed(sleepMs);
 
-            clock.acquireBriefWakeLock((Frame.PONG_TIMEOUT_S + 3) * 1000L);
+            // Probes run in parallel: each holds its own wakelock.
+            String holder = "probe-" + intervalS;
+            clock.acquireBriefWakeLock(holder, (Frame.PONG_TIMEOUT_S + 3) * 1000L);
             try {
                 int nonce = rng.nextInt();
                 socket.setSoTimeout(Frame.PONG_TIMEOUT_S * 1000);
@@ -227,7 +229,7 @@ public final class Prober {
                 }
                 return SingleOutcome.FAIL;
             } finally {
-                clock.releaseWakeLock();
+                clock.releaseWakeLock(holder);
             }
         } catch (InterruptedException ie) {
             throw ie;

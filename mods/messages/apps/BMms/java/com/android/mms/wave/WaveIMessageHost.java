@@ -108,13 +108,14 @@ public final class WaveIMessageHost implements PushClient.Listener {
     private final BroadcastReceiver alarmReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            wakeupClock.acquireBriefWakeLock(15_000L);
+            // Held until the loop this tick wakes has handled it (it releases HOLD_ALARM).
+            wakeupClock.acquireBriefWakeLock(WakeupClock.HOLD_ALARM, 15_000L);
             PushClient c = client;
             if (c != null) {
                 c.onWakeupTick();
                 refreshServicePriority();
             } else {
-                wakeupClock.releaseWakeLock();
+                wakeupClock.releaseWakeLock(WakeupClock.HOLD_ALARM);
             }
         }
     };
@@ -391,7 +392,7 @@ public final class WaveIMessageHost implements PushClient.Listener {
             }
         }
         wakeupClock.cancelWakeup();
-        wakeupClock.releaseWakeLock();
+        wakeupClock.releaseAllWakeLocks();
         status = PushClient.Status.OFFLINE;
         statusDetail = config.isConfigured() ? "Off" : "Not set up";
         if (!config.isConfigured()) {
@@ -1119,7 +1120,11 @@ public final class WaveIMessageHost implements PushClient.Listener {
         @Override
         public void run() {
             PushClient c = client;
-            if (c != null) c.notifyNetworkChanged();
+            if (c != null) {
+                c.notifyNetworkChanged();
+            } else {
+                wakeupClock.releaseWakeLock(WakeupClock.HOLD_ALARM);
+            }
         }
     };
 
@@ -1152,6 +1157,9 @@ public final class WaveIMessageHost implements PushClient.Listener {
     }
 
     private void scheduleNetChange() {
+        // Keep the CPU up through the debounce: with the screen off it could otherwise sleep before
+        // the reconnect starts. The push loop that the change wakes releases HOLD_ALARM.
+        wakeupClock.acquireBriefWakeLock(WakeupClock.HOLD_ALARM, 5_000L);
         handler.removeCallbacks(debouncedNetChange);
         handler.postDelayed(debouncedNetChange, 1500L);
     }
@@ -1186,7 +1194,8 @@ public final class WaveIMessageHost implements PushClient.Listener {
     // Android WakeupClock (AlarmManager + brief partial WakeLock)
 
     private final class AndroidWakeupClock implements WakeupClock {
-        private PowerManager.WakeLock wakeLock;
+        /** One non-reference-counted wakelock per holder (see WakeupClock). */
+        private final Map<String, PowerManager.WakeLock> wakeLocks = new HashMap<String, PowerManager.WakeLock>();
 
         @Override
         public long elapsedRealtimeMs() {
@@ -1228,25 +1237,39 @@ public final class WaveIMessageHost implements PushClient.Listener {
         }
 
         @Override
-        public synchronized void acquireBriefWakeLock(long maxMs) {
+        public synchronized void acquireBriefWakeLock(String holder, long maxMs) {
             try {
-                if (wakeLock == null) {
+                PowerManager.WakeLock wl = wakeLocks.get(holder);
+                if (wl == null) {
                     PowerManager pm = (PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
                     if (pm == null) return;
-                    wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WaveIMessage:keepalive");
-                    wakeLock.setReferenceCounted(false);
+                    // Shows in dumpsys power / batterystats as WaveIMessage:<holder>.
+                    wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WaveIMessage:" + holder);
+                    wl.setReferenceCounted(false);
+                    wakeLocks.put(holder, wl);
                 }
-                wakeLock.acquire(Math.max(1000L, Math.min(30_000L, maxMs)));
+                wl.acquire(Math.max(1000L, Math.min(30_000L, maxMs)));
             } catch (Throwable t) {
                 Log.w(TAG, "acquireBriefWakeLock", t);
             }
         }
 
         @Override
-        public synchronized void releaseWakeLock() {
+        public synchronized void releaseWakeLock(String holder) {
+            release(wakeLocks.get(holder));
+        }
+
+        @Override
+        public synchronized void releaseAllWakeLocks() {
+            for (PowerManager.WakeLock wl : wakeLocks.values()) {
+                release(wl);
+            }
+        }
+
+        private void release(PowerManager.WakeLock wl) {
             try {
-                if (wakeLock != null && wakeLock.isHeld()) {
-                    wakeLock.release();
+                if (wl != null && wl.isHeld()) {
+                    wl.release();
                 }
             } catch (Throwable ignored) {
             }

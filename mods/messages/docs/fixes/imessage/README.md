@@ -43,6 +43,15 @@ resources, or conversation UI.
    - Uses `SystemClock.elapsedRealtime()` and `AlarmManager.setExactAndAllowWhileIdle` so the CPU
      sleeps completely between dynamic keepalives (no periodic polling). Brief partial `WakeLock`s
      are held only during active `PING`/`PONG` exchanges and incoming frame persistence/ACKing.
+     Each holder has its own (`WaveIMessage:connect`, `:rx`, `:ping`, `:alarm`, `:probe-<s>`), so
+     one thread finishing can't let the CPU sleep under another: before, the watchdog rescheduling
+     its alarm released the one shared lock while the reader was still storing and ACKing a message,
+     which could then wait for the next keepalive wakeup. The inbox takes its lock when a message is
+     queued, not when its thread gets to it, and the network-change debounce holds `:alarm`.
+     While offline there's no alarm (it used to wake every 30 s); the network callback wakes it.
+     Closing the socket on purpose (network change, Reconnect) reconnects at once on the new
+     network's learned interval; it used to count as a failure (backoff, error status) and, on a
+     learned interval, drop to 60 s keepalives and re-probe under the old network's key.
    - Tracks network changes via `ConnectivityManager.registerDefaultNetworkCallback` +
      `TelephonyManager`, learning and persisting per-network optimal keepalive intervals via
      parallel `ROLE_PROBE` NAT probing.
