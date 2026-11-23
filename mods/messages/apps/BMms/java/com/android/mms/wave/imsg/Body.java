@@ -24,6 +24,20 @@ public final class Body {
     public static final int KIND_CHECK_TARGETS = 0x07;
     public static final int KIND_TARGET_STATUS = 0x08;
     public static final int KIND_SEND_GROUP_TEXT = 0x09;
+    /** Server to phone: setup state in {@code receiptKind}, detail in {@code text}. */
+    public static final int KIND_SETUP_STATUS = 0x0A;
+    /** Phone to server: MCC+MNC in {@code target}, phone number (optional) in {@code sender}. */
+    public static final int KIND_SIM_INFO = 0x0B;
+    /** Server to phone: gateway number in {@code target}, SMS text in {@code text}. */
+    public static final int KIND_SEND_REG_SMS = 0x0C;
+    /** Phone to server: Apple's REG-RESP in {@code text}. */
+    public static final int KIND_REG_RESP = 0x0D;
+
+    public static final int SETUP_READY = 0;
+    public static final int SETUP_NEED_SIM = 1;
+    public static final int SETUP_WORKING = 2;
+    public static final int SETUP_WAITING_SMS = 3;
+    public static final int SETUP_FAILED = 4;
 
     public static final int RECEIPT_DELIVERED = 1;
     public static final int RECEIPT_READ = 2;
@@ -119,6 +133,22 @@ public final class Body {
         return new Body(KIND_TARGET_STATUS, null, null, null, null, false, null, null, null, null, 0L, 0, null, null, reqId, null, new ArrayList<String>(registered), new ArrayList<String>(unregistered));
     }
 
+    public static Body setupStatus(int state, String detail) {
+        return new Body(KIND_SETUP_STATUS, null, null, detail, null, false, null, null, null, null, 0L, state, null, null, null, null, null, null);
+    }
+
+    public static Body simInfo(String mccmnc, String number) {
+        return new Body(KIND_SIM_INFO, null, mccmnc, null, null, false, null, null, number, null, 0L, 0, null, null, null, null, null, null);
+    }
+
+    public static Body sendRegSms(String gateway, String text) {
+        return new Body(KIND_SEND_REG_SMS, null, gateway, text, null, false, null, null, null, null, 0L, 0, null, null, null, null, null, null);
+    }
+
+    public static Body regResp(String text) {
+        return new Body(KIND_REG_RESP, null, null, text, null, false, null, null, null, null, 0L, 0, null, null, null, null, null, null);
+    }
+
     public static Body sendGroupText(String clientMsgId, List<String> participants, String text, String senderGuid) {
         return new Body(KIND_SEND_GROUP_TEXT, clientMsgId, null, text, senderGuid, false, null, null, null, new ArrayList<String>(participants), 0L, 0, null, null, null, null, null, null);
     }
@@ -174,6 +204,21 @@ public final class Body {
                 writeStrList(dos, participants);
                 writeStr(dos, text);
                 writeOptStr(dos, senderGuid);
+                break;
+            case KIND_SETUP_STATUS:
+                dos.writeByte(receiptKind);
+                writeStr(dos, text);
+                break;
+            case KIND_SIM_INFO:
+                writeStr(dos, target);
+                writeOptStr(dos, sender);
+                break;
+            case KIND_SEND_REG_SMS:
+                writeStr(dos, target);
+                writeStr(dos, text);
+                break;
+            case KIND_REG_RESP:
+                writeStr(dos, text);
                 break;
             default:
                 throw new IOException("Unknown body kind: " + kind);
@@ -255,6 +300,24 @@ public final class Body {
                 body = sendGroupText(clientMsgId, participants, text, senderGuid);
                 break;
             }
+            case KIND_SETUP_STATUS: {
+                int state = dis.readUnsignedByte();
+                body = setupStatus(state, readStr(dis));
+                break;
+            }
+            case KIND_SIM_INFO: {
+                String mccmnc = readStr(dis);
+                body = simInfo(mccmnc, readOptStr(dis));
+                break;
+            }
+            case KIND_SEND_REG_SMS: {
+                String gateway = readStr(dis);
+                body = sendRegSms(gateway, readStr(dis));
+                break;
+            }
+            case KIND_REG_RESP:
+                body = regResp(readStr(dis));
+                break;
             default:
                 throw new IOException("Unknown body kind: 0x" + Integer.toHexString(kind));
         }
@@ -324,6 +387,14 @@ public final class Body {
     @Override
     public String toString() {
         switch (kind) {
+            case KIND_SETUP_STATUS:
+                return "SETUP_STATUS(state=" + receiptKind + ", detail=" + text + ")";
+            case KIND_SIM_INFO:
+                return "SIM_INFO(mccmnc=" + target + ")";
+            case KIND_SEND_REG_SMS:
+                return "SEND_REG_SMS(gateway=" + target + ")";
+            case KIND_REG_RESP:
+                return "REG_RESP(len=" + (text == null ? 0 : text.length()) + ")";
             case KIND_SEND_TEXT:
                 return "SEND_TEXT(id=" + clientMsgId + ", target=" + target + ", len=" + (text == null ? 0 : text.length()) + ")";
             case KIND_SEND_RESULT:

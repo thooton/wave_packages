@@ -1,25 +1,28 @@
 # Apple (iMessage) Bridge Support
 
-Integrates the Push Protocol v1 iMessage bridge (`imsg-server`) into the stock Sonim XP3800
-Messages app (`BMms` / `com.android.mms`) without modifying the stock manifest, resources, or
-conversation UI.
+Integrates the [imsg-server](https://github.com/thooton/imsg-server) iMessage bridge into the
+stock Sonim XP3800 Messages app (`BMms` / `com.android.mms`) without modifying the stock manifest,
+resources, or conversation UI.
 
 ## What was added
 
 1. **Setup Wizard & Settings (`Settings > Advanced settings > Apple (iMessage) settings`)**:
    - Hosted inside stock `MessagingReportsPreferenceActivity` (`msg_type=wave_imessage` /
      `wave_imessage_wizard`).
-   - First-time launch opens a 4-step D-pad-friendly wizard:
-     1. **Server address** (`host`, `host:port`, `https://...`, `imsg://host:port?token=...&pin=...`,
-        or optional `/sdcard/imessage.txt` import).
-     2. **Certificate verification** (connects over TLS, displays the leaf SHA-256 fingerprint for
-        Trust-On-First-Use confirmation, or allows manual SHA-256 entry).
-     3. **Access token** (client hex token from `imsg-server add-client`, or load from file).
-     4. **Verify & connect** (verifies credentials via `ROLE_PROBE`, saves config, starts the
-        foreground host service, fetches Apple handles, and starts automatic NAT keepalive probing).
+   - First-time launch opens a two-step D-pad screen:
+     1. **Pair**: the server name (`host` or `host:port`) and the one-time code printed by
+        `imsg-server pair`. The phone connects over TLS (system trusted CAs and host name check,
+        no pinning), sends the code with `ROLE_PAIR`, and gets back its own client id and token
+        (`PAIRED`).
+     2. **Phone-number setup**, driven by the server: the phone sends its SIM's MCC+MNC
+        (`SIM_INFO`), sends the `REG-REQ` text the server asks for to Apple's gateway
+        (`SEND_REG_SMS`, via `SmsManager`), catches Apple's `REG-RESP` reply as a normal or data SMS
+        and passes it to the server (`REG_RESP`). The reply never reaches the inbox
+        (`SmsReceiverService.handleSmsReceived` hook). The screen follows `SETUP_STATUS` until
+        "iMessage is ready" with the registered number.
    - Once configured, opening **Apple (iMessage) settings** displays the settings screen: enable
      switch, live status + learned keepalive interval, registered Apple handles, SMS fallback
-     toggle, server/connection details (with manual keepalive probe), reconnect, re-run wizard, and
+     toggle, server/connection details (with manual keepalive probe), reconnect, pair again, and
      clear setup.
 
 2. **Low-power persistent TCP connection (`wave/imsg/*` + `WaveIMessageHost`)**:

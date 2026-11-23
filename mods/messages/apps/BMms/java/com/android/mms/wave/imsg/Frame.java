@@ -18,6 +18,8 @@ public final class Frame {
 
     public static final int ROLE_MAIN = 0;
     public static final int ROLE_PROBE = 1;
+    /** HELLO token is a one-time pairing code; the server answers with PAIRED. */
+    public static final int ROLE_PAIR = 2;
 
     public static final int TYPE_HELLO = 0x01;
     public static final int TYPE_WELCOME = 0x02;
@@ -27,6 +29,7 @@ public final class Frame {
     public static final int TYPE_PONG = 0x06;
     public static final int TYPE_SET_INTERVAL = 0x07;
     public static final int TYPE_BYE = 0x08;
+    public static final int TYPE_PAIRED = 0x09;
 
     public static final int BYE_NORMAL = 0x00;
     public static final int BYE_REPLACED = 0x01;
@@ -110,6 +113,20 @@ public final class Frame {
         return new Frame(TYPE_BYE, 0, 0, null, 0, 0, null, 0, reason);
     }
 
+    /** PAIRED (server reply to ROLE_PAIR): client id in {@code body}, wire token in {@code token}. */
+    public static Frame paired(String clientId, String tokenHex) {
+        return new Frame(TYPE_PAIRED, 0, 0, tokenHex.getBytes(StandardCharsets.US_ASCII), 0, 0,
+                clientId.getBytes(StandardCharsets.UTF_8), 0, 0);
+    }
+
+    public String pairedClientId() {
+        return body == null ? "" : new String(body, StandardCharsets.UTF_8);
+    }
+
+    public String pairedToken() {
+        return token == null ? "" : new String(token, StandardCharsets.US_ASCII);
+    }
+
     public static String byeReasonName(int reason) {
         switch (reason) {
             case BYE_NORMAL: return "normal";
@@ -159,6 +176,15 @@ public final class Frame {
                 break;
             case TYPE_BYE:
                 pdos.writeByte(reason);
+                break;
+            case TYPE_PAIRED:
+                if (body.length > 255 || token.length > 255) {
+                    throw new IOException("PAIRED field too long");
+                }
+                pdos.writeByte(body.length);
+                pdos.write(body);
+                pdos.writeByte(token.length);
+                pdos.write(token);
                 break;
             default:
                 throw new IOException("Unknown frame type: " + type);
@@ -261,6 +287,18 @@ public final class Frame {
                 }
                 return bye(dis.readUnsignedByte());
             }
+            case TYPE_PAIRED: {
+                int idLen = dis.readUnsignedByte();
+                byte[] id = new byte[idLen];
+                dis.readFully(id);
+                int tokenLen = dis.readUnsignedByte();
+                byte[] tok = new byte[tokenLen];
+                dis.readFully(tok);
+                if (payload.length != 2 + idLen + tokenLen) {
+                    throw new IOException("PAIRED payload length mismatch: " + payload.length);
+                }
+                return new Frame(TYPE_PAIRED, 0, 0, tok, 0, 0, id, 0, 0);
+            }
             default:
                 throw new IOException("Unknown frame type: 0x" + Integer.toHexString(frameType));
         }
@@ -285,6 +323,8 @@ public final class Frame {
                 return "SET_INTERVAL(iv=" + intervalS + ")";
             case TYPE_BYE:
                 return "BYE(" + byeReasonName(reason) + ")";
+            case TYPE_PAIRED:
+                return "PAIRED(" + pairedClientId() + ")";
             default:
                 return "FRAME(type=" + type + ")";
         }

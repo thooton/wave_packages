@@ -29,7 +29,8 @@ public class IMessageHostTest {
             Frame.ping(0x12345678),
             Frame.pong(0x12345678),
             Frame.setInterval(1200),
-            Frame.bye(Frame.BYE_AUTH_FAILED)
+            Frame.bye(Frame.BYE_AUTH_FAILED),
+            Frame.paired("phone-1a2b", "00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff")
         };
         for (Frame f : frames) {
             byte[] wire = f.encode();
@@ -40,6 +41,8 @@ public class IMessageHostTest {
                 check(d.role == Frame.ROLE_MAIN, "hello role");
                 check(d.seq == 42L, "hello seq");
                 check(d.intervalS == 900, "hello interval");
+            } else if (f.type == Frame.TYPE_PAIRED) {
+                check("phone-1a2b".equals(d.pairedClientId()) && d.pairedToken().length() == 64, "paired roundtrip");
             } else if (f.type == Frame.TYPE_MSG) {
                 check(d.seq == 99L && Arrays.equals(d.body, f.body), "msg roundtrip");
             } else if (f.type == Frame.TYPE_PING || f.type == Frame.TYPE_PONG) {
@@ -64,13 +67,26 @@ public class IMessageHostTest {
             Body.handles(Arrays.asList("tel:+15550001111", "mailto:me@icloud.com"), "tel:+15550001111"),
             Body.checkTargets("q-1", Arrays.asList("tel:+15551234567", "mailto:bob@icloud.com")),
             Body.targetStatus("q-1", Arrays.asList("mailto:bob@icloud.com"), Arrays.asList("tel:+15551234567")),
-            Body.sendGroupText("g-1", Arrays.asList("tel:+15551112222", "mailto:bob@icloud.com"), "Group hi", "guid-g")
+            Body.sendGroupText("g-1", Arrays.asList("tel:+15551112222", "mailto:bob@icloud.com"), "Group hi", "guid-g"),
+            Body.setupStatus(Body.SETUP_WAITING_SMS, "Waiting for Apple"),
+            Body.simInfo("310260", "+15551234567"),
+            Body.simInfo("", null),
+            Body.sendRegSms("28818773", "REG-REQ?v=3;t=AB;r=1;"),
+            Body.regResp("REG-RESP?v=3;r=1;n=+15551234567;s=00")
         };
         for (Body b : bodies) {
             byte[] enc = b.encode();
             Body dec = Body.decode(enc);
             check(dec.kind == b.kind, "body kind " + b.kind);
-            if (b.kind == Body.KIND_CHECK_TARGETS) {
+            if (b.kind == Body.KIND_SETUP_STATUS) {
+                check(dec.receiptKind == Body.SETUP_WAITING_SMS && "Waiting for Apple".equals(dec.text), "setupStatus");
+            } else if (b.kind == Body.KIND_SIM_INFO) {
+                check(b.target.equals(dec.target) && (b.sender == null ? dec.sender == null : b.sender.equals(dec.sender)), "simInfo");
+            } else if (b.kind == Body.KIND_SEND_REG_SMS) {
+                check("28818773".equals(dec.target) && dec.text.startsWith("REG-REQ"), "sendRegSms");
+            } else if (b.kind == Body.KIND_REG_RESP) {
+                check(dec.text.startsWith("REG-RESP"), "regResp");
+            } else if (b.kind == Body.KIND_CHECK_TARGETS) {
                 check("q-1".equals(dec.reqId) && dec.targets.size() == 2, "checkTargets");
             } else if (b.kind == Body.KIND_TARGET_STATUS) {
                 check(dec.registered.size() == 1 && dec.unregistered.size() == 1, "targetStatus");
@@ -105,7 +121,7 @@ public class IMessageHostTest {
         check("00:AB:FF".equals(ClientState.toColonHex(sample)), "toColonHex");
         check(Arrays.equals(sample, ClientState.fromHex("00:AB:FF")), "fromHex colon");
 
-        System.out.println("PASS: iMessage Frame/Body (0x01..0x09), ClientState persistence, outbox & hex helpers");
+        System.out.println("PASS: iMessage Frame/Body (0x01..0x0D, PAIRED), ClientState persistence, outbox & hex helpers");
     }
 }
 """

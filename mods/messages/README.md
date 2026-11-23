@@ -11,8 +11,9 @@ retains the custom RCS work.
 
 What it changes (the UI stays as it is):
 
-* **Apple (iMessage) bridge support** with low-power dynamic keepalive, setup wizard in
-  Settings > Advanced settings > Apple (iMessage) settings, and dynamic compose box hint
+* **Apple (iMessage) bridge support** through [imsg-server](https://github.com/thooton/imsg-server):
+  pair with a one-time code in Settings > Advanced settings > Apple (iMessage) settings, after
+  which the phone registers its own number. Low-power dynamic keepalive and a compose box hint
   (`Type SMS message` / `Type MMS message` / `Type iMessage`):
   [imessage](docs/fixes/imessage/README.md)
 * **Group MMS appears once, in the right conversation** (no 1:1 "Downloading..." first):

@@ -3,18 +3,13 @@ package com.android.mms.wave;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
-import android.os.Environment;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import com.android.mms.wave.imsg.ClientState;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
-import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,13 +32,10 @@ public final class WaveIMessageConfig {
 
     private static final String K_ENABLED = "enabled";
     private static final String K_CONFIGURED = "configured";
-    private static final String K_SERVER_URL = "server_url";
     private static final String K_HOST = "host";
     private static final String K_PORT = "port";
-    private static final String K_SNI_MAIN = "sni_main";
-    private static final String K_SNI_PROBE = "sni_probe";
     private static final String K_TOKEN = "token_hex";
-    private static final String K_PIN = "cert_pin_sha256";
+    private static final String K_CLIENT_ID = "client_id";
     private static final String K_SMS_FALLBACK = "sms_fallback";
     private static final String K_HANDLES = "handles_csv";
     private static final String K_PREFERRED = "preferred_handle";
@@ -93,13 +85,10 @@ public final class WaveIMessageConfig {
     public boolean isConfigured() {
         return sp.getBoolean(K_CONFIGURED, false)
                 && !TextUtils.isEmpty(getHost())
-                && !TextUtils.isEmpty(getTokenHex())
-                && !TextUtils.isEmpty(getCertPinSha256());
+                && !TextUtils.isEmpty(getTokenHex());
     }
 
     public String getServerUrl() {
-        String u = sp.getString(K_SERVER_URL, "");
-        if (!TextUtils.isEmpty(u)) return u;
         String h = getHost();
         if (TextUtils.isEmpty(h)) return "";
         int p = getPort();
@@ -114,22 +103,12 @@ public final class WaveIMessageConfig {
         return sp.getInt(K_PORT, 443);
     }
 
-    public String getSniMain() {
-        String s = sp.getString(K_SNI_MAIN, "");
-        return TextUtils.isEmpty(s) ? getHost() : s;
-    }
-
-    public String getSniProbe() {
-        String s = sp.getString(K_SNI_PROBE, "");
-        return TextUtils.isEmpty(s) ? getSniMain() : s;
-    }
-
     public String getTokenHex() {
         return sp.getString(K_TOKEN, "");
     }
 
-    public String getCertPinSha256() {
-        return sp.getString(K_PIN, "");
+    public String getClientId() {
+        return sp.getString(K_CLIENT_ID, "");
     }
 
     public boolean isSmsFallbackEnabled() {
@@ -140,20 +119,16 @@ public final class WaveIMessageConfig {
         sp.edit().putBoolean(K_SMS_FALLBACK, on).apply();
     }
 
-    public void saveSetup(String displayUrl, String host, int port, String sniMain, String tokenHex, String certPinSha256) {
-        String cleanToken = tokenHex == null ? "" : tokenHex.replaceAll("\\s+", "");
-        String cleanPin = normalizePinHex(certPinSha256);
-        String sni = TextUtils.isEmpty(sniMain) ? host : sniMain.trim();
+    /** Saves a successful pairing. Clears the previous server's message state. */
+    public void savePairing(String host, int port, String clientId, String tokenHex) {
+        clearAll();
         sp.edit()
                 .putBoolean(K_CONFIGURED, true)
                 .putBoolean(K_ENABLED, true)
-                .putString(K_SERVER_URL, displayUrl != null ? displayUrl.trim() : (host + ":" + port))
                 .putString(K_HOST, host.trim())
                 .putInt(K_PORT, port)
-                .putString(K_SNI_MAIN, sni)
-                .putString(K_SNI_PROBE, sni)
-                .putString(K_TOKEN, cleanToken)
-                .putString(K_PIN, cleanPin)
+                .putString(K_CLIENT_ID, clientId)
+                .putString(K_TOKEN, tokenHex)
                 .commit();
     }
 
@@ -431,212 +406,46 @@ public final class WaveIMessageConfig {
         return false;
     }
 
-    public static boolean isValidPinHex(String pin) {
-        if (pin == null) return false;
-        try {
-            byte[] b = ClientState.fromHex(pin);
-            return b.length == 32;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
-    public static String normalizePinHex(String pin) {
-        if (pin == null) return "";
-        return pin.replace(":", "").replace("-", "").replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
-    }
-
     // -----------------------------------------------------------------------------------------
-    // Server URL & setup file parser (used by Setup Wizard)
+    // Server address parser (used by the pairing screen)
 
-    public static final class ParsedSetup {
-        public String host;
-        public int port = 443;
-        public String sni;
-        public String token;
-        public String pin;
-        public String displayUrl;
+    public static final class ServerAddress {
+        public final String host;
+        public final int port;
+
+        ServerAddress(String host, int port) {
+            this.host = host;
+            this.port = port;
+        }
     }
 
     /**
-     * Parses user-entered server addresses such as:
-     *   imsg.example.com
-     *   imsg.example.com:8443
-     *   https://imsg.example.com:8443
-     *   imsg://imsg.example.com:443?token=...&pin=...
-     *   [::1]:8443
-     * Returns null if invalid.
+     * Parses a typed server address: {@code imsg.example.com}, {@code imsg.example.com:8443} or
+     * {@code https://imsg.example.com}. Returns null if invalid.
      */
-    public static ParsedSetup parseServerInput(String rawInput) {
+    public static ServerAddress parseServerInput(String rawInput) {
         if (rawInput == null) return null;
-        String s = rawInput.trim();
-        if (s.isEmpty()) return null;
-
-        ParsedSetup out = new ParsedSetup();
-        String rest = s;
+        String rest = rawInput.trim();
         int schemeIdx = rest.indexOf("://");
-        if (schemeIdx > 0) {
-            rest = rest.substring(schemeIdx + 3);
-        }
-
-        String query = null;
-        int qIdx = rest.indexOf('?');
-        if (qIdx >= 0) {
-            query = rest.substring(qIdx + 1);
-            rest = rest.substring(0, qIdx);
-        }
+        if (schemeIdx > 0) rest = rest.substring(schemeIdx + 3);
         int slashIdx = rest.indexOf('/');
-        if (slashIdx >= 0) {
-            rest = rest.substring(0, slashIdx);
-        }
+        if (slashIdx >= 0) rest = rest.substring(0, slashIdx);
         rest = rest.trim();
         if (rest.isEmpty()) return null;
 
-        String host;
+        String host = rest;
         int port = 443;
-        if (rest.startsWith("[")) {
-            int close = rest.indexOf(']');
-            if (close <= 1) return null;
-            host = rest.substring(1, close);
-            if (close + 1 < rest.length()) {
-                if (rest.charAt(close + 1) != ':') return null;
-                port = parsePort(rest.substring(close + 2));
-                if (port <= 0) return null;
+        int colon = rest.lastIndexOf(':');
+        if (colon > 0 && rest.indexOf(':') == colon) {
+            host = rest.substring(0, colon).trim();
+            try {
+                port = Integer.parseInt(rest.substring(colon + 1).trim());
+            } catch (NumberFormatException e) {
+                return null;
             }
-        } else {
-            int colon = rest.lastIndexOf(':');
-            if (colon > 0 && rest.indexOf(':') == colon) {
-                host = rest.substring(0, colon).trim();
-                port = parsePort(rest.substring(colon + 1).trim());
-                if (port <= 0) return null;
-            } else {
-                host = rest;
-            }
+            if (port < 1 || port > 65535) return null;
         }
-        if (host.isEmpty() || host.contains(" ")) return null;
-
-        out.host = host;
-        out.port = port;
-        out.displayUrl = port == 443 ? host : (host + ":" + port);
-
-        if (query != null && !query.isEmpty()) {
-            for (String pair : query.split("&")) {
-                int eq = pair.indexOf('=');
-                if (eq <= 0) continue;
-                String k = decodeQuery(pair.substring(0, eq)).toLowerCase(Locale.ROOT);
-                String v = decodeQuery(pair.substring(eq + 1)).trim();
-                if ("token".equals(k) && !v.isEmpty()) out.token = v;
-                else if (("pin".equals(k) || "sha256".equals(k) || "fingerprint".equals(k)) && !v.isEmpty()) out.pin = normalizePinHex(v);
-                else if ("sni".equals(k) && !v.isEmpty()) out.sni = v;
-            }
-        }
-        return out;
-    }
-
-    private static int parsePort(String s) {
-        try {
-            int p = Integer.parseInt(s);
-            return (p >= 1 && p <= 65535) ? p : -1;
-        } catch (NumberFormatException e) {
-            return -1;
-        }
-    }
-
-    private static String decodeQuery(String s) {
-        try {
-            return URLDecoder.decode(s, "UTF-8");
-        } catch (Exception e) {
-            return s;
-        }
-    }
-
-    /**
-     * Reads optional setup helper file from /sdcard/imessage.txt or /sdcard/Download/imessage.txt.
-     * Supports:
-     *  - single line imsg://host:port?token=...&pin=...
-     *  - key=value lines (url/server, host, port, token, pin, sni)
-     *  - raw token line
-     */
-    public static ParsedSetup loadSetupFile() {
-        File ext = Environment.getExternalStorageDirectory();
-        File[] candidates = new File[]{
-                new File(ext, "imessage.txt"),
-                new File(ext, "Download/imessage.txt")
-        };
-        for (File f : candidates) {
-            if (!f.exists() || !f.isFile() || !f.canRead()) continue;
-            ParsedSetup parsed = parseSetupFile(f);
-            if (parsed != null) return parsed;
-        }
-        return null;
-    }
-
-    static ParsedSetup parseSetupFile(File f) {
-        BufferedReader br = null;
-        try {
-            br = new BufferedReader(new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8));
-            ParsedSetup out = new ParsedSetup();
-            boolean any = false;
-            String line;
-            while ((line = br.readLine()) != null) {
-                line = line.trim();
-                if (line.isEmpty() || line.startsWith("#")) continue;
-                if (line.startsWith("imsg://") || line.startsWith("https://") || line.startsWith("tls://")) {
-                    ParsedSetup u = parseServerInput(line);
-                    if (u != null) {
-                        if (u.host != null) out.host = u.host;
-                        out.port = u.port;
-                        out.displayUrl = u.displayUrl;
-                        if (u.sni != null) out.sni = u.sni;
-                        if (u.token != null) out.token = u.token;
-                        if (u.pin != null) out.pin = u.pin;
-                        any = true;
-                    }
-                    continue;
-                }
-                int eq = line.indexOf('=');
-                if (eq > 0) {
-                    String k = line.substring(0, eq).trim().toLowerCase(Locale.ROOT);
-                    String v = line.substring(eq + 1).trim();
-                    if (v.isEmpty()) continue;
-                    any = true;
-                    if ("url".equals(k) || "server".equals(k)) {
-                        ParsedSetup u = parseServerInput(v);
-                        if (u != null) {
-                            out.host = u.host;
-                            out.port = u.port;
-                            out.displayUrl = u.displayUrl;
-                            if (u.sni != null) out.sni = u.sni;
-                            if (u.token != null) out.token = u.token;
-                            if (u.pin != null) out.pin = u.pin;
-                        }
-                    } else if ("host".equals(k)) {
-                        out.host = v;
-                    } else if ("port".equals(k)) {
-                        int p = parsePort(v);
-                        if (p > 0) out.port = p;
-                    } else if ("token".equals(k)) {
-                        out.token = v.replaceAll("\\s+", "");
-                    } else if ("pin".equals(k) || "sha256".equals(k) || "fingerprint".equals(k)) {
-                        out.pin = normalizePinHex(v);
-                    } else if ("sni".equals(k)) {
-                        out.sni = v;
-                    }
-                } else if (line.length() >= 32 && line.matches("[0-9a-fA-F]+")) {
-                    out.token = line;
-                    any = true;
-                }
-            }
-            if (out.host != null && out.displayUrl == null) {
-                out.displayUrl = out.port == 443 ? out.host : (out.host + ":" + out.port);
-            }
-            return any ? out : null;
-        } catch (Throwable t) {
-            return null;
-        } finally {
-            if (br != null) {
-                try { br.close(); } catch (Throwable ignored) {}
-            }
-        }
+        if (host.isEmpty() || host.contains(" ") || host.indexOf(':') >= 0) return null;
+        return new ServerAddress(host.toLowerCase(Locale.ROOT), port);
     }
 }

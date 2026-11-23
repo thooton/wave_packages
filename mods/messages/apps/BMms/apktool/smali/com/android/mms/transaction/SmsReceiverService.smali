@@ -1209,6 +1209,17 @@
 
     move-result-object v7
 
+    # FEAT(imessage): Apple's phone-number registration reply goes to the server, not the inbox
+    invoke-static {p0, v7}, Lcom/android/mms/wave/WaveIMessageHost;->onIncomingSms(Landroid/content/Context;[Landroid/telephony/SmsMessage;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_not_reg_resp
+
+    return-void
+
+    :wave_not_reg_resp
+
     .line 604
     const-string/jumbo v0, "format"
 

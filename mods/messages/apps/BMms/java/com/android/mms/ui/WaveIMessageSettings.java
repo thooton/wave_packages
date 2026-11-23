@@ -33,6 +33,7 @@ import android.widget.Toast;
 
 import com.android.mms.wave.WaveIMessageConfig;
 import com.android.mms.wave.WaveIMessageHost;
+import com.android.mms.wave.imsg.Body;
 import com.android.mms.wave.imsg.PushClient;
 import com.android.mms.wave.imsg.TlsHelper;
 
@@ -165,8 +166,8 @@ public final class WaveIMessageSettings {
 
         final Preference wizardPref = new Preference(a);
         wizardPref.setPersistent(false);
-        wizardPref.setTitle("Run setup wizard");
-        wizardPref.setSummary("Change server URL, certificate, or token");
+        wizardPref.setTitle("Pair again");
+        wizardPref.setSummary("Pair with a server using a new code");
         screen.addPreference(wizardPref);
 
         final Preference clearPref = new Preference(a);
@@ -243,7 +244,7 @@ public final class WaveIMessageSettings {
             public boolean onPreferenceClick(Preference p) {
                 new AlertDialog.Builder(a)
                         .setTitle("Clear iMessage setup?")
-                        .setMessage("This disconnects from your server and removes the saved URL, certificate pin, and token.")
+                        .setMessage("This disconnects from your server and forgets it on this phone.")
                         .setPositiveButton("Clear", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface d, int w) {
@@ -272,16 +273,11 @@ public final class WaveIMessageSettings {
 
     private static void showConnectionDetailsDialog(final Activity a, final WaveIMessageHost host) {
         WaveIMessageConfig cfg = host.config();
-        String pin = cfg.getCertPinSha256();
-        String shortPin = pin.length() >= 16
-                ? (pin.substring(0, 8) + "..." + pin.substring(pin.length() - 8))
-                : pin;
         String msg = "Server: " + cfg.getHost() + ":" + cfg.getPort() + "\n"
                 + "Status: " + host.formatStatusSummary() + "\n"
                 + "Keepalive: " + WaveIMessageHost.formatInterval(host.getCurrentIntervalSeconds()) + "\n"
                 + "Network: " + (TextUtils.isEmpty(host.getActiveNetworkKey()) ? "-" : host.getActiveNetworkKey()) + "\n"
-                + "Queued outbox: " + host.getOutboxSize() + "\n"
-                + "Cert SHA-256: " + shortPin;
+                + "Queued outbox: " + host.getOutboxSize();
 
         AlertDialog.Builder b = new AlertDialog.Builder(a)
                 .setTitle("Connection details")
@@ -300,7 +296,7 @@ public final class WaveIMessageSettings {
     }
 
     // =========================================================================================
-    // Setup Wizard (4 simple steps, designed for 240x320 D-pad flip phone)
+    // Pairing (server address + one-time code), then automatic phone-number setup
     // =========================================================================================
 
     private static final class WizardController {
@@ -309,437 +305,186 @@ public final class WaveIMessageSettings {
         private final WaveIMessageConfig cfg;
         private final Handler main = new Handler(Looper.getMainLooper());
 
-        private int step = 1; // 1=Server URL, 2=Verify Cert, 3=Access Token, 4=Connect & Done
+        private int step = 1; // 1=pair form, 2=setup progress
         private boolean busy = false;
-        private boolean finishedSuccess = false;
-
-        private String inputUrl;
-        private String hostName;
-        private int port = 443;
-        private String sniMain;
-        private String fetchedPinHex;
-        private String fetchedPinColon;
-        private String fetchedSubject;
-        private String fetchedTlsProto;
-        private String pinHex;
-        private String tokenHex;
+        private String inputServer;
+        private String inputCode;
         private String errorText;
+        private String shownKey;
 
         WizardController(PreferenceActivity activity, WaveIMessageHost host) {
             this.activity = activity;
             this.host = host;
             this.cfg = host.config();
-            // Pre-fill existing values when re-running wizard.
-            if (cfg.isConfigured()) {
-                this.inputUrl = cfg.getServerUrl();
-                this.hostName = cfg.getHost();
-                this.port = cfg.getPort();
-                this.sniMain = cfg.getSniMain();
-                this.pinHex = cfg.getCertPinSha256();
-                this.tokenHex = cfg.getTokenHex();
-            }
+            if (cfg.isConfigured()) this.inputServer = cfg.getServerUrl();
         }
 
         void start() {
             activity.setTitle(WIZARD_TITLE);
-            showStep1Server();
+            showPairForm();
         }
 
         boolean handleBack() {
             if (busy) return true;
-            if (finishedSuccess) {
-                openSettingsAndFinish();
-                return true;
-            }
             if (step == 2) {
-                errorText = null;
-                showStep1Server();
-                return true;
-            }
-            if (step == 3) {
-                errorText = null;
-                showStep2Cert(false);
-                return true;
-            }
-            if (step == 4) {
-                errorText = null;
-                showStep3Token();
+                // Setup carries on in the background.
+                openSettingsAndFinish();
                 return true;
             }
             return false;
         }
 
-        // --- Step 1: Server URL ---
-        private void showStep1Server() {
+        // --- Step 1: server address + pairing code ---
+        private void showPairForm() {
             step = 1;
-            LinearLayout root = createPageLayout("Step 1 of 4", "Bridge server");
-            addBody(root, "Enter your iMessage server URL (host or host:port).");
+            LinearLayout root = createPageLayout("Step 1 of 2", "Pair with your server");
+            addBody(root, "On your server, run: imsg-server pair");
 
-            final EditText urlField = addEditField(root, "imsg.example.com:443", inputUrl,
+            final EditText serverField = addEditField(root, "imsg.example.com", inputServer,
                     InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+            final EditText codeField = addEditField(root, "Pairing code", inputCode,
+                    InputType.TYPE_CLASS_NUMBER);
 
-            if (!TextUtils.isEmpty(errorText)) {
-                addError(root, errorText);
-            }
+            if (!TextUtils.isEmpty(errorText)) addError(root, errorText);
 
-            Button nextBtn = addPrimaryButton(root, "Next", new View.OnClickListener() {
+            addPrimaryButton(root, "Pair", new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    String raw = urlField.getText().toString().trim();
-                    WaveIMessageConfig.ParsedSetup parsed = WaveIMessageConfig.parseServerInput(raw);
-                    if (parsed == null) {
-                        errorText = "Enter a valid server address, e.g. myserver.com or myserver.com:443";
-                        inputUrl = raw;
-                        showStep1Server();
+                    inputServer = serverField.getText().toString().trim();
+                    inputCode = codeField.getText().toString().trim();
+                    WaveIMessageConfig.ServerAddress addr = WaveIMessageConfig.parseServerInput(inputServer);
+                    if (addr == null) {
+                        errorText = "Enter the server name, e.g. imsg.example.com";
+                        showPairForm();
                         return;
                     }
-                    inputUrl = parsed.displayUrl;
-                    hostName = parsed.host;
-                    port = parsed.port;
-                    sniMain = parsed.sni;
-                    if (!TextUtils.isEmpty(parsed.token)) tokenHex = parsed.token;
-                    if (!TextUtils.isEmpty(parsed.pin)) pinHex = parsed.pin;
-                    errorText = null;
-                    showStep2Cert(true);
-                }
-            });
-
-            addSecondaryButton(root, "Load from file", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    WaveIMessageConfig.ParsedSetup file = WaveIMessageConfig.loadSetupFile();
-                    if (file == null) {
-                        Toast.makeText(activity, "Put setup in /sdcard/imessage.txt", Toast.LENGTH_LONG).show();
+                    if (TlsHelper.digitsOnly(inputCode).length() < 6) {
+                        errorText = "Enter the code shown by imsg-server pair";
+                        showPairForm();
                         return;
                     }
-                    if (!TextUtils.isEmpty(file.host)) {
-                        hostName = file.host;
-                        port = file.port;
-                        inputUrl = file.displayUrl;
-                    }
-                    if (!TextUtils.isEmpty(file.sni)) sniMain = file.sni;
-                    if (!TextUtils.isEmpty(file.token)) tokenHex = file.token;
-                    if (!TextUtils.isEmpty(file.pin)) pinHex = file.pin;
                     errorText = null;
-                    Toast.makeText(activity, "Loaded from imessage.txt", Toast.LENGTH_SHORT).show();
-                    if (!TextUtils.isEmpty(hostName)) {
-                        showStep2Cert(true);
-                    } else {
-                        showStep1Server();
-                    }
+                    pair(addr.host, addr.port, inputCode);
                 }
             });
-
             addSecondaryButton(root, "Cancel", new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    activity.finish();
+                    if (cfg.isConfigured()) openSettingsAndFinish();
+                    else activity.finish();
                 }
             });
-
-            setPage(root, TextUtils.isEmpty(inputUrl) ? urlField : nextBtn);
+            setPage(root, TextUtils.isEmpty(inputServer) ? serverField : codeField);
         }
 
-        // --- Step 2: Verify TLS certificate (auto-fetch + trust or manual pin) ---
-        private void showStep2Cert(boolean fetchNow) {
-            step = 2;
-            if (fetchNow) {
-                busy = true;
-                LinearLayout loading = createPageLayout("Step 2 of 4", "Checking server");
-                addBody(loading, "Connecting to " + hostName + ":" + port + "...");
-                ProgressBar pb = new ProgressBar(activity);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                lp.gravity = Gravity.CENTER_HORIZONTAL;
-                lp.topMargin = dp(8);
-                loading.addView(pb, lp);
-                setPage(loading, null);
-
-                final String h = hostName;
-                final int p = port;
-                final String sni = !TextUtils.isEmpty(sniMain) ? sniMain : hostName;
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            final TlsHelper.ServerCertInfo info = TlsHelper.fetchServerCertInfo(h, p, sni, 10_000);
-                            main.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if (isGone()) return;
-                                    busy = false;
-                                    fetchedPinHex = info.sha256Hex;
-                                    fetchedPinColon = info.sha256Colon;
-                                    fetchedSubject = info.subject;
-                                    fetchedTlsProto = info.tlsProtocol;
-                                    errorText = null;
-                                    showStep2Cert(false);
-                                }
-                            });
-                        } catch (final Exception e) {
-                            main.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if (isGone()) return;
-                                    busy = false;
-                                    fetchedPinHex = null;
-                                    fetchedPinColon = null;
-                                    String msg = e.getMessage();
-                                    errorText = "Could not reach server: " + (TextUtils.isEmpty(msg) ? e.getClass().getSimpleName() : msg);
-                                    showStep2Cert(false);
-                                }
-                            });
-                        }
-                    }
-                }, "wave-imsg-cert").start();
-                return;
-            }
-
-            LinearLayout root = createPageLayout("Step 2 of 4", "Verify certificate");
-            if (!TextUtils.isEmpty(fetchedPinHex)) {
-                boolean matchesPreloaded = !TextUtils.isEmpty(pinHex) && pinHex.equalsIgnoreCase(fetchedPinHex);
-                addBody(root, hostName + ":" + port + " (" + fetchedTlsProto + ")");
-                if (matchesPreloaded) {
-                    addSuccess(root, "Certificate matches setup pin.");
-                } else {
-                    addBody(root, "Confirm this SHA-256 fingerprint matches your server:");
-                }
-                addMonoBox(root, formatFingerprintBlocks(fetchedPinColon));
-
-                Button trustBtn = addPrimaryButton(root, "Trust & Continue", new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        pinHex = fetchedPinHex;
-                        errorText = null;
-                        showStep3Token();
-                    }
-                });
-                addSecondaryButton(root, "Enter pin manually", new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        showManualPinDialog();
-                    }
-                });
-                addSecondaryButton(root, "Back", new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        errorText = null;
-                        showStep1Server();
-                    }
-                });
-                setPage(root, trustBtn);
-            } else {
-                addError(root, TextUtils.isEmpty(errorText) ? "Could not fetch certificate." : errorText);
-                Button retryBtn = addPrimaryButton(root, "Retry", new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        showStep2Cert(true);
-                    }
-                });
-                addSecondaryButton(root, "Enter pin manually", new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        showManualPinDialog();
-                    }
-                });
-                addSecondaryButton(root, "Back", new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        errorText = null;
-                        showStep1Server();
-                    }
-                });
-                setPage(root, retryBtn);
-            }
-        }
-
-        private void showManualPinDialog() {
-            final EditText input = new EditText(activity);
-            input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-            input.setHint("64-char SHA-256 hex");
-            if (!TextUtils.isEmpty(pinHex)) input.setText(pinHex);
-            new AlertDialog.Builder(activity)
-                    .setTitle("Certificate SHA-256")
-                    .setView(input)
-                    .setPositiveButton("Use pin", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface d, int w) {
-                            String raw = input.getText().toString().trim();
-                            if (!WaveIMessageConfig.isValidPinHex(raw)) {
-                                Toast.makeText(activity, "Invalid SHA-256 (need 64 hex chars)", Toast.LENGTH_LONG).show();
-                                return;
-                            }
-                            pinHex = WaveIMessageConfig.normalizePinHex(raw);
-                            errorText = null;
-                            showStep3Token();
-                        }
-                    })
-                    .setNegativeButton("Cancel", null)
-                    .show();
-        }
-
-        // --- Step 3: Access Token ---
-        private void showStep3Token() {
-            step = 3;
-            LinearLayout root = createPageLayout("Step 3 of 4", "Access token");
-            addBody(root, "Enter the client token from imsg-server add-client.");
-
-            final EditText tokenField = addEditField(root, "Client hex token", tokenHex,
-                    InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-
-            if (!TextUtils.isEmpty(errorText)) {
-                addError(root, errorText);
-            }
-
-            Button connectBtn = addPrimaryButton(root, "Connect", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    String raw = tokenField.getText().toString().replaceAll("\\s+", "");
-                    if (raw.isEmpty()) {
-                        errorText = "Enter the client token from your server.";
-                        tokenHex = "";
-                        showStep3Token();
-                        return;
-                    }
-                    tokenHex = raw;
-                    errorText = null;
-                    showStep4Connect();
-                }
-            });
-
-            addSecondaryButton(root, "Load token from file", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    WaveIMessageConfig.ParsedSetup file = WaveIMessageConfig.loadSetupFile();
-                    if (file == null || TextUtils.isEmpty(file.token)) {
-                        Toast.makeText(activity, "No token found in /sdcard/imessage.txt", Toast.LENGTH_LONG).show();
-                        return;
-                    }
-                    tokenHex = file.token;
-                    errorText = null;
-                    showStep3Token();
-                }
-            });
-
-            addSecondaryButton(root, "Back", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    errorText = null;
-                    showStep2Cert(false);
-                }
-            });
-
-            setPage(root, TextUtils.isEmpty(tokenHex) ? tokenField : connectBtn);
-        }
-
-        // --- Step 4: Verify credentials, save, start service, show handles ---
-        private void showStep4Connect() {
-            step = 4;
+        private void pair(final String h, final int p, final String code) {
             busy = true;
-            finishedSuccess = false;
-
-            LinearLayout loading = createPageLayout("Step 4 of 4", "Connecting");
-            addBody(loading, "Signing in to " + hostName + ":" + port + "...");
-            ProgressBar pb = new ProgressBar(activity);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.gravity = Gravity.CENTER_HORIZONTAL;
-            lp.topMargin = dp(8);
-            loading.addView(pb, lp);
+            LinearLayout loading = createPageLayout("Step 1 of 2", "Pairing");
+            addBody(loading, "Connecting to " + (p == 443 ? h : h + ":" + p) + "...");
+            addSpinner(loading);
             setPage(loading, null);
-
-            final String h = hostName;
-            final int p = port;
-            final String sni = !TextUtils.isEmpty(sniMain) ? sniMain : hostName;
-            final String tok = tokenHex;
-            final String pin = pinHex;
 
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    final String err = TlsHelper.verifyCredentials(h, p, sni, tok, pin, 12_000);
-                    if (err != null) {
-                        main.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (isGone()) return;
-                                busy = false;
-                                errorText = err;
-                                showStep4Failed(err);
-                            }
-                        });
-                        return;
+                    String err = null;
+                    try {
+                        TlsHelper.PairResult r = TlsHelper.pair(h, p, code, 15_000);
+                        cfg.savePairing(h, p, r.clientId, r.tokenHex);
+                        host.startOrRestart();
+                    } catch (Exception e) {
+                        String m = e.getMessage();
+                        err = TextUtils.isEmpty(m) ? e.getClass().getSimpleName() : m;
                     }
-
-                    // Credentials verified! Save setup and start persistent foreground host.
-                    cfg.saveSetup(inputUrl, h, p, sni, tok, pin);
-                    host.startOrRestart();
-
-                    // Wait up to 3.5s for main connection + HANDLES to populate so we can display them.
-                    long end = android.os.SystemClock.elapsedRealtime() + 3500L;
-                    while (android.os.SystemClock.elapsedRealtime() < end) {
-                        if (host.getStatus() == PushClient.Status.CONNECTED && !cfg.getHandles().isEmpty()) {
-                            break;
-                        }
-                        try {
-                            Thread.sleep(200L);
-                        } catch (InterruptedException ignored) {
-                            break;
-                        }
-                    }
-
+                    final String error = err;
                     main.post(new Runnable() {
                         @Override
                         public void run() {
                             if (isGone()) return;
                             busy = false;
-                            finishedSuccess = true;
-                            showStep4Done();
+                            if (error != null) {
+                                errorText = "Pairing failed: " + error;
+                                inputCode = "";
+                                showPairForm();
+                            } else {
+                                showSetup();
+                            }
                         }
                     });
                 }
-            }, "wave-imsg-verify").start();
+            }, "wave-imsg-pair").start();
         }
 
-        private void showStep4Failed(String err) {
-            LinearLayout root = createPageLayout("Step 4 of 4", "Connection failed");
-            addError(root, err);
-            Button backBtn = addPrimaryButton(root, "Edit token", new View.OnClickListener() {
+        // --- Step 2: phone-number setup, driven by the server ---
+        private void showSetup() {
+            step = 2;
+            shownKey = null;
+            renderSetup();
+            main.postDelayed(new Runnable() {
                 @Override
-                public void onClick(View v) {
-                    errorText = null;
-                    showStep3Token();
+                public void run() {
+                    if (isGone() || step != 2) return;
+                    renderSetup();
+                    main.postDelayed(this, 1000L);
                 }
-            });
-            addSecondaryButton(root, "Retry", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    showStep4Connect();
-                }
-            });
-            addSecondaryButton(root, "Start over", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    errorText = null;
-                    showStep1Server();
-                }
-            });
-            setPage(root, backBtn);
+            }, 1000L);
         }
 
-        private void showStep4Done() {
-            LinearLayout root = createPageLayout("All set", "iMessage is ready");
-            addSuccess(root, "Connected to " + cfg.getServerUrl());
-            addBody(root, "Handles: " + cfg.formatHandlesSummary());
-            addBody(root, "Low-power dynamic keepalive is active in the background.");
+        private void renderSetup() {
+            boolean connected = host.getStatus() == PushClient.Status.CONNECTED;
+            int state = host.getSetupState();
+            String detail = host.getSetupDetail();
+            String key = connected + "/" + state + "/" + detail;
+            if (key.equals(shownKey)) return;
+            shownKey = key;
 
-            Button doneBtn = addPrimaryButton(root, "Done", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    openSettingsAndFinish();
-                }
-            });
-            setPage(root, doneBtn);
+            LinearLayout root;
+            View focus = null;
+            if (state == Body.SETUP_READY) {
+                root = createPageLayout("All set", "iMessage is ready");
+                addSuccess(root, TextUtils.isEmpty(detail) ? cfg.formatHandlesSummary() : detail);
+                addBody(root, "Messages to iPhones now go as iMessage.");
+                focus = addPrimaryButton(root, "Done", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        openSettingsAndFinish();
+                    }
+                });
+            } else if (state == Body.SETUP_FAILED) {
+                root = createPageLayout("Step 2 of 2", "Setup failed");
+                addError(root, TextUtils.isEmpty(detail) ? "Registration failed." : detail);
+                focus = addPrimaryButton(root, "Try again", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        host.sendSimInfo();
+                        shownKey = null;
+                        renderSetup();
+                    }
+                });
+                addSecondaryButton(root, "Close", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        openSettingsAndFinish();
+                    }
+                });
+            } else {
+                root = createPageLayout("Step 2 of 2", "Setting up your number");
+                String msg = !connected ? "Connecting to your server..."
+                        : (TextUtils.isEmpty(detail) ? "Waiting for the server..." : detail);
+                addBody(root, msg);
+                addSpinner(root);
+                addBody(root, "This can take a minute. You can leave this screen.");
+            }
+            setPage(root, focus);
+        }
+
+        private void addSpinner(LinearLayout parent) {
+            ProgressBar pb = new ProgressBar(activity);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.gravity = Gravity.CENTER_HORIZONTAL;
+            lp.topMargin = dp(8);
+            parent.addView(pb, lp);
         }
 
         private void openSettingsAndFinish() {
@@ -911,18 +656,5 @@ public final class WaveIMessageSettings {
             return activity.isFinishing() || activity.isDestroyed();
         }
 
-        private static String formatFingerprintBlocks(String colonHex) {
-            if (TextUtils.isEmpty(colonHex)) return "";
-            // 32 bytes -> 4 lines of 8 bytes each (23 chars per line) fits cleanly on 240px screen.
-            String[] bytes = colonHex.split(":");
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < bytes.length; i++) {
-                if (i > 0) {
-                    sb.append((i % 8 == 0) ? '\n' : ':');
-                }
-                sb.append(bytes[i]);
-            }
-            return sb.toString();
-        }
     }
 }

@@ -3,7 +3,7 @@
   "type": "module",
   "name": "Messages Improved",
   "summary": "Group MMS fixes, a faster inbox and iMessage",
-  "description": "Improves the stock Messages app and its providers. Group MMS goes to the right thread, and conversations open faster. Optional iMessage through your own bridge server, set up under Settings > Advanced settings, with SMS fallback.",
+  "description": "Improves the stock Messages app and its providers. Group MMS goes to the right thread, and conversations open faster. Optional iMessage through your own imsg-server: pair with a code under Settings > Advanced settings and the phone registers its number, with SMS fallback.",
   "author": "thooton",
   "homepage": "https://github.com/thooton/wave_packages/tree/master/mods/messages",
   "requires": {

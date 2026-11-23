@@ -30,12 +30,7 @@ public final class PushClient {
     public static final class Config {
         public String mainHost = "127.0.0.1";
         public int mainPort = 443;
-        public String probeHost = null;
-        public int probePort = 0;
-        public String sniMain = "push.example.com";
-        public String sniProbe = "probe.example.com";
         public String tokenHex;
-        public String pinnedSha256Hex;
         public File stateFile;
         public double probeScale = 1.0;
         public boolean autoProbe = true;
@@ -54,7 +49,6 @@ public final class PushClient {
 
     private final Config config;
     private final Listener listener;
-    private final TlsHelper tlsHelper;
     private final ClientState state;
     private final WakeupClock clock;
     private final SecureRandom rng = new SecureRandom();
@@ -90,13 +84,9 @@ public final class PushClient {
         if (config.tokenHex == null || config.tokenHex.isEmpty()) {
             throw new IllegalArgumentException("tokenHex is required");
         }
-        if (config.pinnedSha256Hex == null || config.pinnedSha256Hex.isEmpty()) {
-            throw new IllegalArgumentException("pinnedSha256Hex is required");
-        }
         this.config = config;
         this.listener = listener;
         this.clock = config.wakeupClock != null ? config.wakeupClock : new WakeupClock.DefaultClock();
-        this.tlsHelper = new TlsHelper(config.pinnedSha256Hex);
         this.state = ClientState.loadOrDefault(config.stateFile);
     }
 
@@ -360,7 +350,7 @@ public final class PushClient {
             try {
                 log("Connecting main to " + config.mainHost + ":" + config.mainPort
                         + " (interval=" + connectInterval + "s, net=" + netKey + ")");
-                socket = tlsHelper.connect(config.mainHost, config.mainPort, config.sniMain, 10_000, 10_000);
+                socket = TlsHelper.connect(config.mainHost, config.mainPort, 10_000, 10_000);
                 InputStream in = socket.getInputStream();
                 OutputStream out = socket.getOutputStream();
 
@@ -722,19 +712,14 @@ public final class PushClient {
             probeRunning = true;
         }
 
-        final String pHost = (config.probeHost != null && !config.probeHost.isEmpty())
-                ? config.probeHost : config.mainHost;
-        final int pPort = config.probePort > 0 ? config.probePort : config.mainPort;
 
         Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
                     Prober prober = new Prober(
-                            tlsHelper,
-                            pHost,
-                            pPort,
-                            config.sniProbe,
+                            config.mainHost,
+                            config.mainPort,
                             config.tokenHex,
                             config.probeScale,
                             clock,

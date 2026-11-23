@@ -22,6 +22,9 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.PowerManager;
 import android.os.SystemClock;
+import android.provider.Telephony;
+import android.telephony.SmsManager;
+import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
@@ -79,6 +82,12 @@ public final class WaveIMessageHost implements PushClient.Listener {
     private PushClient client;
     private boolean netCallbackRegistered;
     private boolean alarmReceiverRegistered;
+    private boolean dataSmsReceiverRegistered;
+
+    // Phone-number setup, driven by the server (Body.SETUP_*; -1 = not heard yet).
+    private volatile int setupState = -1;
+    private volatile String setupDetail = "";
+    private volatile long lastSimInfoElapsedMs = -1L;
 
     private volatile PushClient.Status status = PushClient.Status.OFFLINE;
     private volatile String statusDetail = "Off";
@@ -305,16 +314,12 @@ public final class WaveIMessageHost implements PushClient.Listener {
         }
         ensureAlarmReceiverRegistered();
         ensureNetworkCallbackRegistered();
+        ensureDataSmsReceiverRegistered();
 
         PushClient.Config pc = new PushClient.Config();
         pc.mainHost = config.getHost();
         pc.mainPort = config.getPort();
-        pc.probeHost = config.getHost();
-        pc.probePort = config.getPort();
-        pc.sniMain = config.getSniMain();
-        pc.sniProbe = config.getSniProbe();
         pc.tokenHex = config.getTokenHex();
-        pc.pinnedSha256Hex = config.getCertPinSha256();
         pc.stateFile = config.stateFile();
         pc.autoProbe = true;
         String probeScaleProp = Wave.prop("debug.wave.imsg.probe_scale");
@@ -480,6 +485,13 @@ public final class WaveIMessageHost implements PushClient.Listener {
         if (!config.isEnabled()) return "Off";
         switch (status) {
             case CONNECTED: {
+                int st = setupState;
+                if (st == Body.SETUP_FAILED) {
+                    return "Setup failed: " + setupDetail;
+                }
+                if (st == Body.SETUP_NEED_SIM || st == Body.SETUP_WORKING || st == Body.SETUP_WAITING_SMS) {
+                    return "Setting up: " + setupDetail;
+                }
                 int iv = getCurrentIntervalSeconds();
                 String ivStr = formatInterval(iv);
                 if (isProbeRunning()) {
@@ -687,6 +699,10 @@ public final class WaveIMessageHost implements PushClient.Listener {
         switch (body.kind) {
             case Body.KIND_HANDLES:
                 config.setHandles(body.handles, body.preferredHandle);
+                if (body.handles != null && !body.handles.isEmpty()) {
+                    setupState = Body.SETUP_READY;
+                    setupDetail = WaveIMessageConfig.stripHandlePrefix(body.handles.get(0));
+                }
                 writeStatusFile();
                 break;
             case Body.KIND_SEND_RESULT:
@@ -706,8 +722,153 @@ public final class WaveIMessageHost implements PushClient.Listener {
             case Body.KIND_TARGET_STATUS:
                 handleTargetStatus(body);
                 break;
+            case Body.KIND_SETUP_STATUS:
+                handleSetupStatus(body.receiptKind, body.text);
+                break;
+            case Body.KIND_SEND_REG_SMS:
+                sendRegistrationSms(body.target, body.text);
+                break;
             default:
                 break;
+        }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Phone-number setup: the server asks for SIM info, has us text Apple's gateway, and gets
+    // Apple's REG-RESP reply back from us.
+
+    public int getSetupState() {
+        return setupState;
+    }
+
+    public String getSetupDetail() {
+        return setupDetail;
+    }
+
+    private void handleSetupStatus(int state, String detail) {
+        setupState = state;
+        setupDetail = detail == null ? "" : detail;
+        if (state == Body.SETUP_NEED_SIM) {
+            // Start registration automatically, but don't re-text Apple on every reconnect.
+            if (lastSimInfoElapsedMs < 0 || SystemClock.elapsedRealtime() - lastSimInfoElapsedMs > 5L * 60L * 1000L) {
+                sendSimInfo();
+            }
+        } else if (state == Body.SETUP_READY) {
+            refreshHandles();
+        }
+        writeStatusFile();
+    }
+
+    /** Sends this phone's SIM details so the server can start (or retry) registration. */
+    public void sendSimInfo() {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                String mccmnc = "";
+                String number = null;
+                try {
+                    TelephonyManager tm = (TelephonyManager) ctx.getSystemService(Context.TELEPHONY_SERVICE);
+                    if (tm != null) {
+                        mccmnc = tm.getSimOperator();
+                        String raw = tm.getLine1Number();
+                        if (!TextUtils.isEmpty(raw)) number = WaveIMessageConfig.toE164(ctx, raw);
+                    }
+                } catch (Throwable t) {
+                    Log.w(TAG, "SIM info unavailable", t);
+                }
+                if (mccmnc == null) mccmnc = "";
+                lastSimInfoElapsedMs = SystemClock.elapsedRealtime();
+                setupState = Body.SETUP_WORKING;
+                setupDetail = "Checking SIM...";
+                PushClient c = client;
+                try {
+                    if (c != null) c.sendBody(Body.simInfo(mccmnc, number));
+                } catch (Throwable t) {
+                    Log.w(TAG, "send SIM_INFO failed", t);
+                }
+            }
+        });
+    }
+
+    private void sendRegistrationSms(String gateway, String text) {
+        setupState = Body.SETUP_WAITING_SMS;
+        setupDetail = "Texting Apple...";
+        try {
+            SmsManager.getDefault().sendTextMessage(gateway, null, text, null, null);
+            Log.i(TAG, "sent registration SMS to " + gateway);
+        } catch (Throwable t) {
+            Log.w(TAG, "registration SMS to " + gateway + " failed", t);
+            setupState = Body.SETUP_FAILED;
+            setupDetail = "Couldn't send the registration text: " + t.getMessage();
+        }
+    }
+
+    /**
+     * SmsReceiverService.handleSmsReceived hook. Returns true if the SMS is Apple's REG-RESP, which
+     * goes to the server instead of the inbox.
+     */
+    public static boolean onIncomingSms(Context c, SmsMessage[] msgs) {
+        WaveIMessageHost h = sInstance;
+        if (h == null || msgs == null) return false;
+        StringBuilder sb = new StringBuilder();
+        for (SmsMessage m : msgs) {
+            if (m == null) continue;
+            String part = m.getDisplayMessageBody();
+            if (part != null) sb.append(part);
+        }
+        return h.captureRegResp(sb.toString());
+    }
+
+    private boolean captureRegResp(String text) {
+        if (text == null) return false;
+        int i = text.indexOf("REG-RESP?");
+        if (i < 0) return false;
+        final String resp = text.substring(i).trim();
+        Log.i(TAG, "captured Apple's REG-RESP (" + resp.length() + " chars)");
+        setupState = Body.SETUP_WORKING;
+        setupDetail = "Registering your number...";
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                PushClient c = client;
+                try {
+                    if (c != null) c.sendBody(Body.regResp(resp));
+                } catch (Throwable t) {
+                    Log.w(TAG, "send REG_RESP failed", t);
+                }
+            }
+        });
+        return true;
+    }
+
+    // Some carriers (e.g. AT&T) deliver REG-RESP as a data SMS to an application port.
+    private final BroadcastReceiver dataSmsReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            try {
+                SmsMessage[] msgs = Telephony.Sms.Intents.getMessagesFromIntent(intent);
+                if (msgs == null) return;
+                for (SmsMessage m : msgs) {
+                    if (m == null) continue;
+                    byte[] data = m.getUserData();
+                    if (data != null && captureRegResp(new String(data, StandardCharsets.ISO_8859_1))) return;
+                    if (captureRegResp(m.getMessageBody())) return;
+                }
+            } catch (Throwable t) {
+                Log.w(TAG, "data SMS parse failed", t);
+            }
+        }
+    };
+
+    private void ensureDataSmsReceiverRegistered() {
+        if (dataSmsReceiverRegistered) return;
+        try {
+            IntentFilter f = new IntentFilter("android.intent.action.DATA_SMS_RECEIVED");
+            f.addDataScheme("sms");
+            ctx.registerReceiver(dataSmsReceiver, f);
+            dataSmsReceiverRegistered = true;
+        } catch (Throwable t) {
+            Log.w(TAG, "registerReceiver data SMS", t);
         }
     }
 

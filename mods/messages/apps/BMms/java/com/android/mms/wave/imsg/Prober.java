@@ -61,10 +61,8 @@ public final class Prober {
         FAIL
     }
 
-    private final TlsHelper tlsHelper;
     private final String probeHost;
     private final int probePort;
-    private final String sniHost;
     private final String tokenHex;
     private final double probeScale;
     private final WakeupClock clock;
@@ -73,20 +71,16 @@ public final class Prober {
     private final SecureRandom rng = new SecureRandom();
 
     public Prober(
-            TlsHelper tlsHelper,
             String probeHost,
             int probePort,
-            String sniHost,
             String tokenHex,
             double probeScale,
             WakeupClock clock,
             Object sleepLock,
             Logger logger
     ) {
-        this.tlsHelper = tlsHelper;
         this.probeHost = probeHost;
         this.probePort = probePort;
-        this.sniHost = sniHost;
         this.tokenHex = tokenHex;
         this.probeScale = probeScale > 0.0 ? probeScale : 1.0;
         this.clock = clock != null ? clock : new WakeupClock.DefaultClock();
@@ -203,7 +197,7 @@ public final class Prober {
     private SingleOutcome probeSingle(int intervalS) throws InterruptedException {
         SSLSocket socket = null;
         try {
-            socket = tlsHelper.connect(probeHost, probePort, sniHost, 10_000, 10_000);
+            socket = TlsHelper.connect(probeHost, probePort, 10_000, 10_000);
             InputStream in = socket.getInputStream();
             OutputStream out = socket.getOutputStream();
 
