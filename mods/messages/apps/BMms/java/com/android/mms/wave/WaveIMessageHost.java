@@ -89,6 +89,15 @@ public final class WaveIMessageHost implements PushClient.Listener {
     private volatile String setupDetail = "";
     private volatile long lastSimInfoElapsedMs = -1L;
 
+    // Registration / renewal status pushed by the server via REG_INFO.
+    private volatile boolean hasRegInfo = false;
+    private volatile long authExpiresAtMs = 0L;
+    private volatile long nextReregAtMs = 0L;
+    private volatile long renewAtMs = 0L;
+    private volatile boolean providerConnected = false;
+    private volatile int regState = -1;
+    private volatile String regDetail = "";
+
     private volatile PushClient.Status status = PushClient.Status.OFFLINE;
     private volatile String statusDetail = "Off";
     private volatile int currentIntervalS = 60;
@@ -274,6 +283,22 @@ public final class WaveIMessageHost implements PushClient.Listener {
         });
     }
 
+    public void refreshRegInfo() {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                PushClient c = client;
+                if (c != null && c.isConnected()) {
+                    try {
+                        c.requestRegInfo();
+                    } catch (Throwable t) {
+                        Log.w(TAG, "requestRegInfo failed", t);
+                    }
+                }
+            }
+        });
+    }
+
     private void startHostService(String cmd) {
         try {
             Intent i = new Intent(ACTION_HOST).setClassName(ctx.getPackageName(), HOST_SERVICE);
@@ -360,6 +385,15 @@ public final class WaveIMessageHost implements PushClient.Listener {
         wakeupClock.releaseWakeLock();
         status = PushClient.Status.OFFLINE;
         statusDetail = config.isConfigured() ? "Off" : "Not set up";
+        if (!config.isConfigured()) {
+            hasRegInfo = false;
+            authExpiresAtMs = 0L;
+            nextReregAtMs = 0L;
+            renewAtMs = 0L;
+            providerConnected = false;
+            regState = -1;
+            regDetail = "";
+        }
         WaveIMessageUi.refreshActiveComposeHint();
     }
 
@@ -486,11 +520,14 @@ public final class WaveIMessageHost implements PushClient.Listener {
         switch (status) {
             case CONNECTED: {
                 int st = setupState;
-                if (st == Body.SETUP_FAILED) {
-                    return "Setup failed: " + setupDetail;
-                }
-                if (st == Body.SETUP_NEED_SIM || st == Body.SETUP_WORKING || st == Body.SETUP_WAITING_SMS) {
-                    return "Setting up: " + setupDetail;
+                boolean initialSetup = config.getHandles().isEmpty();
+                if (initialSetup) {
+                    if (st == Body.SETUP_FAILED) {
+                        return "Setup failed: " + setupDetail;
+                    }
+                    if (st == Body.SETUP_NEED_SIM || st == Body.SETUP_WORKING || st == Body.SETUP_WAITING_SMS) {
+                        return "Setting up: " + setupDetail;
+                    }
                 }
                 int iv = getCurrentIntervalSeconds();
                 String ivStr = formatInterval(iv);
@@ -508,6 +545,72 @@ public final class WaveIMessageHost implements PushClient.Listener {
             default:
                 return TextUtils.isEmpty(statusDetail) ? "Offline" : statusDetail;
         }
+    }
+
+    public boolean hasRegInfo() {
+        return hasRegInfo;
+    }
+
+    public boolean isProviderConnected() {
+        return providerConnected;
+    }
+
+    public long getAuthExpiresAtMs() {
+        return authExpiresAtMs;
+    }
+
+    public long getRenewAtMs() {
+        return renewAtMs;
+    }
+
+    public String formatRenewalSummary() {
+        if (!config.isConfigured()) return "Not set up";
+        if (!config.isEnabled()) return "Off";
+        if (!hasRegInfo) {
+            return status == PushClient.Status.CONNECTED ? "Checking..." : "Offline";
+        }
+        if (regState == Body.REG_STATE_RENEWING) {
+            return "Renewing...";
+        }
+        if (regState == Body.REG_STATE_FAILED) {
+            return TextUtils.isEmpty(regDetail) ? "Renewal failed" : ("Failed: " + regDetail);
+        }
+        if (regState == Body.REG_STATE_NEEDS_PHONE) {
+            return config.getHandles().isEmpty() ? "Waiting for setup" : "Renewal needed";
+        }
+        String daysText = formatDaysUntil(renewAtMs);
+        if (!providerConnected) {
+            return daysText != null ? ("Relay offline (renews in " + daysText + ")") : "Relay offline";
+        }
+        if (renewAtMs > 0L) {
+            long diff = renewAtMs - System.currentTimeMillis();
+            if (diff <= 0L) {
+                return "Renewal due soon";
+            }
+            return "Renews automatically in " + formatDaysCount(diff);
+        }
+        if (authExpiresAtMs > 0L) {
+            long diff = authExpiresAtMs - System.currentTimeMillis();
+            if (diff <= 0L) {
+                return "Expired";
+            }
+            return "Expires in " + formatDaysCount(diff);
+        }
+        return "Active";
+    }
+
+    private static String formatDaysUntil(long targetMs) {
+        if (targetMs <= 0L) return null;
+        long diff = targetMs - System.currentTimeMillis();
+        if (diff <= 0L) return "< 1 day";
+        return formatDaysCount(diff);
+    }
+
+    private static String formatDaysCount(long diffMs) {
+        final long dayMs = 86_400_000L;
+        if (diffMs < dayMs) return "< 1 day";
+        long days = (diffMs + dayMs - 1L) / dayMs;
+        return days == 1L ? "1 day" : (days + " days");
     }
 
     public static String formatInterval(int seconds) {
@@ -666,6 +769,7 @@ public final class WaveIMessageHost implements PushClient.Listener {
         updateForegroundNotification();
         writeStatusFile();
         refreshHandles();
+        refreshRegInfo();
         WaveIMessageSend.drainQueuedAsync(ctx);
         WaveIMessageUi.refreshActiveComposeHint();
     }
@@ -728,6 +832,9 @@ public final class WaveIMessageHost implements PushClient.Listener {
             case Body.KIND_SEND_REG_SMS:
                 sendRegistrationSms(body.target, body.text);
                 break;
+            case Body.KIND_REG_INFO:
+                handleRegInfo(body);
+                break;
             default:
                 break;
         }
@@ -745,6 +852,18 @@ public final class WaveIMessageHost implements PushClient.Listener {
         return setupDetail;
     }
 
+    private void handleRegInfo(Body body) {
+        hasRegInfo = true;
+        authExpiresAtMs = body.authExpiresAtMs;
+        nextReregAtMs = body.nextReregAtMs;
+        renewAtMs = body.renewAtMs;
+        providerConnected = body.providerConnected;
+        regState = body.regState;
+        regDetail = body.text == null ? "" : body.text;
+        updateForegroundNotification();
+        writeStatusFile();
+    }
+
     private void handleSetupStatus(int state, String detail) {
         setupState = state;
         setupDetail = detail == null ? "" : detail;
@@ -755,6 +874,7 @@ public final class WaveIMessageHost implements PushClient.Listener {
             }
         } else if (state == Body.SETUP_READY) {
             refreshHandles();
+            refreshRegInfo();
         }
         writeStatusFile();
     }
@@ -981,6 +1101,10 @@ public final class WaveIMessageHost implements PushClient.Listener {
             sb.append("interval_s=").append(getCurrentIntervalSeconds()).append('\n');
             sb.append("network=").append(getActiveNetworkKey()).append('\n');
             sb.append("handles=").append(config.formatHandlesSummary()).append('\n');
+            sb.append("reg_state=").append(regState).append('\n');
+            sb.append("provider_connected=").append(providerConnected).append('\n');
+            sb.append("renew_at_ms=").append(renewAtMs).append('\n');
+            sb.append("auth_expires_at_ms=").append(authExpiresAtMs).append('\n');
             File f = new File(ctx.getFilesDir(), "imessage_status.txt");
             FileOutputStream fos = new FileOutputStream(f);
             try {

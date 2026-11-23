@@ -21,9 +21,14 @@ resources, or conversation UI.
         (`SmsReceiverService.handleSmsReceived` hook). The screen follows `SETUP_STATUS` until
         "iMessage is ready" with the registered number.
    - Once configured, opening **Apple (iMessage) settings** displays the settings screen: enable
-     switch, live status + learned keepalive interval, registered Apple handles, SMS fallback
-     toggle, server/connection details (with manual keepalive probe), reconnect, pair again, and
-     clear setup.
+     switch, live status + learned keepalive interval, registered Apple handles, automatic renewal
+     status (days until renewal, renewing state, or built-in relay offline), SMS fallback toggle,
+     server/connection details (with manual keepalive probe), reconnect, pair again, and clear
+     setup.
+   - Automatic renewal status uses two backwards-compatible application bodies (`0x0E REG_INFO_REQ`
+     and `0x0F REG_INFO`) without bumping `PROTOCOL_VERSION`. The server pushes `REG_INFO` on main
+     connect and whenever the renewal or relay state changes; during background SMS renewal the
+     phone keeps its main status summary unchanged while the Renewal row shows `"Renewing..."`.
 
 2. **Low-power persistent TCP connection (`wave/imsg/*` + `WaveIMessageHost`)**:
    - Reuses the dormant `RcsMessageStatusService` as a sticky foreground service with a silent

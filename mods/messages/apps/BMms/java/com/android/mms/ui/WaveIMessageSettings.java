@@ -145,6 +145,12 @@ public final class WaveIMessageSettings {
         handlesPref.setTitle("Apple handles");
         screen.addPreference(handlesPref);
 
+        final Preference renewalPref = new Preference(a);
+        renewalPref.setPersistent(false);
+        renewalPref.setSelectable(false);
+        renewalPref.setTitle("Renewal");
+        screen.addPreference(renewalPref);
+
         final SwitchPreference smsFallback = new SwitchPreference(a);
         smsFallback.setPersistent(false);
         smsFallback.setTitle("Send as SMS");
@@ -183,6 +189,7 @@ public final class WaveIMessageSettings {
                 boolean on = cfg.isEnabled();
                 statusPref.setSummary(host.formatStatusSummary());
                 handlesPref.setSummary(cfg.formatHandlesSummary());
+                renewalPref.setSummary(host.formatRenewalSummary());
                 serverPref.setSummary(cfg.getServerUrl());
                 reconnectPref.setEnabled(on);
                 smsFallback.setEnabled(on);
@@ -222,6 +229,7 @@ public final class WaveIMessageSettings {
             public boolean onPreferenceClick(Preference p) {
                 host.reconnectNow();
                 host.refreshHandles();
+                host.refreshRegInfo();
                 Toast.makeText(a, "Reconnecting...", Toast.LENGTH_SHORT).show();
                 main.postDelayed(update, 300);
                 return true;
@@ -273,8 +281,13 @@ public final class WaveIMessageSettings {
 
     private static void showConnectionDetailsDialog(final Activity a, final WaveIMessageHost host) {
         WaveIMessageConfig cfg = host.config();
+        String relayLine = host.hasRegInfo()
+                ? (host.isProviderConnected() ? "Online" : "Offline")
+                : "Unknown";
         String msg = "Server: " + cfg.getHost() + ":" + cfg.getPort() + "\n"
                 + "Status: " + host.formatStatusSummary() + "\n"
+                + "Renewal: " + host.formatRenewalSummary() + "\n"
+                + "Relay: " + relayLine + "\n"
                 + "Keepalive: " + WaveIMessageHost.formatInterval(host.getCurrentIntervalSeconds()) + "\n"
                 + "Network: " + (TextUtils.isEmpty(host.getActiveNetworkKey()) ? "-" : host.getActiveNetworkKey()) + "\n"
                 + "Queued outbox: " + host.getOutboxSize();

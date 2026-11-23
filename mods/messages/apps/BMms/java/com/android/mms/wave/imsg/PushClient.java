@@ -289,6 +289,10 @@ public final class PushClient {
         return sendBody(Body.getHandles());
     }
 
+    public long requestRegInfo() throws IOException {
+        return sendBody(Body.regInfoReq());
+    }
+
     public long sendBody(Body body) throws IOException {
         byte[] encoded = body.encode();
         long seq = state.enqueue(encoded);

@@ -32,12 +32,21 @@ public final class Body {
     public static final int KIND_SEND_REG_SMS = 0x0C;
     /** Phone to server: Apple's REG-RESP in {@code text}. */
     public static final int KIND_REG_RESP = 0x0D;
+    /** Phone to server: request current Apple registration / renewal status. */
+    public static final int KIND_REG_INFO_REQ = 0x0E;
+    /** Server to phone: Apple registration / renewal and built-in relay status. */
+    public static final int KIND_REG_INFO = 0x0F;
 
     public static final int SETUP_READY = 0;
     public static final int SETUP_NEED_SIM = 1;
     public static final int SETUP_WORKING = 2;
     public static final int SETUP_WAITING_SMS = 3;
     public static final int SETUP_FAILED = 4;
+
+    public static final int REG_STATE_OK = 0;
+    public static final int REG_STATE_RENEWING = 1;
+    public static final int REG_STATE_NEEDS_PHONE = 2;
+    public static final int REG_STATE_FAILED = 3;
 
     public static final int RECEIPT_DELIVERED = 1;
     public static final int RECEIPT_READ = 2;
@@ -60,6 +69,11 @@ public final class Body {
     public final List<String> targets;
     public final List<String> registered;
     public final List<String> unregistered;
+    public final long authExpiresAtMs;
+    public final long nextReregAtMs;
+    public final long renewAtMs;
+    public final boolean providerConnected;
+    public final int regState;
 
     private Body(
             int kind,
@@ -79,7 +93,12 @@ public final class Body {
             String reqId,
             List<String> targets,
             List<String> registered,
-            List<String> unregistered
+            List<String> unregistered,
+            long authExpiresAtMs,
+            long nextReregAtMs,
+            long renewAtMs,
+            boolean providerConnected,
+            int regState
     ) {
         this.kind = kind;
         this.clientMsgId = clientMsgId;
@@ -99,58 +118,71 @@ public final class Body {
         this.targets = targets == null ? Collections.<String>emptyList() : Collections.unmodifiableList(targets);
         this.registered = registered == null ? Collections.<String>emptyList() : Collections.unmodifiableList(registered);
         this.unregistered = unregistered == null ? Collections.<String>emptyList() : Collections.unmodifiableList(unregistered);
+        this.authExpiresAtMs = authExpiresAtMs;
+        this.nextReregAtMs = nextReregAtMs;
+        this.renewAtMs = renewAtMs;
+        this.providerConnected = providerConnected;
+        this.regState = regState;
     }
 
     public static Body sendText(String clientMsgId, String target, String text, String senderGuid) {
-        return new Body(KIND_SEND_TEXT, clientMsgId, target, text, senderGuid, false, null, null, null, null, 0L, 0, null, null, null, null, null, null);
+        return new Body(KIND_SEND_TEXT, clientMsgId, target, text, senderGuid, false, null, null, null, null, 0L, 0, null, null, null, null, null, null, 0L, 0L, 0L, false, 0);
     }
 
     public static Body sendResult(String clientMsgId, boolean ok, String appleMsgId, String error) {
-        return new Body(KIND_SEND_RESULT, clientMsgId, null, null, null, ok, appleMsgId, error, null, null, 0L, 0, null, null, null, null, null, null);
+        return new Body(KIND_SEND_RESULT, clientMsgId, null, null, null, ok, appleMsgId, error, null, null, 0L, 0, null, null, null, null, null, null, 0L, 0L, 0L, false, 0);
     }
 
     public static Body incomingText(String appleMsgId, String sender, List<String> participants, String senderGuid, long timestampMs, String text) {
-        return new Body(KIND_INCOMING_TEXT, null, null, text, senderGuid, false, appleMsgId, null, sender, new ArrayList<String>(participants), timestampMs, 0, null, null, null, null, null, null);
+        return new Body(KIND_INCOMING_TEXT, null, null, text, senderGuid, false, appleMsgId, null, sender, new ArrayList<String>(participants), timestampMs, 0, null, null, null, null, null, null, 0L, 0L, 0L, false, 0);
     }
 
     public static Body receipt(int receiptKind, String appleMsgId, String sender, long timestampMs) {
-        return new Body(KIND_RECEIPT, null, null, null, null, false, appleMsgId, null, sender, null, timestampMs, receiptKind, null, null, null, null, null, null);
+        return new Body(KIND_RECEIPT, null, null, null, null, false, appleMsgId, null, sender, null, timestampMs, receiptKind, null, null, null, null, null, null, 0L, 0L, 0L, false, 0);
     }
 
     public static Body getHandles() {
-        return new Body(KIND_GET_HANDLES, null, null, null, null, false, null, null, null, null, 0L, 0, null, null, null, null, null, null);
+        return new Body(KIND_GET_HANDLES, null, null, null, null, false, null, null, null, null, 0L, 0, null, null, null, null, null, null, 0L, 0L, 0L, false, 0);
     }
 
     public static Body handles(List<String> handles, String preferred) {
-        return new Body(KIND_HANDLES, null, null, null, null, false, null, null, null, null, 0L, 0, new ArrayList<String>(handles), preferred, null, null, null, null);
+        return new Body(KIND_HANDLES, null, null, null, null, false, null, null, null, null, 0L, 0, new ArrayList<String>(handles), preferred, null, null, null, null, 0L, 0L, 0L, false, 0);
     }
 
     public static Body checkTargets(String reqId, List<String> targets) {
-        return new Body(KIND_CHECK_TARGETS, null, null, null, null, false, null, null, null, null, 0L, 0, null, null, reqId, new ArrayList<String>(targets), null, null);
+        return new Body(KIND_CHECK_TARGETS, null, null, null, null, false, null, null, null, null, 0L, 0, null, null, reqId, new ArrayList<String>(targets), null, null, 0L, 0L, 0L, false, 0);
     }
 
     public static Body targetStatus(String reqId, List<String> registered, List<String> unregistered) {
-        return new Body(KIND_TARGET_STATUS, null, null, null, null, false, null, null, null, null, 0L, 0, null, null, reqId, null, new ArrayList<String>(registered), new ArrayList<String>(unregistered));
+        return new Body(KIND_TARGET_STATUS, null, null, null, null, false, null, null, null, null, 0L, 0, null, null, reqId, null, new ArrayList<String>(registered), new ArrayList<String>(unregistered), 0L, 0L, 0L, false, 0);
     }
 
     public static Body setupStatus(int state, String detail) {
-        return new Body(KIND_SETUP_STATUS, null, null, detail, null, false, null, null, null, null, 0L, state, null, null, null, null, null, null);
+        return new Body(KIND_SETUP_STATUS, null, null, detail, null, false, null, null, null, null, 0L, state, null, null, null, null, null, null, 0L, 0L, 0L, false, 0);
     }
 
     public static Body simInfo(String mccmnc, String number) {
-        return new Body(KIND_SIM_INFO, null, mccmnc, null, null, false, null, null, number, null, 0L, 0, null, null, null, null, null, null);
+        return new Body(KIND_SIM_INFO, null, mccmnc, null, null, false, null, null, number, null, 0L, 0, null, null, null, null, null, null, 0L, 0L, 0L, false, 0);
     }
 
     public static Body sendRegSms(String gateway, String text) {
-        return new Body(KIND_SEND_REG_SMS, null, gateway, text, null, false, null, null, null, null, 0L, 0, null, null, null, null, null, null);
+        return new Body(KIND_SEND_REG_SMS, null, gateway, text, null, false, null, null, null, null, 0L, 0, null, null, null, null, null, null, 0L, 0L, 0L, false, 0);
     }
 
     public static Body regResp(String text) {
-        return new Body(KIND_REG_RESP, null, null, text, null, false, null, null, null, null, 0L, 0, null, null, null, null, null, null);
+        return new Body(KIND_REG_RESP, null, null, text, null, false, null, null, null, null, 0L, 0, null, null, null, null, null, null, 0L, 0L, 0L, false, 0);
+    }
+
+    public static Body regInfoReq() {
+        return new Body(KIND_REG_INFO_REQ, null, null, null, null, false, null, null, null, null, 0L, 0, null, null, null, null, null, null, 0L, 0L, 0L, false, 0);
+    }
+
+    public static Body regInfo(long authExpiresAtMs, long nextReregAtMs, long renewAtMs, boolean providerConnected, int state, String detail) {
+        return new Body(KIND_REG_INFO, null, null, detail, null, false, null, null, null, null, 0L, 0, null, null, null, null, null, null, authExpiresAtMs, nextReregAtMs, renewAtMs, providerConnected, state);
     }
 
     public static Body sendGroupText(String clientMsgId, List<String> participants, String text, String senderGuid) {
-        return new Body(KIND_SEND_GROUP_TEXT, clientMsgId, null, text, senderGuid, false, null, null, null, new ArrayList<String>(participants), 0L, 0, null, null, null, null, null, null);
+        return new Body(KIND_SEND_GROUP_TEXT, clientMsgId, null, text, senderGuid, false, null, null, null, new ArrayList<String>(participants), 0L, 0, null, null, null, null, null, null, 0L, 0L, 0L, false, 0);
     }
 
     public byte[] encode() throws IOException {
@@ -218,6 +250,16 @@ public final class Body {
                 writeStr(dos, text);
                 break;
             case KIND_REG_RESP:
+                writeStr(dos, text);
+                break;
+            case KIND_REG_INFO_REQ:
+                break;
+            case KIND_REG_INFO:
+                dos.writeLong(authExpiresAtMs);
+                dos.writeLong(nextReregAtMs);
+                dos.writeLong(renewAtMs);
+                dos.writeByte(providerConnected ? 1 : 0);
+                dos.writeByte(regState);
                 writeStr(dos, text);
                 break;
             default:
@@ -318,6 +360,22 @@ public final class Body {
             case KIND_REG_RESP:
                 body = regResp(readStr(dis));
                 break;
+            case KIND_REG_INFO_REQ:
+                body = regInfoReq();
+                break;
+            case KIND_REG_INFO: {
+                long authExpires = dis.readLong();
+                long nextRereg = dis.readLong();
+                long renewAt = dis.readLong();
+                int provByte = dis.readUnsignedByte();
+                if (provByte != 0 && provByte != 1) {
+                    throw new IOException("Invalid bool tag: " + provByte);
+                }
+                int st = dis.readUnsignedByte();
+                String detail = readStr(dis);
+                body = regInfo(authExpires, nextRereg, renewAt, provByte == 1, st, detail);
+                break;
+            }
             default:
                 throw new IOException("Unknown body kind: 0x" + Integer.toHexString(kind));
         }
@@ -395,6 +453,10 @@ public final class Body {
                 return "SEND_REG_SMS(gateway=" + target + ")";
             case KIND_REG_RESP:
                 return "REG_RESP(len=" + (text == null ? 0 : text.length()) + ")";
+            case KIND_REG_INFO_REQ:
+                return "REG_INFO_REQ";
+            case KIND_REG_INFO:
+                return "REG_INFO(state=" + regState + ", provider=" + providerConnected + ", renewAtMs=" + renewAtMs + ", authExpMs=" + authExpiresAtMs + ")";
             case KIND_SEND_TEXT:
                 return "SEND_TEXT(id=" + clientMsgId + ", target=" + target + ", len=" + (text == null ? 0 : text.length()) + ")";
             case KIND_SEND_RESULT:
