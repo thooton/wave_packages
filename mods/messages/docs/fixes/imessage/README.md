@@ -1,6 +1,6 @@
 # Apple (iMessage) Bridge Support
 
-Integrates the [imsg-server](https://github.com/thooton/imsg-server) iMessage bridge into the
+Integrates the [imsg-server](https://github.com/soupskin-b2/imsg-server) iMessage bridge into the
 stock Sonim XP3800 Messages app (`BMms` / `com.android.mms`) without modifying the stock manifest,
 resources, or conversation UI.
 

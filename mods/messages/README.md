@@ -11,7 +11,7 @@ retains the custom RCS work.
 
 What it changes (the UI stays as it is):
 
-* **Apple (iMessage) bridge support** through [imsg-server](https://github.com/thooton/imsg-server):
+* **Apple (iMessage) bridge support** through [imsg-server](https://github.com/soupskin-b2/imsg-server):
   pair with a one-time code in Settings > Advanced settings > Apple (iMessage) settings, after
   which the phone registers its own number. Low-power dynamic keepalive and a compose box hint
   (`Type SMS message` / `Type MMS message` / `Type iMessage`):
