@@ -71,8 +71,12 @@ resources, or conversation UI.
      body to an on-disk queue before it ACKs, and one worker stores them in order. A failed
      attachment download keeps the message queued and retries (30 s, and on reconnect) for up to
      6 hours, then stores it with a `[Photo (couldn't download)]` placeholder.
-   - **Tapbacks** (`WaveTapbacks`, `MessageListItem.bind` hook): iPhone-style badges on the top
-     corner of the bubble (blue when one is yours). Pressing a text message with tapbacks lists who
+   - **Tapbacks** (`WaveTapbacks`, `MessageListItem.bind` hook): iPhone-style round tapback bubbles
+     hanging off the bubble's top outer corner (right on received bubbles, left on sent ones), with
+     the two-dot tail toward the message, older ones stacked behind and a ring of the conversation
+     background around each. Yours are in the conversation's color (the one that tints received
+     bubbles, `ComposeMessageActivity.getSendContactColor()`), other people's gray (pink heart), like
+     iPhones' blue and gray; standard tapbacks are one-color symbols, emoji keep their colors. Pressing a text message with tapbacks lists who
      reacted with what; the message menu (Menu with a message selected, `onPrepareOptionsMenu`, and the
      context menu) has **React** (the six standard tapbacks; choosing your
      current one removes it) and **Reactions**. When someone reacts to one of your messages you
@@ -89,7 +93,7 @@ resources, or conversation UI.
      server attachment ids. Rows older than 180 days are dropped.
    - Verified on the XP3800 against `imsg-server run --no-apple` (see that README for its test
      commands): text, 640 px photo previews, 240p video, AAC voice playback, outgoing photos over
-     iMessage, badges (blue for yours, left corner on sent bubbles), React, the reactions list,
+     iMessage, tapback bubbles (yours in the conversation color, others' gray, left corner on sent bubbles), React, the reactions list,
      tapback notifications, full-size saves from both menus, reply quotes, edits, unsends, and group
      renames and member changes moving the group to its new thread.
    - Host tests: `tools/testing/imessage_test.py` (framing and bodies) and

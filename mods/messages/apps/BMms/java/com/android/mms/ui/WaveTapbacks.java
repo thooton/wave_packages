@@ -5,8 +5,14 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.util.TypedValue;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
@@ -133,63 +139,209 @@ public final class WaveTapbacks {
         }
     }
 
+    /**
+     * iMessage-style tapback bubbles: a round bubble hanging off the bubble's top outer corner, with
+     * a two-dot tail toward the message, and earlier tapbacks stacked behind it. Each bubble and tail
+     * dot is cut out of whatever is under it by a ring of the conversation background.
+     * Yours are in the conversation's color (the one that tints received bubbles), everyone else's
+     * gray, as iPhones show theirs in blue and gray.
+     */
     static final class BadgeView extends View {
+        /** iOS system gray 5 / gray: other people's tapback bubble and glyph. */
+        static final int THEIRS_FILL = 0xFFE5E5EA;
+        static final int THEIRS_GLYPH = 0xFF8E8E93;
+        static final int THEIRS_HEART = 0xFFFF2D55;
+        /** Fallback when the conversation has no color yet (iMessage blue). */
+        static final int DEFAULT_MINE = 0xFF1A8CFF;
+
+        // Geometry, as fractions of the bubble diameter.
+        private static final float STEP = 0.55f;          // offset of each stacked bubble
+        private static final float DOT1_R = 0.16f, DOT1_X = 0.30f, DOT1_Y = 0.40f;
+        private static final float DOT2_R = 0.075f, DOT2_X = 0.47f, DOT2_Y = 0.60f;
+
         private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final float density;
+        private final float ring;
+        private final int diameter;
         private List<Badge> badges = Collections.emptyList();
+        /** Badge on a sent bubble: hangs off its left corner and its tail points right. */
+        private boolean onSent;
+        private int mineColor = DEFAULT_MINE;
 
         BadgeView(Context c) {
             super(c);
             density = c.getResources().getDisplayMetrics().density;
+            ring = Math.max(1f, 1.5f * density);
+            diameter = Math.round(22 * density);
             text.setTextAlign(Paint.Align.CENTER);
             setFocusable(false);
             setClickable(false);
             setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+            setWillNotDraw(false);
         }
 
         int diameter() {
-            return Math.round(20 * density);
+            return diameter;
         }
 
-        int step() {
-            return Math.round(12 * density);
+        /** How far the front bubble hangs past the message bubble's side. */
+        int overhang() {
+            return Math.round(diameter * 0.4f);
         }
 
-        void setBadges(List<Badge> b) {
+        /** Where the message bubble starts below the top of this view. */
+        int bubbleTop() {
+            return Math.round(diameter * 0.68f);
+        }
+
+        void set(List<Badge> b, boolean sent, int mine) {
+            boolean relayout = b.size() != badges.size() || sent != onSent;
             badges = b;
-            requestLayout();
+            onSent = sent;
+            mineColor = mine;
+            if (relayout) requestLayout();
             invalidate();
+        }
+
+        private float step() {
+            return diameter * STEP;
+        }
+
+        /** Extra room on the inner side so the tail of a lone bubble isn't cut off. */
+        private float tailRoom() {
+            float tail = diameter * (DOT2_X + DOT2_R) + ring;
+            return Math.max(0f, tail - diameter / 2f - (Math.max(1, badges.size()) - 1) * step());
         }
 
         @Override
         protected void onMeasure(int w, int h) {
             int n = Math.max(1, badges.size());
-            setMeasuredDimension(diameter() + (n - 1) * step(), diameter());
+            int width = (int) Math.ceil(diameter + (n - 1) * step() + tailRoom());
+            int height = (int) Math.ceil(diameter * (0.5f + DOT2_Y + DOT2_R) + ring);
+            setMeasuredDimension(width, height);
+        }
+
+        /** Color showing behind the badge: the first solid background above it, else the theme's. */
+        private int backdrop() {
+            ViewParent p = getParent();
+            while (p instanceof View) {
+                Drawable bg = ((View) p).getBackground();
+                if (bg instanceof ColorDrawable) {
+                    int c = ((ColorDrawable) bg).getColor();
+                    if (Color.alpha(c) == 0xFF) return c;
+                }
+                p = p.getParent();
+            }
+            TypedValue tv = new TypedValue();
+            if (getContext().getTheme().resolveAttribute(android.R.attr.colorBackground, tv, true)
+                    && tv.type >= TypedValue.TYPE_FIRST_COLOR_INT && tv.type <= TypedValue.TYPE_LAST_COLOR_INT) {
+                return tv.data | 0xFF000000;
+            }
+            return 0xFFFFFFFF;
+        }
+
+        static boolean isLight(int c) {
+            double l = 0.2126 * Color.red(c) + 0.7152 * Color.green(c) + 0.0722 * Color.blue(c);
+            return l > 186;
         }
 
         @Override
         protected void onDraw(Canvas canvas) {
-            float d = diameter();
-            float r = d / 2f;
-            float ring = 1.5f * density;
-            for (int i = 0; i < badges.size(); i++) {
-                Badge b = badges.get(i);
-                float cx = r + i * step();
-                fill.setColor(0xFFFFFFFF);
+            int n = badges.size();
+            if (n == 0) return;
+            float r = diameter / 2f;
+            float w = getWidth();
+            // Front (newest) bubble sits on the outer corner; older ones stack toward the inside.
+            float in = onSent ? 1f : -1f;
+            float frontX = onSent ? r : w - r;
+            int back = 0xFF000000 | backdrop();
+            for (int k = n - 1; k >= 1; k--) {
+                Badge b = badges.get(n - 1 - k);
+                float cx = frontX + in * k * step();
+                fill.setColor(back);
                 canvas.drawCircle(cx, r, r, fill);
-                fill.setColor(b.mine ? 0xFF1A8CFF : 0xFFE5E5EA);
+                fill.setColor(fillColor(b));
                 canvas.drawCircle(cx, r, r - ring, fill);
-                boolean word = b.glyph.length() > 1 && b.glyph.charAt(0) < 0x2000;
-                text.setTypeface(word ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-                text.setTextSize((word ? 8.5f : 11.5f) * density);
-                int glyphColor = b.mine ? 0xFFFFFFFF
-                        : b.kind == Body.REACT_HEART ? 0xFFFF2D55 : 0xFF8E8E93;
-                text.setColor(glyphColor);
-                Paint.FontMetrics fm = text.getFontMetrics();
-                canvas.drawText(b.glyph, cx, r - (fm.ascent + fm.descent) / 2f, text);
+                drawGlyph(canvas, b, cx, r);
             }
+            Badge front = badges.get(n - 1);
+            float d1x = frontX + in * diameter * DOT1_X, d1y = r + diameter * DOT1_Y, d1r = diameter * DOT1_R;
+            float d2x = frontX + in * diameter * DOT2_X, d2y = r + diameter * DOT2_Y, d2r = diameter * DOT2_R;
+            fill.setColor(back);
+            canvas.drawCircle(frontX, r, r, fill);
+            canvas.drawCircle(d1x, d1y, d1r + ring, fill);
+            canvas.drawCircle(d2x, d2y, d2r + ring, fill);
+            fill.setColor(fillColor(front));
+            canvas.drawCircle(frontX, r, r - ring, fill);
+            canvas.drawCircle(d1x, d1y, d1r, fill);
+            canvas.drawCircle(d2x, d2y, d2r, fill);
+            drawGlyph(canvas, front, frontX, r);
         }
+
+        private final SparseFilters filters = new SparseFilters();
+
+        private PorterDuffColorFilter tint(int color) {
+            return filters.get(color);
+        }
+
+        private int fillColor(Badge b) {
+            return b.mine ? mineColor : THEIRS_FILL;
+        }
+
+        private void drawGlyph(Canvas canvas, Badge b, float cx, float cy) {
+            int color;
+            if (b.mine) {
+                color = isLight(mineColor) ? 0xFF1C1C1E : 0xFFFFFFFF;
+            } else {
+                color = b.kind == Body.REACT_HEART ? THEIRS_HEART : THEIRS_GLYPH;
+            }
+            boolean standard = b.kind >= Body.REACT_HEART && b.kind <= Body.REACT_QUESTION;
+            float size;
+            boolean bold = true;
+            switch (b.kind) {
+                case Body.REACT_HEART: size = 11.5f; bold = false; break;
+                case Body.REACT_LIKE:
+                case Body.REACT_DISLIKE: size = 11f; bold = false; break;
+                case Body.REACT_LAUGH: size = 8.5f; break;
+                case Body.REACT_EMPHASIZE: size = 12.5f; break;
+                case Body.REACT_QUESTION: size = 13.5f; break;
+                default: size = 12f; bold = false; break;
+            }
+            text.setTypeface(bold ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+            text.setTextSize(size * density);
+            text.setColor(color);
+            // Standard tapbacks are one-color symbols, like on iPhones: tint the (color emoji)
+            // thumbs too. Emoji tapbacks and stickers keep their own colors.
+            text.setColorFilter(standard ? tint(color) : null);
+            Paint.FontMetrics fm = text.getFontMetrics();
+            canvas.drawText(b.glyph, cx, cy - (fm.ascent + fm.descent) / 2f, text);
+        }
+    }
+
+    /** SRC_IN tints by color; a badge view only ever uses two or three. */
+    private static final class SparseFilters {
+        private final android.util.SparseArray<PorterDuffColorFilter> byColor =
+                new android.util.SparseArray<PorterDuffColorFilter>(4);
+
+        PorterDuffColorFilter get(int color) {
+            PorterDuffColorFilter f = byColor.get(color);
+            if (f == null) {
+                f = new PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN);
+                byColor.put(color, f);
+            }
+            return f;
+        }
+    }
+
+    /** The conversation's color (stock: tints received bubbles and the title bar). */
+    private static int chatColor() {
+        try {
+            int c = ComposeMessageActivity.getSendContactColor();
+            if (Color.alpha(c) != 0) return c | 0xFF000000;
+        } catch (Throwable ignored) {
+        }
+        return BadgeView.DEFAULT_MINE;
     }
 
     private static List<Badge> badgesFor(List<WaveIMessageDb.Reaction> rs) {
@@ -227,17 +379,28 @@ public final class WaveTapbacks {
                 badge = new BadgeView(row.getContext());
                 badge.setTag(BADGE_TAG);
                 parent.addView(badge);
+                // The part of the badge that hangs past the bubble lies in the container's padding
+                // (10 dp end padding on received rows), which clips by default.
+                parent.setClipToPadding(false);
             }
+            boolean sent = mi.isMe();
             RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             lp.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-            // Received bubbles get the badge on their far (right) corner, sent ones on the left.
-            lp.addRule(mi.isMe() ? RelativeLayout.ALIGN_LEFT : RelativeLayout.ALIGN_RIGHT, ID_MESSAGE_BLOCK);
+            // Like iPhones: on the far corner of the bubble (right for received, left for sent),
+            // hanging a little past its side. Both layouts leave room for that (padding and margin).
+            if (sent) {
+                lp.addRule(RelativeLayout.ALIGN_LEFT, ID_MESSAGE_BLOCK);
+                lp.leftMargin = -badge.overhang();
+            } else {
+                lp.addRule(RelativeLayout.ALIGN_RIGHT, ID_MESSAGE_BLOCK);
+                lp.rightMargin = -badge.overhang();
+            }
             badge.setLayoutParams(lp);
-            badge.setBadges(badgesFor(rs));
+            badge.set(badgesFor(rs), sent, chatColor());
             badge.setVisibility(View.VISIBLE);
             badge.bringToFront();
-            setTopMargin(block, badge.diameter() * 3 / 5);
+            setTopMargin(block, badge.bubbleTop());
         } catch (Throwable t) {
             Log.w(TAG, "tapback bind", t);
         }
