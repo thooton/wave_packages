@@ -113,6 +113,7 @@ public final class WaveIMessageHost implements PushClient.Listener {
             PushClient c = client;
             if (c != null) {
                 c.onWakeupTick();
+                refreshServicePriority();
             } else {
                 wakeupClock.releaseWakeLock();
             }
@@ -145,6 +146,15 @@ public final class WaveIMessageHost implements PushClient.Listener {
         if (h == null) return null;
         PushClient c = h.client;
         return (c != null && c.isConnected() && h.config.isEnabled()) ? h : null;
+    }
+
+    /**
+     * Like {@link #connected()}, but null while "Send with iMessage" is off, so every send path
+     * leaves the message to stock SMS/MMS.
+     */
+    public static WaveIMessageHost sending() {
+        WaveIMessageHost h = connected();
+        return (h != null && h.config.isSendEnabled()) ? h : null;
     }
 
     public WaveIMessageConfig config() {
@@ -402,6 +412,13 @@ public final class WaveIMessageHost implements PushClient.Listener {
 
     private void enterForeground(Service s) {
         if (s == null) return;
+        if (!config.isConnectionNotificationShown()) {
+            try {
+                s.stopForeground(true);
+            } catch (Throwable ignored) {
+            }
+            return;
+        }
         try {
             ensureNotificationChannel();
             s.startForeground(NOTIF_ID, buildForegroundNotification());
@@ -415,7 +432,7 @@ public final class WaveIMessageHost implements PushClient.Listener {
         synchronized (this) {
             s = activeService;
         }
-        if (s == null || !config.isEnabled()) return;
+        if (s == null || !config.isEnabled() || !config.isConnectionNotificationShown()) return;
         try {
             NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
@@ -424,6 +441,33 @@ public final class WaveIMessageHost implements PushClient.Listener {
             }
         } catch (Throwable ignored) {
         }
+    }
+
+    /** Applies a change of the "Connection notification" setting to the running service. */
+    public void applyNotificationSetting() {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                Service s;
+                synchronized (WaveIMessageHost.this) {
+                    s = activeService;
+                }
+                if (s != null && config.isEnabled()) enterForeground(s);
+            }
+        });
+    }
+
+    /**
+     * Without the notification the host service is a plain started service. Starting it again on
+     * each keepalive tick resets its last-activity time, so Android keeps ranking the process as an
+     * active service instead of letting it age into the easily killed background services.
+     */
+    private void refreshServicePriority() {
+        if (config.isConnectionNotificationShown() || !config.isEnabled()) return;
+        synchronized (this) {
+            if (activeService == null) return;
+        }
+        startHostService(null);
     }
 
     private void leaveForegroundAndStop() {
@@ -717,7 +761,8 @@ public final class WaveIMessageHost implements PushClient.Listener {
      */
     public void requestTargetCheckAsync(List<String> normalizedTargets) {
         final PushClient c = client;
-        if (c == null || !c.isConnected() || normalizedTargets == null || normalizedTargets.isEmpty()) {
+        if (c == null || !c.isConnected() || normalizedTargets == null || normalizedTargets.isEmpty()
+                || !config.isSendEnabled()) {
             return;
         }
         final List<String> toCheck = new ArrayList<String>();

@@ -6,6 +6,11 @@
 # happens to run. Compile them once with "speed"; without -f this is a no-op when already done.
 (
   until [ "$(getprop sys.boot_completed)" = 1 ]; do sleep 5; done
+  # FEAT(imessage): the iMessage connection runs without a foreground service unless its
+  # notification is turned on, so keep Messages exempt from Doze's network and alarm limits and
+  # allowed to run in the background.
+  dumpsys deviceidle whitelist +com.android.mms >/dev/null 2>&1
+  cmd appops set com.android.mms RUN_IN_BACKGROUND allow >/dev/null 2>&1
   sleep 90
   DIR="${0%/*}"
   if [ -f "$DIR/system/priv-app/ContactsProvider/ContactsProvider.apk" ]; then

@@ -22,7 +22,9 @@ resources, or conversation UI.
         "iMessage is ready" with the registered number.
    - Once configured, opening **Apple (iMessage) settings** displays the settings screen: enable
      switch, live status + learned keepalive interval, registered Apple handles, automatic renewal
-     status (days until renewal, renewing state, or built-in relay offline), SMS fallback toggle,
+     status (days until renewal, renewing state, or built-in relay offline), **Send with iMessage**
+     (off: every send goes as SMS/MMS and the phone never asks the server whether a contact is on
+     iMessage, while iMessages still arrive), SMS fallback toggle, **Connection notification**,
      server/connection details (with manual keepalive probe), reconnect, pair again, and clear
      setup.
    - Automatic renewal status uses two backwards-compatible application bodies (`0x0E REG_INFO_REQ`
@@ -31,9 +33,13 @@ resources, or conversation UI.
      phone keeps its main status summary unchanged while the Renewal row shows `"Renewing..."`.
 
 2. **Low-power persistent TCP connection (`wave/imsg/*` + `WaveIMessageHost`)**:
-   - Reuses the dormant `RcsMessageStatusService` as a sticky foreground service with a silent
-     `IMPORTANCE_MIN` notification channel on Android 8.1 (API 27) and auto-starts on
-     `BOOT_COMPLETED`.
+   - Reuses the dormant `RcsMessageStatusService` as a sticky started service and auto-starts on
+     `BOOT_COMPLETED`. BMms targets API 23, so Android 8.1's background-service limits don't apply;
+     the module's `service.sh` puts `com.android.mms` on the Doze whitelist (network and alarms in
+     Doze) and allows `RUN_IN_BACKGROUND`. Each keepalive tick starts the service again so its
+     last-activity time stays fresh and the process keeps its service priority. With
+     **Connection notification** on, it runs as a foreground service with a silent
+     `IMPORTANCE_MIN` notification instead, as before.
    - Uses `SystemClock.elapsedRealtime()` and `AlarmManager.setExactAndAllowWhileIdle` so the CPU
      sleeps completely between dynamic keepalives (no periodic polling). Brief partial `WakeLock`s
      are held only during active `PING`/`PONG` exchanges and incoming frame persistence/ACKing.

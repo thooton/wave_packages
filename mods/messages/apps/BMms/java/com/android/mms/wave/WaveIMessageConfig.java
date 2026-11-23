@@ -37,6 +37,8 @@ public final class WaveIMessageConfig {
     private static final String K_TOKEN = "token_hex";
     private static final String K_CLIENT_ID = "client_id";
     private static final String K_SMS_FALLBACK = "sms_fallback";
+    private static final String K_SEND = "send_imessage";
+    private static final String K_NOTIFICATION = "connection_notification";
     private static final String K_HANDLES = "handles_csv";
     private static final String K_PREFERRED = "preferred_handle";
 
@@ -117,6 +119,30 @@ public final class WaveIMessageConfig {
 
     public void setSmsFallbackEnabled(boolean on) {
         sp.edit().putBoolean(K_SMS_FALLBACK, on).apply();
+    }
+
+    /**
+     * Whether outgoing messages may go over iMessage. When off, everything is sent as SMS/MMS and
+     * the phone never asks the server whether a contact is on iMessage; receiving is unaffected.
+     */
+    public boolean isSendEnabled() {
+        return sp.getBoolean(K_SEND, true);
+    }
+
+    public void setSendEnabled(boolean on) {
+        sp.edit().putBoolean(K_SEND, on).apply();
+    }
+
+    /**
+     * Whether the connection runs as a foreground service with its ongoing notification. Off by
+     * default: the module's service.sh puts Messages on the Doze whitelist instead.
+     */
+    public boolean isConnectionNotificationShown() {
+        return sp.getBoolean(K_NOTIFICATION, false);
+    }
+
+    public void setConnectionNotificationShown(boolean on) {
+        sp.edit().putBoolean(K_NOTIFICATION, on).apply();
     }
 
     /** Saves a successful pairing. Clears the previous server's message state. */

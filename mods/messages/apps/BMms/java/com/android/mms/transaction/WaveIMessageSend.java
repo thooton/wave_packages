@@ -74,7 +74,7 @@ public final class WaveIMessageSend {
     ) {
         try {
             if (Boolean.TRUE.equals(BYPASS.get())) return false;
-            final WaveIMessageHost host = WaveIMessageHost.connected();
+            final WaveIMessageHost host = WaveIMessageHost.sending();
             if (host == null || uri == null || TextUtils.isEmpty(text)) return false;
 
             final Context c = MmsApp.getApplication();
@@ -159,7 +159,7 @@ public final class WaveIMessageSend {
     // Queued SMS drain (Wi-Fi only / no cellular service)
 
     public static void drainQueuedAsync(final Context c) {
-        if (WaveIMessageHost.connected() == null || sDrainPending) return;
+        if (WaveIMessageHost.sending() == null || sDrainPending) return;
         if (cellularInService(c)) return;
         sDrainPending = true;
         new Thread(new Runnable() {
@@ -189,7 +189,7 @@ public final class WaveIMessageSend {
 
     private static void drainQueued(Context c) {
         synchronized (DRAIN_LOCK) {
-            WaveIMessageHost host = WaveIMessageHost.connected();
+            WaveIMessageHost host = WaveIMessageHost.sending();
             if (host == null) return;
             WaveIMessageConfig cfg = host.config();
             List<Long> ids = new ArrayList<Long>();
@@ -210,7 +210,7 @@ public final class WaveIMessageSend {
                 cur.close();
             }
             for (int i = 0; i < ids.size(); i++) {
-                host = WaveIMessageHost.connected();
+                host = WaveIMessageHost.sending();
                 if (host == null) return;
                 String target = WaveIMessageConfig.toIMessageTarget(c, addrs.get(i));
                 String text = bodies.get(i);
@@ -252,7 +252,7 @@ public final class WaveIMessageSend {
     public static boolean imessageReadyForMms(Transaction t) {
         try {
             if (t == null || t.getType() != 2 /* SEND_TRANSACTION */) return false;
-            WaveIMessageHost host = WaveIMessageHost.connected();
+            WaveIMessageHost host = WaveIMessageHost.sending();
             if (host == null) return false;
             Field f = t.getClass().getDeclaredField("mSendReqURI");
             f.setAccessible(true);
@@ -300,7 +300,7 @@ public final class WaveIMessageSend {
 
     private static Uri interceptMmsInner(Context c, SendReq req, Uri uri) {
         try {
-            WaveIMessageHost host = WaveIMessageHost.connected();
+            WaveIMessageHost host = WaveIMessageHost.sending();
             if (host == null || req == null || uri == null) return null;
             WaveIMessageConfig cfg = host.config();
             if (!canRouteMmsOverIMessage(c, cfg, req)) return null;

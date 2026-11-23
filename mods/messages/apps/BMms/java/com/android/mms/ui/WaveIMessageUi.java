@@ -89,7 +89,7 @@ public final class WaveIMessageUi {
             return HINT_MMS;
         }
 
-        WaveIMessageHost host = WaveIMessageHost.connected();
+        WaveIMessageHost host = WaveIMessageHost.sending();
         if (host == null) {
             return requiresMms ? HINT_MMS : HINT_SMS;
         }

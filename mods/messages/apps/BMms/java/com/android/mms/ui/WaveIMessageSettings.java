@@ -151,12 +151,25 @@ public final class WaveIMessageSettings {
         renewalPref.setTitle("Renewal");
         screen.addPreference(renewalPref);
 
+        final SwitchPreference sendPref = new SwitchPreference(a);
+        sendPref.setPersistent(false);
+        sendPref.setTitle("Send with iMessage");
+        sendPref.setChecked(cfg.isSendEnabled());
+        screen.addPreference(sendPref);
+
         final SwitchPreference smsFallback = new SwitchPreference(a);
         smsFallback.setPersistent(false);
         smsFallback.setTitle("Send as SMS");
         smsFallback.setSummary("Fall back to SMS when iMessage is unavailable");
         smsFallback.setChecked(cfg.isSmsFallbackEnabled());
         screen.addPreference(smsFallback);
+
+        final SwitchPreference notifPref = new SwitchPreference(a);
+        notifPref.setPersistent(false);
+        notifPref.setTitle("Connection notification");
+        notifPref.setSummary("Show an ongoing notification while connected. Turn on if iMessages arrive late.");
+        notifPref.setChecked(cfg.isConnectionNotificationShown());
+        screen.addPreference(notifPref);
 
         final Preference serverPref = new Preference(a);
         serverPref.setPersistent(false);
@@ -191,8 +204,13 @@ public final class WaveIMessageSettings {
                 handlesPref.setSummary(cfg.formatHandlesSummary());
                 renewalPref.setSummary(host.formatRenewalSummary());
                 serverPref.setSummary(cfg.getServerUrl());
+                boolean send = cfg.isSendEnabled();
                 reconnectPref.setEnabled(on);
-                smsFallback.setEnabled(on);
+                sendPref.setEnabled(on);
+                sendPref.setSummary(send
+                        ? "Replies go as iMessage when the contact has it"
+                        : "Off: replies go as SMS and contacts aren't checked. iMessages still arrive.");
+                smsFallback.setEnabled(on && send);
             }
         };
 
@@ -204,6 +222,25 @@ public final class WaveIMessageSettings {
                 if (on) host.startOrRestart();
                 else host.stopAll();
                 main.postDelayed(update, 150);
+                return true;
+            }
+        });
+
+        sendPref.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+            @Override
+            public boolean onPreferenceChange(Preference p, Object val) {
+                cfg.setSendEnabled(Boolean.TRUE.equals(val));
+                WaveIMessageUi.refreshActiveComposeHint();
+                main.post(update);
+                return true;
+            }
+        });
+
+        notifPref.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+            @Override
+            public boolean onPreferenceChange(Preference p, Object val) {
+                cfg.setConnectionNotificationShown(Boolean.TRUE.equals(val));
+                host.applyNotificationSetting();
                 return true;
             }
         });
