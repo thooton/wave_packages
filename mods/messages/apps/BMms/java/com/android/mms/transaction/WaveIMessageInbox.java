@@ -103,7 +103,18 @@ public final class WaveIMessageInbox {
         }
     };
 
+    private long lastPruneMs;
+
     private void drainOnce() {
+        long now = System.currentTimeMillis();
+        if (now - lastPruneMs > 24L * 3600L * 1000L) {
+            lastPruneMs = now;
+            try {
+                com.android.mms.wave.WaveIMessageDb.get(ctx).prune();
+            } catch (Throwable t) {
+                Log.w(TAG, "prune", t);
+            }
+        }
         File[] files = dir.listFiles();
         if (files == null) return;
         Arrays.sort(files);

@@ -370,6 +370,25 @@ public final class WaveIMessageSend {
         }
     }
 
+    /** Bytes in a part, whether held in memory or in the MMS part store. */
+    private static long partSize(Context c, PduPart p) {
+        if (p.getData() != null) return p.getData().length;
+        Uri u = p.getDataUri();
+        if (u == null) return 0;
+        try {
+            android.content.res.AssetFileDescriptor fd = c.getContentResolver().openAssetFileDescriptor(u, "r");
+            if (fd == null) return 0;
+            try {
+                long n = fd.getLength();
+                return n >= 0 ? n : fd.getParcelFileDescriptor().getStatSize();
+            } finally {
+                fd.close();
+            }
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
+
     /** True for a part type iMessage carries (the server converts it for iPhones). */
     static boolean isSendableMedia(String ct) {
         return ct.startsWith("image/") || ct.startsWith("video/") || ct.startsWith("audio/")
@@ -436,7 +455,7 @@ public final class WaveIMessageSend {
             }
             if (!isSendableMedia(ct)) return false; // unknown attachment type -> real MMS
             hasContent = true;
-            if (p.getData() != null) mediaBytes += p.getData().length;
+            mediaBytes += partSize(c, p);
         }
         if (mediaBytes > MAX_IMESSAGE_MEDIA_BYTES) return false;
         EncodedStringValue sub = req.getSubject();

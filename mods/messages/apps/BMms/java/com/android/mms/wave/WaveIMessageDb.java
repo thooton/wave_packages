@@ -190,6 +190,19 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
         return out;
     }
 
+    /** Keys (see {@link #key}) of every message that currently has a tapback. */
+    public java.util.Set<String> reactedKeys() {
+        java.util.Set<String> out = new java.util.HashSet<String>();
+        Cursor c = getReadableDatabase().rawQuery(
+                "SELECT DISTINCT m.uri FROM reactions r JOIN msgs m ON r.target = m.apple_id", null);
+        try {
+            while (c.moveToNext()) out.add(c.getString(0));
+        } finally {
+            c.close();
+        }
+        return out;
+    }
+
     public void recordMedia(Uri partUri, Uri msgUri, String mediaId, String name) {
         ContentValues v = new ContentValues(5);
         v.put("part_uri", partUri.toString());

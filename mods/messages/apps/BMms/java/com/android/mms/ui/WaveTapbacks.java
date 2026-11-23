@@ -67,13 +67,23 @@ public final class WaveTapbacks {
 
     private WaveTapbacks() {}
 
+    /** Keys of messages that have any tapback; null until first needed. Most rows have none. */
+    private static volatile java.util.Set<String> sReacted;
+
     public static void invalidate() {
+        sReacted = null;
         CACHE.clear();
     }
 
     private static List<WaveIMessageDb.Reaction> reactions(Context c, Uri uri) {
         if (uri == null) return Collections.emptyList();
         String key = WaveIMessageDb.key(uri);
+        java.util.Set<String> reacted = sReacted;
+        if (reacted == null) {
+            reacted = WaveIMessageDb.get(c).reactedKeys();
+            sReacted = reacted;
+        }
+        if (!reacted.contains(key)) return Collections.emptyList();
         List<WaveIMessageDb.Reaction> r = CACHE.get(key);
         if (r == null) {
             r = WaveIMessageDb.get(c).reactionsForUri(uri);
