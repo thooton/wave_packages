@@ -66,6 +66,12 @@ public final class PushClient {
     private volatile boolean deliberateClose = false;
     /** Network the running probe measures (guarded by watchdogLock). */
     private String probeNetKey;
+    /**
+     * The session ended the way a too-long keepalive does (PONG timeout, a PING that couldn't be
+     * written, or the socket dying while a PING was out). Only then is a learned interval
+     * suspect; a server restart, BYE or unreachable server says nothing about the NAT.
+     */
+    private volatile boolean keepaliveFailed;
     private volatile Status status = Status.OFFLINE;
     private volatile String statusDetail = "";
     private Thread mainThread;
@@ -372,6 +378,7 @@ public final class PushClient {
                 connectLearned = usingLearnedInterval;
             }
 
+            keepaliveFailed = false;
             boolean receivedByeReplaced = false;
             boolean receivedAuthError = false;
             boolean hadConnected = false;
@@ -514,6 +521,7 @@ public final class PushClient {
                 clock.releaseWakeLock(WakeupClock.HOLD_PING);
                 boolean wasConnected;
                 synchronized (watchdogLock) {
+                    if (pingInFlight) keepaliveFailed = true; // died waiting for a PONG
                     wasConnected = connected;
                     connected = false;
                     activeSocket = null;
@@ -567,8 +575,8 @@ public final class PushClient {
                 continue;
             }
 
-            if (connectLearned && connectInterval > Frame.FALLBACK_INTERVAL_S) {
-                log("Main failed on learned interval (" + connectInterval
+            if (connectLearned && connectInterval > Frame.FALLBACK_INTERVAL_S && hadConnected && keepaliveFailed) {
+                log("Keepalive failed on learned interval (" + connectInterval
                         + "s); falling back to " + Frame.FALLBACK_INTERVAL_S + "s and starting probe");
                 synchronized (watchdogLock) {
                     currentIntervalS = Frame.FALLBACK_INTERVAL_S;
@@ -585,7 +593,8 @@ public final class PushClient {
             }
 
             backoffS = (backoffS == 0) ? 2 : Math.min(300, backoffS * 2);
-            log("Main failed on FALLBACK (" + disconnectReason + "); reconnecting in " + backoffS + "s");
+            log("Main failed (" + disconnectReason + ", interval=" + connectInterval + "s); reconnecting in "
+                    + backoffS + "s");
             setStatus(Status.ERROR, disconnectReason);
             waitReconnect(backoffS * 1000L);
         }
@@ -659,6 +668,7 @@ public final class PushClient {
 
             if (pongTimedOut) {
                 log("PONG timeout (" + Frame.PONG_TIMEOUT_S + "s); closing main socket");
+                keepaliveFailed = true;
                 clock.releaseWakeLock(WakeupClock.HOLD_PING);
                 closeActiveSocket();
                 continue;
@@ -671,6 +681,7 @@ public final class PushClient {
                     writeFrame(Frame.ping(pingNonce));
                 } catch (IOException e) {
                     log("Failed to write PING: " + e.getMessage());
+                    keepaliveFailed = true;
                     clock.releaseWakeLock(WakeupClock.HOLD_PING);
                     closeActiveSocket();
                 }

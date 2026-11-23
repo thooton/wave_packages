@@ -62,6 +62,11 @@ resources, or conversation UI.
      longer forces a full re-probe (7 TLS connections over up to an hour) when the network has a
      fresh learned interval; it stops a probe of the old network, and the new one is probed on
      connect when due (weekly, or never probed).
+   - **Only a failed keepalive drops a learned interval.** It used to happen on any disconnect:
+     a server restart or deploy, a server BYE, or a failed reconnect each switched to 60 s
+     keepalives and started a full re-probe (7 TLS connections, up to an hour). Now only a PONG
+     timeout, a PING that can't be written, or the socket dying while a PING is out do; other
+     disconnects reconnect with backoff on the learned interval.
    - Tracks network changes via `ConnectivityManager.registerDefaultNetworkCallback` +
      `TelephonyManager`, learning and persisting per-network optimal keepalive intervals via
      parallel `ROLE_PROBE` NAT probing.
