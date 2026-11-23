@@ -3,7 +3,7 @@
 Matching members must exist in the APK's dex files, with the right static-ness.
 Catches a smali hook calling a Java method that was renamed, or Java calling a stock member that
 doesn't exist (the stubs only promise it). Uses apktool's baksmali on the built APK."""
-import os, re, subprocess, sys, tempfile
+import os, re, shutil, subprocess, sys, tempfile
 
 apk = sys.argv[1]
 PREFIXES = tuple(sys.argv[2:])
@@ -11,7 +11,7 @@ if not PREFIXES:
     sys.exit("linkcheck: at least one owner prefix is required")
 temp = tempfile.TemporaryDirectory()
 tmp = temp.name
-subprocess.run(["apktool", "d", "-q", "-r", "-f", apk, "-o", tmp], check=True)
+subprocess.run([shutil.which("apktool") or "apktool", "d", "-q", "-r", "-f", apk, "-o", tmp], check=True)
 
 PRIVATE = set()   # (class, member) declared private
 classes = {}   # name -> {"super": str, "methods": {name+sig: static}, "fields": {name:type: static}}
