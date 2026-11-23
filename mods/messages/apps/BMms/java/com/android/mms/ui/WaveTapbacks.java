@@ -12,7 +12,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.ContextMenu;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
@@ -41,7 +41,7 @@ import java.util.Map;
  *       ({@code MessageListItem.bind}).</li>
  *   <li>{@link #onItemClick}: pressing a text message that has tapbacks lists who reacted with
  *       what ({@code ComposeMessageActivity$79.onItemClick}).</li>
- *   <li>{@link #onCreateContextMenu}: "React" (add / remove your own tapback) and "Reactions"
+ *   <li>{@link #onCreateMessageMenu}: "React" (add / remove your own tapback) and "Reactions"
  *       on iMessages ({@code ComposeMessageActivity$5.onCreateContextMenu}).</li>
  * </ul>
  */
@@ -232,7 +232,7 @@ public final class WaveTapbacks {
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             lp.addRule(RelativeLayout.ALIGN_PARENT_TOP);
             // Received bubbles get the badge on their far (right) corner, sent ones on the left.
-            lp.addRule(mi.isOutgoingMessage() ? RelativeLayout.ALIGN_LEFT : RelativeLayout.ALIGN_RIGHT, ID_MESSAGE_BLOCK);
+            lp.addRule(mi.isMe() ? RelativeLayout.ALIGN_LEFT : RelativeLayout.ALIGN_RIGHT, ID_MESSAGE_BLOCK);
             badge.setLayoutParams(lp);
             badge.setBadges(badgesFor(rs));
             badge.setVisibility(View.VISIBLE);
@@ -304,10 +304,16 @@ public final class WaveTapbacks {
     // -----------------------------------------------------------------------------------------
     // React / Reactions menu items
 
-    /** ComposeMessageActivity$5.onCreateContextMenu, after the stock items are added. */
-    public static void onCreateContextMenu(ContextMenu menu, final Activity a, final MessageItem mi) {
+    /**
+     * Adds the items to a message's menu: the options menu while a message is selected
+     * ({@code ComposeMessageActivity.onPrepareOptionsMenu}, where Sonim puts message actions) and
+     * the context menu ({@code ComposeMessageActivity$5.onCreateContextMenu}).
+     */
+    public static void onCreateMessageMenu(Menu menu, final Activity a, final MessageItem mi) {
         try {
-            if (mi == null || mi.mMessageUri == null) return;
+            if (menu == null || mi == null || mi.mMessageUri == null) return;
+            menu.removeItem(MENU_REACT);
+            menu.removeItem(MENU_REACTIONS);
             final WaveIMessageDb.Msg msg = WaveIMessageDb.get(a).byUri(mi.mMessageUri);
             if (msg == null || TextUtils.isEmpty(msg.appleId)) return;
             if (!WaveIMessageStore.UNSENT.equals(msg.text) && WaveIMessageHost.connected() != null) {

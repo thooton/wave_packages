@@ -173,7 +173,7 @@
     invoke-static {v4, p1, v1, v0}, Lcom/android/mms/ui/ComposeMessageActivity;->-wrap21(Lcom/android/mms/ui/ComposeMessageActivity;Landroid/view/Menu;Lcom/android/mms/ui/ComposeMessageActivity$MsgListMenuClickListener;Lcom/android/mms/ui/MessageItem;)V
 
     # FEAT(imessage): "React" and "Reactions" on iMessages.
-    invoke-static {p1, v4, v0}, Lcom/android/mms/ui/WaveTapbacks;->onCreateContextMenu(Landroid/view/ContextMenu;Landroid/app/Activity;Lcom/android/mms/ui/MessageItem;)V
+    invoke-static {p1, v4, v0}, Lcom/android/mms/ui/WaveTapbacks;->onCreateMessageMenu(Landroid/view/Menu;Landroid/app/Activity;Lcom/android/mms/ui/MessageItem;)V
 
     .line 2037
     invoke-virtual {v0}, Lcom/android/mms/ui/MessageItem;->isDownloaded()Z

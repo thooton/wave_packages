@@ -62,8 +62,9 @@ resources, or conversation UI.
      H.264 MP4, AAC); a 1:1 iMessage with media becomes an MMS in the 1:1 thread. They are fetched
      over a separate short-lived TLS connection (`ROLE_MEDIA`, `MEDIA_GET`/`MEDIA_DATA`, resumable),
      never over the push connection. **Save attachment** on such a message downloads the full-size
-     file from the server into Download (`WaveIMessageSave`, `ComposeMessageActivity.saveAttachment`
-     hook); with the server unreachable it saves the preview as before. Outgoing MMS with photos,
+     file from the server into Download (`WaveIMessageSave`; hooks in
+     `ComposeMessageActivity.saveAttachment` and the attachment viewer's Save attachment / Save all in
+     `BaseAttachmentViewActivity`); without a configured server it saves the preview as before. Outgoing MMS with photos,
      video, audio or a contact go over iMessage (`MEDIA_PUT` uploads, then `SEND_MESSAGE`); the
      server converts them for iPhones. Anything else, or a failed upload, still goes as carrier MMS.
    - **Ordered, durable inbox** (`WaveIMessageInbox`): the push client hands every message-changing
@@ -72,7 +73,8 @@ resources, or conversation UI.
      6 hours, then stores it with a `[Photo (couldn't download)]` placeholder.
    - **Tapbacks** (`WaveTapbacks`, `MessageListItem.bind` hook): iPhone-style badges on the top
      corner of the bubble (blue when one is yours). Pressing a text message with tapbacks lists who
-     reacted with what; the message menu has **React** (the six standard tapbacks; choosing your
+     reacted with what; the message menu (Menu with a message selected, `onPrepareOptionsMenu`, and the
+     context menu) has **React** (the six standard tapbacks; choosing your
      current one removes it) and **Reactions**. When someone reacts to one of your messages you
      get a notification like iPhones show (`Alex Loved "see you at 5"`, `WaveTapbackNotify`; follows
      the stock Notifications setting).
@@ -85,6 +87,11 @@ resources, or conversation UI.
    - `WaveIMessageDb` (`wave_imessage.db`) maps Apple message ids to stored rows (for tapbacks,
      edits, unsends, quotes and outgoing tapbacks), holds the current tapbacks, and maps MMS parts to
      server attachment ids. Rows older than 180 days are dropped.
+   - Verified on the XP3800 against `imsg-server run --no-apple` (see that README for its test
+     commands): text, 640 px photo previews, 240p video, AAC voice playback, outgoing photos over
+     iMessage, badges (blue for yours, left corner on sent bubbles), React, the reactions list,
+     tapback notifications, full-size saves from both menus, reply quotes, edits, unsends, and group
+     renames and member changes moving the group to its new thread.
    - Host tests: `tools/testing/imessage_test.py` (framing and bodies) and
      `tools/testing/imessage_interop_test.py` (this client code against `imsg-server run --no-apple`:
      media upload/preview/full-size/resume, HEIC, tapbacks, replies, edits, unsends, group events).

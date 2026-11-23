@@ -26,8 +26,10 @@ import java.util.List;
 
 /**
  * FEAT(imessage): "Save attachment" on an iMessage saves the full-size photo or video from the
- * server instead of the screen-size preview stored on the phone
- * ({@code ComposeMessageActivity.saveAttachment}). Files go to the phone's Download folder.
+ * server instead of the screen-size preview stored on the phone ({@code
+ * ComposeMessageActivity.saveAttachment}, and the attachment viewer's Save attachment / Save all in
+ * {@code BaseAttachmentViewActivity}). Files go to the phone's Download folder. The download works
+ * whether or not the push connection is up; it needs only the server.
  */
 public final class WaveIMessageSave {
     private static final String TAG = "WaveIMsg";
@@ -35,20 +37,20 @@ public final class WaveIMessageSave {
 
     private WaveIMessageSave() {}
 
-    /** Returns true if it took over saving message {@code msgId} (an MMS). */
+    /** Conversation menu "Save attachment": true if it took over saving message {@code msgId}. */
     public static boolean saveFullSize(Activity a, long msgId) {
+        return saveAll(a, Uri.parse("content://mms/" + msgId));
+    }
+
+    /** Attachment viewer "Save all": true if it took over saving the message at {@code msgUri}. */
+    public static boolean saveAll(Activity a, Uri msgUri) {
         try {
-            final Context app = a.getApplicationContext();
-            Uri msg = Uri.parse("content://mms/" + msgId);
+            if (msgUri == null) return false;
+            Context app = a.getApplicationContext();
             WaveIMessageDb db = WaveIMessageDb.get(app);
+            Uri msg = Uri.parse(WaveIMessageDb.key(msgUri));
             if (!db.hasMedia(msg)) return false;
-            WaveIMessageHost host = WaveIMessageHost.connected();
-            final MediaClient mc = host == null ? null : host.mediaClient();
-            if (mc == null) {
-                Toast.makeText(a, "iMessage isn't connected; saving the preview", Toast.LENGTH_SHORT).show();
-                return false;
-            }
-            final List<String[]> items = new ArrayList<String[]>();
+            List<String[]> items = new ArrayList<String[]>();
             Cursor cur = app.getContentResolver().query(Uri.parse(msg + "/part"), new String[]{"_id"}, null, null, null);
             if (cur != null) {
                 try {
@@ -60,52 +62,81 @@ public final class WaveIMessageSave {
                     cur.close();
                 }
             }
-            if (items.isEmpty()) return false;
-            Toast.makeText(a, items.size() == 1 ? "Downloading full-size file\u2026"
-                    : "Downloading " + items.size() + " full-size files\u2026", Toast.LENGTH_SHORT).show();
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    int saved = 0;
-                    String error = null;
-                    File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                    dir.mkdirs();
-                    List<String> paths = new ArrayList<String>();
-                    for (String[] m : items) {
-                        File tmp = new File(app.getCacheDir(), "full-" + m[0]);
-                        try {
-                            MediaClient.Result r = mc.download(m[0], true, tmp, null);
-                            File out = unique(dir, r.name != null && !r.name.isEmpty() ? r.name : m[1]);
-                            copy(r.file, out);
-                            paths.add(out.getPath());
-                            saved++;
-                        } catch (IOException e) {
-                            Log.w(TAG, "full-size download of " + m[0] + " failed", e);
-                            error = e.getMessage();
-                        } finally {
-                            tmp.delete();
-                        }
-                    }
-                    if (!paths.isEmpty()) {
-                        MediaScannerConnection.scanFile(app, paths.toArray(new String[paths.size()]), null, null);
-                    }
-                    final String msg = saved == items.size()
-                            ? (saved == 1 ? "Saved to Download" : saved + " files saved to Download")
-                            : saved > 0 ? saved + " of " + items.size() + " saved to Download"
-                            : "Couldn't download" + (error == null ? "" : ": " + error);
-                    MAIN.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(app, msg, Toast.LENGTH_LONG).show();
-                        }
-                    });
-                }
-            }, "wave-imsg-save").start();
-            return true;
+            return start(a, items);
         } catch (Throwable t) {
-            Log.w(TAG, "saveFullSize", t);
+            Log.w(TAG, "saveAll", t);
             return false;
         }
+    }
+
+    /** Attachment viewer "Save attachment": true if it took over saving the part at {@code partUri}. */
+    public static boolean savePart(Activity a, Uri partUri) {
+        try {
+            if (partUri == null) return false;
+            String[] m = WaveIMessageDb.get(a).mediaForPart(
+                    Uri.parse("content://mms/part/" + partUri.getLastPathSegment()));
+            if (m == null) return false;
+            List<String[]> items = new ArrayList<String[]>();
+            items.add(m);
+            return start(a, items);
+        } catch (Throwable t) {
+            Log.w(TAG, "savePart", t);
+            return false;
+        }
+    }
+
+    /** Downloads {mediaId, name} items full-size into Download; false (stock saves the preview) if offline. */
+    private static boolean start(Activity a, final List<String[]> items) {
+        if (items.isEmpty()) return false;
+        final Context app = a.getApplicationContext();
+        WaveIMessageHost host = WaveIMessageHost.get(app);
+        final MediaClient mc = host.mediaClient();
+        if (mc == null) {
+            Toast.makeText(a, "iMessage isn't set up; saving the preview", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        Toast.makeText(a, items.size() == 1 ? "Downloading full-size file\u2026"
+                : "Downloading " + items.size() + " full-size files\u2026", Toast.LENGTH_SHORT).show();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                int saved = 0;
+                String error = null;
+                File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                dir.mkdirs();
+                List<String> paths = new ArrayList<String>();
+                for (String[] m : items) {
+                    File tmp = new File(app.getCacheDir(), "full-" + m[0]);
+                    try {
+                        MediaClient.Result r = mc.download(m[0], true, tmp, null);
+                        File out = unique(dir, r.name != null && !r.name.isEmpty() ? r.name : m[1]);
+                        copy(r.file, out);
+                        paths.add(out.getPath());
+                        saved++;
+                        Log.i(TAG, "saved full-size " + m[0] + " to " + out + " (" + r.length + " bytes)");
+                    } catch (IOException e) {
+                        Log.w(TAG, "full-size download of " + m[0] + " failed", e);
+                        error = e.getMessage();
+                    } finally {
+                        tmp.delete();
+                    }
+                }
+                if (!paths.isEmpty()) {
+                    MediaScannerConnection.scanFile(app, paths.toArray(new String[paths.size()]), null, null);
+                }
+                final String msg = saved == items.size()
+                        ? (saved == 1 ? "Saved to Download" : saved + " files saved to Download")
+                        : saved > 0 ? saved + " of " + items.size() + " saved to Download"
+                        : "Couldn't download" + (error == null ? "" : ": " + error);
+                MAIN.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(app, msg, Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        }, "wave-imsg-save").start();
+        return true;
     }
 
     private static File unique(File dir, String name) {

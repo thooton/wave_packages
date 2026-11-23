@@ -30088,6 +30088,11 @@
 
     .line 4536
     :cond_2a
+    # FEAT(imessage): "React" and "Reactions" for the selected iMessage (Sonim puts message actions here).
+    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mMessageItemForMenu:Lcom/android/mms/ui/MessageItem;
+
+    invoke-static {p1, p0, v0}, Lcom/android/mms/ui/WaveTapbacks;->onCreateMessageMenu(Landroid/view/Menu;Landroid/app/Activity;Lcom/android/mms/ui/MessageItem;)V
+
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mMessageItemForMenu:Lcom/android/mms/ui/MessageItem;
 
     invoke-virtual {v0}, Lcom/android/mms/ui/MessageItem;->isSms()Z

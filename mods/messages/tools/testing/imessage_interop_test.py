@@ -25,7 +25,8 @@ import time
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 IMSG_DIR = ROOT / "apps" / "BMms" / "java" / "com" / "android" / "mms" / "wave" / "imsg"
 DEFAULT_SERVER = ROOT.parents[2] / "imsg-server" / "target" / "debug" / "imsg-server"
-HARNESS = pathlib.Path(__file__).with_name("IMessageInteropTest.java")
+# Host-JVM code, kept out of tools/testing/*.java (push.sh compiles those for the phone).
+HARNESS = pathlib.Path(__file__).parent / "interop" / "IMessageInteropTest.java"
 
 CONFIG = """server_name = "localhost"
 listen_addrs = ["127.0.0.1:{port}"]

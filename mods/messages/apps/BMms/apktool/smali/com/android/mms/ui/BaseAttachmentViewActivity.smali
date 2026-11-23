@@ -1282,6 +1282,18 @@
     .locals 2
 
     .prologue
+    # FEAT(imessage): iMessage attachments are saved full-size from the server.
+    iget-object v0, p0, Lcom/android/mms/ui/BaseAttachmentViewActivity;->mUri:Landroid/net/Uri;
+
+    invoke-static {p0, v0}, Lcom/android/mms/ui/WaveIMessageSave;->saveAll(Landroid/app/Activity;Landroid/net/Uri;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_save_all_stock
+
+    return-void
+
+    :wave_save_all_stock
     .line 328
     invoke-direct {p0}, Lcom/android/mms/ui/BaseAttachmentViewActivity;->copyMedia()Z
 
@@ -1338,6 +1350,24 @@
 
     check-cast v0, Lcom/android/mms/model/MediaWithTextModel;
 
+    # FEAT(imessage): an iMessage attachment is saved full-size from the server.
+    invoke-virtual {v0}, Lcom/android/mms/model/MediaWithTextModel;->getMediaModel()Lcom/android/mms/model/MediaModel;
+
+    move-result-object v1
+
+    invoke-virtual {v1}, Lcom/android/mms/model/MediaModel;->getUri()Landroid/net/Uri;
+
+    move-result-object v1
+
+    invoke-static {p0, v1}, Lcom/android/mms/ui/WaveIMessageSave;->savePart(Landroid/app/Activity;Landroid/net/Uri;)Z
+
+    move-result v1
+
+    if-eqz v1, :wave_save_part_stock
+
+    return-void
+
+    :wave_save_part_stock
     invoke-direct {p0, v0}, Lcom/android/mms/ui/BaseAttachmentViewActivity;->copyPart(Lcom/android/mms/model/MediaWithTextModel;)Z
 
     move-result v0

@@ -16,4 +16,5 @@ public class MessageItem {
     SlideshowModel mSlideshow;
     public boolean isOutgoingMessage() { return false; }
     public boolean isSms() { return false; }
+    public boolean isMe() { return false; }
 }

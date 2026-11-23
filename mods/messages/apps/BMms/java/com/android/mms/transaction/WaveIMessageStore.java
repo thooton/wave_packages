@@ -451,7 +451,7 @@ public final class WaveIMessageStore {
             return;
         }
         String text = body.text == null ? "" : body.text;
-        setText(c, m.uri, text + EDITED, false);
+        setText(c, m.uri, replyQuoteOf(c, m.uri) + text + EDITED, false);
         db.updateText(body.targetId, text);
         refresh(c);
     }
@@ -467,6 +467,42 @@ public final class WaveIMessageStore {
         db.updateText(body.targetId, "");
         db.clearReactions(body.targetId);
         refresh(c);
+    }
+
+    /** The "↩ “...”" line a stored inline reply starts with (kept when it is edited), or "". */
+    private static String replyQuoteOf(Context c, Uri uri) {
+        String current = null;
+        try {
+            if ("sms".equals(uri.getAuthority())) {
+                Cursor cur = c.getContentResolver().query(uri, new String[]{"body"}, null, null, null);
+                if (cur != null) {
+                    try {
+                        if (cur.moveToFirst()) current = cur.getString(0);
+                    } finally {
+                        cur.close();
+                    }
+                }
+            } else {
+                Cursor cur = c.getContentResolver().query(Uri.parse(uri + "/part"), new String[]{"ct", "text"},
+                        null, null, null);
+                if (cur != null) {
+                    try {
+                        while (cur.moveToNext()) {
+                            if ("text/plain".equalsIgnoreCase(cur.getString(0))) {
+                                current = cur.getString(1);
+                                break;
+                            }
+                        }
+                    } finally {
+                        cur.close();
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        if (current == null || !current.startsWith("\u21A9 \u201C")) return "";
+        int nl = current.indexOf('\n');
+        return nl > 0 ? current.substring(0, nl + 1) : "";
     }
 
     /** Replaces the text of a stored SMS/MMS; {@code dropMedia} also deletes its attachments. */
