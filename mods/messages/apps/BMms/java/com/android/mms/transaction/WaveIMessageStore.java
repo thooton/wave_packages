@@ -430,7 +430,12 @@ public final class WaveIMessageStore {
         WaveIMessageDb.Msg m = db.byAppleId(body.targetId);
         Log.i(TAG, "tapback " + body.reaction + (body.enable ? " from " : " removed by ") + who + " on "
                 + body.targetId + (m == null ? " (message not on this phone)" : " " + m.uri));
-        if (m != null) refresh(c);
+        if (m != null) {
+            refresh(c);
+            if (body.enable && !mine && WaveIMessageDb.ME.equals(m.sender)) {
+                WaveTapbackNotify.reactedToMine(c, m, body);
+            }
+        }
     }
 
     static String normalizedSender(Context c, String handle) {

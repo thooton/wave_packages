@@ -73,7 +73,9 @@ resources, or conversation UI.
    - **Tapbacks** (`WaveTapbacks`, `MessageListItem.bind` hook): iPhone-style badges on the top
      corner of the bubble (blue when one is yours). Pressing a text message with tapbacks lists who
      reacted with what; the message menu has **React** (the six standard tapbacks; choosing your
-     current one removes it) and **Reactions**.
+     current one removes it) and **Reactions**. When someone reacts to one of your messages you
+     get a notification like iPhones show (`Alex Loved "see you at 5"`, `WaveTapbackNotify`; follows
+     the stock Notifications setting).
    - **Edits** replace the stored text and add ` (edited)`; **unsends** replace it with
      `This message was unsent` and drop its attachments and tapbacks. **Inline replies** start with
      a quote of the original (`↩ "..."`).
