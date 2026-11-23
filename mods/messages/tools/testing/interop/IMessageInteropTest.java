@@ -140,6 +140,35 @@ public class IMessageInteropTest {
         } catch (MediaClient.ServerError e) {
             check(true, "missing attachment is a server error (" + e.getMessage() + ")");
         }
+        check(mc.connectionsOpened() >= 9, "plain client opens a connection per request");
+
+        // keepOpen(): one connection for uploads, downloads and a server error in between.
+        MediaClient kc = new MediaClient(HOST, port, token).keepOpen();
+        String ku1 = kc.upload(jpeg, null);
+        String ku2 = kc.upload(video, null);
+        Body km = sendAndEcho(peer, "kept", Arrays.asList(
+                new Body.OutAttachment(ku1, "IMG_0003.jpg", "image/jpeg"),
+                new Body.OutAttachment(ku2, "VID_0003.3gp", "video/3gpp")));
+        MediaClient.Result k1 = kc.download(km.attachments.get(0).mediaId, false, new File(work, "k1.jpg"), null);
+        try {
+            kc.download("00000000-0000-0000-0000-000000000000", false, new File(work, "k-none"), null);
+            check(false, "kept: missing attachment errors");
+        } catch (MediaClient.ServerError e) {
+            // expected; the connection stays usable
+        }
+        MediaClient.Result k2 = kc.download(km.attachments.get(1).mediaId, false, new File(work, "k2.mp4"), null);
+        check(Arrays.equals(Files.readAllBytes(k1.file.toPath()), prevBytes) || k1.length > 1000, "kept: photo preview");
+        check("video/mp4".equals(k2.mime) && k2.length > 1000, "kept: video preview after a server error");
+        check(kc.connectionsOpened() == 1, "kept: 2 uploads + 3 downloads on 1 connection ("
+                + kc.connectionsOpened() + ")");
+        // The server (or the network) drops the kept connection: the next request reconnects at once.
+        java.lang.reflect.Field sf = MediaClient.class.getDeclaredField("sock");
+        sf.setAccessible(true);
+        ((java.net.Socket) sf.get(kc)).close();
+        MediaClient.Result k3 = kc.download(km.attachments.get(0).mediaId, true, new File(work, "k3.jpg"), null);
+        check(Arrays.equals(Files.readAllBytes(k3.file.toPath()), jpeg) && kc.connectionsOpened() == 2,
+                "kept: a dropped connection is replaced (" + kc.connectionsOpened() + " connections)");
+        kc.close();
 
         send(Body.sendReaction("r-1", peer, "guid-1", firstEcho, Body.REACT_HEART, null, true, "hello there"));
         check(next(Body.KIND_SEND_RESULT).ok, "tapback sent");

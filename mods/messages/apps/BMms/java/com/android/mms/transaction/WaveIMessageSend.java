@@ -416,26 +416,33 @@ public final class WaveIMessageSend {
         PduBody body = req.getBody();
         int n = body == null ? 0 : body.getPartsNum();
         MediaClient mc = null;
-        for (int i = 0; i < n; i++) {
-            PduPart p = body.getPart(i);
-            byte[] ctb = p.getContentType();
-            String ct = ctb == null ? "" : new String(ctb, StandardCharsets.UTF_8).toLowerCase(Locale.ROOT);
-            if (!isSendableMedia(ct)) continue;
-            try {
-                byte[] data = readPartData(c, p);
-                if (data == null || data.length == 0) continue;
-                if (mc == null) mc = host.mediaClient();
-                if (mc == null) return null;
-                String name = partName(p, i, ct);
-                String id = mc.upload(data, null);
-                Log.i(TAG, "uploaded " + name + " (" + ct + ", " + data.length + " bytes) as " + id);
-                out.add(new Body.OutAttachment(id, name, ct));
-            } catch (Throwable t) {
-                Log.w(TAG, "attachment upload failed; sending as MMS", t);
-                return null;
+        try {
+            for (int i = 0; i < n; i++) {
+                PduPart p = body.getPart(i);
+                byte[] ctb = p.getContentType();
+                String ct = ctb == null ? "" : new String(ctb, StandardCharsets.UTF_8).toLowerCase(Locale.ROOT);
+                if (!isSendableMedia(ct)) continue;
+                try {
+                    byte[] data = readPartData(c, p);
+                    if (data == null || data.length == 0) continue;
+                    if (mc == null) {
+                        mc = host.mediaClient();
+                        if (mc == null) return null;
+                        mc.keepOpen(); // one media connection for all of the message's parts
+                    }
+                    String name = partName(p, i, ct);
+                    String id = mc.upload(data, null);
+                    Log.i(TAG, "uploaded " + name + " (" + ct + ", " + data.length + " bytes) as " + id);
+                    out.add(new Body.OutAttachment(id, name, ct));
+                } catch (Throwable t) {
+                    Log.w(TAG, "attachment upload failed; sending as MMS", t);
+                    return null;
+                }
             }
+            return out;
+        } finally {
+            if (mc != null) mc.close();
         }
-        return out;
     }
 
     private static boolean canRouteMmsOverIMessage(Context c, WaveIMessageConfig cfg, SendReq req) {

@@ -155,6 +155,21 @@ public final class WaveIMessageStore {
     private static void fetchMedia(Context c, WaveIMessageHost host, Body body, long ageMs, List<Media> out,
                                    StringBuilder missing) throws RetryLater {
         MediaClient mc = host.mediaClient();
+        if (mc == null) {
+            fetchMedia(c, (MediaClient) null, body, ageMs, out, missing);
+            return;
+        }
+        // One media connection for all of this message's attachments.
+        mc.keepOpen();
+        try {
+            fetchMedia(c, mc, body, ageMs, out, missing);
+        } finally {
+            mc.close();
+        }
+    }
+
+    private static void fetchMedia(Context c, MediaClient mc, Body body, long ageMs, List<Media> out,
+                                   StringBuilder missing) throws RetryLater {
         File dir = new File(c.getCacheDir(), "imsg-media");
         dir.mkdirs();
         for (Body.InAttachment a : body.attachments) {

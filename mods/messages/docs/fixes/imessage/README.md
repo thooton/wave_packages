@@ -95,6 +95,12 @@ resources, or conversation UI.
      to wait for the next keepalive (up to ~48 min); offline the reconnect kicks the queue.
      Previews fetched before another attachment of the same message failed are kept in the cache
      (`imsg-media/<id>` + `.meta`) and reused instead of downloaded again.
+   - **One media connection per message**: `MediaClient.keepOpen()` serves all of a message's
+     attachment downloads (incoming) or uploads (outgoing) over one TLS connection, closed when
+     the message is done (the server takes any number of requests per connection and drops idle
+     ones after 120 s); a kept connection that broke is replaced at once. A message with five
+     photos costs one handshake instead of five. Plain clients (no keepOpen) still open and close
+     a connection per request.
    - **Tapbacks** (`WaveTapbacks`, `MessageListItem.bind` hook): iPhone-style round tapback bubbles
      hanging off the bubble's top outer corner (right on received bubbles, left on sent ones), with
      the two-dot tail toward the message, older ones stacked behind and a ring of the conversation

@@ -54,24 +54,68 @@ public final class MediaClient {
     private final int port;
     private final String tokenHex;
 
+    /**
+     * With {@link #keepOpen()}, one media connection serves every download and upload of this
+     * client until {@link #close()} (the server takes any number of requests per connection and
+     * drops it after 120 s idle). A message with five photos then costs one TLS handshake instead
+     * of five, which on cellular is several radio round trips each. Without it every request opens
+     * and closes its own connection, as callers that never call close() expect.
+     */
+    private boolean keepOpen;
+    private SSLSocket sock;
+    private InputStream sockIn;
+    private OutputStream sockOut;
+    private int opened;
+
+    /** How many media connections this client has opened (tests). */
+    public synchronized int connectionsOpened() {
+        return opened;
+    }
+
     public MediaClient(String host, int port, String tokenHex) {
         this.host = host;
         this.port = port;
         this.tokenHex = tokenHex;
     }
 
+    /** Reuse one connection for every request until {@link #close()}; returns this. */
+    public synchronized MediaClient keepOpen() {
+        keepOpen = true;
+        return this;
+    }
+
+    /** Ends the kept-open connection, if any. */
+    public synchronized void close() {
+        if (sock != null) {
+            try {
+                Frame.bye(Frame.BYE_NORMAL).writeTo(sockOut);
+            } catch (IOException ignored) {
+            }
+        }
+        drop();
+    }
+
+    /** The connection: the kept-open one, or a fresh one. */
     private SSLSocket open() throws IOException {
+        if (sock != null) return sock;
         SSLSocket s = TlsHelper.connect(host, port, CONNECT_TIMEOUT_MS, CONNECT_TIMEOUT_MS);
         try {
             s.setSoTimeout(READ_TIMEOUT_MS);
+            // One buffered pair per connection: a second BufferedInputStream would lose whatever
+            // the first had read ahead.
+            InputStream in = new BufferedInputStream(s.getInputStream(), 64 * 1024);
             OutputStream out = new BufferedOutputStream(s.getOutputStream(), 64 * 1024);
             Frame.hello(Frame.ROLE_MEDIA, tokenHex, 0L, 0).writeTo(out);
-            Frame first = Frame.readFrom(new BufferedInputStream(s.getInputStream()));
+            Frame first = Frame.readFrom(in);
             if (first == null) throw new IOException("server closed the media connection");
             if (first.type == Frame.TYPE_BYE) {
                 throw new ServerError("server refused media connection (" + Frame.byeReasonName(first.reason) + ")");
             }
             if (first.type != Frame.TYPE_WELCOME) throw new IOException("unexpected " + first);
+            sock = s;
+            sockIn = in;
+            sockOut = out;
+            opened++;
             return s;
         } catch (IOException e) {
             closeQuietly(s);
@@ -79,21 +123,45 @@ public final class MediaClient {
         }
     }
 
+    /** After a request: keep the connection, or end it. */
+    private void done() {
+        if (!keepOpen) close();
+    }
+
+    /** The connection broke (or is in an unknown state mid-transfer): forget it. */
+    private void drop() {
+        if (sock != null) closeQuietly(sock);
+        sock = null;
+        sockIn = null;
+        sockOut = null;
+    }
+
     /**
      * Fetches attachment {@code id} into {@code dest} (preview, or the full-size file with
      * {@code full}). Retries network failures, resuming from {@code dest + ".part"}.
      */
-    public Result download(String id, boolean full, File dest, Progress progress) throws IOException {
+    public synchronized Result download(String id, boolean full, File dest, Progress progress) throws IOException {
         File part = new File(dest.getPath() + ".part");
         IOException last = null;
         for (int attempt = 0; attempt < ATTEMPTS; attempt++) {
+            boolean reused = sock != null;
             try {
-                return downloadOnce(id, full, dest, part, progress);
+                Result r = downloadOnce(id, full, dest, part, progress);
+                done();
+                return r;
             } catch (ServerError e) {
+                // MEDIA_ERR leaves the connection usable; a refused connection was never kept.
+                done();
                 part.delete();
                 throw e;
             } catch (IOException e) {
+                drop();
                 last = e;
+                // A kept connection the server had already timed out: retry at once on a new one.
+                if (reused) {
+                    attempt--;
+                    continue;
+                }
                 try {
                     Thread.sleep(2000L * (attempt + 1));
                 } catch (InterruptedException ie) {
@@ -107,11 +175,11 @@ public final class MediaClient {
 
     private Result downloadOnce(String id, boolean full, File dest, File part, Progress progress) throws IOException {
         long have = part.exists() ? part.length() : 0L;
-        SSLSocket s = open();
+        open();
         RandomAccessFile raf = null;
         try {
-            OutputStream out = s.getOutputStream();
-            InputStream in = new BufferedInputStream(s.getInputStream(), 64 * 1024);
+            OutputStream out = sockOut;
+            InputStream in = sockIn;
             Frame.mediaGet(id, full, have).writeTo(out);
             raf = new RandomAccessFile(part, "rw");
             String mime = null;
@@ -141,10 +209,6 @@ public final class MediaClient {
             }
             raf.close();
             raf = null;
-            try {
-                Frame.bye(Frame.BYE_NORMAL).writeTo(out);
-            } catch (IOException ignored) {
-            }
             if (dest.exists() && !dest.delete()) throw new IOException("can't replace " + dest);
             if (!part.renameTo(dest)) throw new IOException("can't move download to " + dest);
             return new Result(dest, mime, name, total);
@@ -155,22 +219,29 @@ public final class MediaClient {
                 } catch (IOException ignored) {
                 }
             }
-            closeQuietly(s);
         }
     }
 
     /** Uploads {@code data} and returns its upload id, to name in a SEND_MESSAGE. */
-    public String upload(byte[] data, Progress progress) throws IOException {
+    public synchronized String upload(byte[] data, Progress progress) throws IOException {
         String id = "u-" + UUID.randomUUID().toString();
         IOException last = null;
         for (int attempt = 0; attempt < ATTEMPTS; attempt++) {
+            boolean reused = sock != null;
             try {
                 uploadOnce(id, data, progress);
+                done();
                 return id;
             } catch (ServerError e) {
+                done();
                 throw e;
             } catch (IOException e) {
+                drop();
                 last = e;
+                if (reused) {
+                    attempt--;
+                    continue;
+                }
                 try {
                     Thread.sleep(2000L * (attempt + 1));
                 } catch (InterruptedException ie) {
@@ -183,10 +254,10 @@ public final class MediaClient {
     }
 
     private void uploadOnce(String id, byte[] data, Progress progress) throws IOException {
-        SSLSocket s = open();
-        try {
-            OutputStream out = new BufferedOutputStream(s.getOutputStream(), 64 * 1024);
-            InputStream in = new BufferedInputStream(s.getInputStream());
+        open();
+        {
+            OutputStream out = sockOut;
+            InputStream in = sockIn;
             long total = data.length;
             int off = 0;
             do {
@@ -202,12 +273,6 @@ public final class MediaClient {
             if (f == null) throw new IOException("media connection closed during upload");
             if (f.type == Frame.TYPE_MEDIA_ERR) throw new ServerError(f.message);
             if (f.type != Frame.TYPE_MEDIA_PUT_ACK || f.total != total) throw new IOException("unexpected " + f);
-            try {
-                Frame.bye(Frame.BYE_NORMAL).writeTo(out);
-            } catch (IOException ignored) {
-            }
-        } finally {
-            closeQuietly(s);
         }
     }
 
