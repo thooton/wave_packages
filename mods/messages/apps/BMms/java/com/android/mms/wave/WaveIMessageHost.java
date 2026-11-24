@@ -176,10 +176,15 @@ public final class WaveIMessageHost implements PushClient.Listener {
 
     /** Called from WaveInit.onAppCreate (main thread): never blocks. */
     public static void onAppCreate(Context app) {
-        final WaveIMessageHost h = get(app);
+        final Context appCtx = app.getApplicationContext();
+        final WaveIMessageHost h = get(appCtx);
         h.handler.post(new Runnable() {
             @Override
             public void run() {
+                try {
+                    WaveIMessageDb.get(appCtx).ensureInfoKeys();
+                    com.android.mms.ui.WaveTapbacks.warmCache(appCtx);
+                } catch (Throwable ignored) {}
                 if (h.config.isEnabled()) {
                     h.startHostService(null);
                 }

@@ -518,7 +518,7 @@ public final class WaveIMessageStore {
         setText(c, m.uri, replyQuoteOf(c, m.uri) + text + EDITED + (unsent ? "\n" + UNSENT_NOTE : ""), false);
         // Keeps the replaced text: WaveIMessageDb.editHistory lists every version.
         db.markEdited(targetId, text, timestampMs > 0 ? timestampMs : System.currentTimeMillis());
-        refresh(c);
+        com.android.mms.ui.WaveTapbacks.notifyUi(c);
     }
 
     private static void applyUnsend(Context c, Body body) {
@@ -540,7 +540,7 @@ public final class WaveIMessageStore {
         String shown = replyQuoteOf(c, m.uri) + (m.text == null ? "" : m.text) + (edited ? EDITED : "");
         setText(c, m.uri, shown.isEmpty() ? UNSENT_NOTE : shown + "\n" + UNSENT_NOTE, false);
         db.markUnsent(targetId);
-        refresh(c);
+        com.android.mms.ui.WaveTapbacks.notifyUi(c);
     }
 
     /** The "↩ “...”" line a stored inline reply starts with (kept when it is edited), or "". */

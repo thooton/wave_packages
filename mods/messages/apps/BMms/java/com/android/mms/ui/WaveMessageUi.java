@@ -2,14 +2,17 @@ package com.android.mms.ui;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -20,7 +23,11 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.preference.PreferenceManager;
+import android.text.SpannableString;
+import android.text.Spanned;
 import android.text.TextUtils;
+import android.text.style.RelativeSizeSpan;
 import android.util.Log;
 import android.util.LruCache;
 import android.util.TypedValue;
@@ -89,8 +96,23 @@ public final class WaveMessageUi {
     private static final int TAG_CUSTOM_BG = 0x57420106;
     private static final int TAG_ORIG_TEXT_PAD = 0x57420107;
     private static final int TAG_ORIG_TEXT_COLOR = 0x57420108;
-    private static final int TAG_ORIG_TEXT_SIZE = 0x57420109;
     private static final int TAG_ORIG_DATE_COLOR = 0x5742010a;
+    private static final int TAG_ROW_HOLDER = 0x5742010b;
+    private static final int TAG_MEDIA_KEY = 0x5742010c;
+
+    private static final int STYLE_NOTICE = 1 << 0;
+    private static final int STYLE_BODY = 1 << 1;
+    private static final int STYLE_DATE_COLOR = 1 << 2;
+    private static final int STYLE_BLOCK_PAD = 1 << 3;
+    private static final int STYLE_MEDIA = 1 << 4;
+    private static final int STYLE_QUOTE = 1 << 5;
+    private static final int STYLE_CUSTOM_BG = 1 << 6;
+
+    // Stock MessageListItem.bind() text size: (int) pref_key_zoom_message, default 14sp
+    // (MmsConfig.mZoomMessage is a constant true on this build).
+    private static final String PREF_ZOOM_MESSAGE = "pref_key_zoom_message";
+    private static final float STOCK_BODY_SP = 14f;
+    private static SharedPreferences sPrefs;
 
     private static final String UNSENT_TEXT = "This message was unsent";
     private static final String EDITED_SUFFIX = " (edited)";
@@ -100,7 +122,36 @@ public final class WaveMessageUi {
     private static final int COLOR_FALLBACK_ACCENT = 0xFF0099CC;
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
+    private static final ExecutorService META_EXEC = Executors.newFixedThreadPool(2);
     private static final ExecutorService IO_EXEC = Executors.newFixedThreadPool(2);
+    private static final Set<Long> IN_FLIGHT_META =
+            Collections.synchronizedSet(new java.util.HashSet<Long>());
+
+    /** Cached view references and dirty-style bitmask per recycled MessageListItem. */
+    private static final class RowHolder {
+        final View listParent;
+        final LinearLayout block;
+        final TextView bottomTv;
+        final TextView topTv;
+        final TextView dateTv;
+        final View metaRow;
+        final TextView subjTv;
+        LinearLayout mediaHost;
+        QuoteView quoteView;
+        boolean metricsSaved;
+        int styledFlags;
+
+        RowHolder(MessageListItem row, LinearLayout block) {
+            this.listParent = row.findViewById(ID_LIST_PARENT);
+            this.block = block;
+            this.bottomTv = (TextView) block.findViewById(ID_TEXT_BOTTOM);
+            this.topTv = (TextView) block.findViewById(ID_TEXT_TOP);
+            this.dateTv = (TextView) block.findViewById(ID_DATE_VIEW);
+            this.metaRow = (dateTv != null && dateTv.getParent() instanceof View)
+                    ? (View) dateTv.getParent() : null;
+            this.subjTv = (TextView) block.findViewById(ID_SUBJECT_TEXT);
+        }
+    }
 
     // --- In-chat Voice Message Player state ---
     private static MediaPlayer sVoicePlayer;
@@ -320,22 +371,26 @@ public final class WaveMessageUi {
         try {
             if (row == null) return;
             MessageItem mi = row.getMessageItem();
-            View blockView = row.findViewById(ID_MESSAGE_BLOCK);
-            if (mi == null || !(blockView instanceof LinearLayout)) return;
-            LinearLayout block = (LinearLayout) blockView;
+            if (mi == null) return;
+            RowHolder h = (RowHolder) row.getTag(TAG_ROW_HOLDER);
+            if (h == null) {
+                View blockView = row.findViewById(ID_MESSAGE_BLOCK);
+                if (!(blockView instanceof LinearLayout)) return;
+                h = new RowHolder(row, (LinearLayout) blockView);
+                row.setTag(TAG_ROW_HOLDER, h);
+            }
+            LinearLayout block = h.block;
             Context ctx = row.getContext();
             boolean isMe = mi.isMe();
 
-            saveOriginalMetrics(row, block);
-            restoreNormalRow(row, block, isMe);
+            restoreNormalRow(h, ctx, isMe);
 
-            TextView bottomTv = (TextView) block.findViewById(ID_TEXT_BOTTOM);
-            TextView topTv = (TextView) block.findViewById(ID_TEXT_TOP);
+            TextView bottomTv = h.bottomTv;
+            TextView topTv = h.topTv;
             TextView bodyTv = (topTv != null && topTv.getVisibility() == View.VISIBLE
                     && !TextUtils.isEmpty(topTv.getText())) ? topTv : bottomTv;
-            TextView dateTv = (TextView) block.findViewById(ID_DATE_VIEW);
-            View metaRow = dateTv != null && dateTv.getParent() instanceof View
-                    ? (View) dateTv.getParent() : null;
+            TextView dateTv = h.dateTv;
+            View metaRow = h.metaRow;
 
             WaveIMessageDb.Info info = mi.mMessageUri != null
                     ? WaveIMessageDb.get(ctx).infoForUri(mi.mMessageUri) : null;
@@ -346,9 +401,10 @@ public final class WaveMessageUi {
             // 1. Group event notice -> centered subtle system line
             boolean isNotice = (info != null && info.notice()) || isLegacyGroupNotice(rawBody);
             if (isNotice && !TextUtils.isEmpty(rawBody)) {
+                saveOriginalMetrics(h);
                 String noticeText = (info != null && !TextUtils.isEmpty(info.text))
                         ? info.text : rawBody;
-                applyGroupNoticeStyle(ctx, row, block, bodyTv, metaRow, noticeText);
+                applyGroupNoticeStyle(ctx, h, bodyTv, metaRow, noticeText);
                 hideStockMmsViews(block);
                 return;
             }
@@ -360,7 +416,8 @@ public final class WaveMessageUi {
             boolean isUnsent = (info != null && info.unsent());
             boolean isLegacyUnsent = UNSENT_TEXT.equals(rawBody.trim());
             if (isLegacyUnsent && !isUnsent) {
-                applyLegacyUnsentStyle(ctx, block, bodyTv, dateTv, isMe);
+                saveOriginalMetrics(h);
+                applyLegacyUnsentStyle(ctx, h, bodyTv, dateTv, isMe);
                 hideStockMmsViews(block);
                 return;
             }
@@ -400,7 +457,8 @@ public final class WaveMessageUi {
             }
 
             if (isUnsent && TextUtils.isEmpty(displayBody.trim()) && !mi.isMms()) {
-                applyLegacyUnsentStyle(ctx, block, bodyTv, dateTv, isMe);
+                saveOriginalMetrics(h);
+                applyLegacyUnsentStyle(ctx, h, bodyTv, dateTv, isMe);
                 hideStockMmsViews(block);
                 return;
             }
@@ -410,16 +468,19 @@ public final class WaveMessageUi {
                     bodyTv.setText(displayBody);
                 }
                 if (isAttachmentPlaceholder(displayBody)) {
+                    saveOriginalMetrics(h);
                     bodyTv.setTypeface(Typeface.SANS_SERIF, Typeface.ITALIC);
-                    bodyTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
+                    bodyTv.setText(sized(displayBody, 13.5f));
                     bodyTv.setTextColor(isMe ? 0xFF636366 : 0xCCFFFFFF);
+                    h.styledFlags |= STYLE_BODY;
                 }
             }
 
             if (isUnsent) {
+                saveOriginalMetrics(h);
                 int baseFill = isMe ? 0xF2FFFFFF : ((activeAccentColor() & 0x00FFFFFF) | 0xB8000000);
                 int stroke = isMe ? 0xFFB8B8BE : 0xB3FFFFFF;
-                setCustomBlockBg(block, makeBubbleDrawable(ctx, isMe, baseFill, stroke, true));
+                setCustomBlockBg(h, makeBubbleDrawable(ctx, isMe, baseFill, stroke, true));
             }
 
             if ((isEdited || isUnsent) && dateTv != null && dateTv.getVisibility() == View.VISIBLE) {
@@ -437,14 +498,15 @@ public final class WaveMessageUi {
                 dateTv.setText(sb.toString());
             }
 
-            // 4. Inline Media (Photos, Videos, Voice messages, Multi-media) on MMS rows
+            // 4. Inline Media (Photos, Videos, Voice messages, Multi-media) on media MMS rows
             boolean hasCustomMedia = false;
-            if (mi.isMms() && mi.mMessageUri != null && mi.mMsgId > 0) {
-                hasCustomMedia = bindInlineMedia(row, block, mi, isMe);
+            if (mi.isMms() && mi.mAttachmentType != 0 && !mi.mWaveTextReady
+                    && mi.mMessageUri != null && mi.mMsgId > 0) {
+                hasCustomMedia = bindInlineMedia(row, h, mi, isMe);
             }
 
             // 5. Quoted reply block inside vertical LinearLayout message_block (right above text)
-            QuoteView quoteView = (QuoteView) block.findViewById(ID_WAVE_QUOTE);
+            QuoteView quoteView = h.quoteView;
             if (!TextUtils.isEmpty(quote)) {
                 if (quoteView == null) {
                     quoteView = new QuoteView(ctx);
@@ -457,26 +519,28 @@ public final class WaveMessageUi {
                     qlp.topMargin = dp(ctx, 2);
                     qlp.bottomMargin = dp(ctx, 3);
                     block.addView(quoteView, Math.min(insertIdx, block.getChildCount()), qlp);
+                    h.quoteView = quoteView;
                 }
                 quoteView.bind(quote, isMe, activeAccentColor());
-                quoteView.setVisibility(View.VISIBLE);
-            } else if (quoteView != null) {
+                if (quoteView.getVisibility() != View.VISIBLE) {
+                    quoteView.setVisibility(View.VISIBLE);
+                }
+                h.styledFlags |= STYLE_QUOTE;
+            } else if (quoteView != null && quoteView.getVisibility() != View.GONE) {
                 quoteView.setVisibility(View.GONE);
             }
 
             // Hide empty mms_subject_text (stock XML omits visibility="gone", leaving a 24dp gap)
-            TextView subjTv = (TextView) block.findViewById(ID_SUBJECT_TEXT);
-            if (subjTv != null && TextUtils.isEmpty(subjTv.getText())) {
+            TextView subjTv = h.subjTv;
+            if (subjTv != null && subjTv.getVisibility() != View.GONE && TextUtils.isEmpty(subjTv.getText())) {
                 subjTv.setVisibility(View.GONE);
             }
 
+            // Caption under media keeps the stock text_view padding (10dp sides, 3dp top/bottom) so it
+            // lines up with the timestamp row and with plain text bubbles (see renderInlineMedia).
             if (hasCustomMedia && bodyTv != null) {
-                if (TextUtils.isEmpty(displayBody.trim())) {
-                    bodyTv.setVisibility(View.GONE);
-                } else {
-                    bodyTv.setVisibility(View.VISIBLE);
-                    bodyTv.setPadding(dp(ctx, 6), dp(ctx, 4), dp(ctx, 6), dp(ctx, 1));
-                }
+                int wantVis = TextUtils.isEmpty(displayBody.trim()) ? View.GONE : View.VISIBLE;
+                if (bodyTv.getVisibility() != wantVis) bodyTv.setVisibility(wantVis);
             }
         } catch (Throwable t) {
             Log.w(TAG, "onBindRow failed", t);
@@ -485,7 +549,10 @@ public final class WaveMessageUi {
 
     // --- State save & restore (preserves exact stock Sonim bubbles on normal rows!) ---
 
-    private static void saveOriginalMetrics(MessageListItem row, LinearLayout block) {
+    private static void saveOriginalMetrics(RowHolder h) {
+        if (h.metricsSaved) return;
+        h.metricsSaved = true;
+        LinearLayout block = h.block;
         if (block.getTag(TAG_ORIG_BLOCK_BG) == null && block.getBackground() != null) {
             block.setTag(TAG_ORIG_BLOCK_BG, block.getBackground());
         }
@@ -500,16 +567,16 @@ public final class WaveMessageUi {
                     block.getPaddingLeft(), block.getPaddingTop(),
                     block.getPaddingRight(), block.getPaddingBottom()});
         }
-        View listParent = row.findViewById(ID_LIST_PARENT);
+        View listParent = h.listParent;
         if (listParent != null && listParent.getTag(TAG_ORIG_PARENT_MARGINS) == null
                 && listParent.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
             ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) listParent.getLayoutParams();
             listParent.setTag(TAG_ORIG_PARENT_MARGINS, new int[]{
                     mlp.leftMargin, mlp.topMargin, mlp.rightMargin, mlp.bottomMargin});
         }
-        saveTextDefaults((TextView) block.findViewById(ID_TEXT_BOTTOM));
-        saveTextDefaults((TextView) block.findViewById(ID_TEXT_TOP));
-        TextView dateTv = (TextView) block.findViewById(ID_DATE_VIEW);
+        saveTextDefaults(h.bottomTv);
+        saveTextDefaults(h.topTv);
+        TextView dateTv = h.dateTv;
         if (dateTv != null && dateTv.getTag(TAG_ORIG_DATE_COLOR) == null) {
             dateTv.setTag(TAG_ORIG_DATE_COLOR, dateTv.getCurrentTextColor());
         }
@@ -524,57 +591,116 @@ public final class WaveMessageUi {
         if (tv.getTag(TAG_ORIG_TEXT_COLOR) == null) {
             tv.setTag(TAG_ORIG_TEXT_COLOR, tv.getCurrentTextColor());
         }
-        if (tv.getTag(TAG_ORIG_TEXT_SIZE) == null) {
-            tv.setTag(TAG_ORIG_TEXT_SIZE, tv.getTextSize());
+        // No saved text size: the first bind runs before stock bind() applies the zoom size, so a
+        // saved size would be the 16sp XML default and stick on every later out-of-bind() rebind.
+    }
+
+    /**
+     * The body text size stock MessageListItem.bind() applies right after bindCommonMessage():
+     * (int) pref_key_zoom_message (default 14sp). Applied here too so rebinds that run outside
+     * bind() (async media / PDU callbacks) end up identical.
+     */
+    private static int bodyTextSp(Context ctx) {
+        try {
+            SharedPreferences p = sPrefs;
+            if (p == null) {
+                p = PreferenceManager.getDefaultSharedPreferences(ctx.getApplicationContext());
+                sPrefs = p;
+            }
+            int sp = (int) p.getFloat(PREF_ZOOM_MESSAGE, STOCK_BODY_SP);
+            return sp > 0 ? sp : (int) STOCK_BODY_SP;
+        } catch (Throwable t) {
+            return (int) STOCK_BODY_SP;
         }
     }
 
-    private static void setCustomBlockBg(LinearLayout block, Drawable d) {
-        block.setBackground(d);
-        block.setTag(TAG_CUSTOM_BG, Boolean.TRUE);
+    /**
+     * Text drawn at spAtDefault when the body is at the stock 14sp, scaling with the zoom pref.
+     * A span, not setTextSize(): stock bind() resets the body TextView size after our hook, which
+     * made custom sizes apply only on async rebinds.
+     */
+    private static CharSequence sized(CharSequence text, float spAtDefault) {
+        SpannableString ss = new SpannableString(text == null ? "" : text);
+        ss.setSpan(new RelativeSizeSpan(spAtDefault / STOCK_BODY_SP), 0, ss.length(),
+                Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+        return ss;
     }
 
-    private static void restoreNormalRow(MessageListItem row, LinearLayout block, boolean isMe) {
-        View listParent = row.findViewById(ID_LIST_PARENT);
-        if (listParent != null && listParent.getTag(TAG_ORIG_PARENT_MARGINS) instanceof int[]
-                && listParent.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
-            int[] pm = (int[]) listParent.getTag(TAG_ORIG_PARENT_MARGINS);
-            ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) listParent.getLayoutParams();
-            mlp.setMargins(pm[0], pm[1], pm[2], pm[3]);
-            listParent.setLayoutParams(mlp);
+    private static void setCustomBlockBg(RowHolder h, Drawable d) {
+        h.block.setBackground(d);
+        h.block.setTag(TAG_CUSTOM_BG, Boolean.TRUE);
+        h.styledFlags |= STYLE_CUSTOM_BG;
+    }
+
+    private static void ensureBodyTextSize(TextView tv, int bodySp, float expectedPx) {
+        if (tv == null) return;
+        if (Math.abs(tv.getTextSize() - expectedPx) > 0.5f) {
+            tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, bodySp);
         }
-        ViewParent bp = block.getParent();
-        if (bp instanceof RelativeLayout) {
-            ViewGroup.LayoutParams rlp = ((RelativeLayout) bp).getLayoutParams();
-            if (rlp != null && rlp.width != ViewGroup.LayoutParams.WRAP_CONTENT) {
-                rlp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-                ((RelativeLayout) bp).setLayoutParams(rlp);
+    }
+
+    private static void restoreNormalRow(RowHolder h, Context ctx, boolean isMe) {
+        int bodySp = bodyTextSp(ctx);
+        float expectedPx = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP, bodySp, ctx.getResources().getDisplayMetrics());
+        ensureBodyTextSize(h.bottomTv, bodySp, expectedPx);
+        ensureBodyTextSize(h.topTv, bodySp, expectedPx);
+
+        int flags = h.styledFlags;
+        if (flags == 0) return;
+        h.styledFlags = 0;
+
+        LinearLayout block = h.block;
+        if ((flags & STYLE_NOTICE) != 0) {
+            View listParent = h.listParent;
+            if (listParent != null && listParent.getTag(TAG_ORIG_PARENT_MARGINS) instanceof int[]
+                    && listParent.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+                int[] pm = (int[]) listParent.getTag(TAG_ORIG_PARENT_MARGINS);
+                ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) listParent.getLayoutParams();
+                mlp.setMargins(pm[0], pm[1], pm[2], pm[3]);
+                listParent.setLayoutParams(mlp);
             }
-        }
-        Object om = block.getTag(TAG_ORIG_BLOCK_MARGINS);
-        if (om instanceof int[] && block.getLayoutParams() instanceof RelativeLayout.LayoutParams) {
-            int[] m = (int[]) om;
-            RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) block.getLayoutParams();
-            lp.width = m[0];
-            lp.setMargins(m[1], m[2], m[3], m[4]);
-            lp.removeRule(RelativeLayout.CENTER_HORIZONTAL);
-            if (isMe) {
-                lp.removeRule(RelativeLayout.ALIGN_PARENT_LEFT);
-                lp.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
-            } else {
-                lp.removeRule(RelativeLayout.ALIGN_PARENT_RIGHT);
-                lp.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
+            ViewParent bp = block.getParent();
+            if (bp instanceof RelativeLayout) {
+                ViewGroup.LayoutParams rlp = ((RelativeLayout) bp).getLayoutParams();
+                if (rlp != null && rlp.width != ViewGroup.LayoutParams.WRAP_CONTENT) {
+                    rlp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+                    ((RelativeLayout) bp).setLayoutParams(rlp);
+                }
             }
-            block.setLayoutParams(lp);
-        }
-        Object op = block.getTag(TAG_ORIG_BLOCK_PAD);
-        if (op instanceof int[]) {
-            int[] p = (int[]) op;
-            block.setPadding(p[0], p[1], p[2], p[3]);
+            Object om = block.getTag(TAG_ORIG_BLOCK_MARGINS);
+            if (om instanceof int[] && block.getLayoutParams() instanceof RelativeLayout.LayoutParams) {
+                int[] m = (int[]) om;
+                RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) block.getLayoutParams();
+                lp.width = m[0];
+                lp.setMargins(m[1], m[2], m[3], m[4]);
+                lp.removeRule(RelativeLayout.CENTER_HORIZONTAL);
+                if (isMe) {
+                    lp.removeRule(RelativeLayout.ALIGN_PARENT_LEFT);
+                    lp.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+                } else {
+                    lp.removeRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+                    lp.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
+                }
+                block.setLayoutParams(lp);
+            }
+            if (h.metaRow != null && h.metaRow.getVisibility() != View.VISIBLE) {
+                h.metaRow.setVisibility(View.VISIBLE);
+            }
         }
 
-        // Restore exact stock Sonim bubble drawable if this recycled row previously had a custom bg
-        if (Boolean.TRUE.equals(block.getTag(TAG_CUSTOM_BG))) {
+        if ((flags & (STYLE_NOTICE | STYLE_BLOCK_PAD)) != 0) {
+            Object op = block.getTag(TAG_ORIG_BLOCK_PAD);
+            if (op instanceof int[]) {
+                int[] p = (int[]) op;
+                if (block.getPaddingLeft() != p[0] || block.getPaddingTop() != p[1]
+                        || block.getPaddingRight() != p[2] || block.getPaddingBottom() != p[3]) {
+                    block.setPadding(p[0], p[1], p[2], p[3]);
+                }
+            }
+        }
+
+        if ((flags & STYLE_CUSTOM_BG) != 0 && Boolean.TRUE.equals(block.getTag(TAG_CUSTOM_BG))) {
             Object origBg = block.getTag(TAG_ORIG_BLOCK_BG);
             if (origBg instanceof Drawable) {
                 Drawable d = (Drawable) origBg;
@@ -586,43 +712,52 @@ public final class WaveMessageUi {
             block.setTag(TAG_CUSTOM_BG, Boolean.FALSE);
         }
 
-        resetBodyTv((TextView) block.findViewById(ID_TEXT_BOTTOM));
-        resetBodyTv((TextView) block.findViewById(ID_TEXT_TOP));
-
-        TextView dateTv = (TextView) block.findViewById(ID_DATE_VIEW);
-        if (dateTv != null) {
-            Object odc = dateTv.getTag(TAG_ORIG_DATE_COLOR);
-            if (odc instanceof Integer) dateTv.setTextColor((Integer) odc);
-            if (dateTv.getParent() instanceof View) {
-                ((View) dateTv.getParent()).setVisibility(View.VISIBLE);
-            }
+        if ((flags & (STYLE_NOTICE | STYLE_BODY)) != 0) {
+            boolean wasNotice = (flags & STYLE_NOTICE) != 0;
+            resetBodyTv(h.bottomTv, wasNotice);
+            resetBodyTv(h.topTv, wasNotice);
         }
 
-        View wm = block.findViewById(ID_WAVE_MEDIA);
-        if (wm != null) wm.setVisibility(View.GONE);
-        View wq = block.findViewById(ID_WAVE_QUOTE);
-        if (wq != null) wq.setVisibility(View.GONE);
+        if ((flags & STYLE_DATE_COLOR) != 0 && h.dateTv != null) {
+            Object odc = h.dateTv.getTag(TAG_ORIG_DATE_COLOR);
+            if (odc instanceof Integer) h.dateTv.setTextColor((Integer) odc);
+        }
+
+        if ((flags & STYLE_MEDIA) != 0 && h.mediaHost != null
+                && h.mediaHost.getVisibility() != View.GONE) {
+            h.mediaHost.setVisibility(View.GONE);
+        }
+        if ((flags & STYLE_QUOTE) != 0 && h.quoteView != null
+                && h.quoteView.getVisibility() != View.GONE) {
+            h.quoteView.setVisibility(View.GONE);
+        }
     }
 
-    private static void resetBodyTv(TextView tv) {
+    private static void resetBodyTv(TextView tv, boolean resetLayout) {
         if (tv == null) return;
         tv.setTypeface(Typeface.SANS_SERIF, Typeface.NORMAL);
-        Object os = tv.getTag(TAG_ORIG_TEXT_SIZE);
-        if (os instanceof Float) tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, (Float) os);
         Object oc = tv.getTag(TAG_ORIG_TEXT_COLOR);
         if (oc instanceof Integer) tv.setTextColor((Integer) oc);
         Object op = tv.getTag(TAG_ORIG_TEXT_PAD);
         if (op instanceof int[]) {
             int[] p = (int[]) op;
-            tv.setPadding(p[0], p[1], p[2], p[3]);
+            if (tv.getPaddingLeft() != p[0] || tv.getPaddingTop() != p[1]
+                    || tv.getPaddingRight() != p[2] || tv.getPaddingBottom() != p[3]) {
+                tv.setPadding(p[0], p[1], p[2], p[3]);
+            }
         }
-        tv.setGravity(Gravity.START);
-        tv.setAutoLinkMask(android.text.util.Linkify.ALL);
-        if (tv.getLayoutParams() instanceof LinearLayout.LayoutParams) {
-            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) tv.getLayoutParams();
-            lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-            lp.gravity = Gravity.START;
-            tv.setLayoutParams(lp);
+        if (resetLayout) {
+            tv.setGravity(Gravity.START);
+            tv.setAutoLinkMask(android.text.util.Linkify.ALL);
+            tv.setLinksClickable(true);
+            if (tv.getLayoutParams() instanceof LinearLayout.LayoutParams) {
+                LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) tv.getLayoutParams();
+                if (lp.width != ViewGroup.LayoutParams.WRAP_CONTENT || lp.gravity != Gravity.START) {
+                    lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+                    lp.gravity = Gravity.START;
+                    tv.setLayoutParams(lp);
+                }
+            }
         }
     }
 
@@ -659,11 +794,13 @@ public final class WaveMessageUi {
                 || (s.contains(" removed ") && s.endsWith("."));
     }
 
-    private static void applyGroupNoticeStyle(Context ctx, MessageListItem row, LinearLayout block,
+    private static void applyGroupNoticeStyle(Context ctx, RowHolder h,
                                               TextView bodyTv, View metaRow, String text) {
-        setCustomBlockBg(block, new ColorDrawable(Color.TRANSPARENT));
+        LinearLayout block = h.block;
+        setCustomBlockBg(h, new ColorDrawable(Color.TRANSPARENT));
+        h.styledFlags |= STYLE_NOTICE;
 
-        View listParent = row.findViewById(ID_LIST_PARENT);
+        View listParent = h.listParent;
         if (listParent != null && listParent.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
             ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) listParent.getLayoutParams();
             mlp.setMargins(0, dp(ctx, 2), 0, dp(ctx, 2));
@@ -694,8 +831,7 @@ public final class WaveMessageUi {
             bodyTv.setVisibility(View.VISIBLE);
             bodyTv.setAutoLinkMask(0);
             bodyTv.setLinksClickable(false);
-            bodyTv.setText(formatNumbersInNotice(text));
-            bodyTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
+            bodyTv.setText(sized(formatNumbersInNotice(text), 11.5f));
             bodyTv.setTextColor(0xFF7A7A80);
             bodyTv.setTypeface(Typeface.SANS_SERIF, Typeface.NORMAL);
             bodyTv.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -723,25 +859,27 @@ public final class WaveMessageUi {
 
     // --- Legacy Unsent Style ---
 
-    private static void applyLegacyUnsentStyle(Context ctx, LinearLayout block,
+    private static void applyLegacyUnsentStyle(Context ctx, RowHolder h,
                                                TextView bodyTv, TextView dateTv, boolean isMe) {
-        setCustomBlockBg(block, makeBubbleDrawable(ctx, isMe, 0x80FFFFFF, 0xFFC7C7CC, true));
+        setCustomBlockBg(h, makeBubbleDrawable(ctx, isMe, 0x80FFFFFF, 0xFFC7C7CC, true));
         if (bodyTv != null) {
             bodyTv.setVisibility(View.VISIBLE);
-            bodyTv.setText(UNSENT_TEXT);
+            bodyTv.setText(sized(UNSENT_TEXT, 13.5f));
             bodyTv.setTypeface(Typeface.SANS_SERIF, Typeface.ITALIC);
-            bodyTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
             bodyTv.setTextColor(0xFF7A7A80);
+            h.styledFlags |= STYLE_BODY;
         }
         if (dateTv != null) {
             dateTv.setTextColor(0xFF8E8E93);
+            h.styledFlags |= STYLE_DATE_COLOR;
         }
     }
 
     // --- Inline Media Binding ---
 
-    private static boolean bindInlineMedia(final MessageListItem row, final LinearLayout block,
+    private static boolean bindInlineMedia(final MessageListItem row, final RowHolder h,
                                            final MessageItem mi, final boolean isMe) {
+        final LinearLayout block = h.block;
         final long mmsId = mi.mMsgId;
         final String boundKey = mi.mMessageUri.toString();
         block.setTag(TAG_BOUND_URI, boundKey);
@@ -749,7 +887,7 @@ public final class WaveMessageUi {
         MediaMeta cached = META_CACHE.get(mmsId);
         if (cached != null) {
             if (cached.parts.isEmpty()) return false;
-            renderInlineMedia(row.getContext(), block, cached.parts, isMe);
+            renderInlineMedia(row.getContext(), h, mmsId, cached.parts, isMe);
             return true;
         }
 
@@ -758,17 +896,22 @@ public final class WaveMessageUi {
             hideId(block, ID_ATTACH_FOOTER);
         }
 
+        if (!IN_FLIGHT_META.add(mmsId)) return false;
         final Context app = row.getContext().getApplicationContext();
-        IO_EXEC.execute(() -> {
-            MediaMeta meta = queryMediaMeta(app, mmsId);
-            META_CACHE.put(mmsId, meta);
-            if (meta.parts.isEmpty()) return;
-            MAIN.post(() -> {
-                if (boundKey.equals(block.getTag(TAG_BOUND_URI))) {
-                    onBindRow(row);
-                    WaveTapbacks.onBind(row);
-                }
-            });
+        META_EXEC.execute(() -> {
+            try {
+                MediaMeta meta = queryMediaMeta(app, mmsId);
+                META_CACHE.put(mmsId, meta);
+                if (meta.parts.isEmpty()) return;
+                MAIN.post(() -> {
+                    if (boundKey.equals(block.getTag(TAG_BOUND_URI))) {
+                        onBindRow(row);
+                        WaveTapbacks.onBind(row);
+                    }
+                });
+            } finally {
+                IN_FLIGHT_META.remove(mmsId);
+            }
         });
         return false;
     }
@@ -801,17 +944,16 @@ public final class WaveMessageUi {
         return new MediaMeta(out);
     }
 
-    private static void renderInlineMedia(Context ctx, LinearLayout block,
+    private static void renderInlineMedia(Context ctx, RowHolder h, long mmsId,
                                           List<MediaPart> parts, boolean isMe) {
+        LinearLayout block = h.block;
+        saveOriginalMetrics(h);
         hideStockMmsViews(block);
         hideId(block, ID_ATTACH_FOOTER);
 
         boolean singleAudio = (parts.size() == 1 && parts.get(0).isAudio);
-        if (!singleAudio) {
-            block.setPadding(dp(ctx, 5), dp(ctx, 5), dp(ctx, 5), dp(ctx, 3));
-        }
 
-        LinearLayout host = (LinearLayout) block.findViewById(ID_WAVE_MEDIA);
+        LinearLayout host = h.mediaHost;
         if (host == null) {
             host = new LinearLayout(ctx);
             host.setId(ID_WAVE_MEDIA);
@@ -819,9 +961,49 @@ public final class WaveMessageUi {
             LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             block.addView(host, 0, hlp);
+            h.mediaHost = host;
         }
+        if (host.getVisibility() != View.VISIBLE) {
+            host.setVisibility(View.VISIBLE);
+        }
+        h.styledFlags |= STYLE_MEDIA;
+
+        // Photos/videos/grids: a 5dp frame around the media on every side. The bubble keeps its stock
+        // side padding (recv 0/0, send 0/4dp), so the caption (stock 10dp text inset) and the
+        // timestamp row (stock 10dp inset) stay aligned with each other and with plain text bubbles;
+        // only the media itself is offset to sit 5dp from each bubble edge. Voice rows keep the
+        // stock block padding and their own margins.
+        int hl = 0, hr = 0, hb = 0;
+        if (!singleAudio) {
+            int frame = dp(ctx, 5);
+            // restoreNormalRow() already put the stock padding back, so the current sides are stock.
+            int padL = block.getPaddingLeft();
+            int padR = block.getPaddingRight();
+            int padB = dp(ctx, 2);
+            if (block.getPaddingTop() != frame || block.getPaddingBottom() != padB) {
+                block.setPadding(padL, frame, padR, padB);
+            }
+            h.styledFlags |= STYLE_BLOCK_PAD;
+            hl = Math.max(0, frame - padL);
+            hr = Math.max(0, frame - padR);
+            hb = dp(ctx, 1);
+        }
+        if (host.getLayoutParams() instanceof LinearLayout.LayoutParams) {
+            LinearLayout.LayoutParams hlp = (LinearLayout.LayoutParams) host.getLayoutParams();
+            if (hlp.leftMargin != hl || hlp.rightMargin != hr || hlp.topMargin != 0 || hlp.bottomMargin != hb) {
+                hlp.setMargins(hl, 0, hr, hb);
+                host.setLayoutParams(hlp);
+            }
+        }
+
+        // Reuse the existing inline view across async PduLoadedCallback rebinds so we don't tear down
+        // and re-queue duplicate thumbnail/video decodes for the same MMS row.
+        String mediaKey = mmsId + ":" + isMe + ":" + parts.size() + ":" + parts.get(0).uri;
+        if (host.getChildCount() > 0 && mediaKey.equals(host.getTag(TAG_MEDIA_KEY))) {
+            return;
+        }
+        host.setTag(TAG_MEDIA_KEY, mediaKey);
         host.removeAllViews();
-        host.setVisibility(View.VISIBLE);
 
         if (parts.size() == 1) {
             MediaPart p = parts.get(0);
@@ -898,17 +1080,52 @@ public final class WaveMessageUi {
 
     // --- Custom View: Single Inline Rounded Photo / Video ---
 
+    /** Display size of a single inline photo/video for a bw x bh bitmap (aspect kept, clamped). */
+    private static int[] visualSize(float den, int bwI, int bhI) {
+        float maxW = 160f * den;
+        float maxH = 128f * den;
+        float minW = 92f * den;
+        float minH = 70f * den;
+        float bw = Math.max(1f, bwI);
+        float bh = Math.max(1f, bhI);
+        float ratio = bw / bh;
+
+        float w, h;
+        if (ratio >= 1f) {
+            w = maxW;
+            h = w / ratio;
+            if (h < minH) h = minH;
+            if (h > maxH) { h = maxH; w = h * ratio; }
+        } else {
+            h = maxH;
+            w = h * ratio;
+            if (w < minW) w = minW;
+            if (w > maxW) { w = maxW; h = w / ratio; }
+        }
+        return new int[]{Math.round(Math.min(maxW, w)), Math.round(Math.min(maxH, h))};
+    }
+
+    /**
+     * Rounded media is drawn through a BitmapShader + drawRoundRect/drawPath with an anti-aliased
+     * paint: Canvas.clipPath() is not anti-aliased on Android 8.1 (HWUI stencil clip), which gave
+     * the stair-stepped photo corners. Bitmaps are prescaled off the UI thread to the size they are
+     * shown at (see prescaleToCover), so the draw itself is ~1:1 and never a big one-pass bilinear
+     * minification.
+     */
     private static final class InlineVisualView extends View {
         private final MediaPart part;
         private Bitmap bmp;
+        private BitmapShader shader;
         private int durationMs = -1;
         private int dispW, dispH;
-        private final Paint bmpPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final Paint shaderPaint = new Paint(
+                Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
         private final Paint overlayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Path clipPath = new Path();
+        private final Matrix shaderMatrix = new Matrix();
+        private final Path tri = new Path();
         private final RectF rect = new RectF();
-        private final Rect srcRect = new Rect();
+        private final RectF pill = new RectF();
 
         InlineVisualView(Context ctx, MediaPart part) {
             super(ctx);
@@ -934,16 +1151,24 @@ public final class WaveMessageUi {
                 return;
             }
             final Context app = getContext().getApplicationContext();
+            final float den = getResources().getDisplayMetrics().density;
             IO_EXEC.execute(() -> {
-                Bitmap loaded;
+                Bitmap raw;
                 int dur = -1;
                 if (part.isVideo) {
-                    loaded = decodeVideoFrame(app, part.uri);
-                    dur = readMediaDuration(app, part.uri);
+                    int[] durOut = new int[]{-1};
+                    raw = decodeVideoFrameAndDuration(app, part.uri, durOut);
+                    dur = durOut[0];
                     if (dur >= 0) DUR_CACHE.put(part.uri.toString(), dur);
                 } else {
-                    loaded = WaveAttachmentViewer.decodeCrispBitmap(app, part.uri, 340);
+                    raw = WaveAttachmentViewer.decodeCrispBitmap(app, part.uri, 340);
                 }
+                Bitmap scaled = null;
+                if (raw != null) {
+                    int[] sz = visualSize(den, raw.getWidth(), raw.getHeight());
+                    scaled = prescaleToCover(raw, sz[0], sz[1]);
+                }
+                final Bitmap loaded = scaled;
                 if (loaded != null) THUMB_CACHE.put(key, loaded);
                 final int finalDur = dur;
                 MAIN.post(() -> {
@@ -959,30 +1184,13 @@ public final class WaveMessageUi {
 
         private void applyBitmap(Bitmap b) {
             this.bmp = b;
-            float den = getResources().getDisplayMetrics().density;
-            float maxW = 160f * den;
-            float maxH = 128f * den;
-            float minW = 92f * den;
-            float minH = 70f * den;
-            float bw = Math.max(1f, b.getWidth());
-            float bh = Math.max(1f, b.getHeight());
-            float ratio = bw / bh;
-
-            float w, h;
-            if (ratio >= 1f) {
-                w = maxW;
-                h = w / ratio;
-                if (h < minH) h = minH;
-                if (h > maxH) { h = maxH; w = h * ratio; }
-            } else {
-                h = maxH;
-                w = h * ratio;
-                if (w < minW) w = minW;
-                if (w > maxW) { w = maxW; h = w / ratio; }
+            this.shader = new BitmapShader(b, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+            int[] sz = visualSize(getResources().getDisplayMetrics().density, b.getWidth(), b.getHeight());
+            if (sz[0] != dispW || sz[1] != dispH) {
+                dispW = sz[0];
+                dispH = sz[1];
+                requestLayout();
             }
-            dispW = Math.round(Math.min(maxW, w));
-            dispH = Math.round(Math.min(maxH, h));
-            requestLayout();
             invalidate();
         }
 
@@ -994,19 +1202,20 @@ public final class WaveMessageUi {
         @Override
         protected void onDraw(Canvas c) {
             float den = getResources().getDisplayMetrics().density;
-            float rad = 12f * den;
+            // 11dp = the 16dp bubble corner minus the 5dp media inset, so the corners are concentric.
+            float rad = 11f * den;
             rect.set(0, 0, getWidth(), getHeight());
-            clipPath.reset();
-            clipPath.addRoundRect(rect, rad, rad, Path.Direction.CW);
+            boolean hasBmp = bmp != null && !bmp.isRecycled() && shader != null;
 
-            c.save();
-            c.clipPath(clipPath);
-            if (!part.isSticker) {
+            if (!part.isSticker && (!hasBmp || bmp.hasAlpha())) {
                 overlayPaint.setColor(0x18000000);
-                c.drawRect(rect, overlayPaint);
+                c.drawRoundRect(rect, rad, rad, overlayPaint);
             }
-            if (bmp != null && !bmp.isRecycled()) {
-                drawCenterCrop(c, bmp, rect, srcRect, bmpPaint);
+            if (hasBmp) {
+                mapCover(shaderMatrix, bmp, rect);
+                shader.setLocalMatrix(shaderMatrix);
+                shaderPaint.setShader(shader);
+                c.drawRoundRect(rect, rad, rad, shaderPaint);
             }
             if (part.isVideo) {
                 float cx = getWidth() * 0.5f;
@@ -1016,7 +1225,7 @@ public final class WaveMessageUi {
                 c.drawCircle(cx, cy, pr, overlayPaint);
                 overlayPaint.setColor(Color.WHITE);
                 float s = pr * 0.44f;
-                Path tri = new Path();
+                tri.reset();
                 tri.moveTo(cx - s * 0.52f, cy - s);
                 tri.lineTo(cx + s * 1.05f, cy);
                 tri.lineTo(cx - s * 0.52f, cy + s);
@@ -1031,35 +1240,68 @@ public final class WaveMessageUi {
                     float px = getWidth() - pw - 5f * den;
                     float py = getHeight() - ph - 5f * den;
                     overlayPaint.setColor(0x9E000000);
-                    RectF pill = new RectF(px, py, px + pw, py + ph);
+                    pill.set(px, py, px + pw, py + ph);
                     c.drawRoundRect(pill, ph * 0.5f, ph * 0.5f, overlayPaint);
                     Paint.FontMetrics fm = textPaint.getFontMetrics();
                     c.drawText(dur, px + 5f * den,
                             py + ph * 0.5f - (fm.ascent + fm.descent) * 0.5f, textPaint);
                 }
             }
-            c.restore();
         }
     }
 
     // --- Custom View: Clean 2-Column Multi-Media Grid ---
 
+    private static int gridWidth(float den) {
+        return Math.round(160f * den);
+    }
+
+    private static int gridHeight(float den, int shown) {
+        int rows = (shown <= 2) ? 1 : 2;
+        return rows * Math.round(64f * den) + (rows - 1) * Math.round(2f * den);
+    }
+
+    private static void gridCell(RectF out, int w, int h, float den, int shown, int i) {
+        float gap = 2f * den;
+        int rows = (shown <= 2) ? 1 : 2;
+        float cellW = (w - gap) * 0.5f;
+        float cellH = (h - (rows - 1) * gap) / (float) rows;
+        int col = i % 2;
+        int row = i / 2;
+        float left = col * (cellW + gap);
+        float top = row * (cellH + gap);
+        float right = (shown == 3 && i == 2) ? w : (left + cellW);
+        out.set(left, top, right, top + cellH);
+    }
+
     private static final class InlineGridView extends View {
         private final List<MediaPart> parts;
+        private final int shown;
         private final Bitmap[] thumbs;
-        private final Paint bmpPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final BitmapShader[] shaders;
+        private final RectF[] cells;
+        private final Path[] cellPaths;
+        private final Paint shaderPaint = new Paint(
+                Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
         private final Paint overlayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Path clipPath = new Path();
-        private final RectF cellRect = new RectF();
-        private final Rect srcRect = new Rect();
-        private final int shown;
+        private final Matrix shaderMatrix = new Matrix();
+        private final Path tri = new Path();
+        private final float[] radii = new float[8];
+        private int builtW = -1, builtH = -1;
 
         InlineGridView(Context ctx, List<MediaPart> parts) {
             super(ctx);
             this.parts = parts;
             this.shown = Math.min(4, parts.size());
             this.thumbs = new Bitmap[shown];
+            this.shaders = new BitmapShader[shown];
+            this.cells = new RectF[shown];
+            this.cellPaths = new Path[shown];
+            for (int i = 0; i < shown; i++) {
+                cells[i] = new RectF();
+                cellPaths[i] = new Path();
+            }
             float den = ctx.getResources().getDisplayMetrics().density;
             textPaint.setColor(Color.WHITE);
             textPaint.setTextAlign(Paint.Align.CENTER);
@@ -1068,24 +1310,39 @@ public final class WaveMessageUi {
             loadAll();
         }
 
+        private void setThumb(int i, Bitmap b) {
+            thumbs[i] = b;
+            shaders[i] = new BitmapShader(b, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+        }
+
         private void loadAll() {
             final Context app = getContext().getApplicationContext();
+            final float den = getResources().getDisplayMetrics().density;
+            final int w = gridWidth(den);
+            final int h = gridHeight(den, shown);
+            final RectF tmp = new RectF();
             for (int i = 0; i < shown; i++) {
                 final int idx = i;
                 final MediaPart p = parts.get(i);
-                final String key = (p.isVideo ? "vid:" : "img:") + p.uri.toString();
+                gridCell(tmp, w, h, den, shown, i);
+                final int tw = Math.max(1, Math.round(tmp.width()));
+                final int th = Math.max(1, Math.round(tmp.height()));
+                // Cell-sized thumbnails get their own key: they are prescaled to the cell, not the
+                // single-photo size.
+                final String key = "g" + tw + "x" + th + (p.isVideo ? ":vid:" : ":img:") + p.uri.toString();
                 Bitmap cached = THUMB_CACHE.get(key);
                 if (cached != null && !cached.isRecycled()) {
-                    thumbs[idx] = cached;
+                    setThumb(idx, cached);
                     continue;
                 }
                 IO_EXEC.execute(() -> {
-                    Bitmap b = p.isVideo ? decodeVideoFrame(app, p.uri)
+                    Bitmap raw = p.isVideo ? decodeVideoFrame(app, p.uri)
                             : WaveAttachmentViewer.decodeCrispBitmap(app, p.uri, 200);
+                    final Bitmap b = raw != null ? prescaleToCover(raw, tw, th) : null;
                     if (b != null) THUMB_CACHE.put(key, b);
                     MAIN.post(() -> {
                         if (b != null && !b.isRecycled()) {
-                            thumbs[idx] = b;
+                            setThumb(idx, b);
                             invalidate();
                         }
                     });
@@ -1096,55 +1353,67 @@ public final class WaveMessageUi {
         @Override
         protected void onMeasure(int wSpec, int hSpec) {
             float den = getResources().getDisplayMetrics().density;
-            int w = Math.round(160f * den);
-            int rows = (shown <= 2) ? 1 : 2;
-            int cellH = Math.round(64f * den);
-            int gap = Math.round(2f * den);
-            int h = rows * cellH + (rows - 1) * gap;
-            setMeasuredDimension(w, h);
+            setMeasuredDimension(gridWidth(den), gridHeight(den, shown));
+        }
+
+        /** Per-cell paths: outer grid corners get the 11dp radius, inner corners a small 3dp one. */
+        private void buildCells(int w, int h) {
+            float den = getResources().getDisplayMetrics().density;
+            float rad = 11f * den;
+            float inner = 3f * den;
+            float eps = 0.5f;
+            for (int i = 0; i < shown; i++) {
+                RectF r = cells[i];
+                gridCell(r, w, h, den, shown, i);
+                boolean atL = r.left <= eps, atT = r.top <= eps;
+                boolean atR = r.right >= w - eps, atB = r.bottom >= h - eps;
+                float tl = (atL && atT) ? rad : inner;
+                float tr = (atR && atT) ? rad : inner;
+                float br = (atR && atB) ? rad : inner;
+                float bl = (atL && atB) ? rad : inner;
+                radii[0] = tl; radii[1] = tl;
+                radii[2] = tr; radii[3] = tr;
+                radii[4] = br; radii[5] = br;
+                radii[6] = bl; radii[7] = bl;
+                cellPaths[i].reset();
+                cellPaths[i].addRoundRect(r, radii, Path.Direction.CW);
+            }
+            builtW = w;
+            builtH = h;
         }
 
         @Override
         protected void onDraw(Canvas c) {
+            int w = getWidth(), h = getHeight();
+            if (w != builtW || h != builtH) buildCells(w, h);
             float den = getResources().getDisplayMetrics().density;
-            float gap = 2f * den;
-            float rad = 11f * den;
-            int rows = (shown <= 2) ? 1 : 2;
-            float cellW = (getWidth() - gap) * 0.5f;
-            float cellH = (getHeight() - (rows - 1) * gap) / (float) rows;
-
-            clipPath.reset();
-            clipPath.addRoundRect(new RectF(0, 0, getWidth(), getHeight()),
-                    rad, rad, Path.Direction.CW);
-            c.save();
-            c.clipPath(clipPath);
 
             for (int i = 0; i < shown; i++) {
-                int col = i % 2;
-                int row = i / 2;
-                float left = col * (cellW + gap);
-                float top = row * (cellH + gap);
-                float right = (shown == 3 && i == 2) ? getWidth() : (left + cellW);
-                float bottom = top + cellH;
-                cellRect.set(left, top, right, bottom);
-
-                overlayPaint.setColor(0x22000000);
-                c.drawRect(cellRect, overlayPaint);
-
+                RectF cell = cells[i];
+                Path path = cellPaths[i];
                 Bitmap b = thumbs[i];
-                if (b != null && !b.isRecycled()) {
-                    drawCenterCrop(c, b, cellRect, srcRect, bmpPaint);
+                boolean has = b != null && !b.isRecycled() && shaders[i] != null;
+
+                if (!has || b.hasAlpha()) {
+                    overlayPaint.setColor(0x22000000);
+                    c.drawPath(path, overlayPaint);
+                }
+                if (has) {
+                    mapCover(shaderMatrix, b, cell);
+                    shaders[i].setLocalMatrix(shaderMatrix);
+                    shaderPaint.setShader(shaders[i]);
+                    c.drawPath(path, shaderPaint);
                 }
 
                 if (parts.get(i).isVideo) {
-                    float cx = cellRect.centerX();
-                    float cy = cellRect.centerY();
+                    float cx = cell.centerX();
+                    float cy = cell.centerY();
                     float pr = 12f * den;
                     overlayPaint.setColor(0x99000000);
                     c.drawCircle(cx, cy, pr, overlayPaint);
                     overlayPaint.setColor(Color.WHITE);
                     float s = pr * 0.44f;
-                    Path tri = new Path();
+                    tri.reset();
                     tri.moveTo(cx - s * 0.5f, cy - s);
                     tri.lineTo(cx + s, cy);
                     tri.lineTo(cx - s * 0.5f, cy + s);
@@ -1154,13 +1423,12 @@ public final class WaveMessageUi {
 
                 if (i == 3 && parts.size() > 4) {
                     overlayPaint.setColor(0x8A000000);
-                    c.drawRect(cellRect, overlayPaint);
+                    c.drawPath(path, overlayPaint);
                     Paint.FontMetrics fm = textPaint.getFontMetrics();
-                    c.drawText("+" + (parts.size() - 4), cellRect.centerX(),
-                            cellRect.centerY() - (fm.ascent + fm.descent) * 0.5f, textPaint);
+                    c.drawText("+" + (parts.size() - 4), cell.centerX(),
+                            cell.centerY() - (fm.ascent + fm.descent) * 0.5f, textPaint);
                 }
             }
-            c.restore();
         }
     }
 
@@ -1303,36 +1571,78 @@ public final class WaveMessageUi {
 
     // --- Media decoding helpers ---
 
-    private static void drawCenterCrop(Canvas c, Bitmap b, RectF dst, Rect src, Paint p) {
-        int bw = b.getWidth(), bh = b.getHeight();
-        float dstRatio = dst.width() / Math.max(1f, dst.height());
-        float bmpRatio = bw / (float) Math.max(1, bh);
-        if (bmpRatio > dstRatio) {
-            int cropW = Math.round(bh * dstRatio);
-            int left = (bw - cropW) / 2;
-            src.set(left, 0, left + cropW, bh);
-        } else {
-            int cropH = Math.round(bw / dstRatio);
-            int top = (bh - cropH) / 2;
-            src.set(0, top, bw, top + cropH);
+    /** Shader matrix that center-crops b over dst; integer translation keeps a ~1:1 draw crisp. */
+    private static void mapCover(Matrix m, Bitmap b, RectF dst) {
+        float bw = Math.max(1, b.getWidth());
+        float bh = Math.max(1, b.getHeight());
+        float s = Math.max(dst.width() / bw, dst.height() / bh);
+        m.setScale(s, s);
+        m.postTranslate(Math.round(dst.left + (dst.width() - bw * s) * 0.5f),
+                Math.round(dst.top + (dst.height() - bh * s) * 0.5f));
+    }
+
+    /**
+     * Downscales src so it just covers tw x th (the center-crop source for a view of that size).
+     * Never upscales. Runs on IO_EXEC.
+     */
+    private static Bitmap prescaleToCover(Bitmap src, int tw, int th) {
+        if (src == null || tw <= 0 || th <= 0) return src;
+        float bw = Math.max(1, src.getWidth());
+        float bh = Math.max(1, src.getHeight());
+        float s = Math.max(tw / bw, th / bh);
+        if (s >= 1f) return src;
+        return downscale(src, Math.max(1, Math.round(bw * s)), Math.max(1, Math.round(bh * s)));
+    }
+
+    /**
+     * Scales src down to fw x fh with successive 2x bilinear halvings (each one an exact 2x2 box
+     * average) and one final bilinear step, so fine detail is averaged instead of aliasing the way a
+     * single 4-6x bilinear minification does. Recycles src and intermediates (all owned here).
+     */
+    private static Bitmap downscale(Bitmap src, int fw, int fh) {
+        Bitmap cur = src;
+        try {
+            while (cur.getWidth() / 2 >= fw && cur.getHeight() / 2 >= fh) {
+                Bitmap half = Bitmap.createScaledBitmap(cur,
+                        Math.max(1, cur.getWidth() / 2), Math.max(1, cur.getHeight() / 2), true);
+                if (half != cur && cur != src) cur.recycle();
+                cur = half;
+            }
+            if (cur.getWidth() != fw || cur.getHeight() != fh) {
+                Bitmap fin = Bitmap.createScaledBitmap(cur, fw, fh, true);
+                if (fin != cur && cur != src) cur.recycle();
+                cur = fin;
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "downscale failed", t);
+            if (cur != src && !cur.isRecycled()) cur.recycle();
+            return src;
         }
-        c.drawBitmap(b, src, dst, p);
+        if (cur != src) src.recycle();
+        return cur;
     }
 
     private static Bitmap decodeVideoFrame(Context app, Uri uri) {
+        return decodeVideoFrameAndDuration(app, uri, null);
+    }
+
+    private static Bitmap decodeVideoFrameAndDuration(Context app, Uri uri, int[] durOut) {
         MediaMetadataRetriever mmr = new MediaMetadataRetriever();
         try {
             mmr.setDataSource(app, uri);
+            if (durOut != null && durOut.length > 0) {
+                String s = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                if (s != null) {
+                    try { durOut[0] = Integer.parseInt(s); } catch (NumberFormatException ignored) {}
+                }
+            }
             Bitmap frame = mmr.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
             if (frame == null) return null;
             int max = Math.max(frame.getWidth(), frame.getHeight());
             if (max > 340) {
                 float s = 340f / max;
-                Bitmap scaled = Bitmap.createScaledBitmap(frame,
-                        Math.max(1, Math.round(frame.getWidth() * s)),
-                        Math.max(1, Math.round(frame.getHeight() * s)), true);
-                if (scaled != frame) frame.recycle();
-                return scaled;
+                return downscale(frame, Math.max(1, Math.round(frame.getWidth() * s)),
+                        Math.max(1, Math.round(frame.getHeight() * s)));
             }
             return frame;
         } catch (Throwable t) {

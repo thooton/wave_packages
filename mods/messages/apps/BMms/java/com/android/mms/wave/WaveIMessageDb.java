@@ -29,8 +29,9 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
     /**
      * 2: msgs.flags, msgs.reply_to (what the UI needs to render edits, unsends, notices, replies)
      * and the edits table (every earlier version of an edited message).
+     * 3: partial covering index for special rows (flags/reply_to) and ts indexes for pruning.
      */
-    private static final int VERSION = 2;
+    private static final int VERSION = 3;
 
     /** {@link Info#flags}: the message was edited at least once. */
     public static final int FLAG_EDITED = 1;
@@ -53,6 +54,7 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
 
     private WaveIMessageDb(Context c) {
         super(c, NAME, null, VERSION);
+        setWriteAheadLoggingEnabled(true);
     }
 
     @Override
@@ -67,11 +69,18 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
                 + " name TEXT, ts INTEGER NOT NULL)");
         db.execSQL("CREATE INDEX media_msg ON media(msg_uri)");
         createEdits(db);
+        createPerfIndexes(db);
     }
 
     private static void createEdits(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE edits (apple_id TEXT NOT NULL COLLATE NOCASE, text TEXT, ts INTEGER NOT NULL)");
         db.execSQL("CREATE INDEX edits_msg ON edits(apple_id)");
+    }
+
+    private static void createPerfIndexes(SQLiteDatabase db) {
+        db.execSQL("CREATE INDEX IF NOT EXISTS msgs_special ON msgs(uri) WHERE flags != 0 OR reply_to IS NOT NULL");
+        db.execSQL("CREATE INDEX IF NOT EXISTS msgs_ts ON msgs(ts)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS media_ts ON media(ts)");
     }
 
     @Override
@@ -81,6 +90,9 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE msgs ADD COLUMN reply_to TEXT");
             db.execSQL("ALTER TABLE msgs ADD COLUMN edited_at INTEGER");
             createEdits(db);
+        }
+        if (oldVersion < 3) {
+            createPerfIndexes(db);
         }
     }
 
@@ -122,23 +134,28 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
 
     public void recordMessage(String appleId, Uri uri, String text, String sender, List<String> targets, String guid) {
         if (TextUtils.isEmpty(appleId) || uri == null) return;
+        String k = key(uri);
         ContentValues v = new ContentValues(7);
         v.put("apple_id", appleId);
-        v.put("uri", key(uri));
+        v.put("uri", k);
         v.put("text", text);
         v.put("sender", sender);
         v.put("targets", targets == null ? "" : TextUtils.join("\n", targets));
         v.put("guid", guid);
         v.put("ts", System.currentTimeMillis());
         getWritableDatabase().insertWithOnConflict("msgs", null, v, SQLiteDatabase.CONFLICT_REPLACE);
-        invalidateInfo();
+        // Plain messages have flags=0 and reply_to=NULL; don't wipe infoKeys on every send/receive.
+        java.util.Set<String> keys = infoKeys;
+        if (keys != null && keys.contains(k)) {
+            infoCache.remove(k);
+        }
     }
 
     public void updateText(String appleId, String text) {
         ContentValues v = new ContentValues(1);
         v.put("text", text);
         getWritableDatabase().update("msgs", v, "apple_id=?", new String[]{appleId});
-        invalidateInfo();
+        infoCache.clear();
     }
 
     /**
@@ -147,12 +164,14 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
      */
     public void markEdited(String appleId, String text, long editedAtMs) {
         SQLiteDatabase db = getWritableDatabase();
+        String rowUri = null;
         db.beginTransaction();
         try {
-            Cursor c = db.query("msgs", new String[]{"text", "ts", "edited_at"}, "apple_id=?",
+            Cursor c = db.query("msgs", new String[]{"text", "ts", "edited_at", "uri"}, "apple_id=?",
                     new String[]{appleId}, null, null, null, "1");
             try {
                 if (!c.moveToFirst()) return;
+                rowUri = c.getString(3);
                 // The version being replaced was written at its own edit, or with the message.
                 ContentValues v = new ContentValues(3);
                 v.put("apple_id", appleId);
@@ -167,7 +186,11 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
-            invalidateInfo();
+            if (rowUri != null) {
+                markInfoDirty(rowUri);
+            } else {
+                invalidateInfo();
+            }
         }
     }
 
@@ -231,30 +254,33 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
 
     /** Unsend: FLAG_UNSENT; the text, media and tapbacks stay (shown with an "Unsent" note). */
     public void markUnsent(String appleId) {
-        getWritableDatabase().execSQL("UPDATE msgs SET flags = flags | " + FLAG_UNSENT + " WHERE apple_id = ?",
+        SQLiteDatabase db = getWritableDatabase();
+        db.execSQL("UPDATE msgs SET flags = flags | " + FLAG_UNSENT + " WHERE apple_id = ?",
                 new Object[]{appleId});
-        invalidateInfo();
+        markInfoDirtyByAppleId(db, appleId);
     }
 
     /** Records a stored group notice (FLAG_NOTICE), so the UI can show it as a system line. */
     public void recordNotice(String id, Uri uri, String text) {
         if (TextUtils.isEmpty(id) || uri == null) return;
+        String k = key(uri);
         ContentValues v = new ContentValues(5);
         v.put("apple_id", id);
-        v.put("uri", key(uri));
+        v.put("uri", k);
         v.put("text", text);
         v.put("ts", System.currentTimeMillis());
         v.put("flags", FLAG_NOTICE);
         getWritableDatabase().insertWithOnConflict("msgs", null, v, SQLiteDatabase.CONFLICT_REPLACE);
-        invalidateInfo();
+        markInfoDirty(k);
     }
 
     public void setReplyTo(String appleId, String replyTo) {
         if (TextUtils.isEmpty(replyTo)) return;
+        SQLiteDatabase db = getWritableDatabase();
         ContentValues v = new ContentValues(1);
         v.put("reply_to", replyTo);
-        getWritableDatabase().update("msgs", v, "apple_id=?", new String[]{appleId});
-        invalidateInfo();
+        db.update("msgs", v, "apple_id=?", new String[]{appleId});
+        markInfoDirtyByAppleId(db, appleId);
     }
 
     // -----------------------------------------------------------------------------------------
@@ -306,6 +332,47 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
         infoCache.clear();
     }
 
+    private void markInfoDirty(String uriKey) {
+        if (uriKey == null) {
+            invalidateInfo();
+            return;
+        }
+        java.util.Set<String> keys = infoKeys;
+        if (keys != null) keys.add(uriKey);
+        infoCache.remove(uriKey);
+    }
+
+    private void markInfoDirtyByAppleId(SQLiteDatabase db, String appleId) {
+        if (infoKeys == null) {
+            infoCache.clear();
+            return;
+        }
+        Cursor c = db.query("msgs", new String[]{"uri"}, "apple_id=?", new String[]{appleId}, null, null, null, "1");
+        try {
+            if (c.moveToFirst()) {
+                markInfoDirty(c.getString(0));
+            }
+        } finally {
+            c.close();
+        }
+    }
+
+    /** Pre-loads {@link #infoKeys} off the UI thread so the first chat open does not hit SQLite. */
+    public java.util.Set<String> ensureInfoKeys() {
+        java.util.Set<String> keys = infoKeys;
+        if (keys != null) return keys;
+        keys = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<String, Boolean>());
+        Cursor c = getReadableDatabase().rawQuery(
+                "SELECT uri FROM msgs WHERE flags != 0 OR reply_to IS NOT NULL", null);
+        try {
+            while (c.moveToNext()) keys.add(c.getString(0));
+        } finally {
+            c.close();
+        }
+        infoKeys = keys;
+        return keys;
+    }
+
     /**
      * How to draw the row stored at {@code uri}, or null when there's nothing special about it
      * (not an iMessage, or a plain one). Cheap enough for every bind: rows without flags or a
@@ -314,18 +381,7 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
     public Info infoForUri(Uri uri) {
         if (uri == null) return null;
         String k = key(uri);
-        java.util.Set<String> keys = infoKeys;
-        if (keys == null) {
-            keys = new java.util.HashSet<String>();
-            Cursor c = getReadableDatabase().rawQuery(
-                    "SELECT uri FROM msgs WHERE flags != 0 OR reply_to IS NOT NULL", null);
-            try {
-                while (c.moveToNext()) keys.add(c.getString(0));
-            } finally {
-                c.close();
-            }
-            infoKeys = keys;
-        }
+        java.util.Set<String> keys = ensureInfoKeys();
         if (!keys.contains(k)) return null;
         Info info = infoCache.get(k);
         if (info != null) return info;

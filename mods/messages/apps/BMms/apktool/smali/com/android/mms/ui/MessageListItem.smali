@@ -1433,6 +1433,13 @@
 
     .line 850
     :cond_22
+    # PERF(imessage): skip stock MmsThumbnailPresenter when WaveMessageUi draws inline media itself.
+    invoke-static {p0}, Lcom/android/mms/ui/WaveMessageUi;->suppressStockMms(Lcom/android/mms/ui/MessageListItem;)Z
+
+    move-result v0
+
+    if-nez v0, :goto_9
+
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mPresenter:Lcom/android/mms/ui/Presenter;
 
     if-nez v0, :cond_23
@@ -7449,9 +7456,6 @@
 
     .line 374
     :cond_1
-    # FEAT(imessage): tapback badges on iMessage bubbles.
-    invoke-static {p0}, Lcom/android/mms/ui/WaveTapbacks;->onBind(Lcom/android/mms/ui/MessageListItem;)V
-
     return-void
 
     :cond_2

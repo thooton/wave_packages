@@ -95,6 +95,12 @@ public final class WaveTapbacks {
 
     private static volatile java.util.Set<String> sReacted;
 
+    public static void warmCache(Context c) {
+        if (sReacted == null) {
+            sReacted = WaveIMessageDb.get(c).reactedKeys();
+        }
+    }
+
     public static void invalidate() {
         sReacted = null;
         CACHE.clear();
@@ -320,6 +326,8 @@ public final class WaveTapbacks {
         private List<Badge> badges = Collections.emptyList();
         private boolean onSent;
         private int theirColor = DEFAULT_THEIRS;
+        private int layoutSide = -1;
+        private int cachedBackdrop;
 
         BadgeView(Context c) {
             super(c);
@@ -362,22 +370,34 @@ public final class WaveTapbacks {
             setMeasuredDimension(width, height);
         }
 
+        @Override
+        protected void onDetachedFromWindow() {
+            super.onDetachedFromWindow();
+            cachedBackdrop = 0;
+        }
+
         private int backdrop() {
+            if (cachedBackdrop != 0) return cachedBackdrop;
             ViewParent p = getParent();
             while (p instanceof View) {
                 Drawable bg = ((View) p).getBackground();
                 if (bg instanceof ColorDrawable) {
                     int c = ((ColorDrawable) bg).getColor();
-                    if (Color.alpha(c) == 0xFF) return c;
+                    if (Color.alpha(c) == 0xFF) {
+                        cachedBackdrop = c;
+                        return c;
+                    }
                 }
                 p = p.getParent();
             }
             TypedValue tv = new TypedValue();
             if (getContext().getTheme().resolveAttribute(android.R.attr.colorBackground, tv, true)
                     && tv.type >= TypedValue.TYPE_FIRST_COLOR_INT && tv.type <= TypedValue.TYPE_LAST_COLOR_INT) {
-                return tv.data | 0xFF000000;
+                cachedBackdrop = tv.data | 0xFF000000;
+                return cachedBackdrop;
             }
-            return 0xFFF4EFF0;
+            cachedBackdrop = 0xFFF4EFF0;
+            return cachedBackdrop;
         }
 
         static boolean isLight(int c) {
@@ -454,46 +474,68 @@ public final class WaveTapbacks {
         return all.size() <= MAX_BADGES ? all : all.subList(all.size() - MAX_BADGES, all.size());
     }
 
+    private static final int TAG_CACHED_BLOCK = 0x5741_0101;
+    private static final int TAG_CACHED_BADGE = 0x5741_0102;
+
     /** MessageListItem.bind: shows (or hides) the tapback badges for this row. */
     public static void onBind(MessageListItem row) {
         try {
             MessageItem mi = row.getMessageItem();
-            View block = row.findViewById(ID_MESSAGE_BLOCK);
-            if (mi == null || block == null) return;
-            ViewParent vp = block.getParent();
-            if (!(vp instanceof RelativeLayout)) return;
-            RelativeLayout parent = (RelativeLayout) vp;
-            BadgeView badge = (BadgeView) parent.findViewWithTag(BADGE_TAG);
+            if (mi == null) return;
             List<WaveIMessageDb.Reaction> rs = reactions(row.getContext(), mi.mMessageUri);
+            BadgeView badge = (BadgeView) row.getTag(TAG_CACHED_BADGE);
             if (rs.isEmpty()) {
                 if (badge != null && badge.getVisibility() != View.GONE) {
                     badge.setVisibility(View.GONE);
-                    setTopMargin(block, 0);
+                    View block = (View) row.getTag(TAG_CACHED_BLOCK);
+                    if (block == null) block = row.findViewById(ID_MESSAGE_BLOCK);
+                    if (block != null) setTopMargin(block, 0);
                 }
                 return;
             }
+            View block = (View) row.getTag(TAG_CACHED_BLOCK);
+            if (block == null) {
+                block = row.findViewById(ID_MESSAGE_BLOCK);
+                if (block == null) return;
+                row.setTag(TAG_CACHED_BLOCK, block);
+            }
+            ViewParent vp = block.getParent();
+            if (!(vp instanceof RelativeLayout)) return;
+            RelativeLayout parent = (RelativeLayout) vp;
             if (badge == null) {
-                badge = new BadgeView(row.getContext());
-                badge.setTag(BADGE_TAG);
-                parent.addView(badge);
-                parent.setClipToPadding(false);
-                parent.setClipChildren(false);
+                badge = (BadgeView) parent.findViewWithTag(BADGE_TAG);
+                if (badge == null) {
+                    badge = new BadgeView(row.getContext());
+                    badge.setTag(BADGE_TAG);
+                    parent.addView(badge);
+                    parent.setClipToPadding(false);
+                    parent.setClipChildren(false);
+                }
+                row.setTag(TAG_CACHED_BADGE, badge);
             }
             boolean sent = mi.isMe();
-            RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-            if (sent) {
-                lp.addRule(RelativeLayout.ALIGN_LEFT, ID_MESSAGE_BLOCK);
-                lp.leftMargin = -badge.overhang();
-            } else {
-                lp.addRule(RelativeLayout.ALIGN_RIGHT, ID_MESSAGE_BLOCK);
-                lp.rightMargin = -badge.overhang();
+            int side = sent ? 1 : 0;
+            if (badge.layoutSide != side) {
+                RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                lp.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+                if (sent) {
+                    lp.addRule(RelativeLayout.ALIGN_LEFT, ID_MESSAGE_BLOCK);
+                    lp.leftMargin = -badge.overhang();
+                } else {
+                    lp.addRule(RelativeLayout.ALIGN_RIGHT, ID_MESSAGE_BLOCK);
+                    lp.rightMargin = -badge.overhang();
+                }
+                badge.setLayoutParams(lp);
+                badge.layoutSide = side;
             }
-            badge.setLayoutParams(lp);
             badge.set(badgesFor(rs), sent, chatColor());
-            badge.setVisibility(View.VISIBLE);
-            badge.bringToFront();
+            if (badge.getVisibility() != View.VISIBLE) {
+                badge.setVisibility(View.VISIBLE);
+            }
+            if (parent.getChildAt(parent.getChildCount() - 1) != badge) {
+                badge.bringToFront();
+            }
             setTopMargin(block, badge.bubbleTop());
         } catch (Throwable t) {
             Log.w(TAG, "tapback bind", t);
@@ -1063,6 +1105,11 @@ public final class WaveTapbacks {
 
     public static void changed(Context c) {
         invalidate();
+        c.getContentResolver().notifyChange(Uri.parse("content://mms-sms/"), null);
+    }
+
+    /** Refreshes open conversations without wiping the reaction cache (e.g. edits/unsends). */
+    public static void notifyUi(Context c) {
         c.getContentResolver().notifyChange(Uri.parse("content://mms-sms/"), null);
     }
 
