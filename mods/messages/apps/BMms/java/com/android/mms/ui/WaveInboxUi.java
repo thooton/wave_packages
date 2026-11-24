@@ -115,6 +115,45 @@ public final class WaveInboxUi {
         }
     }
 
+    private static volatile java.util.Locale sCachedLocale;
+    private static volatile boolean sCachedIsRtl;
+    private static volatile java.util.Locale sMmsPrefixLocale;
+    private static volatile String sMmsPrefix;
+
+    /** Cached locale RTL check (1 pointer compare vs per-row ICU.addLikelySubtags JNI). */
+    public static boolean isRtlLocale() {
+        java.util.Locale loc = java.util.Locale.getDefault();
+        if (loc == sCachedLocale) return sCachedIsRtl;
+        boolean rtl = TextUtils.getLayoutDirectionFromLocale(loc) == 1;
+        sCachedIsRtl = rtl;
+        sCachedLocale = loc;
+        return rtl;
+    }
+
+    /** Zero-alloc replacement for Pattern.compile("[^\\u0623-\\u064a]+").matcher(s).matches(). */
+    public static boolean hasNoArabicChars(String s) {
+        if (s == null || s.isEmpty()) return false;
+        for (int i = 0, n = s.length(); i < n; i++) {
+            char c = s.charAt(i);
+            if (c >= '\u0623' && c <= '\u064a') return false;
+        }
+        return true;
+    }
+
+    /** Prepend cached R.string 0x7f07020a (MMS prefix) without AssetManager lookup or StringBuilder when empty. */
+    public static String prependMmsPrefix(Context ctx, String snippet) {
+        java.util.Locale loc = java.util.Locale.getDefault();
+        String prefix = sMmsPrefix;
+        if (prefix == null || loc != sMmsPrefixLocale) {
+            prefix = ctx.getResources().getString(0x7f07020a);
+            if (prefix == null) prefix = "";
+            sMmsPrefix = prefix;
+            sMmsPrefixLocale = loc;
+        }
+        if (prefix.isEmpty()) return snippet != null ? snippet : "";
+        return snippet == null ? prefix : prefix + snippet;
+    }
+
     /** Avoid TextView StaticLayout rebuild + requestLayout() when exact String text is unchanged. */
     public static void setTextIfChanged(TextView tv, CharSequence text) {
         if (tv == null) return;

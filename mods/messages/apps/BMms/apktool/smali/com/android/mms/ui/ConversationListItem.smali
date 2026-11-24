@@ -328,27 +328,14 @@
     move-result-object v4
 
     .line 208
-    invoke-static {}, Ljava/util/Locale;->getDefault()Ljava/util/Locale;
-
-    move-result-object v1
-
-    invoke-static {v1}, Landroid/text/TextUtils;->getLayoutDirectionFromLocale(Ljava/util/Locale;)I
+    invoke-static {}, Lcom/android/mms/ui/WaveInboxUi;->isRtlLocale()Z
 
     move-result v1
-
-    if-ne v1, v2, :cond_7
-
-    move v1, v2
 
     :goto_1
     invoke-static {v1}, Ljava/lang/Boolean;->valueOf(Z)Ljava/lang/Boolean;
 
     move-result-object v5
-
-    .line 210
-    invoke-virtual {v5}, Ljava/lang/Boolean;->booleanValue()Z
-
-    move-result v1
 
     if-eqz v1, :cond_8
 
@@ -362,19 +349,7 @@
     if-lt v1, v2, :cond_d
 
     .line 212
-    const-string/jumbo v1, "[^\u0623-\u064a]+"
-
-    invoke-static {v1}, Ljava/util/regex/Pattern;->compile(Ljava/lang/String;)Ljava/util/regex/Pattern;
-
-    move-result-object v1
-
-    .line 213
-    invoke-virtual {v1, v0}, Ljava/util/regex/Pattern;->matcher(Ljava/lang/CharSequence;)Ljava/util/regex/Matcher;
-
-    move-result-object v1
-
-    .line 214
-    invoke-virtual {v1}, Ljava/util/regex/Matcher;->matches()Z
+    invoke-static {v0}, Lcom/android/mms/ui/WaveInboxUi;->hasNoArabicChars(Ljava/lang/String;)Z
 
     move-result v1
 
@@ -1651,7 +1626,7 @@
 
     move-result-object v1
 
-    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+    invoke-static {v0, v1}, Lcom/android/mms/ui/WaveInboxUi;->setTextIfChanged(Landroid/widget/TextView;Ljava/lang/CharSequence;)V
 
     .line 390
     invoke-direct {p0}, Lcom/android/mms/ui/ConversationListItem;->updateAvatarView()V
@@ -1739,7 +1714,7 @@
 
     move-result-object v5
 
-    invoke-virtual {v0, v5}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+    invoke-static {v0, v5}, Lcom/android/mms/ui/WaveInboxUi;->setTextIfChanged(Landroid/widget/TextView;Ljava/lang/CharSequence;)V
 
     .line 430
     iget-object v0, p0, Lcom/android/mms/ui/ConversationListItem;->mFromView:Landroid/widget/TextView;
@@ -1748,7 +1723,7 @@
 
     move-result-object v5
 
-    invoke-virtual {v0, v5}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+    invoke-static {v0, v5}, Lcom/android/mms/ui/WaveInboxUi;->setTextIfChanged(Landroid/widget/TextView;Ljava/lang/CharSequence;)V
 
     :cond_0
     .line 439
@@ -2002,31 +1977,9 @@
     if-eqz v5, :cond_8
 
     .line 469
-    new-instance v5, Ljava/lang/StringBuilder;
-
-    invoke-direct {v5}, Ljava/lang/StringBuilder;-><init>()V
-
     iget-object v6, p0, Lcom/android/mms/ui/ConversationListItem;->mContext:Landroid/content/Context;
 
-    invoke-virtual {v6}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v6
-
-    const v7, 0x7f07020a
-
-    invoke-virtual {v6, v7}, Landroid/content/res/Resources;->getString(I)Ljava/lang/String;
-
-    move-result-object v6
-
-    invoke-virtual {v5, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v5
-
-    invoke-virtual {v5, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v0
-
-    invoke-virtual {v0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    invoke-static {v6, v0}, Lcom/android/mms/ui/WaveInboxUi;->prependMmsPrefix(Landroid/content/Context;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 
@@ -2038,12 +1991,12 @@
 
     move-result-object v0
 
-    invoke-virtual {v5, v0}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+    invoke-static {v5, v0}, Lcom/android/mms/ui/WaveInboxUi;->setTextIfChanged(Landroid/widget/TextView;Ljava/lang/CharSequence;)V
 
     .line 472
     iget-object v0, p0, Lcom/android/mms/ui/ConversationListItem;->mSubjectView:Landroid/widget/TextView;
 
-    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setVisibility(I)V
+    invoke-static {v0, v1}, Lcom/android/mms/ui/WaveMessageUi;->setVisibilityIfChanged(Landroid/view/View;I)V
 
     goto/16 :goto_2
 

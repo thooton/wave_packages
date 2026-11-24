@@ -1078,15 +1078,9 @@
 
     .line 313
     :cond_16
-    invoke-virtual {p1}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v0
-
-    .line 314
     const v1, 0x7f090019
 
-    .line 313
-    invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getBoolean(I)Z
+    invoke-static {p1, v1}, Lcom/android/mms/wave/WaveInit;->getBoolResCached(Landroid/content/Context;I)Z
 
     move-result v0
 
@@ -2482,13 +2476,9 @@
     .line 466
     iget-object v0, p0, Lcom/android/mms/ui/MessageItem;->mContext:Landroid/content/Context;
 
-    invoke-virtual {v0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v0
-
     const v3, 0x7f09000e
 
-    invoke-virtual {v0, v3}, Landroid/content/res/Resources;->getBoolean(I)Z
+    invoke-static {v0, v3}, Lcom/android/mms/wave/WaveInit;->getBoolResCached(Landroid/content/Context;I)Z
 
     move-result v0
 
