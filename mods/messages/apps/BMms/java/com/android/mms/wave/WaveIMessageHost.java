@@ -177,28 +177,34 @@ public final class WaveIMessageHost implements PushClient.Listener {
     /** Called from WaveInit.onAppCreate (main thread): never blocks or touches disk on UI thread. */
     public static void onAppCreate(Context app) {
         final Context appCtx = app.getApplicationContext();
-        Thread t = new Thread(new Runnable() {
+        // Immediately warm UI read caches (infoKeys + infoCache + tapbacks) off-main before frame #1.
+        WaveIMessageDb.warmUiCachesAsync(appCtx);
+        // PERF: defer foreground service startup (RcsMessageStatusService.onStartCommand +
+        // enterForeground NotificationManager IPCs + TLS/DNS handshake) 900ms past initial launch
+        // so cold frame #1 renders with zero main-thread service/notification/CPU contention.
+        new Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
             @Override
             public void run() {
-                try {
-                    WaveIMessageDb.get(appCtx).ensureInfoKeys();
-                    com.android.mms.ui.WaveTapbacks.warmCache(appCtx);
-                } catch (Throwable ignored) {}
-                try {
-                    final WaveIMessageHost h = get(appCtx);
-                    h.handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (h.config.isEnabled()) {
-                                h.startHostService(null);
-                            }
-                        }
-                    });
-                } catch (Throwable ignored) {}
+                Thread t = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            final WaveIMessageHost h = get(appCtx);
+                            h.handler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (h.config.isEnabled()) {
+                                        h.startHostService(null);
+                                    }
+                                }
+                            });
+                        } catch (Throwable ignored) {}
+                    }
+                }, "wave-imsg-init");
+                t.setDaemon(true);
+                t.start();
             }
-        }, "wave-imsg-init");
-        t.setDaemon(true);
-        t.start();
+        }, 900L);
     }
 
     /** Called from MmsSystemEventReceiver.onReceive on BOOT_COMPLETED. */
@@ -443,6 +449,8 @@ public final class WaveIMessageHost implements PushClient.Listener {
     // -----------------------------------------------------------------------------------------
     // Foreground notification (Android 8.1 API 27)
 
+    private static volatile boolean sChannelCreated;
+
     private void enterForeground(Service s) {
         if (s == null) return;
         if (!config.isConnectionNotificationShown()) {
@@ -456,7 +464,10 @@ public final class WaveIMessageHost implements PushClient.Listener {
             return;
         }
         try {
-            ensureNotificationChannel();
+            if (!sChannelCreated) {
+                ensureNotificationChannel();
+                sChannelCreated = true;
+            }
             synchronized (this) {
                 lastNotifText = formatStatusSummary();
             }

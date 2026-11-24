@@ -362,10 +362,22 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
         java.util.Set<String> keys = infoKeys;
         if (keys != null) return keys;
         keys = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<String, Boolean>());
+        // PERF: pre-populate infoCache in the same off-main query so edited/unsent/reply rows
+        // never run a synchronous main-thread SQLite LEFT JOIN during first-frame bind.
         Cursor c = getReadableDatabase().rawQuery(
-                "SELECT uri FROM msgs WHERE flags != 0 OR reply_to IS NOT NULL", null);
+                "SELECT m.uri, m.flags, m.text, m.reply_to, o.text FROM msgs m"
+                        + " LEFT JOIN msgs o ON o.apple_id = m.reply_to"
+                        + " WHERE m.flags != 0 OR m.reply_to IS NOT NULL"
+                        + " ORDER BY m.ts DESC", null);
         try {
-            while (c.moveToNext()) keys.add(c.getString(0));
+            while (c.moveToNext()) {
+                String u = c.getString(0);
+                if (u == null) continue;
+                if (keys.add(u)) {
+                    String quote = c.isNull(4) || TextUtils.isEmpty(c.getString(4)) ? null : c.getString(4);
+                    infoCache.put(u, new Info(c.getInt(1), c.getString(2), c.getString(3), quote));
+                }
+            }
         } finally {
             c.close();
         }
@@ -402,8 +414,9 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
 
     public Info infoForUri(Uri uri) {
         if (uri == null) return null;
-        String k = key(uri);
         java.util.Set<String> keys = ensureInfoKeys();
+        if (keys.isEmpty()) return null;
+        String k = key(uri);
         if (!keys.contains(k)) return null;
         Info info = infoCache.get(k);
         if (info != null) return info;
