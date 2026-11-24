@@ -431,10 +431,16 @@ public final class WaveIMessageHost implements PushClient.Listener {
                 s.stopForeground(true);
             } catch (Throwable ignored) {
             }
+            synchronized (this) {
+                lastNotifText = null;
+            }
             return;
         }
         try {
             ensureNotificationChannel();
+            synchronized (this) {
+                lastNotifText = formatStatusSummary();
+            }
             s.startForeground(NOTIF_ID, buildForegroundNotification());
         } catch (Throwable t) {
             Log.w(TAG, "enterForeground", t);
@@ -447,6 +453,14 @@ public final class WaveIMessageHost implements PushClient.Listener {
             s = activeService;
         }
         if (s == null || !config.isEnabled() || !config.isConnectionNotificationShown()) return;
+        // Status, interval and network changes all land here, often with the same text (a
+        // reconnect goes Connecting, Connected): posting it again costs a binder call and a
+        // SystemUI update for nothing.
+        String text = formatStatusSummary();
+        synchronized (this) {
+            if (text.equals(lastNotifText)) return;
+            lastNotifText = text;
+        }
         try {
             NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
@@ -456,6 +470,9 @@ public final class WaveIMessageHost implements PushClient.Listener {
         } catch (Throwable ignored) {
         }
     }
+
+    /** Text of the connection notification as last posted (guarded by this). */
+    private String lastNotifText;
 
     /** Applies a change of the "Connection notification" setting to the running service. */
     public void applyNotificationSetting() {
@@ -773,7 +790,8 @@ public final class WaveIMessageHost implements PushClient.Listener {
                     if (sendWaiters.get(clientMsgId) != cb) return; // answered meanwhile
                 }
                 PushClient c = client;
-                boolean accepted = c != null && c.isAccepted(clientMsgId);
+                boolean accepted = (c != null && c.isAccepted(clientMsgId))
+                        || (isResumed(clientMsgId) && !isQueued(clientMsgId));
                 // The server has it: its SEND_RESULT will come (it's queued for us across
                 // reconnects), so keep waiting rather than sending the message a second way.
                 if (accepted && SystemClock.elapsedRealtime() < giveUpAt) {
@@ -880,8 +898,15 @@ public final class WaveIMessageHost implements PushClient.Listener {
         this.activeNetworkKey = networkKey == null ? "" : networkKey;
         updateForegroundNotification();
         writeStatusFile();
-        refreshHandles();
-        refreshRegInfo();
+        // The server sends REG_INFO itself on every connect, so no request for it. Handles
+        // (which also tell us setup is done) once per process and then at most every 6 h:
+        // a reconnect after each network change needn't fetch what hasn't changed.
+        long now = SystemClock.elapsedRealtime();
+        if (lastHandlesRequestElapsed == 0L || now - lastHandlesRequestElapsed > HANDLES_REFRESH_MS
+                || config.getHandles().isEmpty() /* not set up: its answer drives setup */) {
+            lastHandlesRequestElapsed = now;
+            refreshHandles();
+        }
         com.android.mms.transaction.WaveIMessageInbox.get(ctx).kick();
         WaveIMessageSend.drainQueuedAsync(ctx);
         WaveIMessageUi.refreshActiveComposeHint();
@@ -890,6 +915,9 @@ public final class WaveIMessageHost implements PushClient.Listener {
         handler.removeCallbacks(pendingSweep);
         handler.postDelayed(pendingSweep, 60_000L);
     }
+
+    private static final long HANDLES_REFRESH_MS = 6L * 60L * 60L * 1000L;
+    private volatile long lastHandlesRequestElapsed = 0L;
 
     private final Runnable pendingSweep = new Runnable() {
         @Override
@@ -1137,10 +1165,27 @@ public final class WaveIMessageHost implements PushClient.Listener {
         }
     }
 
+    /** Sends of an earlier process this one waits for (see {@link #markResumed}). */
+    private final java.util.Set<String> resumed = java.util.Collections.synchronizedSet(new java.util.HashSet<String>());
+
+    /**
+     * {@code clientMsgId} was given to the server by an earlier process. If it isn't in the outbox
+     * any more, the server ACKed it (the outbox drops a send only on its ACK, or when its sender
+     * gave up, which also drops its record): treat it as accepted, so a missing result isn't
+     * taken as permission to send it again as SMS/MMS.
+     */
+    public void markResumed(String clientMsgId) {
+        if (clientMsgId != null) resumed.add(clientMsgId);
+    }
+
+    private boolean isResumed(String clientMsgId) {
+        return resumed.contains(clientMsgId);
+    }
+
     /** Whether the server has the send {@code clientMsgId} (it ACKed it). */
     public boolean isAccepted(String clientMsgId) {
         PushClient c = client;
-        return c != null && c.isAccepted(clientMsgId);
+        return (c != null && c.isAccepted(clientMsgId)) || (isResumed(clientMsgId) && !isQueued(clientMsgId));
     }
 
     /** Whether {@code clientMsgId} is still in the outbox, to be (re)sent on the next connection. */

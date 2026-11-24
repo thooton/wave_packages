@@ -67,8 +67,6 @@ public final class WaveIMessageSend {
      * process that died before its result came, so nobody in memory waits for it any more.
      */
     static final String SESSION = java.util.UUID.randomUUID().toString();
-    /** How long stock MMS's retry of an earlier send waits for that send's result before sending again. */
-    private static final long RESUME_UNKNOWN_WAIT_MS = 20_000L;
     /** A send from an earlier session with no result after this is given up on (SMS shown failed). */
     private static final long PENDING_GIVE_UP_MS = 10L * 60L * 1000L;
 
@@ -92,18 +90,8 @@ public final class WaveIMessageSend {
             if (Boolean.TRUE.equals(BYPASS.get())) return false;
             if (uri == null || TextUtils.isEmpty(text)) return false;
             final Context c = MmsApp.getApplication();
-            WaveIMessageHost h = WaveIMessageHost.sending();
-            if (h == null) {
-                // Not connected (yet): right after a restart stock Messages resends rows left in
-                // Outbox before we're connected. One an earlier process gave to the server must
-                // not go out as SMS meanwhile; it waits for that send below.
-                WaveIMessageHost any = WaveIMessageHost.get(c);
-                WaveIMessageConfig.PendingSend ps = any.config().isSendEnabled()
-                        ? any.config().pendingSendForUri(uri) : null;
-                if (ps == null || SESSION.equals(ps.session)) return false;
-                h = any;
-            }
-            final WaveIMessageHost host = h;
+            final WaveIMessageHost host = sendingOrResuming(c, uri);
+            if (host == null) return false;
             final WaveIMessageConfig cfg = host.config();
             final String target = WaveIMessageConfig.toIMessageTarget(c, dest);
             if (target == null) return false;
@@ -259,8 +247,24 @@ public final class WaveIMessageSend {
             return earlier;
         }
         cfg.putPendingSend(earlier.id, "sms", SESSION, uri);
+        WaveIMessageHost.get(MmsApp.getApplication()).markResumed(earlier.id);
         Log.i(TAG, "sms " + uri + " was sent before a restart as " + earlier.id + "; waiting for that send");
         return earlier;
+    }
+
+    /**
+     * The host to send {@code uri} with: the connected one, or, while not connected (yet), the
+     * host anyway if an earlier process gave this message to the server. Right after a restart
+     * stock Messages resends what it left in Outbox before we're connected; that message must
+     * not go out as SMS/MMS meanwhile, it waits for the earlier send. Null: leave it to stock.
+     */
+    private static WaveIMessageHost sendingOrResuming(Context c, Uri uri) {
+        WaveIMessageHost h = WaveIMessageHost.sending();
+        if (h != null) return h;
+        WaveIMessageHost any = WaveIMessageHost.get(c);
+        if (!any.config().isEnabled() || !any.config().isSendEnabled()) return null;
+        WaveIMessageConfig.PendingSend ps = any.config().pendingSendForUri(uri);
+        return ps == null || SESSION.equals(ps.session) ? null : any;
     }
 
     /** The row's type (1 inbox, 2 sent, 4 outbox, 5 failed, 6 queued), or -1. */
@@ -345,13 +349,12 @@ public final class WaveIMessageSend {
             r = ps.result.startsWith("ok:")
                     ? new WaveIMessageHost.SendOutcome(true, ps.result.substring(3), null)
                     : null;
-        } else if (host.isQueued(ps.id) || host.isAccepted(ps.id)) {
+        } else {
+            // Queued (goes out on connect) or, not in the outbox any more, ACKed by the server
+            // before the restart: its result comes; meanwhile it must not go out as MMS.
+            host.markResumed(ps.id);
             Log.i(TAG, "mms " + uri + ": waiting for its earlier send " + ps.id);
             r = host.awaitSendResult(ps.id, MEDIA_SEND_TIMEOUT_MS);
-        } else {
-            // The server may have it (ACKed before the restart): a result it kept comes right
-            // after connecting. None in a while: it's lost, send again.
-            r = host.awaitSendResult(ps.id, RESUME_UNKNOWN_WAIT_MS);
             if (!r.ok && r.mayFallBack()) r = null;
         }
         cfg.removePendingSend(ps.id);
@@ -520,12 +523,12 @@ public final class WaveIMessageSend {
     public static boolean imessageReadyForMms(Transaction t) {
         try {
             if (t == null || t.getType() != 2 /* SEND_TRANSACTION */) return false;
-            WaveIMessageHost host = WaveIMessageHost.sending();
-            if (host == null) return false;
             Field f = t.getClass().getDeclaredField("mSendReqURI");
             f.setAccessible(true);
             Uri uri = (Uri) f.get(t);
             if (uri == null) return false;
+            WaveIMessageHost host = sendingOrResuming(MmsApp.getApplication(), uri);
+            if (host == null) return false;
             synchronized (BYPASSED_MMS) {
                 if (IMSG_FAILED_MMS.contains(uri)) return false;
                 if (BYPASSED_MMS.contains(uri)) return true;
@@ -568,8 +571,8 @@ public final class WaveIMessageSend {
 
     private static Uri interceptMmsInner(Context c, SendReq req, Uri uri) {
         try {
-            WaveIMessageHost host = WaveIMessageHost.sending();
-            if (host == null || req == null || uri == null) return null;
+            WaveIMessageHost host = uri == null ? null : sendingOrResuming(c, uri);
+            if (host == null || req == null) return null;
             WaveIMessageConfig cfg = host.config();
             if (!canRouteMmsOverIMessage(c, cfg, req)) return null;
 

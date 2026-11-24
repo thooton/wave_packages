@@ -98,7 +98,14 @@ resources, or conversation UI.
      for 10 min that aren't queued any more are shown failed instead of "Sending" forever. A
      send the server has but never answered keeps its record, so a late result still turns the
      failed SMS into the sent iMessage. Delivery and read receipts for messages sent before a
-     restart find their row in `WaveIMessageDb` (the id-to-row map was in memory only).
+     restart find their row in `WaveIMessageDb` (the id-to-row map was in memory only). A message
+     resent by stock Messages while iMessage is still reconnecting after the restart waits for its
+     earlier send too, instead of going out as SMS/MMS meanwhile.
+   - **Less traffic per reconnect**: the server sends the registration status on every connect,
+     so the phone no longer asks for it; the phone's handles are fetched once per process start,
+     then at most every 6 hours (each reconnect while not set up). The connection notification
+     is only reposted when its text changes. The server no longer forwards delivered/read
+     receipts (nothing on the phone shows them; it still certifies delivery to Apple).
    - Tracks network changes via `ConnectivityManager.registerDefaultNetworkCallback` +
      `TelephonyManager`, learning and persisting per-network optimal keepalive intervals via
      parallel `ROLE_PROBE` NAT probing.
@@ -126,7 +133,12 @@ resources, or conversation UI.
    - **Ordered, durable inbox** (`WaveIMessageInbox`): the push client hands every message-changing
      body to an on-disk queue before it ACKs, and one worker stores them in order. A failed
      attachment download keeps the message queued and retries for up to 6 hours, then stores it
-     with a `[Photo (couldn't download)]` placeholder. Retries back off (30 s doubling to 15 min,
+     with a `[Photo (couldn't download)]` placeholder. What comes after a waiting message doesn't
+     wait behind it (a text used to sit unseen for as long as a photo before it couldn't
+     download); only a tapback, edit, unsend or reply to the waiting message stays behind it, and
+     later messages with attachments wait for the next try instead of each timing out. A new
+     message arriving before the retry is due is stored without trying the waiting downloads
+     again (that held it up for seconds and doubled the backoff). Retries back off (30 s doubling to 15 min,
      back to the start on reconnect); while connected each has its own wakeup (`inbox` on the
      keyed alarm), since a Handler delay doesn't run while the CPU sleeps and a failed download used
      to wait for the next keepalive (up to ~48 min); offline the reconnect kicks the queue.

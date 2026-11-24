@@ -40,6 +40,14 @@ public final class WaveIMessageInbox {
     private boolean drainPosted;
     /** Current retry delay, 0 while nothing is waiting (guarded by this). */
     private long retryMs;
+    /**
+     * Queue files waiting for their retry, and when it's due (elapsedRealtime; guarded by this).
+     * A new message arriving drains the queue at once; before the retry is due that pass leaves
+     * these alone instead of trying their downloads again (each failing try can take seconds and
+     * held up the new message, and doubled the backoff).
+     */
+    private final java.util.Set<String> backingOff = new java.util.HashSet<String>();
+    private long retryDueElapsed;
 
     public static synchronized WaveIMessageInbox get(Context c) {
         if (sInstance == null) sInstance = new WaveIMessageInbox(c.getApplicationContext());
@@ -84,12 +92,16 @@ public final class WaveIMessageInbox {
     public void kick() {
         synchronized (this) {
             retryMs = 0L; // a fresh connection: start the backoff over
+            retryDueElapsed = 0L;
         }
         kick(0L);
     }
 
     /** The retry alarm fired (see {@link #retryLater}). */
     public void onRetryAlarm() {
+        synchronized (this) {
+            retryDueElapsed = 0L;
+        }
         kick(0L);
     }
 
@@ -133,6 +145,20 @@ public final class WaveIMessageInbox {
         File[] files = dir.listFiles();
         if (files == null) return;
         Arrays.sort(files);
+        // A message whose attachment can't be fetched yet waits (up to 6 h), but what comes after
+        // it doesn't wait behind it: a text used to sit unseen for as long as a photo before it
+        // couldn't download. Only what refers to a waiting message (a tapback, edit, unsend or
+        // reply to it) stays behind it, in order; and once a download failed, later messages
+        // with attachments wait too rather than each trying (and timing out) in this pass.
+        java.util.Set<String> waiting = new java.util.HashSet<String>();
+        boolean mediaWaits = false;
+        java.util.Set<String> skip;
+        synchronized (this) {
+            boolean early = retryDueElapsed != 0L && android.os.SystemClock.elapsedRealtime() < retryDueElapsed;
+            skip = early ? new java.util.HashSet<String>(backingOff) : java.util.Collections.<String>emptySet();
+            if (!early) backingOff.clear();
+        }
+        java.util.Set<String> nowWaiting = new java.util.HashSet<String>();
         for (File f : files) {
             String n = f.getName();
             if (n.endsWith(".tmp") && System.currentTimeMillis() - f.lastModified() > 60_000L) {
@@ -148,23 +174,45 @@ public final class WaveIMessageInbox {
                 f.delete();
                 continue;
             }
+            if (skip.contains(n) || refersTo(body, waiting) || (mediaWaits && hasFetchable(body))) {
+                if (body.appleMsgId != null) waiting.add(body.appleMsgId);
+                nowWaiting.add(n);
+                if (hasFetchable(body)) mediaWaits = true;
+                continue;
+            }
             long ageMs = System.currentTimeMillis() - f.lastModified();
             try {
                 WaveIMessageStore.handle(ctx, WaveIMessageHost.get(ctx), body, ageMs);
                 f.delete();
             } catch (WaveIMessageStore.RetryLater e) {
-                retryLater(body, e.getMessage());
-                return; // keep order: nothing after it goes first
+                if (body.appleMsgId != null) waiting.add(body.appleMsgId);
+                nowWaiting.add(n);
+                if (!mediaWaits) retryLater(body, e.getMessage()); // one retry for all
+                mediaWaits = true;
             } catch (Throwable t) {
                 Log.e(TAG, "failed to store " + body + "; dropping it", t);
                 f.delete();
             }
+        }
+        if (!nowWaiting.isEmpty()) {
+            long left;
+            synchronized (this) {
+                backingOff.clear();
+                backingOff.addAll(nowWaiting);
+                left = retryDueElapsed - android.os.SystemClock.elapsedRealtime();
+            }
+            // Offline the retry is our own delayed drain, which this pass's kick replaced.
+            if (left > 0L && WaveIMessageHost.connected() == null) kick(left);
+            Log.i(TAG, nowWaiting.size() + " incoming waiting for attachments");
+            return;
         }
         // Drained: nothing waits any more.
         boolean hadRetry;
         synchronized (this) {
             hadRetry = retryMs != 0L;
             retryMs = 0L;
+            retryDueElapsed = 0L;
+            backingOff.clear();
         }
         if (hadRetry) {
             WaveIMessageHost host = WaveIMessageHost.connected();
@@ -183,6 +231,7 @@ public final class WaveIMessageInbox {
         synchronized (this) {
             retryMs = retryMs == 0L ? RETRY_MS : Math.min(MAX_RETRY_MS, retryMs * 2L);
             delay = retryMs;
+            retryDueElapsed = android.os.SystemClock.elapsedRealtime() + delay;
         }
         Log.i(TAG, "will retry " + body + " in " + delay / 1000L + "s: " + why);
         // One timer, not both: the alarm also fires while awake, and a Handler delay next to it
@@ -193,6 +242,21 @@ public final class WaveIMessageInbox {
         } else {
             kick(delay);
         }
+    }
+
+    /** Whether {@code b} is about (or replies to) one of {@code ids}. */
+    static boolean refersTo(Body b, java.util.Set<String> ids) {
+        if (ids.isEmpty()) return false;
+        return (b.targetId != null && ids.contains(b.targetId)) || (b.replyTo != null && ids.contains(b.replyTo));
+    }
+
+    /** Whether storing {@code b} downloads anything. */
+    static boolean hasFetchable(Body b) {
+        if (b.kind != Body.KIND_INCOMING_MESSAGE || b.attachments == null) return false;
+        for (Body.InAttachment a : b.attachments) {
+            if (a.kind != Body.ATTACH_FILE) return true;
+        }
+        return false;
     }
 
     private static byte[] readFile(File f) throws IOException {
