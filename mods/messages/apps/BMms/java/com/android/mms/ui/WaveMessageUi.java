@@ -1,5 +1,6 @@
 package com.android.mms.ui;
 
+import android.app.Activity;
 import android.content.Context;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -13,7 +14,9 @@ import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.media.AudioManager;
 import android.media.MediaMetadataRetriever;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
@@ -28,12 +31,16 @@ import android.view.ViewParent;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.android.mms.wave.WaveIMessageDb;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
@@ -42,18 +49,16 @@ import java.util.regex.Pattern;
 /**
  * FEAT(imessage): conversation row polish for MessageListItem.
  *
- * Balances Apple Messages visual craft with Sonim's native contact-colored bubble theme:
- * - Generous aspect-preserving rounded inline photos, stickers, videos (with centered play badge
- *   and duration pill), and clean 2-column multi-media grids (replacing tiny 56x56 square boxes,
- *   "4 Attachments" and "13KB" size clutter).
- * - Compact iOS-style inline Voice Message pill (play icon + waveform + cached duration) instead
- *   of the giant stock CD icon box.
+ * Keeps Sonim's exact native message bubbles on normal text rows while adding:
+ * - Rounded aspect-preserving inline photos, stickers, videos (with centered play badge and
+ *   duration pill), and 2-column multi-media grids (suppressing stock's 56x56/3-box/13KB clutter).
+ * - Native Sonim Material inline Voice Message row with direct in-chat playback on OK/click
+ *   (no separate details screen needed) and live progress bar + elapsed timer.
  * - Indented accent-bar Reply Quote block for inline replies.
- * - Subtle "Edited" indicator in the bubble footer instead of raw " (edited)" in body text.
- * - 1.6.0+ unsent messages keep text, media and tapbacks inside a subtly softened dashed-outline
- *   bubble with an "Unsent" footer tag; legacy pre-1.6.0 rows render as a quiet ghost pill.
- * - Centered subtle system lines (no bubble, no autoLink underlines) for iMessage group notices.
- * - Crisp hairline definition on white sent bubbles against the warm off-white backdrop.
+ * - Subtle "Edited" label in the bubble footer instead of raw " (edited)" in body text.
+ * - 1.6.0+ unsent messages keep text, media and tapbacks inside a softened dashed-outline bubble
+ *   with an "Unsent" footer tag; legacy pre-1.6.0 rows render as a quiet ghost pill.
+ * - Centered subtle system lines for iMessage group notices.
  */
 public final class WaveMessageUi {
     private static final String TAG = "WaveMsgUi";
@@ -65,7 +70,6 @@ public final class WaveMessageUi {
     private static final int ID_SUBJECT_TEXT = 0x7f0f00d4;
     private static final int ID_TEXT_BOTTOM = 0x7f0f00d5;
     private static final int ID_ATTACH_FOOTER = 0x7f0f00d7;
-    private static final int ID_NAME_VIEW = 0x7f0f00d9;
     private static final int ID_DATE_VIEW = 0x7f0f00da;
     private static final int ID_MMS_MULTI_VIEW = 0x7f0f00eb;
     private static final int ID_MMS_VIEW = 0x7f0f00ed;
@@ -76,23 +80,50 @@ public final class WaveMessageUi {
     private static final int ID_WAVE_MEDIA = 0x57420001;
     private static final int ID_WAVE_QUOTE = 0x57420002;
 
-    // Tag keys for saving original layout metrics on recycled rows
+    // Tag keys for saving original stock metrics/drawables on recycled rows
     private static final int TAG_ORIG_BLOCK_MARGINS = 0x57420101;
     private static final int TAG_ORIG_BLOCK_PAD = 0x57420102;
-    private static final int TAG_ORIG_PARENT_MARGINS = 0x57420104;
     private static final int TAG_BOUND_URI = 0x57420103;
+    private static final int TAG_ORIG_PARENT_MARGINS = 0x57420104;
+    private static final int TAG_ORIG_BLOCK_BG = 0x57420105;
+    private static final int TAG_CUSTOM_BG = 0x57420106;
+    private static final int TAG_ORIG_TEXT_PAD = 0x57420107;
+    private static final int TAG_ORIG_TEXT_COLOR = 0x57420108;
+    private static final int TAG_ORIG_TEXT_SIZE = 0x57420109;
+    private static final int TAG_ORIG_DATE_COLOR = 0x5742010a;
 
     private static final String UNSENT_TEXT = "This message was unsent";
     private static final String EDITED_SUFFIX = " (edited)";
     private static final String REPLY_PREFIX = "\u21A9 \u201C";
     private static final Pattern E164_PAT = Pattern.compile("\\+[1-9][0-9]{7,14}");
 
-    private static final int COLOR_IMSG_BLUE = 0xFF007AFF;
-    private static final int COLOR_SENT_TEXT = 0xFF1C1C1E;
-    private static final int COLOR_SENT_BORDER = 0xFFDFDADE;
+    private static final int COLOR_FALLBACK_ACCENT = 0xFF0099CC;
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final ExecutorService IO_EXEC = Executors.newFixedThreadPool(2);
+
+    // --- In-chat Voice Message Player state ---
+    private static MediaPlayer sVoicePlayer;
+    private static Uri sVoiceUri;
+    private static boolean sVoicePlaying = false;
+    private static boolean sVoicePrepared = false;
+    private static int sVoicePosMs = 0;
+    private static int sVoiceDurMs = 0;
+    private static final Set<InlineVoiceView> VOICE_VIEWS =
+            Collections.newSetFromMap(new WeakHashMap<InlineVoiceView, Boolean>());
+
+    private static final Runnable VOICE_TICK = new Runnable() {
+        @Override
+        public void run() {
+            if (sVoicePlayer == null || !sVoicePrepared || !sVoicePlaying) return;
+            try {
+                sVoicePosMs = sVoicePlayer.getCurrentPosition();
+                sVoiceDurMs = sVoicePlayer.getDuration();
+                invalidateVoiceViews();
+                MAIN.postDelayed(this, 80);
+            } catch (Throwable ignored) {}
+        }
+    };
 
     static final class MediaPart {
         final Uri uri;
@@ -131,12 +162,132 @@ public final class WaveMessageUi {
 
     private WaveMessageUi() {}
 
+    // --- In-chat voice message playback ---
+
     /**
-     * Called from MessageListItem's stock MMS view methods (showMmsView, initPlayVideoPicView,
-     * initPlayAudioView, initSlideShow, attachmentCountDetails). When WaveMessageUi owns this
-     * row's inline media, suppresses stock's duplicate 56x56/3-box views and "13KB"/"4 Attachments"
-     * footers cleanly.
+     * Called from WaveTapbacks.onItemClick (ComposeMessageActivity$79.onItemClick).
+     * If the clicked row is a single voice/audio message, toggles playback right inside the
+     * conversation bubble instead of opening AttachmentViewActivity.
      */
+    public static boolean onItemClick(Activity act, MessageListItem row) {
+        try {
+            if (act == null || row == null) return false;
+            MessageItem mi = row.getMessageItem();
+            if (mi == null || !mi.isMms() || mi.mMsgId <= 0) return false;
+            MediaMeta meta = META_CACHE.get(mi.mMsgId);
+            if (meta == null) {
+                meta = queryMediaMeta(act.getApplicationContext(), mi.mMsgId);
+                META_CACHE.put(mi.mMsgId, meta);
+            }
+            if (meta.parts.size() != 1 || !meta.parts.get(0).isAudio) return false;
+            toggleVoicePlayback(act.getApplicationContext(), meta.parts.get(0).uri);
+            return true;
+        } catch (Throwable t) {
+            Log.w(TAG, "voice click failed", t);
+            return false;
+        }
+    }
+
+    private static void toggleVoicePlayback(final Context app, final Uri uri) {
+        if (uri == null) return;
+        // Same voice message -> toggle play / pause
+        if (uri.equals(sVoiceUri) && sVoicePlayer != null && sVoicePrepared) {
+            try {
+                if (sVoicePlayer.isPlaying()) {
+                    sVoicePlayer.pause();
+                    sVoicePlaying = false;
+                    MAIN.removeCallbacks(VOICE_TICK);
+                } else {
+                    if (sVoiceDurMs > 0 && sVoicePosMs >= sVoiceDurMs - 150) {
+                        sVoicePlayer.seekTo(0);
+                        sVoicePosMs = 0;
+                    }
+                    sVoicePlayer.start();
+                    sVoicePlaying = true;
+                    MAIN.removeCallbacks(VOICE_TICK);
+                    MAIN.post(VOICE_TICK);
+                }
+                invalidateVoiceViews();
+                return;
+            } catch (Throwable t) {
+                Log.w(TAG, "voice toggle failed", t);
+                stopVoicePlayback();
+            }
+        }
+
+        // Different voice message (or fresh start)
+        stopVoicePlayback();
+        sVoiceUri = uri;
+        sVoicePlaying = false;
+        sVoicePrepared = false;
+        sVoicePosMs = 0;
+        Integer cachedDur = DUR_CACHE.get(uri.toString());
+        sVoiceDurMs = cachedDur != null && cachedDur > 0 ? cachedDur : 0;
+
+        try {
+            final MediaPlayer mp = new MediaPlayer();
+            sVoicePlayer = mp;
+            mp.setAudioStreamType(AudioManager.STREAM_MUSIC);
+            mp.setDataSource(app, uri);
+            mp.setOnPreparedListener(p -> {
+                if (sVoicePlayer != p) return;
+                sVoicePrepared = true;
+                sVoiceDurMs = p.getDuration();
+                if (sVoiceDurMs > 0) DUR_CACHE.put(uri.toString(), sVoiceDurMs);
+                sVoicePosMs = 0;
+                p.start();
+                sVoicePlaying = true;
+                invalidateVoiceViews();
+                MAIN.removeCallbacks(VOICE_TICK);
+                MAIN.post(VOICE_TICK);
+            });
+            mp.setOnCompletionListener(p -> {
+                if (sVoicePlayer != p) return;
+                sVoicePlaying = false;
+                sVoicePosMs = 0;
+                MAIN.removeCallbacks(VOICE_TICK);
+                invalidateVoiceViews();
+            });
+            mp.setOnErrorListener((p, what, extra) -> {
+                if (sVoicePlayer != p) return true;
+                stopVoicePlayback();
+                Toast.makeText(app, "Couldn't play voice message", Toast.LENGTH_SHORT).show();
+                return true;
+            });
+            mp.prepareAsync();
+            invalidateVoiceViews();
+        } catch (Throwable t) {
+            Log.w(TAG, "voice start failed", t);
+            stopVoicePlayback();
+            Toast.makeText(app, "Couldn't play voice message", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** Called from ComposeMessageActivity.onPause() to stop in-chat voice playback cleanly. */
+    public static void stopVoicePlayback() {
+        MAIN.removeCallbacks(VOICE_TICK);
+        MediaPlayer mp = sVoicePlayer;
+        sVoicePlayer = null;
+        sVoiceUri = null;
+        sVoicePlaying = false;
+        sVoicePrepared = false;
+        sVoicePosMs = 0;
+        sVoiceDurMs = 0;
+        if (mp != null) {
+            try { mp.stop(); } catch (Throwable ignored) {}
+            try { mp.release(); } catch (Throwable ignored) {}
+        }
+        invalidateVoiceViews();
+    }
+
+    private static void invalidateVoiceViews() {
+        for (InlineVoiceView v : VOICE_VIEWS) {
+            if (v != null) v.invalidate();
+        }
+    }
+
+    // --- Stock MMS suppression ---
+
     public static boolean suppressStockMms(MessageListItem row) {
         try {
             if (row == null) return false;
@@ -161,6 +312,8 @@ public final class WaveMessageUi {
             return false;
         }
     }
+
+    // --- Row binding ---
 
     /** Called at the end of MessageListItem.bindCommonMessage (covers initial + async PDU rebinds). */
     public static void onBindRow(MessageListItem row) {
@@ -190,7 +343,7 @@ public final class WaveMessageUi {
             String rawBody = bodyTv != null && bodyTv.getText() != null
                     ? bodyTv.getText().toString() : "";
 
-            // 1. Group event notice -> Apple-style centered subtle system line
+            // 1. Group event notice -> centered subtle system line
             boolean isNotice = (info != null && info.notice()) || isLegacyGroupNotice(rawBody);
             if (isNotice && !TextUtils.isEmpty(rawBody)) {
                 String noticeText = (info != null && !TextUtils.isEmpty(info.text))
@@ -203,7 +356,7 @@ public final class WaveMessageUi {
             // 2. Unsent message:
             //    - Pre-1.6.0 legacy rows ("This message was unsent", no media) -> quiet ghost pill.
             //    - 1.6.0+ rows (FLAG_UNSENT) -> keep original message text, media & tapbacks inside
-            //      a subtly softened dashed-outline bubble with an "Unsent" footer tag.
+            //      a softened dashed-outline bubble with an "Unsent" footer tag.
             boolean isUnsent = (info != null && info.unsent());
             boolean isLegacyUnsent = UNSENT_TEXT.equals(rawBody.trim());
             if (isLegacyUnsent && !isUnsent) {
@@ -266,7 +419,7 @@ public final class WaveMessageUi {
             if (isUnsent) {
                 int baseFill = isMe ? 0xF2FFFFFF : ((activeAccentColor() & 0x00FFFFFF) | 0xB8000000);
                 int stroke = isMe ? 0xFFB8B8BE : 0xB3FFFFFF;
-                block.setBackground(makeBubbleDrawable(ctx, isMe, baseFill, stroke, true));
+                setCustomBlockBg(block, makeBubbleDrawable(ctx, isMe, baseFill, stroke, true));
             }
 
             if ((isEdited || isUnsent) && dateTv != null && dateTv.getVisibility() == View.VISIBLE) {
@@ -311,14 +464,12 @@ public final class WaveMessageUi {
                 quoteView.setVisibility(View.GONE);
             }
 
-            // Hide empty mms_subject_text (stock XML omits visibility="gone", leaving a 24dp gap!)
+            // Hide empty mms_subject_text (stock XML omits visibility="gone", leaving a 24dp gap)
             TextView subjTv = (TextView) block.findViewById(ID_SUBJECT_TEXT);
             if (subjTv != null && TextUtils.isEmpty(subjTv.getText())) {
                 subjTv.setVisibility(View.GONE);
             }
 
-            // Hide empty body TextView cleanly on media-only bubbles, and ensure non-empty
-            // captions (including unsent photo captions from info.text) stay visible & tidy.
             if (hasCustomMedia && bodyTv != null) {
                 if (TextUtils.isEmpty(displayBody.trim())) {
                     bodyTv.setVisibility(View.GONE);
@@ -332,9 +483,12 @@ public final class WaveMessageUi {
         }
     }
 
-    // --- State save & restore (critical for ListView recycling!) ---
+    // --- State save & restore (preserves exact stock Sonim bubbles on normal rows!) ---
 
     private static void saveOriginalMetrics(MessageListItem row, LinearLayout block) {
+        if (block.getTag(TAG_ORIG_BLOCK_BG) == null && block.getBackground() != null) {
+            block.setTag(TAG_ORIG_BLOCK_BG, block.getBackground());
+        }
         if (block.getTag(TAG_ORIG_BLOCK_MARGINS) == null
                 && block.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
             ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) block.getLayoutParams();
@@ -353,11 +507,34 @@ public final class WaveMessageUi {
             listParent.setTag(TAG_ORIG_PARENT_MARGINS, new int[]{
                     mlp.leftMargin, mlp.topMargin, mlp.rightMargin, mlp.bottomMargin});
         }
+        saveTextDefaults((TextView) block.findViewById(ID_TEXT_BOTTOM));
+        saveTextDefaults((TextView) block.findViewById(ID_TEXT_TOP));
+        TextView dateTv = (TextView) block.findViewById(ID_DATE_VIEW);
+        if (dateTv != null && dateTv.getTag(TAG_ORIG_DATE_COLOR) == null) {
+            dateTv.setTag(TAG_ORIG_DATE_COLOR, dateTv.getCurrentTextColor());
+        }
+    }
+
+    private static void saveTextDefaults(TextView tv) {
+        if (tv == null) return;
+        if (tv.getTag(TAG_ORIG_TEXT_PAD) == null) {
+            tv.setTag(TAG_ORIG_TEXT_PAD, new int[]{
+                    tv.getPaddingLeft(), tv.getPaddingTop(), tv.getPaddingRight(), tv.getPaddingBottom()});
+        }
+        if (tv.getTag(TAG_ORIG_TEXT_COLOR) == null) {
+            tv.setTag(TAG_ORIG_TEXT_COLOR, tv.getCurrentTextColor());
+        }
+        if (tv.getTag(TAG_ORIG_TEXT_SIZE) == null) {
+            tv.setTag(TAG_ORIG_TEXT_SIZE, tv.getTextSize());
+        }
+    }
+
+    private static void setCustomBlockBg(LinearLayout block, Drawable d) {
+        block.setBackground(d);
+        block.setTag(TAG_CUSTOM_BG, Boolean.TRUE);
     }
 
     private static void restoreNormalRow(MessageListItem row, LinearLayout block, boolean isMe) {
-        Context ctx = row.getContext();
-        // Restore listParent margins
         View listParent = row.findViewById(ID_LIST_PARENT);
         if (listParent != null && listParent.getTag(TAG_ORIG_PARENT_MARGINS) instanceof int[]
                 && listParent.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
@@ -366,7 +543,6 @@ public final class WaveMessageUi {
             mlp.setMargins(pm[0], pm[1], pm[2], pm[3]);
             listParent.setLayoutParams(mlp);
         }
-        // Restore relative wrapper width to wrap_content
         ViewParent bp = block.getParent();
         if (bp instanceof RelativeLayout) {
             ViewGroup.LayoutParams rlp = ((RelativeLayout) bp).getLayoutParams();
@@ -375,7 +551,6 @@ public final class WaveMessageUi {
                 ((RelativeLayout) bp).setLayoutParams(rlp);
             }
         }
-        // Restore bubble margins & alignment
         Object om = block.getTag(TAG_ORIG_BLOCK_MARGINS);
         if (om instanceof int[] && block.getLayoutParams() instanceof RelativeLayout.LayoutParams) {
             int[] m = (int[]) om;
@@ -398,23 +573,29 @@ public final class WaveMessageUi {
             block.setPadding(p[0], p[1], p[2], p[3]);
         }
 
-        // Crisp bubble drawable: Sonim contact color for received, crisp bordered white for sent
-        block.setBackground(makeBubbleDrawable(ctx, isMe, isMe ? Color.WHITE : activeAccentColor(),
-                isMe ? COLOR_SENT_BORDER : 0, false));
+        // Restore exact stock Sonim bubble drawable if this recycled row previously had a custom bg
+        if (Boolean.TRUE.equals(block.getTag(TAG_CUSTOM_BG))) {
+            Object origBg = block.getTag(TAG_ORIG_BLOCK_BG);
+            if (origBg instanceof Drawable) {
+                Drawable d = (Drawable) origBg;
+                if (!isMe) {
+                    d.mutate().setTint(activeAccentColor());
+                }
+                block.setBackground(d);
+            }
+            block.setTag(TAG_CUSTOM_BG, Boolean.FALSE);
+        }
 
-        resetBodyTv((TextView) block.findViewById(ID_TEXT_BOTTOM), isMe);
-        resetBodyTv((TextView) block.findViewById(ID_TEXT_TOP), isMe);
+        resetBodyTv((TextView) block.findViewById(ID_TEXT_BOTTOM));
+        resetBodyTv((TextView) block.findViewById(ID_TEXT_TOP));
 
         TextView dateTv = (TextView) block.findViewById(ID_DATE_VIEW);
         if (dateTv != null) {
-            dateTv.setTextColor(isMe ? 0xFF76767A : 0xD9FFFFFF);
+            Object odc = dateTv.getTag(TAG_ORIG_DATE_COLOR);
+            if (odc instanceof Integer) dateTv.setTextColor((Integer) odc);
             if (dateTv.getParent() instanceof View) {
                 ((View) dateTv.getParent()).setVisibility(View.VISIBLE);
             }
-        }
-        TextView nameTv = (TextView) block.findViewById(ID_NAME_VIEW);
-        if (nameTv != null) {
-            nameTv.setTextColor(isMe ? 0xFF76767A : 0xD9FFFFFF);
         }
 
         View wm = block.findViewById(ID_WAVE_MEDIA);
@@ -423,11 +604,18 @@ public final class WaveMessageUi {
         if (wq != null) wq.setVisibility(View.GONE);
     }
 
-    private static void resetBodyTv(TextView tv, boolean isMe) {
+    private static void resetBodyTv(TextView tv) {
         if (tv == null) return;
         tv.setTypeface(Typeface.SANS_SERIF, Typeface.NORMAL);
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f);
-        tv.setTextColor(isMe ? COLOR_SENT_TEXT : Color.WHITE);
+        Object os = tv.getTag(TAG_ORIG_TEXT_SIZE);
+        if (os instanceof Float) tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, (Float) os);
+        Object oc = tv.getTag(TAG_ORIG_TEXT_COLOR);
+        if (oc instanceof Integer) tv.setTextColor((Integer) oc);
+        Object op = tv.getTag(TAG_ORIG_TEXT_PAD);
+        if (op instanceof int[]) {
+            int[] p = (int[]) op;
+            tv.setPadding(p[0], p[1], p[2], p[3]);
+        }
         tv.setGravity(Gravity.START);
         tv.setAutoLinkMask(android.text.util.Linkify.ALL);
         if (tv.getLayoutParams() instanceof LinearLayout.LayoutParams) {
@@ -473,8 +661,7 @@ public final class WaveMessageUi {
 
     private static void applyGroupNoticeStyle(Context ctx, MessageListItem row, LinearLayout block,
                                               TextView bodyTv, View metaRow, String text) {
-        // Non-null transparent drawable so stock updateAvatarView.setTint never NPEs on recycle
-        block.setBackground(new ColorDrawable(Color.TRANSPARENT));
+        setCustomBlockBg(block, new ColorDrawable(Color.TRANSPARENT));
 
         View listParent = row.findViewById(ID_LIST_PARENT);
         if (listParent != null && listParent.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
@@ -538,7 +725,7 @@ public final class WaveMessageUi {
 
     private static void applyLegacyUnsentStyle(Context ctx, LinearLayout block,
                                                TextView bodyTv, TextView dateTv, boolean isMe) {
-        block.setBackground(makeBubbleDrawable(ctx, isMe, 0x80FFFFFF, 0xFFC7C7CC, true));
+        setCustomBlockBg(block, makeBubbleDrawable(ctx, isMe, 0x80FFFFFF, 0xFFC7C7CC, true));
         if (bodyTv != null) {
             bodyTv.setVisibility(View.VISIBLE);
             bodyTv.setText(UNSENT_TEXT);
@@ -566,7 +753,6 @@ public final class WaveMessageUi {
             return true;
         }
 
-        // Suppress stock duplicate views immediately while parts metadata loads asynchronously
         if (mi.mAttachmentType >= 1 && mi.mAttachmentType <= 4) {
             hideStockMmsViews(block);
             hideId(block, ID_ATTACH_FOOTER);
@@ -618,12 +804,14 @@ public final class WaveMessageUi {
     private static void renderInlineMedia(Context ctx, LinearLayout block,
                                           List<MediaPart> parts, boolean isMe) {
         hideStockMmsViews(block);
-        // Also hide the redundant "4 Attachments   117KB" stock footer
         hideId(block, ID_ATTACH_FOOTER);
 
-        int padSide = dp(ctx, 5);
-        int padTop = dp(ctx, 5);
-        block.setPadding(padSide, padTop, padSide, dp(ctx, 3));
+        boolean singleAudio = (parts.size() == 1 && parts.get(0).isAudio);
+        if (singleAudio) {
+            block.setPadding(dp(ctx, 8), dp(ctx, 6), dp(ctx, 8), dp(ctx, 2));
+        } else {
+            block.setPadding(dp(ctx, 5), dp(ctx, 5), dp(ctx, 5), dp(ctx, 3));
+        }
 
         LinearLayout host = (LinearLayout) block.findViewById(ID_WAVE_MEDIA);
         if (host == null) {
@@ -641,8 +829,8 @@ public final class WaveMessageUi {
             MediaPart p = parts.get(0);
             if (p.isAudio) {
                 InlineVoiceView voice = new InlineVoiceView(ctx, isMe, activeAccentColor());
-                voice.bind(p.uri);
-                host.addView(voice, new LinearLayout.LayoutParams(dp(ctx, 160), dp(ctx, 36)));
+                voice.bind(p.uri, p.name);
+                host.addView(voice, new LinearLayout.LayoutParams(dp(ctx, 170), dp(ctx, 36)));
             } else {
                 InlineVisualView visual = new InlineVisualView(ctx, p);
                 host.addView(visual);
@@ -694,7 +882,7 @@ public final class WaveMessageUi {
 
         void bind(String quote, boolean isMe, int accent) {
             GradientDrawable bg = new GradientDrawable();
-            bg.setCornerRadius(dp(getContext(), 8));
+            bg.setCornerRadius(dp(getContext(), 6));
             bg.setColor(isMe ? 0xFFF2F2F7 : 0x26FFFFFF);
             setBackground(bg);
 
@@ -976,18 +1164,19 @@ public final class WaveMessageUi {
         }
     }
 
-    // --- Custom View: Compact iOS-style Inline Voice Message Pill ---
+    // --- Custom View: Native Sonim Material Inline Voice Player ---
 
     private static final class InlineVoiceView extends View {
-        private static final float[] BARS = {
-            0.30f, 0.58f, 0.85f, 0.50f, 0.96f, 0.68f, 0.40f, 0.82f,
-            1.00f, 0.62f, 0.46f, 0.78f, 0.90f, 0.54f, 0.36f, 0.28f
-        };
         private final boolean isMe;
         private final int accent;
-        private String durText = "Voice";
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private Uri uri;
+        private String title = "Voice message";
+        private int totalMs = -1;
+        private final Paint iconPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint trackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint titlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint timePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF rect = new RectF();
 
         InlineVoiceView(Context ctx, boolean isMe, int accent) {
@@ -995,25 +1184,39 @@ public final class WaveMessageUi {
             this.isMe = isMe;
             this.accent = accent;
             float den = ctx.getResources().getDisplayMetrics().density;
-            textPaint.setTextSize(11.5f * den);
-            textPaint.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-            textPaint.setTextAlign(Paint.Align.RIGHT);
-            textPaint.setColor(isMe ? 0xFF3A3A3C : Color.WHITE);
+
+            int primaryFg = isMe ? 0xFF212121 : Color.WHITE;
+            int secondaryFg = isMe ? 0xFF757575 : 0xD9FFFFFF;
+            iconPaint.setColor(isMe ? accent : Color.WHITE);
+            trackPaint.setColor(isMe ? 0x30000000 : 0x55FFFFFF);
+            fillPaint.setColor(isMe ? accent : Color.WHITE);
+
+            titlePaint.setColor(primaryFg);
+            titlePaint.setTextSize(11.5f * den);
+            titlePaint.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+
+            timePaint.setColor(secondaryFg);
+            timePaint.setTextSize(10.5f * den);
+            timePaint.setTextAlign(Paint.Align.RIGHT);
+
+            VOICE_VIEWS.add(this);
         }
 
-        void bind(final Uri uri) {
-            Integer cached = DUR_CACHE.get(uri.toString());
+        void bind(final Uri u, String filename) {
+            this.uri = u;
+            this.title = WaveAttachmentViewer.friendlyAudioTitle(filename);
+            Integer cached = DUR_CACHE.get(u.toString());
             if (cached != null) {
-                durText = cached > 0 ? WaveAttachmentViewer.formatDuration(cached) : "Voice";
+                totalMs = cached;
                 invalidate();
                 return;
             }
             final Context app = getContext().getApplicationContext();
             IO_EXEC.execute(() -> {
-                int dur = readMediaDuration(app, uri);
-                DUR_CACHE.put(uri.toString(), dur);
+                int dur = readMediaDuration(app, u);
+                DUR_CACHE.put(u.toString(), dur);
                 MAIN.post(() -> {
-                    durText = dur > 0 ? WaveAttachmentViewer.formatDuration(dur) : "Voice";
+                    totalMs = dur;
                     invalidate();
                 });
             });
@@ -1026,40 +1229,75 @@ public final class WaveMessageUi {
             float h = getHeight();
             float cy = h * 0.5f;
 
-            float pr = 13f * den;
-            float px = 4f * den + pr;
-            paint.setColor(isMe ? accent : Color.WHITE);
-            c.drawCircle(px, cy, pr, paint);
+            boolean isActive = (uri != null && uri.equals(sVoiceUri));
+            boolean isPlaying = isActive && sVoicePlaying;
+            int dur = (isActive && sVoiceDurMs > 0) ? sVoiceDurMs : totalMs;
+            int pos = isActive ? sVoicePosMs : 0;
+            float frac = (isActive && dur > 0) ? Math.min(1f, Math.max(0f, pos / (float) dur)) : 0f;
 
-            paint.setColor(isMe ? Color.WHITE : accent);
-            float s = pr * 0.42f;
-            Path tri = new Path();
-            tri.moveTo(px - s * 0.50f, cy - s);
-            tri.lineTo(px + s * 1.05f, cy);
-            tri.lineTo(px - s * 0.50f, cy + s);
-            tri.close();
-            c.drawPath(tri, paint);
-
-            float durW = textPaint.measureText(durText);
-            Paint.FontMetrics fm = textPaint.getFontMetrics();
-            c.drawText(durText, w - 4f * den, cy - (fm.ascent + fm.descent) * 0.5f, textPaint);
-
-            float wfLeft = px + pr + 8f * den;
-            float wfRight = w - durW - 10f * den;
-            float wfW = wfRight - wfLeft;
-            if (wfW > 12f * den) {
-                int n = BARS.length;
-                float step = wfW / (float) n;
-                float bw = Math.max(1.8f * den, step * 0.50f);
-                float maxBh = h * 0.64f;
-                paint.setColor(isMe ? ((accent & 0x00FFFFFF) | 0x99000000) : 0xCCFFFFFF);
-                for (int i = 0; i < n; i++) {
-                    float bx = wfLeft + step * (i + 0.5f);
-                    float bh = Math.max(bw, maxBh * BARS[i]);
-                    rect.set(bx - bw * 0.5f, cy - bh * 0.5f, bx + bw * 0.5f, cy + bh * 0.5f);
-                    c.drawRoundRect(rect, bw * 0.5f, bw * 0.5f, paint);
-                }
+            // Left: clean Material Play triangle or Pause bars (no glossy iOS bubble)
+            float iconCx = 12f * den;
+            if (isPlaying) {
+                float bw = 3.5f * den;
+                float bh = 13f * den;
+                float gap = 3.5f * den;
+                rect.set(iconCx - gap * 0.5f - bw, cy - bh * 0.5f,
+                        iconCx - gap * 0.5f, cy + bh * 0.5f);
+                c.drawRoundRect(rect, den, den, iconPaint);
+                rect.set(iconCx + gap * 0.5f, cy - bh * 0.5f,
+                        iconCx + gap * 0.5f + bw, cy + bh * 0.5f);
+                c.drawRoundRect(rect, den, den, iconPaint);
+            } else {
+                float s = 7.2f * den;
+                Path tri = new Path();
+                tri.moveTo(iconCx - s * 0.55f, cy - s);
+                tri.lineTo(iconCx + s * 0.95f, cy);
+                tri.lineTo(iconCx - s * 0.55f, cy + s);
+                tri.close();
+                c.drawPath(tri, iconPaint);
             }
+
+            float contentLeft = 27f * den;
+            float contentRight = w - 2f * den;
+
+            // Top line: "Voice message" on left, duration / live elapsed on right
+            String timeLabel;
+            if (isActive && dur > 0 && (isPlaying || pos > 0)) {
+                timeLabel = WaveAttachmentViewer.formatDuration(pos)
+                        + " / " + WaveAttachmentViewer.formatDuration(dur);
+            } else if (dur > 0) {
+                timeLabel = WaveAttachmentViewer.formatDuration(dur);
+            } else {
+                timeLabel = "";
+            }
+            float topBaseY = 13f * den;
+            float timeW = timeLabel.isEmpty() ? 0f : timePaint.measureText(timeLabel);
+            float availTitleW = Math.max(20f * den, contentRight - contentLeft - timeW - (timeW > 0f ? 8f * den : 0f));
+            String drawnTitle = TextUtils.ellipsize(title, new android.text.TextPaint(titlePaint),
+                    availTitleW, TextUtils.TruncateAt.END).toString();
+            c.drawText(drawnTitle, contentLeft, topBaseY, titlePaint);
+            if (!timeLabel.isEmpty()) {
+                c.drawText(timeLabel, contentRight, topBaseY, timePaint);
+            }
+
+            // Bottom line: clean Material horizontal seekbar with subtle circular thumb
+            float barY = h - 9f * den;
+            float barH = 3f * den;
+            float barRad = barH * 0.5f;
+            float thumbR = 4.2f * den;
+            float trackLeft = contentLeft + thumbR * 0.5f;
+            float trackRight = contentRight - thumbR * 0.5f;
+            float trackW = Math.max(10f, trackRight - trackLeft);
+
+            rect.set(trackLeft, barY - barRad, trackRight, barY + barRad);
+            c.drawRoundRect(rect, barRad, barRad, trackPaint);
+
+            float thumbX = trackLeft + trackW * frac;
+            if (frac > 0f) {
+                rect.set(trackLeft, barY - barRad, thumbX, barY + barRad);
+                c.drawRoundRect(rect, barRad, barRad, fillPaint);
+            }
+            c.drawCircle(thumbX, barY, thumbR, fillPaint);
         }
     }
 
@@ -1139,7 +1377,7 @@ public final class WaveMessageUi {
             int c = ComposeMessageActivity.getSendContactColor();
             if (Color.alpha(c) != 0) return c | 0xFF000000;
         } catch (Throwable ignored) {}
-        return COLOR_IMSG_BLUE;
+        return COLOR_FALLBACK_ACCENT;
     }
 
     private static String safeStr(String s) { return s == null ? "" : s.trim(); }

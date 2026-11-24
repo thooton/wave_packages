@@ -28415,6 +28415,9 @@
     .line 3630
     invoke-super {p0}, Landroid/app/Activity;->onPause()V
 
+    # FEAT(imessage): stop any in-chat voice message playback when leaving conversation.
+    invoke-static {}, Lcom/android/mms/ui/WaveMessageUi;->stopVoicePlayback()V
+
     invoke-static {p0}, Lcom/android/mms/ui/WaveHistory;->stopInitialAlignment(Lcom/android/mms/ui/ComposeMessageActivity;)V
 
     .line 3636

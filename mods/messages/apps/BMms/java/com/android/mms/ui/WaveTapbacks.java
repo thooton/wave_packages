@@ -1,8 +1,10 @@
 package com.android.mms.ui;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -23,7 +25,6 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -52,15 +53,13 @@ import java.util.Map;
 /**
  * FEAT(imessage): tapbacks in the conversation view.
  *
- * <ul>
- *   <li>{@link #onBind}: draws iPhone-style tapback badges with crisp 160dpi vector glyphs on the
- *       top outer corner of a message bubble ({@code MessageListItem.bind}).</li>
- *   <li>{@link #onItemClick}: pressing a text message that has tapbacks opens a polished Reactions
- *       sheet ({@code ComposeMessageActivity$79.onItemClick}).</li>
- *   <li>{@link #onCreateMessageMenu}: adds "React" (iOS-style horizontal 6-button Tapback bar) and
- *       "Reactions" on iMessages ({@code ComposeMessageActivity.onPrepareOptionsMenu} and context
- *       menu).</li>
- * </ul>
+ * Colors match Sonim's bubble convention:
+ * - Your reactions are white (with a crisp subtle outline and dark glyph, pink heart), matching
+ *   your white sent bubbles.
+ * - Other people's reactions are in the conversation's contact color (with white glyph), matching
+ *   their colored received bubbles.
+ *
+ * Dialogs (React picker & Reactions list) use native Sonim Material AlertDialogs.
  */
 public final class WaveTapbacks {
     private static final String TAG = "WaveIMsg";
@@ -72,6 +71,10 @@ public final class WaveTapbacks {
     private static final String BADGE_TAG = "wave_tapbacks";
     private static final int MAX_BADGES = 3;
 
+    /** Sonim native Material focus highlight colors (matches list_selector_background). */
+    private static final int SONIM_FOCUS_FILL = 0xFFEDF2F4;
+    private static final int SONIM_FOCUS_STROKE = 0xFF607D8B;
+
     private static final int[] KINDS = {
             Body.REACT_HEART, Body.REACT_LIKE, Body.REACT_DISLIKE,
             Body.REACT_LAUGH, Body.REACT_EMPHASIZE, Body.REACT_QUESTION,
@@ -80,7 +83,6 @@ public final class WaveTapbacks {
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
-    /** Message uri to its tapbacks; cleared whenever a tapback changes (see invalidate()). */
     private static final Map<String, List<WaveIMessageDb.Reaction>> CACHE =
             Collections.synchronizedMap(new LinkedHashMap<String, List<WaveIMessageDb.Reaction>>(64, 0.75f, true) {
                 @Override
@@ -91,7 +93,6 @@ public final class WaveTapbacks {
 
     private WaveTapbacks() {}
 
-    /** Keys of messages that have any tapback; null until first needed. Most rows have none. */
     private static volatile java.util.Set<String> sReacted;
 
     public static void invalidate() {
@@ -143,11 +144,11 @@ public final class WaveTapbacks {
     }
 
     // -----------------------------------------------------------------------------------------
-    // Shared crisp vector tapback glyph painter (used by BadgeView, Tapback bar, Reactions sheet)
+    // Shared crisp vector tapback glyph painter
 
     static void drawTapbackGlyph(Canvas c, int kind, String emoji,
                                  float cx, float cy, float sizePx,
-                                 int color, boolean isHeartPinkOverride, Paint p) {
+                                 int color, boolean pinkHeart, Paint p) {
         p.reset();
         p.setAntiAlias(true);
         p.setStyle(Paint.Style.FILL);
@@ -168,7 +169,7 @@ public final class WaveTapbacks {
 
         switch (kind) {
             case Body.REACT_HEART:
-                p.setColor(isHeartPinkOverride ? BadgeView.THEIRS_HEART : color);
+                p.setColor(pinkHeart ? BadgeView.HEART_PINK : color);
                 drawHeartPath(c, cx, cy + sizePx * 0.04f, sizePx * 0.92f, p);
                 break;
             case Body.REACT_LIKE:
@@ -284,9 +285,8 @@ public final class WaveTapbacks {
     }
 
     // -----------------------------------------------------------------------------------------
-    // Badges
+    // Badges (flipped colors: yours = white, theirs = contact color)
 
-    /** One badge per distinct tapback, most recent last (drawn on top). */
     private static final class Badge {
         final String glyph;
         final String emoji;
@@ -301,29 +301,34 @@ public final class WaveTapbacks {
     }
 
     static final class BadgeView extends View {
-        static final int THEIRS_FILL = 0xFFE5E5EA;
-        static final int THEIRS_GLYPH = 0xFF636366;
-        static final int THEIRS_HEART = 0xFFFF2D55;
-        static final int DEFAULT_MINE = 0xFF007AFF;
+        static final int MINE_FILL = 0xFFFFFFFF;
+        static final int MINE_STROKE = 0xFFD2CED0;
+        static final int MINE_GLYPH = 0xFF555558;
+        static final int HEART_PINK = 0xFFFF2D55;
+        static final int DEFAULT_THEIRS = 0xFF0099CC;
 
         private static final float STEP = 0.62f;
         private static final float DOT1_R = 0.155f, DOT1_X = 0.30f, DOT1_Y = 0.40f;
         private static final float DOT2_R = 0.075f, DOT2_X = 0.47f, DOT2_Y = 0.60f;
 
         private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint outline = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint glyphPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final float density;
         private final float ring;
         private final int diameter;
         private List<Badge> badges = Collections.emptyList();
         private boolean onSent;
-        private int mineColor = DEFAULT_MINE;
+        private int theirColor = DEFAULT_THEIRS;
 
         BadgeView(Context c) {
             super(c);
             density = c.getResources().getDisplayMetrics().density;
             ring = Math.max(1f, 1.5f * density);
             diameter = Math.round(23 * density);
+            outline.setStyle(Paint.Style.STROKE);
+            outline.setStrokeWidth(Math.max(1f, 0.9f * density));
+            outline.setColor(MINE_STROKE);
             setFocusable(false);
             setClickable(false);
             setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -333,11 +338,11 @@ public final class WaveTapbacks {
         int overhang() { return Math.round(diameter * 0.4f); }
         int bubbleTop() { return Math.round(diameter * 0.68f); }
 
-        void set(List<Badge> b, boolean sent, int mine) {
+        void set(List<Badge> b, boolean sent, int contactColor) {
             boolean relayout = b.size() != badges.size() || sent != onSent;
             badges = b;
             onSent = sent;
-            mineColor = mine;
+            theirColor = contactColor;
             if (relayout) requestLayout();
             invalidate();
         }
@@ -396,6 +401,7 @@ public final class WaveTapbacks {
                 canvas.drawCircle(cx, r, r, fill);
                 fill.setColor(fillColor(b));
                 canvas.drawCircle(cx, r, r - ring, fill);
+                if (b.mine) canvas.drawCircle(cx, r, r - ring - 0.5f, outline);
                 drawBadgeGlyph(canvas, b, cx, r);
             }
             Badge front = badges.get(n - 1);
@@ -409,14 +415,19 @@ public final class WaveTapbacks {
             canvas.drawCircle(frontX, r, r - ring, fill);
             canvas.drawCircle(d1x, d1y, d1r, fill);
             canvas.drawCircle(d2x, d2y, d2r, fill);
+            if (front.mine) {
+                canvas.drawCircle(frontX, r, r - ring - 0.5f, outline);
+                canvas.drawCircle(d1x, d1y, d1r, outline);
+                canvas.drawCircle(d2x, d2y, d2r, outline);
+            }
             drawBadgeGlyph(canvas, front, frontX, r);
         }
 
-        private int fillColor(Badge b) { return b.mine ? mineColor : THEIRS_FILL; }
+        private int fillColor(Badge b) { return b.mine ? MINE_FILL : theirColor; }
 
         private void drawBadgeGlyph(Canvas canvas, Badge b, float cx, float cy) {
-            int color = b.mine ? (isLight(mineColor) ? 0xFF1C1C1E : Color.WHITE) : THEIRS_GLYPH;
-            boolean heartPink = (!b.mine && b.kind == Body.REACT_HEART);
+            int color = b.mine ? MINE_GLYPH : (isLight(theirColor) ? 0xFF1C1C1E : Color.WHITE);
+            boolean heartPink = (b.mine && b.kind == Body.REACT_HEART);
             drawTapbackGlyph(canvas, b.kind, b.emoji, cx, cy, (diameter - ring * 2f) * 0.62f,
                     color, heartPink, glyphPaint);
         }
@@ -427,7 +438,7 @@ public final class WaveTapbacks {
             int c = ComposeMessageActivity.getSendContactColor();
             if (Color.alpha(c) != 0) return c | 0xFF000000;
         } catch (Throwable ignored) {}
-        return BadgeView.DEFAULT_MINE;
+        return BadgeView.DEFAULT_THEIRS;
     }
 
     private static List<Badge> badgesFor(List<WaveIMessageDb.Reaction> rs) {
@@ -506,12 +517,15 @@ public final class WaveTapbacks {
     }
 
     // -----------------------------------------------------------------------------------------
-    // Who reacted (polished custom Reactions dialog with mini-badges & quick React button)
+    // Click handling: in-chat voice playback, Reactions (Sonim AlertDialog), or Edit history
 
-    /** ComposeMessageActivity$79.onItemClick: shows Reactions or Edit history on text messages. */
+    /** ComposeMessageActivity$79.onItemClick: plays voice messages in-chat or shows Reactions/Edit history. */
     public static boolean onItemClick(Activity a, View v) {
         try {
             if (!(v instanceof MessageListItem)) return false;
+            // In-chat playback for single voice/audio messages
+            if (WaveMessageUi.onItemClick(a, (MessageListItem) v)) return true;
+
             MessageItem mi = ((MessageListItem) v).getMessageItem();
             if (mi == null || mi.mAttachmentType != 0 /* TEXT */ || mi.mMessageUri == null) return false;
             if (!reactions(a, mi.mMessageUri).isEmpty()) {
@@ -533,38 +547,16 @@ public final class WaveTapbacks {
         }
     }
 
+    /** Native Sonim Material AlertDialog showing who reacted. */
     private static void showWho(final Activity a, final Uri msgUri) {
         List<WaveIMessageDb.Reaction> rs = reactions(a, msgUri);
         if (rs.isEmpty()) return;
-        final int accent = chatColor();
-
-        final Dialog dlg = new Dialog(a);
-        dlg.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dlg.setCanceledOnTouchOutside(true);
-
-        LinearLayout card = new LinearLayout(a);
-        card.setOrientation(LinearLayout.VERTICAL);
-        GradientDrawable cardBg = new GradientDrawable();
-        cardBg.setColor(Color.WHITE);
-        cardBg.setCornerRadius(dp(a, 14));
-        card.setBackground(cardBg);
-
-        TextView title = new TextView(a);
-        title.setText(rs.size() == 1 ? "Reaction" : "Reactions (" + rs.size() + ")");
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
-        title.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        title.setTextColor(0xFF1C1C1E);
-        title.setPadding(dp(a, 14), dp(a, 11), dp(a, 14), dp(a, 8));
-        card.addView(title);
-
-        View div = new View(a);
-        div.setBackgroundColor(0xFFE5E5EA);
-        card.addView(div, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        final int contactColor = chatColor();
 
         ScrollView sv = new ScrollView(a);
         LinearLayout list = new LinearLayout(a);
         list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(dp(a, 12), dp(a, 6), dp(a, 12), dp(a, 6));
+        list.setPadding(dp(a, 16), dp(a, 8), dp(a, 16), dp(a, 4));
 
         HashMap<String, String> names = new HashMap<String, String>();
         for (int i = rs.size() - 1; i >= 0; i--) {
@@ -586,10 +578,10 @@ public final class WaveTapbacks {
             LinearLayout row = new LinearLayout(a);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(a, 2), dp(a, 6), dp(a, 2), dp(a, 6));
+            row.setPadding(0, dp(a, 6), 0, dp(a, 6));
 
-            MiniBadgeView icon = new MiniBadgeView(a, r, accent);
-            LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(a, 26), dp(a, 26));
+            MiniBadgeView icon = new MiniBadgeView(a, r, contactColor);
+            LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(a, 24), dp(a, 24));
             ilp.rightMargin = dp(a, 10);
             row.addView(icon, ilp);
 
@@ -598,83 +590,57 @@ public final class WaveTapbacks {
 
             TextView nameTv = new TextView(a);
             nameTv.setText(who);
-            nameTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
-            nameTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-            nameTv.setTextColor(0xFF1C1C1E);
+            nameTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+            nameTv.setTextColor(0xFF212121);
             nameTv.setSingleLine(true);
             nameTv.setEllipsize(TextUtils.TruncateAt.END);
             col.addView(nameTv);
 
             TextView verbTv = new TextView(a);
             verbTv.setText(verb(r.kind, r.emoji));
-            verbTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
-            verbTv.setTextColor(0xFF8E8E93);
+            verbTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
+            verbTv.setTextColor(0xFF757575);
             col.addView(verbTv);
 
             row.addView(col, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             list.addView(row);
+
+            if (i > 0) {
+                View div = new View(a);
+                div.setBackgroundColor(0xFFE0E0E0);
+                list.addView(div, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
+            }
         }
         sv.addView(list);
-        LinearLayout.LayoutParams svLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        svLp.weight = 1f;
-        card.addView(sv, svLp);
 
-        View div2 = new View(a);
-        div2.setBackgroundColor(0xFFE5E5EA);
-        card.addView(div2, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        AlertDialog.Builder b = new AlertDialog.Builder(a)
+                .setTitle(rs.size() == 1 ? "Reaction" : "Reactions (" + rs.size() + ")")
+                .setView(sv)
+                .setPositiveButton("OK", null);
 
-        LinearLayout btns = new LinearLayout(a);
-        btns.setOrientation(LinearLayout.HORIZONTAL);
-        btns.setGravity(Gravity.END);
-        btns.setPadding(dp(a, 8), dp(a, 6), dp(a, 8), dp(a, 8));
+        if (canReactToUri(a, msgUri)) {
+            b.setNeutralButton("React", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface d, int w) {
+                    showReactPickerForUri(a, msgUri);
+                }
+            });
+        }
 
         WaveIMessageDb.Info msgInfo = WaveIMessageDb.get(a).infoForUri(msgUri);
         final List<WaveIMessageDb.Version> editHist = (msgInfo != null && msgInfo.edited())
                 ? WaveIMessageDb.get(a).editHistoryForUri(msgUri)
                 : Collections.<WaveIMessageDb.Version>emptyList();
-
         if (!editHist.isEmpty()) {
-            TextView editsBtn = makeDialogBtn(a, "Edits", 0xFF636366, false);
-            editsBtn.setOnClickListener(v -> {
-                dlg.dismiss();
-                showEditHistory(a, editHist);
+            b.setNegativeButton("Edits", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface d, int w) {
+                    showEditHistory(a, editHist);
+                }
             });
-            LinearLayout.LayoutParams elp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            elp.rightMargin = dp(a, 4);
-            btns.addView(editsBtn, elp);
         }
 
-        if (canReactToUri(a, msgUri)) {
-            TextView reactBtn = makeDialogBtn(a, "React", accent, true);
-            reactBtn.setOnClickListener(v -> {
-                dlg.dismiss();
-                showReactPickerForUri(a, msgUri);
-            });
-            LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            rlp.rightMargin = dp(a, 6);
-            btns.addView(reactBtn, rlp);
-        }
-
-        TextView doneBtn = makeDialogBtn(a, "Done", 0xFF3A3A3C, false);
-        doneBtn.setOnClickListener(v -> dlg.dismiss());
-        btns.addView(doneBtn);
-        card.addView(btns);
-
-        dlg.setContentView(card);
-        Window w = dlg.getWindow();
-        if (w != null) {
-            w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            WindowManager.LayoutParams wlp = w.getAttributes();
-            wlp.width = dp(a, 214);
-            wlp.height = WindowManager.LayoutParams.WRAP_CONTENT;
-            wlp.dimAmount = 0.45f;
-            w.setAttributes(wlp);
-        }
-        dlg.show();
-        doneBtn.requestFocus();
+        b.show();
     }
 
     private static void showEditHistory(final Activity a, List<WaveIMessageDb.Version> hist) {
@@ -780,29 +746,36 @@ public final class WaveTapbacks {
         doneBtn.requestFocus();
     }
 
+    /** Mini reaction badge matching flipped chat colors (yours = white, theirs = contact color). */
     private static final class MiniBadgeView extends View {
         private final WaveIMessageDb.Reaction r;
-        private final int accent;
+        private final int contactColor;
         private final Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint gp = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-        MiniBadgeView(Context c, WaveIMessageDb.Reaction r, int accent) {
+        MiniBadgeView(Context c, WaveIMessageDb.Reaction r, int contactColor) {
             super(c);
             this.r = r;
-            this.accent = accent;
+            this.contactColor = contactColor;
+            stroke.setStyle(Paint.Style.STROKE);
+            stroke.setColor(BadgeView.MINE_STROKE);
+            stroke.setStrokeWidth(Math.max(1f, c.getResources().getDisplayMetrics().density));
         }
 
         @Override
         protected void onDraw(Canvas c) {
-            float rad = Math.min(getWidth(), getHeight()) * 0.5f;
+            float rad = Math.min(getWidth(), getHeight()) * 0.5f - 1f;
             float cx = getWidth() * 0.5f;
             float cy = getHeight() * 0.5f;
             boolean mine = r.isMine();
-            bg.setColor(mine ? accent : BadgeView.THEIRS_FILL);
+            bg.setColor(mine ? BadgeView.MINE_FILL : contactColor);
             c.drawCircle(cx, cy, rad, bg);
-            int fg = mine ? (BadgeView.isLight(accent) ? 0xFF1C1C1E : Color.WHITE) : BadgeView.THEIRS_GLYPH;
+            if (mine) c.drawCircle(cx, cy, rad, stroke);
+            int fg = mine ? BadgeView.MINE_GLYPH
+                    : (BadgeView.isLight(contactColor) ? 0xFF1C1C1E : Color.WHITE);
             drawTapbackGlyph(c, r.kind, r.emoji, cx, cy, rad * 1.18f, fg,
-                    !mine && r.kind == Body.REACT_HEART, gp);
+                    mine && r.kind == Body.REACT_HEART, gp);
         }
     }
 
@@ -829,12 +802,6 @@ public final class WaveTapbacks {
         sld.addState(new int[]{}, normal);
         tv.setBackground(sld);
         tv.setTextColor(color);
-        tv.setOnFocusChangeListener((v, hasFocus) -> {
-            if (primary) {
-                tv.setTextColor(hasFocus
-                        ? (BadgeView.isLight(color) ? 0xFF1C1C1E : Color.WHITE) : color);
-            }
-        });
         return tv;
     }
 
@@ -850,7 +817,7 @@ public final class WaveTapbacks {
     }
 
     // -----------------------------------------------------------------------------------------
-    // React / Reactions menu items & iOS-style Horizontal Tapback Bar
+    // React / Reactions menu items & Sonim-styled horizontal Tapback picker
 
     public static void onCreateMessageMenu(Menu menu, final Activity a, final MessageItem mi) {
         try {
@@ -893,7 +860,6 @@ public final class WaveTapbacks {
         }
     }
 
-    /** Public helper so WaveAttachmentViewer can offer "React" on iMessage media. */
     public static boolean canReactToUri(Context ctx, Uri msgUri) {
         if (ctx == null || msgUri == null || WaveIMessageHost.connected() == null) return false;
         WaveIMessageDb db = WaveIMessageDb.get(ctx);
@@ -911,6 +877,7 @@ public final class WaveTapbacks {
         showReactPicker(a, msgUri, msg);
     }
 
+    /** Native Sonim Material AlertDialog with single-row 6-reaction D-pad selector. */
     private static void showReactPicker(final Activity a, final Uri uri, final WaveIMessageDb.Msg msg) {
         int mine = -1;
         for (WaveIMessageDb.Reaction r : reactions(a, uri)) {
@@ -924,60 +891,44 @@ public final class WaveTapbacks {
                 break;
             }
         }
-        final int accent = chatColor();
 
-        final Dialog dlg = new Dialog(a);
-        dlg.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dlg.setCanceledOnTouchOutside(true);
+        LinearLayout content = new LinearLayout(a);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setGravity(Gravity.CENTER_HORIZONTAL);
+        content.setPadding(dp(a, 6), dp(a, 10), dp(a, 6), dp(a, 8));
 
-        LinearLayout root = new LinearLayout(a);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(dp(a, 8), dp(a, 10), dp(a, 8), dp(a, 9));
-
-        GradientDrawable pillBg = new GradientDrawable();
-        pillBg.setColor(0xFFFCFCFE);
-        pillBg.setCornerRadius(dp(a, 20));
-        pillBg.setStroke(dp(a, 1), 0x22000000);
-        root.setBackground(pillBg);
-
-        final TapbackBarView bar = new TapbackBarView(a, current, initialIdx, accent);
-        root.addView(bar, new LinearLayout.LayoutParams(
+        final TapbackBarView bar = new TapbackBarView(a, current, initialIdx);
+        content.addView(bar, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         final TextView label = new TextView(a);
-        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
         label.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         label.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams lblLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lblLp.topMargin = dp(a, 6);
-        root.addView(label, lblLp);
-
-        TextView hint = new TextView(a);
-        hint.setText("◀ ▶ choose   OK react");
-        hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f);
-        hint.setTextColor(0xFF8E8E93);
-        hint.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams hintLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        hintLp.topMargin = dp(a, 2);
-        root.addView(hint, hintLp);
+        lblLp.topMargin = dp(a, 8);
+        content.addView(label, lblLp);
 
         final Runnable syncLabel = () -> {
             int idx = bar.focusedIndex;
             int k = KINDS[idx];
             if (k == current) {
                 label.setText("Remove " + NAMES[idx]);
-                label.setTextColor(0xFFD93025);
+                label.setTextColor(0xFFC62828);
             } else {
                 label.setText(NAMES[idx]);
-                label.setTextColor(0xFF1C1C1E);
+                label.setTextColor(0xFF212121);
             }
         };
         syncLabel.run();
 
-        dlg.setContentView(root);
+        final AlertDialog dlg = new AlertDialog.Builder(a)
+                .setTitle("React")
+                .setView(content)
+                .setNegativeButton("Cancel", null)
+                .create();
+
         dlg.setOnKeyListener((d, keyCode, event) -> {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
             if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
@@ -999,34 +950,23 @@ public final class WaveTapbacks {
             return false;
         });
 
-        Window w = dlg.getWindow();
-        if (w != null) {
-            w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            WindowManager.LayoutParams wlp = w.getAttributes();
-            wlp.width = WindowManager.LayoutParams.WRAP_CONTENT;
-            wlp.height = WindowManager.LayoutParams.WRAP_CONTENT;
-            wlp.gravity = Gravity.CENTER;
-            wlp.dimAmount = 0.45f;
-            w.setAttributes(wlp);
-        }
         dlg.show();
     }
 
-    /** Horizontal 6-circle iOS Tapback selector bar rendered with crisp vector glyphs. */
+    /** Native Sonim-styled horizontal 6-reaction selector bar. */
     private static final class TapbackBarView extends View {
         private final int currentKind;
-        private final int accent;
         int focusedIndex;
         private final Paint bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint ringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint glyphPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF cellRect = new RectF();
 
-        TapbackBarView(Context ctx, int currentKind, int initialIdx, int accent) {
+        TapbackBarView(Context ctx, int currentKind, int initialIdx) {
             super(ctx);
             this.currentKind = currentKind;
             this.focusedIndex = initialIdx;
-            this.accent = accent;
-            ringPaint.setStyle(Paint.Style.STROKE);
+            strokePaint.setStyle(Paint.Style.STROKE);
         }
 
         void move(int delta) {
@@ -1040,9 +980,9 @@ public final class WaveTapbacks {
         @Override
         protected void onMeasure(int wSpec, int hSpec) {
             float den = d();
-            int cell = Math.round(33f * den);
+            int cell = Math.round(32f * den);
             int w = cell * KINDS.length;
-            int h = Math.round(38f * den);
+            int h = Math.round(36f * den);
             setMeasuredDimension(w, h);
         }
 
@@ -1051,36 +991,36 @@ public final class WaveTapbacks {
             float den = d();
             float cell = getWidth() / (float) KINDS.length;
             float cy = getHeight() * 0.5f;
-            float baseR = 13f * den;
-            float focusR = 15.5f * den;
+            float r = 13f * den;
 
             for (int i = 0; i < KINDS.length; i++) {
                 int kind = KINDS[i];
                 float cx = cell * (i + 0.5f);
                 boolean isCurrent = (kind == currentKind);
                 boolean isFocused = (i == focusedIndex);
-                float r = isFocused ? focusR : baseR;
 
-                if (isCurrent) {
-                    bgPaint.setColor(accent);
-                } else if (isFocused) {
-                    bgPaint.setColor((accent & 0x00FFFFFF) | 0x24000000);
-                } else {
-                    bgPaint.setColor(0xFFF2F2F7);
-                }
-                c.drawCircle(cx, cy, r, bgPaint);
-
+                // Sonim native rectangular blue-grey focus box behind focused item
                 if (isFocused) {
-                    ringPaint.setColor(isCurrent ? 0xFF1C1C1E : accent);
-                    ringPaint.setStrokeWidth(2f * den);
-                    c.drawCircle(cx, cy, r - den * 0.5f, ringPaint);
+                    cellRect.set(cell * i + den, den, cell * (i + 1) - den, getHeight() - den);
+                    bgPaint.setColor(SONIM_FOCUS_FILL);
+                    c.drawRect(cellRect, bgPaint);
+                    strokePaint.setColor(SONIM_FOCUS_STROKE);
+                    strokePaint.setStrokeWidth(1.5f * den);
+                    c.drawRect(cellRect, strokePaint);
                 }
 
-                int fg = isCurrent
-                        ? (BadgeView.isLight(accent) ? 0xFF1C1C1E : Color.WHITE)
-                        : (isFocused ? accent : 0xFF636366);
-                boolean heartPink = (!isCurrent && kind == Body.REACT_HEART);
-                drawTapbackGlyph(c, kind, null, cx, cy, r * 1.15f, fg, heartPink, glyphPaint);
+                // Current user reaction gets white badge with crisp subtle ring (matches user's white reactions)
+                if (isCurrent) {
+                    bgPaint.setColor(Color.WHITE);
+                    c.drawCircle(cx, cy, r, bgPaint);
+                    strokePaint.setColor(0xFF757575);
+                    strokePaint.setStrokeWidth(1.2f * den);
+                    c.drawCircle(cx, cy, r, strokePaint);
+                }
+
+                int fg = (isFocused || isCurrent) ? 0xFF212121 : 0xFF757575;
+                boolean heartPink = (kind == Body.REACT_HEART);
+                drawTapbackGlyph(c, kind, null, cx, cy, r * 1.18f, fg, heartPink, glyphPaint);
             }
         }
     }
@@ -1121,7 +1061,6 @@ public final class WaveTapbacks {
         }, "wave-tapback").start();
     }
 
-    /** A tapback changed: drop cached badges and make open conversations rebind. */
     public static void changed(Context c) {
         invalidate();
         c.getContentResolver().notifyChange(Uri.parse("content://mms-sms/"), null);

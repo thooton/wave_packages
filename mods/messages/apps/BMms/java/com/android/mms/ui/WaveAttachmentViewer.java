@@ -13,11 +13,13 @@ import android.graphics.Matrix;
 import android.graphics.Movie;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
 import android.media.ExifInterface;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Handler;
@@ -35,6 +37,7 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
@@ -57,18 +60,18 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Clean, Apple-meets-Sonim full-screen attachment viewer for AttachmentViewActivity.
+ * Sonim-native attachment details viewer for AttachmentViewActivity.
  *
- * Replaces stock Sonim's cluttered filmstrip viewer (which wasted 25% of the 240x320 screen
- * even on single attachments, rendered bogus "NO MEDIA" slides for captions, used low-res
- * thumbnails for photos, and showed a pink CD icon for voice messages) with:
- * - True full-screen dark viewer for photos & videos (zero extra chrome on single items)
- * - Crisp EXIF-oriented image decoding + animated GIF support + D-pad 2.2x zoom & pan
- * - Auto-playing video with OK play/pause, Left/Right seek, and sleek auto-hiding scrubber
- * - iOS-style Voice Message player with circular play/pause button and animated waveform bars
- * - Parsed vCard / contact card viewer
- * - Clean caption overlay instead of bogus "NO MEDIA" slides
- * - Unified Menu: Save attachment, Save all, Zoom/Play, and React (for iMessages)
+ * Keeps Sonim's native Attachment Details look (white backdrop, grey status bar, red indicator dot,
+ * black horizontal divider, bottom thumbnail carousel with blue-grey selection border and file
+ * sizes) while fixing stock's bugs and adding D-pad photo zoom:
+ * - Eliminates bogus "NO MEDIA" slides: caption text renders cleanly above the divider instead.
+ * - Full-resolution EXIF-oriented photo decode + OK 2.2x D-pad zoom & pan (no overlay hint text;
+ *   bottom carousel hides temporarily while zoomed so the full screen is available).
+ * - Animated GIF support, clean video playback with Sonim-style white-ring play icon and red
+ *   progress bar, audio fallback, and parsed vCard contact cards.
+ * - Unified Menu: Zoom in/Fit, Play/Pause, Save attachment (full-size iMessage or local MMS),
+ *   Save all, and React.
  */
 public final class WaveAttachmentViewer {
     private static final String TAG = "WaveAttachmentViewer";
@@ -79,9 +82,12 @@ public final class WaveAttachmentViewer {
     private static final int MENU_PLAY_PAUSE = 0x5804;
     private static final int MENU_REACT = 0x5805;
 
-    private static final int COLOR_DARK_BG = 0xFF0B0B0D;
-    private static final int COLOR_LIGHT_BG = 0xFFF5F5F7;
-    private static final int COLOR_IMSG_BLUE = 0xFF007AFF;
+    /** Native Sonim Attachment Details colors. */
+    private static final int COLOR_BG = 0xFFFFFFFF;
+    private static final int COLOR_STATUS_BAR = 0xFF757575;
+    private static final int COLOR_SONIM_RED = 0xFFD32F2F;
+    private static final int COLOR_FOCUS_FILL = 0xFFEDF2F4;
+    private static final int COLOR_FOCUS_STROKE = 0xFF607D8B;
 
     private static final WeakHashMap<Activity, WaveAttachmentViewer> ACTIVE = new WeakHashMap<>();
     private static final ExecutorService IO_EXEC = Executors.newCachedThreadPool();
@@ -96,35 +102,27 @@ public final class WaveAttachmentViewer {
     private int currentIndex = 0;
     private boolean destroyed = false;
 
-    private FrameLayout root;
+    private LinearLayout root;
     private FrameLayout contentHost;
-    private TextView counterPill;
-    private TextView zoomPill;
-    private LinearLayout captionBox;
     private TextView captionTv;
-    private DotsView dotsView;
+    private View bottomSection;
+    private HorizontalScrollView stripScroll;
+    private LinearLayout stripRow;
+    private final List<ThumbTileView> stripTiles = new ArrayList<>();
 
     // Active media views/players
     private ZoomPhotoView photoView;
     private GifView gifView;
     private VideoView videoView;
     private View videoPauseOverlay;
-    private View videoControls;
-    private VideoProgressView videoProgress;
-    private TextView videoElapsedTv;
-    private TextView videoTotalTv;
-    private boolean videoPlaying = false;
-    private boolean videoControlsVisible = true;
+    private SonimProgressView videoProgress;
 
     private MediaPlayer audioPlayer;
-    private WaveformView audioWaveform;
-    private AudioPlayButton audioPlayBtn;
-    private TextView audioElapsedTv;
-    private TextView audioTotalTv;
+    private SonimProgressView audioProgress;
+    private TextView audioTimeTv;
+    private TextView audioStateTv;
     private boolean audioPrepared = false;
     private boolean audioCompleted = false;
-
-    private View vcardOpenBtn;
 
     private final Runnable progressTick = new Runnable() {
         @Override
@@ -135,29 +133,23 @@ public final class WaveAttachmentViewer {
         }
     };
 
-    private final Runnable hideVideoControls = () -> {
-        if (destroyed || videoControls == null) return;
-        if (videoView != null && videoView.isPlaying()) {
-            videoControls.setVisibility(View.GONE);
-            videoControlsVisible = false;
-        }
-    };
-
     static final class PartItem {
         final long partId;
         final Uri uri;
         final String mime;
         final String filename;
         final Kind kind;
+        long sizeBytes;
 
         enum Kind { IMAGE, GIF, VIDEO, AUDIO, VCARD, OTHER }
 
-        PartItem(long partId, Uri uri, String mime, String filename, Kind kind) {
+        PartItem(long partId, Uri uri, String mime, String filename, Kind kind, long sizeBytes) {
             this.partId = partId;
             this.uri = uri;
             this.mime = mime;
             this.filename = filename;
             this.kind = kind;
+            this.sizeBytes = sizeBytes;
         }
     }
 
@@ -173,7 +165,6 @@ public final class WaveAttachmentViewer {
         if (act == null) return false;
         Intent intent = act.getIntent();
         if (intent == null) return false;
-        // Let stock handle slideshow editing if ever invoked
         if (intent.getBooleanExtra("is_edit_slideshow", false)) return false;
         Uri data = intent.getData();
         if (data == null || !"content".equals(data.getScheme())) return false;
@@ -225,69 +216,64 @@ public final class WaveAttachmentViewer {
     // --- Init & loading ---
 
     private void init(Intent intent) {
-        setStatusBar(COLOR_DARK_BG, false);
+        setStatusBar(COLOR_STATUS_BAR);
 
-        root = new FrameLayout(act);
-        root.setBackgroundColor(COLOR_DARK_BG);
+        root = new LinearLayout(act);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(COLOR_BG);
         root.setFocusable(true);
         root.setFocusableInTouchMode(true);
 
+        // Main preview area (white background, takes all remaining vertical space)
         contentHost = new FrameLayout(act);
-        root.addView(contentHost, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        contentHost.setBackgroundColor(COLOR_BG);
+        root.addView(contentHost, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
-        // Subtle top-right counter pill (only visible when parts.size() > 1)
-        counterPill = makeFloatingPill(act);
-        FrameLayout.LayoutParams cpLp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP | Gravity.END);
-        cpLp.topMargin = dp(8);
-        cpLp.rightMargin = dp(8);
-        counterPill.setVisibility(View.GONE);
-        root.addView(counterPill, cpLp);
-
-        // Subtle top-left zoom badge (only visible while zoomed)
-        zoomPill = makeFloatingPill(act);
-        zoomPill.setText("2×  ◀▲▼▶ pan");
-        FrameLayout.LayoutParams zpLp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP | Gravity.START);
-        zpLp.topMargin = dp(8);
-        zpLp.leftMargin = dp(8);
-        zoomPill.setVisibility(View.GONE);
-        root.addView(zoomPill, zpLp);
-
-        // Caption scrim at bottom (hidden when no caption text)
-        captionBox = new LinearLayout(act);
-        captionBox.setOrientation(LinearLayout.VERTICAL);
-        captionBox.setBackgroundColor(0xA6000000);
-        captionBox.setPadding(dp(12), dp(8), dp(12), dp(10));
+        // Caption strip on white right above the bottom divider (replaces bogus "NO MEDIA" slide!)
         captionTv = new TextView(act);
-        captionTv.setTextColor(Color.WHITE);
+        captionTv.setTextColor(0xFF212121);
         captionTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
-        captionTv.setMaxLines(4);
+        captionTv.setGravity(Gravity.CENTER_HORIZONTAL);
+        captionTv.setPadding(dp(10), dp(4), dp(10), dp(2));
+        captionTv.setMaxLines(3);
         captionTv.setEllipsize(TextUtils.TruncateAt.END);
-        captionBox.addView(captionTv);
-        captionBox.setVisibility(View.GONE);
-        FrameLayout.LayoutParams capLp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.BOTTOM);
-        root.addView(captionBox, capLp);
+        captionTv.setVisibility(View.GONE);
+        root.addView(captionTv, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        // Compact bottom dots for multi-attachment (only visible when >1 attachment)
-        dotsView = new DotsView(act);
-        FrameLayout.LayoutParams dotsLp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, dp(10),
-                Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        dotsLp.bottomMargin = dp(6);
-        dotsView.setVisibility(View.GONE);
-        root.addView(dotsView, dotsLp);
+        // Native Sonim bottom section: red dot + black divider + horizontal thumbnail strip
+        LinearLayout bottom = new LinearLayout(act);
+        bottom.setOrientation(LinearLayout.VERTICAL);
+        bottom.setBackgroundColor(COLOR_BG);
 
-        // Loading spinner while querying parts
+        RedDotView dot = new RedDotView(act);
+        LinearLayout.LayoutParams dotLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(12));
+        bottom.addView(dot, dotLp);
+
+        View divider = new View(act);
+        divider.setBackgroundColor(Color.BLACK);
+        bottom.addView(divider, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, dp(1))));
+
+        stripScroll = new HorizontalScrollView(act);
+        stripScroll.setHorizontalScrollBarEnabled(false);
+        stripScroll.setFocusable(false);
+        stripRow = new LinearLayout(act);
+        stripRow.setOrientation(LinearLayout.HORIZONTAL);
+        stripRow.setPadding(dp(4), dp(3), dp(4), dp(3));
+        stripScroll.addView(stripRow, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        bottom.addView(stripScroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(72)));
+
+        bottomSection = bottom;
+        root.addView(bottom, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
         ProgressBar spinner = new ProgressBar(act);
-        FrameLayout.LayoutParams spLp = new FrameLayout.LayoutParams(
-                dp(32), dp(32), Gravity.CENTER);
-        contentHost.addView(spinner, spLp);
+        contentHost.addView(spinner, new FrameLayout.LayoutParams(dp(28), dp(28), Gravity.CENTER));
 
         act.setContentView(root);
         root.requestFocus();
@@ -300,6 +286,7 @@ public final class WaveAttachmentViewer {
                 if (destroyed) return;
                 if (parts.isEmpty()) {
                     if (!captionText.isEmpty()) {
+                        bottomSection.setVisibility(View.GONE);
                         showTextOnlyFallback();
                     } else {
                         Toast.makeText(act, "No attachment to display", Toast.LENGTH_SHORT).show();
@@ -307,7 +294,11 @@ public final class WaveAttachmentViewer {
                     }
                     return;
                 }
-                updateMultiChrome();
+                if (!captionText.isEmpty()) {
+                    captionTv.setText(captionText);
+                    captionTv.setVisibility(View.VISIBLE);
+                }
+                buildThumbnailStrip();
                 showPart(0);
             });
         });
@@ -354,12 +345,30 @@ public final class WaveAttachmentViewer {
 
                 String bestName = !fn.isEmpty() ? fn : (!cl.isEmpty() ? cl : name);
                 Uri uri = Uri.parse("content://mms/part/" + id);
-                parts.add(new PartItem(id, uri, ct, bestName, kind));
+                long sz = measurePartSize(uri);
+                parts.add(new PartItem(id, uri, ct, bestName, kind, sz));
             }
         } catch (Throwable t) {
             Log.w(TAG, "loadParts failed for " + mmsUri, t);
         }
         captionText = cap.toString().trim();
+    }
+
+    private long measurePartSize(Uri uri) {
+        try (android.content.res.AssetFileDescriptor afd =
+                     act.getContentResolver().openAssetFileDescriptor(uri, "r")) {
+            if (afd != null && afd.getLength() >= 0) return afd.getLength();
+        } catch (Throwable ignored) {}
+        try (InputStream in = act.getContentResolver().openInputStream(uri)) {
+            if (in == null) return 0;
+            long total = 0;
+            byte[] buf = new byte[4096];
+            int r;
+            while ((r = in.read(buf)) > 0) total += r;
+            return total;
+        } catch (Throwable ignored) {
+            return 0;
+        }
     }
 
     private static PartItem.Kind classify(String ct) {
@@ -372,13 +381,30 @@ public final class WaveAttachmentViewer {
         return PartItem.Kind.OTHER;
     }
 
-    private void updateMultiChrome() {
-        boolean multi = parts.size() > 1;
-        counterPill.setVisibility(multi ? View.VISIBLE : View.GONE);
-        dotsView.setVisibility(multi ? View.VISIBLE : View.GONE);
-        if (multi) {
-            counterPill.setText((currentIndex + 1) + " / " + parts.size());
-            dotsView.setState(parts.size(), currentIndex);
+    private void buildThumbnailStrip() {
+        stripRow.removeAllViews();
+        stripTiles.clear();
+        for (int i = 0; i < parts.size(); i++) {
+            final int idx = i;
+            ThumbTileView tile = new ThumbTileView(act, parts.get(i));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(68), dp(66));
+            if (i > 0) lp.leftMargin = dp(4);
+            tile.setOnClickListener(v -> showPart(idx));
+            stripRow.addView(tile, lp);
+            stripTiles.add(tile);
+        }
+    }
+
+    private void updateStripSelection() {
+        for (int i = 0; i < stripTiles.size(); i++) {
+            stripTiles.get(i).setSelectedTile(i == currentIndex);
+        }
+        if (currentIndex >= 0 && currentIndex < stripTiles.size()) {
+            final View target = stripTiles.get(currentIndex);
+            stripScroll.post(() -> {
+                int targetX = target.getLeft() - (stripScroll.getWidth() - target.getWidth()) / 2;
+                stripScroll.smoothScrollTo(Math.max(0, targetX), 0);
+            });
         }
     }
 
@@ -386,30 +412,12 @@ public final class WaveAttachmentViewer {
         if (idx < 0 || idx >= parts.size()) return;
         stopActiveMedia();
         currentIndex = idx;
-        updateMultiChrome();
-        zoomPill.setVisibility(View.GONE);
+        updateStripSelection();
+        bottomSection.setVisibility(View.VISIBLE);
+        captionTv.setVisibility(captionText.isEmpty() ? View.GONE : View.VISIBLE);
         contentHost.removeAllViews();
 
         PartItem item = parts.get(idx);
-        boolean darkMode = (item.kind == PartItem.Kind.IMAGE
-                || item.kind == PartItem.Kind.GIF
-                || item.kind == PartItem.Kind.VIDEO);
-        int bg = darkMode ? COLOR_DARK_BG : COLOR_LIGHT_BG;
-        root.setBackgroundColor(bg);
-        setStatusBar(darkMode ? COLOR_DARK_BG : 0xFF1C1C1E, false);
-        dotsView.setDarkMode(darkMode);
-
-        // Show caption cleanly on dark media views (raised slightly if dots are shown)
-        if (!captionText.isEmpty() && darkMode) {
-            captionTv.setText(captionText);
-            captionBox.setVisibility(View.VISIBLE);
-            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) captionBox.getLayoutParams();
-            lp.bottomMargin = parts.size() > 1 ? dp(20) : 0;
-            captionBox.setLayoutParams(lp);
-        } else {
-            captionBox.setVisibility(View.GONE);
-        }
-
         switch (item.kind) {
             case IMAGE:
                 showImage(item);
@@ -432,7 +440,7 @@ public final class WaveAttachmentViewer {
         }
     }
 
-    // --- Photo viewer with crisp full-preview decode + EXIF + D-pad zoom/pan ---
+    // --- Photo viewer (white Sonim background + crisp EXIF decode + D-pad 2.2x zoom & pan, NO hint pill) ---
 
     private void showImage(PartItem item) {
         ZoomPhotoView zp = new ZoomPhotoView(act);
@@ -455,7 +463,7 @@ public final class WaveAttachmentViewer {
                 if (bmp != null) {
                     zp.setBitmap(bmp);
                 } else {
-                    showErrorLabel("Couldn't open image", true);
+                    showErrorLabel("Couldn't open image");
                 }
             });
         });
@@ -545,85 +553,55 @@ public final class WaveAttachmentViewer {
                     contentHost.addView(zp, new FrameLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
                 } else {
-                    showErrorLabel("Couldn't open GIF", true);
+                    showErrorLabel("Couldn't open GIF");
                 }
             });
         });
     }
 
-    // --- Full-screen Video viewer ---
+    // --- Video viewer (Sonim white backdrop + white-ring Play icon + red progress bar) ---
 
     private void showVideo(PartItem item) {
+        FrameLayout box = new FrameLayout(act);
+        box.setBackgroundColor(COLOR_BG);
+
         VideoView vv = new VideoView(act);
         videoView = vv;
         FrameLayout.LayoutParams vlp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
                 Gravity.CENTER);
-        contentHost.addView(vv, vlp);
+        vlp.setMargins(dp(12), dp(8), dp(12), dp(14));
+        box.addView(vv, vlp);
 
-        // Centered translucent play indicator shown only when paused
-        PlayBadgeOverlay pauseBadge = new PlayBadgeOverlay(act);
-        pauseBadge.setVisibility(View.GONE);
-        videoPauseOverlay = pauseBadge;
-        contentHost.addView(pauseBadge, new FrameLayout.LayoutParams(
-                dp(56), dp(56), Gravity.CENTER));
+        SonimPlayRingView playRing = new SonimPlayRingView(act);
+        playRing.setVisibility(View.VISIBLE);
+        videoPauseOverlay = playRing;
+        box.addView(playRing, new FrameLayout.LayoutParams(dp(44), dp(44), Gravity.CENTER));
 
-        // Sleek bottom scrubber bar (auto-hides while playing)
-        LinearLayout bar = new LinearLayout(act);
-        bar.setOrientation(LinearLayout.VERTICAL);
-        bar.setBackgroundColor(0x99000000);
-        int bPad = dp(10);
-        bar.setPadding(bPad, dp(8), bPad, parts.size() > 1 ? dp(22) : dp(10));
+        videoProgress = new SonimProgressView(act);
+        FrameLayout.LayoutParams plp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(6), Gravity.BOTTOM);
+        plp.setMargins(dp(12), 0, dp(12), dp(4));
+        box.addView(videoProgress, plp);
 
-        videoProgress = new VideoProgressView(act);
-        bar.addView(videoProgress, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(10)));
-
-        LinearLayout timeRow = new LinearLayout(act);
-        timeRow.setOrientation(LinearLayout.HORIZONTAL);
-        videoElapsedTv = new TextView(act);
-        videoElapsedTv.setText("0:00");
-        videoElapsedTv.setTextColor(Color.WHITE);
-        videoElapsedTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
-        videoTotalTv = new TextView(act);
-        videoTotalTv.setText("0:00");
-        videoTotalTv.setTextColor(0xB3FFFFFF);
-        videoTotalTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
-        videoTotalTv.setGravity(Gravity.END);
-        timeRow.addView(videoElapsedTv, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        timeRow.addView(videoTotalTv, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        LinearLayout.LayoutParams trLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        trLp.topMargin = dp(2);
-        bar.addView(timeRow, trLp);
-
-        videoControls = bar;
-        videoControlsVisible = true;
-        contentHost.addView(bar, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.BOTTOM));
+        contentHost.addView(box, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         vv.setVideoURI(item.uri);
         vv.setOnPreparedListener(mp -> {
             if (destroyed) return;
-            videoTotalTv.setText(formatDuration(mp.getDuration()));
+            // Show first frame cleanly and auto-play on open
             vv.start();
-            videoPlaying = true;
             if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.GONE);
             main.removeCallbacks(progressTick);
             main.post(progressTick);
-            scheduleHideVideoControls();
         });
         vv.setOnCompletionListener(mp -> {
-            videoPlaying = false;
             if (videoProgress != null) videoProgress.setProgress(1f);
             if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.VISIBLE);
-            showVideoControls(false);
         });
         vv.setOnErrorListener((mp, what, extra) -> {
-            showErrorLabel("Couldn't play video", true);
+            showErrorLabel("Couldn't play video");
             return true;
         });
     }
@@ -632,130 +610,60 @@ public final class WaveAttachmentViewer {
         if (videoView == null) return;
         if (videoView.isPlaying()) {
             videoView.pause();
-            videoPlaying = false;
             if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.VISIBLE);
-            showVideoControls(false);
         } else {
             videoView.start();
-            videoPlaying = true;
             if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.GONE);
-            showVideoControls(true);
             main.removeCallbacks(progressTick);
             main.post(progressTick);
         }
     }
 
-    private void showVideoControls(boolean autoHide) {
-        if (videoControls != null) {
-            videoControls.setVisibility(View.VISIBLE);
-            videoControlsVisible = true;
-        }
-        main.removeCallbacks(hideVideoControls);
-        if (autoHide) scheduleHideVideoControls();
-    }
-
-    private void scheduleHideVideoControls() {
-        main.removeCallbacks(hideVideoControls);
-        main.postDelayed(hideVideoControls, 2500);
-    }
-
-    // --- iOS-style Voice Message / Audio Player ---
+    // --- Audio fallback view (Sonim light style, for multi-attachment MMS with audio) ---
 
     private void showAudio(PartItem item) {
-        int accent = activeAccentColor();
         LinearLayout outer = new LinearLayout(act);
         outer.setOrientation(LinearLayout.VERTICAL);
         outer.setGravity(Gravity.CENTER);
-        outer.setPadding(dp(16), dp(20), dp(16), dp(20));
+        outer.setPadding(dp(18), dp(12), dp(18), dp(12));
 
-        // Clean white elevated card
-        LinearLayout card = new LinearLayout(act);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setGravity(Gravity.CENTER_HORIZONTAL);
-        card.setPadding(dp(16), dp(18), dp(16), dp(16));
-        GradientDrawable cardBg = new GradientDrawable();
-        cardBg.setColor(Color.WHITE);
-        cardBg.setCornerRadius(dp(18));
-        cardBg.setStroke(1, 0x1A000000);
-        card.setBackground(cardBg);
-
-        // Friendly title ("Voice message" or cleaned filename)
         TextView titleTv = new TextView(act);
         titleTv.setText(friendlyAudioTitle(item.filename));
-        titleTv.setTextColor(0xFF1C1C1E);
+        titleTv.setTextColor(0xFF212121);
         titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
         titleTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        titleTv.setSingleLine(true);
-        titleTv.setEllipsize(TextUtils.TruncateAt.END);
-        card.addView(titleTv);
+        titleTv.setGravity(Gravity.CENTER);
+        outer.addView(titleTv);
 
-        // Big tactile circular Play/Pause button
-        audioPlayBtn = new AudioPlayButton(act, accent);
-        LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(dp(58), dp(58));
-        btnLp.topMargin = dp(16);
-        btnLp.bottomMargin = dp(16);
-        card.addView(audioPlayBtn, btnLp);
-
-        // Crisp waveform progress bars
-        audioWaveform = new WaveformView(act, accent);
-        LinearLayout.LayoutParams wfLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(36));
-        card.addView(audioWaveform, wfLp);
-
-        // Elapsed / Total timestamps
-        LinearLayout timeRow = new LinearLayout(act);
-        timeRow.setOrientation(LinearLayout.HORIZONTAL);
-        audioElapsedTv = new TextView(act);
-        audioElapsedTv.setText("0:00");
-        audioElapsedTv.setTextColor(0xFF3A3A3C);
-        audioElapsedTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
-        audioTotalTv = new TextView(act);
-        audioTotalTv.setText("0:00");
-        audioTotalTv.setTextColor(0xFF8E8E93);
-        audioTotalTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
-        audioTotalTv.setGravity(Gravity.END);
-        timeRow.addView(audioElapsedTv, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        timeRow.addView(audioTotalTv, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        LinearLayout.LayoutParams trLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        trLp.topMargin = dp(6);
-        card.addView(timeRow, trLp);
-
-        outer.addView(card, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        // Optional caption below the card
-        if (!captionText.isEmpty()) {
-            TextView cap = new TextView(act);
-            cap.setText(captionText);
-            cap.setTextColor(0xFF3A3A3C);
-            cap.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
-            cap.setGravity(Gravity.CENTER);
-            cap.setMaxLines(3);
-            cap.setEllipsize(TextUtils.TruncateAt.END);
-            LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            clp.topMargin = dp(10);
-            outer.addView(cap, clp);
-        }
-
-        // Subtle D-pad hint at bottom
-        TextView hint = new TextView(act);
-        hint.setText(parts.size() == 1 ? "OK play/pause   ◀ ▶ seek" : "OK play/pause   ◀ ▶ next");
-        hint.setTextColor(0xFF8E8E93);
-        hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f);
-        hint.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(
+        audioStateTv = new TextView(act);
+        audioStateTv.setText("Playing");
+        audioStateTv.setTextColor(0xFF757575);
+        audioStateTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
+        audioStateTv.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams stLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        hlp.topMargin = dp(14);
-        outer.addView(hint, hlp);
+        stLp.topMargin = dp(4);
+        outer.addView(audioStateTv, stLp);
+
+        audioProgress = new SonimProgressView(act);
+        LinearLayout.LayoutParams prLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(8));
+        prLp.topMargin = dp(14);
+        outer.addView(audioProgress, prLp);
+
+        audioTimeTv = new TextView(act);
+        audioTimeTv.setText("0:00");
+        audioTimeTv.setTextColor(0xFF616161);
+        audioTimeTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
+        audioTimeTv.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams tmLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        tmLp.topMargin = dp(6);
+        outer.addView(audioTimeTv, tmLp);
 
         contentHost.addView(outer, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        // Prepare MediaPlayer
         audioPrepared = false;
         audioCompleted = false;
         try {
@@ -766,27 +674,25 @@ public final class WaveAttachmentViewer {
             mp.setOnPreparedListener(p -> {
                 if (destroyed || audioPlayer != p) return;
                 audioPrepared = true;
-                audioTotalTv.setText(formatDuration(p.getDuration()));
                 p.start();
-                if (audioPlayBtn != null) audioPlayBtn.setPlaying(true);
+                if (audioStateTv != null) audioStateTv.setText("Playing");
                 main.removeCallbacks(progressTick);
                 main.post(progressTick);
             });
             mp.setOnCompletionListener(p -> {
                 if (destroyed || audioPlayer != p) return;
                 audioCompleted = true;
-                if (audioPlayBtn != null) audioPlayBtn.setPlaying(false);
-                if (audioWaveform != null) audioWaveform.setProgress(1f);
-                if (audioElapsedTv != null) audioElapsedTv.setText(formatDuration(p.getDuration()));
+                if (audioStateTv != null) audioStateTv.setText("Paused");
+                if (audioProgress != null) audioProgress.setProgress(1f);
             });
             mp.setOnErrorListener((p, w, e) -> {
-                showErrorLabel("Couldn't play audio", false);
+                showErrorLabel("Couldn't play audio");
                 return true;
             });
             mp.prepareAsync();
         } catch (Throwable t) {
             Log.w(TAG, "audio prepare failed", t);
-            showErrorLabel("Couldn't play audio", false);
+            showErrorLabel("Couldn't play audio");
         }
     }
 
@@ -795,14 +701,14 @@ public final class WaveAttachmentViewer {
         try {
             if (audioPlayer.isPlaying()) {
                 audioPlayer.pause();
-                if (audioPlayBtn != null) audioPlayBtn.setPlaying(false);
+                if (audioStateTv != null) audioStateTv.setText("Paused");
             } else {
                 if (audioCompleted) {
                     audioPlayer.seekTo(0);
                     audioCompleted = false;
                 }
                 audioPlayer.start();
-                if (audioPlayBtn != null) audioPlayBtn.setPlaying(true);
+                if (audioStateTv != null) audioStateTv.setText("Playing");
                 main.removeCallbacks(progressTick);
                 main.post(progressTick);
             }
@@ -814,22 +720,11 @@ public final class WaveAttachmentViewer {
     // --- Parsed vCard / Contact Card Viewer ---
 
     private void showVcard(PartItem item) {
-        int accent = activeAccentColor();
         ScrollView sv = new ScrollView(act);
         LinearLayout outer = new LinearLayout(act);
         outer.setOrientation(LinearLayout.VERTICAL);
         outer.setGravity(Gravity.CENTER_HORIZONTAL);
-        outer.setPadding(dp(14), dp(18), dp(14), dp(18));
-
-        LinearLayout card = new LinearLayout(act);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setGravity(Gravity.CENTER_HORIZONTAL);
-        card.setPadding(dp(14), dp(16), dp(14), dp(14));
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(Color.WHITE);
-        bg.setCornerRadius(dp(16));
-        bg.setStroke(1, 0x1A000000);
-        card.setBackground(bg);
+        outer.setPadding(dp(16), dp(14), dp(16), dp(14));
 
         String fn = "";
         String tel = "";
@@ -856,10 +751,8 @@ public final class WaveAttachmentViewer {
                         } else if (up.startsWith("ORG:") || up.startsWith("ORG;")) {
                             if (org.isEmpty()) org = val.replace(';', ' ').trim();
                         }
-                    } else {
-                        if (up.startsWith("SUMMARY:") || up.startsWith("SUMMARY;")) {
-                            if (fn.isEmpty()) fn = val;
-                        }
+                    } else if (up.startsWith("SUMMARY:") || up.startsWith("SUMMARY;")) {
+                        if (fn.isEmpty()) fn = val;
                     }
                 }
             }
@@ -867,67 +760,31 @@ public final class WaveAttachmentViewer {
 
         if (fn.isEmpty()) fn = friendlyFileName(item.filename, isCal ? "Calendar Event" : "Contact");
 
-        // Monogram avatar circle
-        TextView avatar = new TextView(act);
-        avatar.setText(initials(fn));
-        avatar.setTextColor(Color.WHITE);
-        avatar.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f);
-        avatar.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        avatar.setGravity(Gravity.CENTER);
-        GradientDrawable avBg = new GradientDrawable();
-        avBg.setShape(GradientDrawable.OVAL);
-        avBg.setColor(accent);
-        avatar.setBackground(avBg);
-        card.addView(avatar, new LinearLayout.LayoutParams(dp(50), dp(50)));
-
         TextView nameTv = new TextView(act);
         nameTv.setText(fn);
-        nameTv.setTextColor(0xFF1C1C1E);
+        nameTv.setTextColor(0xFF212121);
         nameTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
         nameTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         nameTv.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        nlp.topMargin = dp(10);
-        card.addView(nameTv, nlp);
+        outer.addView(nameTv);
 
-        if (!org.isEmpty()) {
-            addInfoLine(card, org, 0xFF8E8E93, 12f);
-        }
-        if (!tel.isEmpty()) {
-            addInfoLine(card, WaveTapbacks.formatAddress(tel), 0xFF3A3A3C, 13.5f);
-        }
-        if (!email.isEmpty()) {
-            addInfoLine(card, email, 0xFF3A3A3C, 12.5f);
-        }
+        if (!org.isEmpty()) addInfoLine(outer, org, 0xFF757575, 12f);
+        if (!tel.isEmpty()) addInfoLine(outer, WaveTapbacks.formatAddress(tel), 0xFF424242, 13.5f);
+        if (!email.isEmpty()) addInfoLine(outer, email, 0xFF424242, 12.5f);
 
-        // Open button
-        TextView openBtn = new TextView(act);
-        openBtn.setText(isCal ? "Open event" : "Open in Contacts");
-        openBtn.setTextColor(Color.WHITE);
-        openBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
-        openBtn.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        openBtn.setGravity(Gravity.CENTER);
-        openBtn.setPadding(dp(16), dp(8), dp(16), dp(8));
-        GradientDrawable obBg = new GradientDrawable();
-        obBg.setColor(accent);
-        obBg.setCornerRadius(dp(16));
-        openBtn.setBackground(obBg);
-        openBtn.setFocusable(true);
-        openBtn.setClickable(true);
-        openBtn.setOnClickListener(v -> openExternal(item));
-        vcardOpenBtn = openBtn;
-        LinearLayout.LayoutParams olp = new LinearLayout.LayoutParams(
+        TextView hint = new TextView(act);
+        hint.setText(isCal ? "Press OK to open event" : "Press OK to open in Contacts");
+        hint.setTextColor(0xFF0099CC);
+        hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+        hint.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        olp.topMargin = dp(14);
-        card.addView(openBtn, olp);
+        hlp.topMargin = dp(12);
+        outer.addView(hint, hlp);
 
-        outer.addView(card, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         sv.addView(outer);
         contentHost.addView(sv, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        openBtn.requestFocus();
     }
 
     private void addInfoLine(LinearLayout parent, String text, int color, float sp) {
@@ -961,15 +818,14 @@ public final class WaveAttachmentViewer {
 
         TextView title = new TextView(act);
         title.setText(friendlyFileName(item.filename, "Attachment"));
-        title.setTextColor(0xFF1C1C1E);
+        title.setTextColor(0xFF212121);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
-        title.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         title.setGravity(Gravity.CENTER);
         box.addView(title);
 
         TextView sub = new TextView(act);
         sub.setText("Press Menu to save");
-        sub.setTextColor(0xFF8E8E93);
+        sub.setTextColor(0xFF757575);
         sub.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
         sub.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
@@ -982,12 +838,10 @@ public final class WaveAttachmentViewer {
     }
 
     private void showTextOnlyFallback() {
-        root.setBackgroundColor(COLOR_LIGHT_BG);
-        setStatusBar(0xFF1C1C1E, false);
         ScrollView sv = new ScrollView(act);
         TextView tv = new TextView(act);
         tv.setText(captionText);
-        tv.setTextColor(0xFF1C1C1E);
+        tv.setTextColor(0xFF212121);
         tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
         tv.setPadding(dp(16), dp(16), dp(16), dp(16));
         sv.addView(tv);
@@ -995,11 +849,11 @@ public final class WaveAttachmentViewer {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
-    private void showErrorLabel(String msg, boolean dark) {
+    private void showErrorLabel(String msg) {
         contentHost.removeAllViews();
         TextView tv = new TextView(act);
         tv.setText(msg);
-        tv.setTextColor(dark ? 0xCCFFFFFF : 0xFF636366);
+        tv.setTextColor(0xFF616161);
         tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
         tv.setGravity(Gravity.CENTER);
         contentHost.addView(tv, new FrameLayout.LayoutParams(
@@ -1019,7 +873,7 @@ public final class WaveAttachmentViewer {
             return true;
         }
 
-        // Photo zoom & pan
+        // Photo zoom & pan (no hint banner; bottom strip hides while zoomed for max viewing area)
         if (cur.kind == PartItem.Kind.IMAGE && photoView != null) {
             if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER) {
                 togglePhotoZoom();
@@ -1034,7 +888,6 @@ public final class WaveAttachmentViewer {
             }
         }
 
-        // Video play/pause & seek
         if (cur.kind == PartItem.Kind.VIDEO && videoView != null) {
             if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER) {
                 toggleVideoPlayPause();
@@ -1045,44 +898,26 @@ public final class WaveAttachmentViewer {
                 if (dur > 0) {
                     int pos = videoView.getCurrentPosition()
                             + (key == KeyEvent.KEYCODE_DPAD_RIGHT ? 5000 : -5000);
-                    pos = Math.max(0, Math.min(dur, pos));
-                    videoView.seekTo(pos);
+                    videoView.seekTo(Math.max(0, Math.min(dur, pos)));
                     updateMediaProgress();
-                    showVideoControls(videoView.isPlaying());
                 }
                 return true;
             }
         }
 
-        // Audio play/pause & seek
         if (cur.kind == PartItem.Kind.AUDIO && audioPlayer != null) {
             if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER) {
                 toggleAudioPlayPause();
                 return true;
             }
-            if (parts.size() == 1 && audioPrepared
-                    && (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT)) {
-                int dur = audioPlayer.getDuration();
-                if (dur > 0) {
-                    int pos = audioPlayer.getCurrentPosition()
-                            + (key == KeyEvent.KEYCODE_DPAD_RIGHT ? 5000 : -5000);
-                    pos = Math.max(0, Math.min(dur, pos));
-                    audioPlayer.seekTo(pos);
-                    audioCompleted = false;
-                    updateMediaProgress();
-                }
-                return true;
-            }
         }
 
-        // vCard open
         if (cur.kind == PartItem.Kind.VCARD
                 && (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER)) {
             openExternal(cur);
             return true;
         }
 
-        // Multi-attachment Left/Right switching
         if (parts.size() > 1) {
             if (key == KeyEvent.KEYCODE_DPAD_LEFT && currentIndex > 0) {
                 showPart(currentIndex - 1);
@@ -1098,8 +933,7 @@ public final class WaveAttachmentViewer {
 
     private boolean handleBack() {
         if (photoView != null && photoView.isZoomed()) {
-            photoView.setZoomed(false);
-            zoomPill.setVisibility(View.GONE);
+            setZoomed(false);
             return true;
         }
         return false;
@@ -1107,9 +941,14 @@ public final class WaveAttachmentViewer {
 
     private void togglePhotoZoom() {
         if (photoView == null) return;
-        boolean next = !photoView.isZoomed();
-        photoView.setZoomed(next);
-        zoomPill.setVisibility(next ? View.VISIBLE : View.GONE);
+        setZoomed(!photoView.isZoomed());
+    }
+
+    private void setZoomed(boolean zoomed) {
+        if (photoView == null) return;
+        photoView.setZoomed(zoomed);
+        bottomSection.setVisibility(zoomed ? View.GONE : View.VISIBLE);
+        captionTv.setVisibility((zoomed || captionText.isEmpty()) ? View.GONE : View.VISIBLE);
     }
 
     // --- Menu ---
@@ -1181,19 +1020,18 @@ public final class WaveAttachmentViewer {
             int pos = videoView.getCurrentPosition();
             if (dur > 0) {
                 videoProgress.setProgress(Math.min(1f, Math.max(0f, pos / (float) dur)));
-                if (videoElapsedTv != null) videoElapsedTv.setText(formatDuration(pos));
-                if (videoTotalTv != null) videoTotalTv.setText(formatDuration(dur));
             }
         }
-        if (audioPlayer != null && audioPrepared && audioWaveform != null) {
+        if (audioPlayer != null && audioPrepared && audioProgress != null) {
             try {
                 int dur = audioPlayer.getDuration();
                 int pos = audioPlayer.getCurrentPosition();
                 if (dur > 0) {
                     float frac = audioCompleted ? 1f : Math.min(1f, Math.max(0f, pos / (float) dur));
-                    audioWaveform.setProgress(frac);
-                    if (audioElapsedTv != null) {
-                        audioElapsedTv.setText(formatDuration(audioCompleted ? dur : pos));
+                    audioProgress.setProgress(frac);
+                    if (audioTimeTv != null) {
+                        audioTimeTv.setText(formatDuration(audioCompleted ? dur : pos)
+                                + " / " + formatDuration(dur));
                     }
                 }
             } catch (Throwable ignored) {}
@@ -1203,14 +1041,13 @@ public final class WaveAttachmentViewer {
     private void pauseActiveMedia() {
         if (videoView != null && videoView.isPlaying()) {
             videoView.pause();
-            videoPlaying = false;
             if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.VISIBLE);
         }
         if (audioPlayer != null && audioPrepared) {
             try {
                 if (audioPlayer.isPlaying()) {
                     audioPlayer.pause();
-                    if (audioPlayBtn != null) audioPlayBtn.setPlaying(false);
+                    if (audioStateTv != null) audioStateTv.setText("Paused");
                 }
             } catch (Throwable ignored) {}
         }
@@ -1218,16 +1055,12 @@ public final class WaveAttachmentViewer {
 
     private void stopActiveMedia() {
         main.removeCallbacks(progressTick);
-        main.removeCallbacks(hideVideoControls);
         if (videoView != null) {
             try { videoView.stopPlayback(); } catch (Throwable ignored) {}
             videoView = null;
         }
         videoPauseOverlay = null;
-        videoControls = null;
         videoProgress = null;
-        videoElapsedTv = null;
-        videoTotalTv = null;
         if (audioPlayer != null) {
             try { audioPlayer.stop(); } catch (Throwable ignored) {}
             try { audioPlayer.release(); } catch (Throwable ignored) {}
@@ -1235,26 +1068,182 @@ public final class WaveAttachmentViewer {
         }
         audioPrepared = false;
         audioCompleted = false;
-        audioWaveform = null;
-        audioPlayBtn = null;
-        audioElapsedTv = null;
-        audioTotalTv = null;
+        audioProgress = null;
+        audioTimeTv = null;
+        audioStateTv = null;
         if (photoView != null) {
             photoView.recycleBitmap();
             photoView = null;
         }
         gifView = null;
-        vcardOpenBtn = null;
     }
 
     private void release() {
         destroyed = true;
         stopActiveMedia();
+        for (ThumbTileView t : stripTiles) t.recycle();
     }
 
     // --- Custom Views ---
 
-    /** Aspect-preserving full-screen photo view with crisp 2.2x D-pad zoom & clamped pan. */
+    /** Centered red indicator dot matching Sonim's AttachmentViewActivity. */
+    private static final class RedDotView extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        RedDotView(Context ctx) {
+            super(ctx);
+            paint.setColor(COLOR_SONIM_RED);
+        }
+        @Override
+        protected void onDraw(Canvas c) {
+            float den = getResources().getDisplayMetrics().density;
+            c.drawCircle(getWidth() * 0.5f, getHeight() * 0.5f, 2.2f * den, paint);
+        }
+    }
+
+    /** Sonim bottom carousel thumbnail tile with blue-grey selection box & crisp size label. */
+    private static final class ThumbTileView extends View {
+        private final PartItem item;
+        private Bitmap thumb;
+        private boolean selected = false;
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF dstRect = new RectF();
+        private final Rect srcRect = new Rect();
+
+        ThumbTileView(Context ctx, PartItem item) {
+            super(ctx);
+            this.item = item;
+            float den = ctx.getResources().getDisplayMetrics().density;
+            strokePaint.setStyle(Paint.Style.STROKE);
+            textPaint.setColor(0xFF616161);
+            textPaint.setTextSize(10.5f * den);
+            textPaint.setTextAlign(Paint.Align.CENTER);
+            loadThumb();
+        }
+
+        void setSelectedTile(boolean sel) {
+            if (selected != sel) {
+                selected = sel;
+                invalidate();
+            }
+        }
+
+        void recycle() {
+            if (thumb != null && !thumb.isRecycled()) thumb.recycle();
+            thumb = null;
+        }
+
+        private void loadThumb() {
+            final Context app = getContext().getApplicationContext();
+            IO_EXEC.execute(() -> {
+                Bitmap b = null;
+                if (item.kind == PartItem.Kind.IMAGE || item.kind == PartItem.Kind.GIF) {
+                    b = decodeCrispBitmap(app, item.uri, 120);
+                } else if (item.kind == PartItem.Kind.VIDEO) {
+                    MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                    try {
+                        mmr.setDataSource(app, item.uri);
+                        b = mmr.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                    } catch (Throwable ignored) {
+                    } finally {
+                        try { mmr.release(); } catch (Throwable ignored) {}
+                    }
+                }
+                final Bitmap loaded = b;
+                post(() -> {
+                    if (loaded != null && !loaded.isRecycled()) {
+                        thumb = loaded;
+                        invalidate();
+                    }
+                });
+            });
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            float den = getResources().getDisplayMetrics().density;
+            float w = getWidth();
+            float h = getHeight();
+
+            // Sonim blue-grey selection box
+            if (selected) {
+                paint.setColor(COLOR_FOCUS_FILL);
+                c.drawRect(0, 0, w, h, paint);
+                strokePaint.setColor(COLOR_FOCUS_STROKE);
+                strokePaint.setStrokeWidth(2f * den);
+                c.drawRect(den, den, w - den, h - den, strokePaint);
+            }
+
+            // Inner framed thumbnail square
+            float thumbW = 46f * den;
+            float thumbH = 44f * den;
+            float left = (w - thumbW) * 0.5f;
+            float top = 5f * den;
+            dstRect.set(left, top, left + thumbW, top + thumbH);
+
+            paint.setColor(0xFFF5F5F5);
+            c.drawRect(dstRect, paint);
+
+            if (thumb != null && !thumb.isRecycled()) {
+                int bw = thumb.getWidth(), bh = thumb.getHeight();
+                float dstRatio = thumbW / thumbH;
+                float bmpRatio = bw / (float) Math.max(1, bh);
+                if (bmpRatio > dstRatio) {
+                    int cw = Math.round(bh * dstRatio);
+                    int l = (bw - cw) / 2;
+                    srcRect.set(l, 0, l + cw, bh);
+                } else {
+                    int ch = Math.round(bw / dstRatio);
+                    int t = (bh - ch) / 2;
+                    srcRect.set(0, t, bw, t + ch);
+                }
+                c.drawBitmap(thumb, srcRect, dstRect, paint);
+            } else {
+                // Clean icon glyph for audio/vCard/other
+                String tag = item.kind == PartItem.Kind.AUDIO ? "\u266B"
+                        : (item.kind == PartItem.Kind.VCARD ? "VCF" : "FILE");
+                Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+                p.setColor(0xFF757575);
+                p.setTextAlign(Paint.Align.CENTER);
+                p.setTextSize(12f * den);
+                Paint.FontMetrics fm = p.getFontMetrics();
+                c.drawText(tag, dstRect.centerX(),
+                        dstRect.centerY() - (fm.ascent + fm.descent) * 0.5f, p);
+            }
+
+            // Mini white-ring play icon on video thumbnail (matches baseline 13_attach_video.png)
+            if (item.kind == PartItem.Kind.VIDEO) {
+                float cx = dstRect.centerX();
+                float cy = dstRect.centerY();
+                float r = 7f * den;
+                strokePaint.setColor(Color.WHITE);
+                strokePaint.setStrokeWidth(1.5f * den);
+                c.drawCircle(cx, cy, r, strokePaint);
+                paint.setColor(Color.WHITE);
+                Path tri = new Path();
+                float s = 3.2f * den;
+                tri.moveTo(cx - s * 0.5f, cy - s);
+                tri.lineTo(cx + s, cy);
+                tri.lineTo(cx - s * 0.5f, cy + s);
+                tri.close();
+                c.drawPath(tri, paint);
+            }
+
+            // Crisp 1px black frame around thumbnail
+            strokePaint.setColor(Color.BLACK);
+            strokePaint.setStrokeWidth(Math.max(1f, den));
+            c.drawRect(dstRect, strokePaint);
+
+            // Size text below thumbnail (with enough bottom room so it never clips)
+            String sz = formatSize(item.sizeBytes);
+            if (!sz.isEmpty()) {
+                c.drawText(sz, w * 0.5f, h - 4f * den, textPaint);
+            }
+        }
+    }
+
+    /** Aspect-preserving photo view with 2.2x D-pad zoom & clamped pan on white background. */
     private static final class ZoomPhotoView extends View {
         private Bitmap bmp;
         private boolean zoomed = false;
@@ -1365,44 +1354,48 @@ public final class WaveAttachmentViewer {
         }
     }
 
-    /** Translucent dark circle with crisp white Play triangle (shown over paused video). */
-    private static final class PlayBadgeOverlay extends View {
-        private final Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint fg = new Paint(Paint.ANTI_ALIAS_FLAG);
+    /** Native Sonim hollow white circle + play triangle (matches baseline 13_attach_video.png). */
+    private static final class SonimPlayRingView extends View {
+        private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-        PlayBadgeOverlay(Context ctx) {
+        SonimPlayRingView(Context ctx) {
             super(ctx);
-            bg.setColor(0x99000000);
-            fg.setColor(Color.WHITE);
+            float den = ctx.getResources().getDisplayMetrics().density;
+            ring.setStyle(Paint.Style.STROKE);
+            ring.setColor(Color.WHITE);
+            ring.setStrokeWidth(3f * den);
+            fill.setColor(Color.WHITE);
         }
 
         @Override
         protected void onDraw(Canvas c) {
+            float den = getResources().getDisplayMetrics().density;
             float cx = getWidth() * 0.5f;
             float cy = getHeight() * 0.5f;
-            float r = Math.min(cx, cy);
-            c.drawCircle(cx, cy, r, bg);
-            float s = r * 0.46f;
+            float r = Math.min(cx, cy) - 2f * den;
+            c.drawCircle(cx, cy, r, ring);
+            float s = r * 0.44f;
             Path tri = new Path();
-            tri.moveTo(cx - s * 0.55f, cy - s);
+            tri.moveTo(cx - s * 0.50f, cy - s);
             tri.lineTo(cx + s * 1.05f, cy);
-            tri.lineTo(cx - s * 0.55f, cy + s);
+            tri.lineTo(cx - s * 0.50f, cy + s);
             tri.close();
-            c.drawPath(tri, fg);
+            c.drawPath(tri, fill);
         }
     }
 
-    /** Thin crisp white-on-translucent iOS video scrubber bar. */
-    private static final class VideoProgressView extends View {
+    /** Sonim red horizontal progress bar for video/audio playback. */
+    private static final class SonimProgressView extends View {
         private float progress = 0f;
         private final Paint track = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF rect = new RectF();
 
-        VideoProgressView(Context ctx) {
+        SonimProgressView(Context ctx) {
             super(ctx);
-            track.setColor(0x4DFFFFFF);
-            fill.setColor(Color.WHITE);
+            track.setColor(0xFFE0E0E0);
+            fill.setColor(COLOR_SONIM_RED);
         }
 
         void setProgress(float p) {
@@ -1415,187 +1408,31 @@ public final class WaveAttachmentViewer {
             float den = getResources().getDisplayMetrics().density;
             float h = 3f * den;
             float y = (getHeight() - h) * 0.5f;
-            float rad = h * 0.5f;
             rect.set(0, y, getWidth(), y + h);
-            c.drawRoundRect(rect, rad, rad, track);
+            c.drawRect(rect, track);
             float fw = getWidth() * progress;
             if (fw > 0f) {
-                rect.set(0, y, Math.max(h, fw), y + h);
-                c.drawRoundRect(rect, rad, rad, fill);
-            }
-        }
-    }
-
-    /** Tactile circular Play/Pause button for the Voice Message viewer. */
-    private static final class AudioPlayButton extends View {
-        private final int accent;
-        private boolean playing = false;
-        private final Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint fg = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final RectF rect = new RectF();
-
-        AudioPlayButton(Context ctx, int accent) {
-            super(ctx);
-            this.accent = accent;
-            bg.setColor(accent);
-            fg.setColor(Color.WHITE);
-        }
-
-        void setPlaying(boolean p) {
-            playing = p;
-            invalidate();
-        }
-
-        @Override
-        protected void onDraw(Canvas c) {
-            float cx = getWidth() * 0.5f;
-            float cy = getHeight() * 0.5f;
-            float r = Math.min(cx, cy) - 2f;
-            bg.setColor(accent);
-            c.drawCircle(cx, cy, r, bg);
-            if (playing) {
-                float bw = r * 0.24f;
-                float bh = r * 0.72f;
-                float gap = r * 0.16f;
-                float rad = bw * 0.35f;
-                rect.set(cx - gap * 0.5f - bw, cy - bh * 0.5f, cx - gap * 0.5f, cy + bh * 0.5f);
-                c.drawRoundRect(rect, rad, rad, fg);
-                rect.set(cx + gap * 0.5f, cy - bh * 0.5f, cx + gap * 0.5f + bw, cy + bh * 0.5f);
-                c.drawRoundRect(rect, rad, rad, fg);
-            } else {
-                float s = r * 0.42f;
-                Path tri = new Path();
-                tri.moveTo(cx - s * 0.52f, cy - s);
-                tri.lineTo(cx + s * 1.05f, cy);
-                tri.lineTo(cx - s * 0.52f, cy + s);
-                tri.close();
-                c.drawPath(tri, fg);
-            }
-        }
-    }
-
-    /** 28-bar iOS Voice Message waveform progress indicator. */
-    private static final class WaveformView extends View {
-        private static final float[] PROFILE = {
-            0.25f, 0.45f, 0.72f, 0.55f, 0.90f, 0.62f, 0.38f, 0.80f,
-            0.95f, 0.70f, 0.48f, 0.66f, 0.88f, 1.00f, 0.74f, 0.52f,
-            0.36f, 0.68f, 0.84f, 0.60f, 0.42f, 0.76f, 0.92f, 0.58f,
-            0.40f, 0.62f, 0.44f, 0.26f
-        };
-        private final Paint playedPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint restPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final RectF rect = new RectF();
-        private float progress = 0f;
-
-        WaveformView(Context ctx, int accent) {
-            super(ctx);
-            playedPaint.setColor(accent);
-            restPaint.setColor(0xFFD1D1D6);
-        }
-
-        void setProgress(float p) {
-            progress = Math.max(0f, Math.min(1f, p));
-            invalidate();
-        }
-
-        @Override
-        protected void onDraw(Canvas c) {
-            int n = PROFILE.length;
-            float w = getWidth();
-            float h = getHeight();
-            if (w <= 0 || h <= 0) return;
-            float step = w / (float) n;
-            float barW = Math.max(2f, step * 0.52f);
-            float rad = barW * 0.5f;
-            float cy = h * 0.5f;
-            float filledX = w * progress;
-
-            for (int i = 0; i < n; i++) {
-                float cx = step * (i + 0.5f);
-                float bh = Math.max(barW, h * PROFILE[i]);
-                rect.set(cx - barW * 0.5f, cy - bh * 0.5f, cx + barW * 0.5f, cy + bh * 0.5f);
-                c.drawRoundRect(rect, rad, rad, cx <= filledX ? playedPaint : restPaint);
-            }
-        }
-    }
-
-    /** Minimal dot strip shown only when a message has multiple attachments. */
-    private static final class DotsView extends View {
-        private int count = 0;
-        private int active = 0;
-        private boolean dark = true;
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-
-        DotsView(Context ctx) { super(ctx); }
-
-        void setState(int count, int active) {
-            this.count = Math.min(count, 10);
-            this.active = Math.min(active, Math.max(0, this.count - 1));
-            requestLayout();
-            invalidate();
-        }
-
-        void setDarkMode(boolean dark) {
-            this.dark = dark;
-            invalidate();
-        }
-
-        private float d() { return getResources().getDisplayMetrics().density; }
-
-        @Override
-        protected void onMeasure(int wSpec, int hSpec) {
-            if (count <= 1) {
-                setMeasuredDimension(0, 0);
-                return;
-            }
-            float den = d();
-            int w = Math.round(count * 10f * den);
-            int h = Math.round(10f * den);
-            setMeasuredDimension(w, h);
-        }
-
-        @Override
-        protected void onDraw(Canvas c) {
-            if (count <= 1) return;
-            float den = d();
-            float step = 10f * den;
-            float cy = getHeight() * 0.5f;
-            for (int i = 0; i < count; i++) {
-                float cx = step * (i + 0.5f);
-                boolean isSel = (i == active);
-                paint.setColor(dark
-                        ? (isSel ? Color.WHITE : 0x55FFFFFF)
-                        : (isSel ? COLOR_IMSG_BLUE : 0x44000000));
-                c.drawCircle(cx, cy, (isSel ? 3f : 2f) * den, paint);
+                rect.set(0, y, fw, y + h);
+                c.drawRect(rect, fill);
             }
         }
     }
 
     // --- Helpers ---
 
-    private TextView makeFloatingPill(Context ctx) {
-        TextView tv = new TextView(ctx);
-        tv.setTextColor(Color.WHITE);
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
-        tv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        tv.setPadding(dp(8), dp(3), dp(8), dp(3));
-        GradientDrawable gd = new GradientDrawable();
-        gd.setColor(0x99000000);
-        gd.setCornerRadius(dp(10));
-        tv.setBackground(gd);
-        return tv;
-    }
-
-    private void setStatusBar(int color, boolean lightIcons) {
+    private void setStatusBar(int color) {
         Window w = act.getWindow();
         if (w == null) return;
         w.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         w.setStatusBarColor(color);
     }
 
-    private static int activeAccentColor() {
-        int c = ComposeMessageActivity.getSendContactColor();
-        return c != 0 ? c : COLOR_IMSG_BLUE;
+    static String formatSize(long bytes) {
+        if (bytes <= 0) return "";
+        if (bytes < 1024) return bytes + " B";
+        long kb = Math.round(bytes / 1024.0);
+        if (kb < 1024) return kb + " KB";
+        return String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0));
     }
 
     static String friendlyAudioTitle(String filename) {
@@ -1622,14 +1459,6 @@ public final class WaveAttachmentViewer {
             }
         }
         return s.isEmpty() ? fallback : s;
-    }
-
-    private static String initials(String name) {
-        if (name == null || name.trim().isEmpty()) return "?";
-        String[] parts = name.trim().split("\\s+");
-        if (parts.length == 1) return parts[0].substring(0, 1).toUpperCase(Locale.ROOT);
-        return (parts[0].substring(0, 1) + parts[parts.length - 1].substring(0, 1))
-                .toUpperCase(Locale.ROOT);
     }
 
     static String formatDuration(int ms) {
