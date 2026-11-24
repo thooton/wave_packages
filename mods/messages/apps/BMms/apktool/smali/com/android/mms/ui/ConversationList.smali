@@ -2303,45 +2303,10 @@
     if-eqz v2, :cond_3
 
     .line 811
-    invoke-virtual {p0}, Lcom/android/mms/ui/ConversationList;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v0
-
-    const v3, 0x7f09002a
-
-    invoke-virtual {v0, v3}, Landroid/content/res/Resources;->getBoolean(I)Z
+    invoke-static {p0}, Lcom/android/mms/wave/WaveInit;->isCellBroadcastEnabledCached(Landroid/content/Context;)Z
 
     move-result v0
 
-    .line 813
-    if-eqz v0, :cond_2
-
-    .line 814
-    :try_start_0
-    invoke-virtual {p0}, Lcom/android/mms/ui/ConversationList;->getPackageManager()Landroid/content/pm/PackageManager;
-
-    move-result-object v3
-
-    .line 815
-    const-string/jumbo v4, "com.android.cellbroadcastreceiver"
-
-    invoke-virtual {v3, v4}, Landroid/content/pm/PackageManager;->getApplicationEnabledSetting(Ljava/lang/String;)I
-    :try_end_0
-    .catch Ljava/lang/IllegalArgumentException; {:try_start_0 .. :try_end_0} :catch_0
-
-    move-result v3
-
-    .line 816
-    const/4 v4, 0x2
-
-    .line 815
-    if-ne v3, v4, :cond_2
-
-    move v0, v1
-
-    .line 823
-    :cond_2
-    :goto_0
     if-nez v0, :cond_3
 
     .line 824
@@ -2383,15 +2348,6 @@
     .line 839
     :cond_5
     return v5
-
-    .line 820
-    :catch_0
-    move-exception v0
-
-    move v0, v1
-
-    .line 821
-    goto :goto_0
 .end method
 
 .method protected onDestroy()V

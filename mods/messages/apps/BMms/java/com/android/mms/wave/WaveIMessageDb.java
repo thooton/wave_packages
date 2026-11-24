@@ -510,6 +510,28 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
         return out;
     }
 
+    /** All reactions grouped by message URI key in one single SQLite pass (off-main cache prefill). */
+    public java.util.Map<String, List<Reaction>> allReactionsByKey() {
+        java.util.Map<String, List<Reaction>> out = new java.util.HashMap<String, List<Reaction>>();
+        Cursor c = getReadableDatabase().rawQuery(
+                "SELECT m.uri, r.sender, r.kind, r.emoji FROM reactions r JOIN msgs m ON r.target = m.apple_id"
+                        + " ORDER BY r.ts ASC", null);
+        try {
+            while (c.moveToNext()) {
+                String uriKey = c.getString(0);
+                List<Reaction> list = out.get(uriKey);
+                if (list == null) {
+                    list = new ArrayList<Reaction>(2);
+                    out.put(uriKey, list);
+                }
+                list.add(new Reaction(c.getString(1), c.getInt(2), c.getString(3)));
+            }
+        } finally {
+            c.close();
+        }
+        return out;
+    }
+
     /** Keys (see {@link #key}) of every message that currently has a tapback. */
     public java.util.Set<String> reactedKeys() {
         java.util.Set<String> out = new java.util.HashSet<String>();

@@ -104,6 +104,25 @@ public final class WaveInit {
     /** Once Android runtime permissions are granted, revocation kills the process (SIGKILL), so true is immutable per process. */
     public static volatile boolean sBasicPermissionsGranted;
     public static volatile boolean sAllPermissionsGranted;
+    private static volatile int sCellBroadcastCached = -1;
+
+    /** Cached cell-broadcast menu visibility (avoids PackageManager Binder IPC on every onPrepareOptionsMenu). */
+    public static boolean isCellBroadcastEnabledCached(Context ctx) {
+        int cached = sCellBroadcastCached;
+        if (cached != -1) return cached == 1;
+        boolean enabled = getBoolResCached(ctx, 0x7f09002a);
+        if (enabled) {
+            try {
+                if (ctx.getPackageManager().getApplicationEnabledSetting("com.android.cellbroadcastreceiver") == 2) {
+                    enabled = false;
+                }
+            } catch (IllegalArgumentException ignored) {
+                enabled = false;
+            }
+        }
+        sCellBroadcastCached = enabled ? 1 : 0;
+        return enabled;
+    }
 
     /** Immutable hardware multi-SIM config cached once per process (avoids TelephonyManager/SystemProperties per bind). */
     public static boolean isMultiSimEnabledCached() {

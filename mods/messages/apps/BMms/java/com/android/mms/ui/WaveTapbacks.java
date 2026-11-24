@@ -94,10 +94,17 @@ public final class WaveTapbacks {
     private WaveTapbacks() {}
 
     private static volatile java.util.Set<String> sReacted;
+    private static final Path sTmpPath = new Path();
+    private static final RectF sTmpRect = new RectF();
+    private static final Typeface sBoldSans = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD);
 
     public static void warmCache(Context c) {
         if (sReacted == null) {
-            sReacted = WaveIMessageDb.get(c).reactedKeys();
+            Map<String, List<WaveIMessageDb.Reaction>> all = WaveIMessageDb.get(c).allReactionsByKey();
+            for (Map.Entry<String, List<WaveIMessageDb.Reaction>> e : all.entrySet()) {
+                CACHE.put(e.getKey(), e.getValue());
+            }
+            sReacted = new java.util.HashSet<String>(all.keySet());
         }
     }
 
@@ -188,7 +195,7 @@ public final class WaveTapbacks {
             case Body.REACT_LAUGH: {
                 c.save();
                 c.rotate(-10f, cx, cy);
-                p.setTypeface(Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD));
+                p.setTypeface(sBoldSans);
                 p.setTextAlign(Paint.Align.CENTER);
                 p.setTextSize(sizePx * 0.72f);
                 p.setTextScaleX(0.86f);
@@ -206,17 +213,16 @@ public final class WaveTapbacks {
                 float dotY = cy + sizePx * 0.35f;
                 float x1 = cx - gap * 0.5f - w * 0.5f;
                 float x2 = cx + gap * 0.5f + w * 0.5f;
-                RectF r = new RectF();
-                r.set(x1 - w * 0.5f, top, x1 + w * 0.5f, barBot);
-                c.drawRoundRect(r, w * 0.5f, w * 0.5f, p);
+                sTmpRect.set(x1 - w * 0.5f, top, x1 + w * 0.5f, barBot);
+                c.drawRoundRect(sTmpRect, w * 0.5f, w * 0.5f, p);
                 c.drawCircle(x1, dotY, dotR, p);
-                r.set(x2 - w * 0.5f, top, x2 + w * 0.5f, barBot);
-                c.drawRoundRect(r, w * 0.5f, w * 0.5f, p);
+                sTmpRect.set(x2 - w * 0.5f, top, x2 + w * 0.5f, barBot);
+                c.drawRoundRect(sTmpRect, w * 0.5f, w * 0.5f, p);
                 c.drawCircle(x2, dotY, dotR, p);
                 break;
             }
             case Body.REACT_QUESTION: {
-                p.setTypeface(Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD));
+                p.setTypeface(sBoldSans);
                 p.setTextAlign(Paint.Align.CENTER);
                 p.setTextSize(sizePx * 1.04f);
                 Paint.FontMetrics fm = p.getFontMetrics();
@@ -236,7 +242,8 @@ public final class WaveTapbacks {
 
     private static void drawHeartPath(Canvas c, float cx, float cy, float s, Paint p) {
         float half = s * 0.5f;
-        Path path = new Path();
+        Path path = sTmpPath;
+        path.rewind();
         path.moveTo(cx, cy + half * 0.80f);
         path.cubicTo(cx - half * 1.15f, cy + half * 0.10f,
                 cx - half * 1.05f, cy - half * 0.88f,
@@ -259,9 +266,10 @@ public final class WaveTapbacks {
         if (down) c.scale(1f, -1f, cx, cy);
         float left = cx - s * 0.46f;
         float top = cy - s * 0.46f;
-        RectF cuff = new RectF(left, top + s * 0.40f, left + s * 0.22f, top + s * 0.88f);
-        c.drawRoundRect(cuff, s * 0.06f, s * 0.06f, p);
-        Path hand = new Path();
+        sTmpRect.set(left, top + s * 0.40f, left + s * 0.22f, top + s * 0.88f);
+        c.drawRoundRect(sTmpRect, s * 0.06f, s * 0.06f, p);
+        Path hand = sTmpPath;
+        hand.rewind();
         float hx = left + s * 0.28f;
         hand.moveTo(hx, top + s * 0.42f);
         hand.lineTo(hx + s * 0.17f, top + s * 0.08f);
@@ -279,7 +287,8 @@ public final class WaveTapbacks {
     }
 
     private static void drawStarPath(Canvas c, float cx, float cy, float r, Paint p) {
-        Path path = new Path();
+        Path path = sTmpPath;
+        path.rewind();
         for (int i = 0; i < 10; i++) {
             double ang = Math.PI / 2.0 + i * Math.PI / 5.0;
             float rad = (i % 2 == 0) ? r : r * 0.44f;
@@ -463,6 +472,12 @@ public final class WaveTapbacks {
     }
 
     private static List<Badge> badgesFor(List<WaveIMessageDb.Reaction> rs) {
+        if (rs.size() == 1) {
+            WaveIMessageDb.Reaction r = rs.get(0);
+            Badge b = new Badge(glyph(r.kind, r.emoji), r.emoji, r.kind);
+            if (r.isMine()) b.mine = true;
+            return Collections.singletonList(b);
+        }
         LinkedHashMap<String, Badge> byGlyph = new LinkedHashMap<String, Badge>();
         for (WaveIMessageDb.Reaction r : rs) {
             String g = glyph(r.kind, r.emoji);
