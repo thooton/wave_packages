@@ -42,6 +42,10 @@ public final class WavePhoneSnapshot {
             @Override
             public void run() {
                 try {
+                    android.os.Process.setThreadPriority(
+                            android.os.Process.THREAD_PRIORITY_MORE_FAVORABLE);
+                } catch (Throwable ignored) {}
+                try {
                     prime(app);
                 } catch (Throwable ignored) {}
             }
@@ -57,7 +61,7 @@ public final class WavePhoneSnapshot {
         if (attempted == version) return;
         attempted = version;
         long start = SystemClock.uptimeMillis();
-        Map<String, List<Entry>> byMinMatch = new HashMap<>();
+        Map<String, List<Entry>> byMinMatch = null;
         int rows = 0;
         try (Cursor c = context.getContentResolver().query(URI, VERSION, null, null, null)) {
             if (c == null || !"normalized_number".equals(c.getColumnName(0))
@@ -65,6 +69,7 @@ public final class WavePhoneSnapshot {
             for (int i = 0; i < COLUMNS.length; i++) {
                 if (!COLUMNS[i].equals(c.getColumnName(i + 2))) return;
             }
+            byMinMatch = new HashMap<>(Math.max(16, (c.getCount() * 4) / 3 + 1));
             while (c.moveToNext()) {
                 String key = c.getString(1);
                 String number = c.getString(0);

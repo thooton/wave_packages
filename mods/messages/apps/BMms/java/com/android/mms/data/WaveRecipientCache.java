@@ -8,6 +8,7 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -22,41 +23,74 @@ public final class WaveRecipientCache {
 
     public static List<RecipientIdCache.Entry> getAddresses(Context context, Object lock,
                                                             Map<Long, String> cache, String ids) {
-        List<Long> order = new ArrayList<>();
-        if (ids != null) {
-            StringTokenizer tokens = new StringTokenizer(ids);
-            while (tokens.hasMoreTokens()) {
-                try {
-                    order.add(Long.parseLong(tokens.nextToken()));
-                } catch (NumberFormatException ignored) {
-                    // A broken recipient list must not stop the other recipients being resolved.
-                }
-            }
-        }
-        List<RecipientIdCache.Entry> result = new ArrayList<>(order.size());
-        if (order.isEmpty()) return result;
+        if (ids == null || ids.isEmpty()) return Collections.emptyList();
 
-        LinkedHashSet<Long> missing = new LinkedHashSet<>();
-        synchronized (lock) {
-            for (Long id : order) if (cache.get(id) == null) missing.add(id);
-        }
-        if (!missing.isEmpty()) {
-            List<Long> keys = new ArrayList<>(missing);
-            for (int i = 0; i < keys.size(); i += BATCH) {
-                int end = Math.min(i + BATCH, keys.size());
-                StringBuilder filter = new StringBuilder("_id IN (");
-                String[] args = new String[end - i];
-                for (int j = 0; j < args.length; j++) {
-                    if (j > 0) filter.append(',');
-                    filter.append('?');
-                    args[j] = keys.get(i + j).toString();
+        // PERF: 1:1 fast path (~90% of conversations) — single integer ID with no whitespace.
+        // Avoids StringTokenizer, ArrayList, LinkedHashSet, and double lock acquisition on cache hits.
+        if (ids.indexOf(' ') < 0 && ids.indexOf('\t') < 0 && ids.indexOf('\n') < 0) {
+            try {
+                long singleId = Long.parseLong(ids);
+                Long key = Long.valueOf(singleId);
+                String hit;
+                synchronized (lock) {
+                    hit = cache.get(key);
                 }
-                filter.append(')');
-                read(context, lock, cache, filter.toString(), args);
+                if (hit != null) {
+                    if (hit.isEmpty()) return Collections.emptyList();
+                    List<RecipientIdCache.Entry> one = new ArrayList<>(1);
+                    one.add(new RecipientIdCache.Entry(singleId, hit));
+                    return one;
+                }
+            } catch (NumberFormatException ignored) {
+                // Fall through to full tokenizer path.
             }
         }
+
+        List<Long> order = new ArrayList<>(4);
+        StringTokenizer tokens = new StringTokenizer(ids);
+        while (tokens.hasMoreTokens()) {
+            try {
+                order.add(Long.parseLong(tokens.nextToken()));
+            } catch (NumberFormatException ignored) {
+                // A broken recipient list must not stop the other recipients being resolved.
+            }
+        }
+        int n = order.size();
+        if (n == 0) return Collections.emptyList();
+
+        List<RecipientIdCache.Entry> result = new ArrayList<>(n);
+        LinkedHashSet<Long> missing = null;
         synchronized (lock) {
-            for (Long id : order) {
+            for (int i = 0; i < n; i++) {
+                Long id = order.get(i);
+                String number = cache.get(id);
+                if (number == null) {
+                    if (missing == null) missing = new LinkedHashSet<>();
+                    missing.add(id);
+                } else if (missing == null && !number.isEmpty()) {
+                    result.add(new RecipientIdCache.Entry(id, number));
+                }
+            }
+        }
+        if (missing == null) return result;
+
+        result.clear();
+        List<Long> keys = new ArrayList<>(missing);
+        for (int i = 0; i < keys.size(); i += BATCH) {
+            int end = Math.min(i + BATCH, keys.size());
+            StringBuilder filter = new StringBuilder("_id IN (");
+            String[] args = new String[end - i];
+            for (int j = 0; j < args.length; j++) {
+                if (j > 0) filter.append(',');
+                filter.append('?');
+                args[j] = keys.get(i + j).toString();
+            }
+            filter.append(')');
+            read(context, lock, cache, filter.toString(), args);
+        }
+        synchronized (lock) {
+            for (int i = 0; i < n; i++) {
+                Long id = order.get(i);
                 String number = cache.get(id);
                 if (!TextUtils.isEmpty(number)) result.add(new RecipientIdCache.Entry(id, number));
             }
