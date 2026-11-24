@@ -1,0 +1,7 @@
+{
+  global:
+    Java_com_dictation_xp3_NativeRuntime_*;
+    JNI_OnLoad;
+  local:
+    *;
+};

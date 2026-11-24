@@ -1,0 +1,241 @@
+name: Build dictation native runtime
+
+on:
+  push:
+    branches: ['feat/dictation*']
+    paths:
+      - 'dictation/native/**'
+      - '.github/workflows/build-dictation-runtime.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dictation-runtime-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HF_REPO: futo-org/asr4all-s
+  HF_COMMIT: 87a6b5d093723fe37e9f69ad26307a3b95a31af0
+  PTE_SHA256: 7d5679688ca57a7e42d4b42e093b7a29b85d595f454d41cf0aa5f95e7c8c27ec
+  META_SHA256: ef52d88b6ce61f967015e64ec5a9d6b9d5c22a6367c802f1a2a05d5f03b8d1f8
+  OPS_SHA256: d445dc9998b33d96f2f63cf493f18bfa112c6e771f487bab83c847698b0398ee
+  REF_PY_SHA256: 0918a4dd55806de15943112314c701527e818fc0a3628c4879ba709bbea997af
+  EXECUTORCH_TAG: v1.6.0
+  EXECUTORCH_PYPI: '1.6.0'
+  TORCH_PYPI: '2.15.0'
+  ANDROID_NDK_VERSION: '28.2.13676358'
+
+jobs:
+  x86-golden-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build tools and Python reference runtime
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build ffmpeg
+          python3 -m pip install --upgrade pip
+          python3 -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==${TORCH_PYPI}" || true
+          python3 -m pip install "executorch==${EXECUTORCH_PYPI}" pyyaml numpy
+
+      - name: Download and verify pinned futo-org/asr4all-s bundle
+        run: |
+          mkdir -p /tmp/hf_bundle
+          base="https://huggingface.co/${HF_REPO}/resolve/${HF_COMMIT}"
+          curl -fsSL "$base/executorch/xnnpack_int8/asr_encoder.pte" -o /tmp/hf_bundle/asr_encoder.pte
+          curl -fsSL "$base/executorch/xnnpack_int8/metadata.json" -o /tmp/hf_bundle/metadata.json
+          curl -fsSL "$base/executorch/xnnpack_int8/ops.txt" -o /tmp/hf_bundle/ops.txt
+          curl -fsSL "$base/executorch/asr4all_executorch.py" -o /tmp/hf_bundle/asr4all_executorch.py
+
+          printf "%s  /tmp/hf_bundle/asr_encoder.pte\n%s  /tmp/hf_bundle/metadata.json\n%s  /tmp/hf_bundle/ops.txt\n%s  /tmp/hf_bundle/asr4all_executorch.py\n%s  dictation/native/ops.txt\n" \
+            "$PTE_SHA256" "$META_SHA256" "$OPS_SHA256" "$REF_PY_SHA256" "$OPS_SHA256" | sha256sum -c -
+
+      - name: Fetch 20 public-domain 16 kHz mono WAV test clips
+        run: |
+          mkdir -p out_x86/wavs
+          python3 dictation/native/scripts/ci_fetch_wavs.py --out-dir out_x86/wavs
+
+      - name: Run Python reference for golden_transcripts.json and core_fixtures.json
+        run: |
+          python3 dictation/native/scripts/ci_golden.py \
+            --bundle-dir /tmp/hf_bundle \
+            --ref-py /tmp/hf_bundle/asr4all_executorch.py \
+            --wav-dir out_x86/wavs \
+            --golden-out out_x86/golden_transcripts.json \
+            --fixtures-out out_x86/core_fixtures.json
+
+      - name: Checkout ExecuTorch v1.6.0 with required submodules
+        run: |
+          git clone --depth 1 --branch "${EXECUTORCH_TAG}" https://github.com/pytorch/executorch.git /tmp/et/executorch
+          SUBS=(
+            backends/xnnpack/third-party/FP16
+            backends/xnnpack/third-party/FXdiv
+            backends/xnnpack/third-party/XNNPACK
+            backends/xnnpack/third-party/cpuinfo
+            backends/xnnpack/third-party/pthreadpool
+            kernels/optimized/third-party/eigen
+            third-party/flatbuffers
+            third-party/gflags
+            third-party/json
+            third-party/pocketfft
+            shim
+          )
+          git -C /tmp/et/executorch submodule update --init --recursive --depth 1 "${SUBS[@]}" || \
+            git -C /tmp/et/executorch submodule update --init --recursive "${SUBS[@]}"
+
+      - name: Build x86_64 asr4all_bench (Release, selective ops + XNNPACK)
+        run: |
+          cmake -S dictation/native -B /tmp/build_x86 -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DEXECUTORCH_DIR=/tmp/et/executorch \
+            -DPYTHON_EXECUTABLE="$(which python3)"
+          cmake --build /tmp/build_x86 --target asr4all_bench -j"$(nproc)"
+          cp /tmp/build_x86/asr4all_bench out_x86/asr4all_bench_x86_64
+
+      - name: Verify 100% exact string parity between x86_64 C++ CLI and Python reference
+        run: |
+          python3 dictation/native/scripts/ci_verify_cli.py \
+            --bench out_x86/asr4all_bench_x86_64 \
+            --model /tmp/hf_bundle/asr_encoder.pte \
+            --meta /tmp/hf_bundle/metadata.json \
+            --wav-dir out_x86/wavs \
+            --golden out_x86/golden_transcripts.json \
+            --threads "$(nproc)"
+
+      - name: Compute x86 artifact sha256sums
+        run: |
+          (cd out_x86 && find . -type f ! -name sha256sums.txt | sort | sed 's|^\./||' | xargs sha256sum > sha256sums.txt)
+          cat out_x86/sha256sums.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dictation-golden-and-x86
+          path: out_x86/
+          if-no-files-found: error
+
+  android-armv7:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "ndk;${{ env.ANDROID_NDK_VERSION }}"
+
+      - name: Install build tools and Python codegen dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build
+          python3 -m pip install --upgrade pip
+          python3 -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==${TORCH_PYPI}"
+          python3 -m pip install pyyaml typing-extensions
+
+      - name: Verify ops.txt sha256
+        run: |
+          printf "%s  dictation/native/ops.txt\n" "$OPS_SHA256" | sha256sum -c -
+
+      - name: Checkout ExecuTorch v1.6.0 with required submodules
+        run: |
+          git clone --depth 1 --branch "${EXECUTORCH_TAG}" https://github.com/pytorch/executorch.git /tmp/et/executorch
+          SUBS=(
+            backends/xnnpack/third-party/FP16
+            backends/xnnpack/third-party/FXdiv
+            backends/xnnpack/third-party/XNNPACK
+            backends/xnnpack/third-party/cpuinfo
+            backends/xnnpack/third-party/pthreadpool
+            kernels/optimized/third-party/eigen
+            third-party/flatbuffers
+            third-party/gflags
+            third-party/json
+            third-party/pocketfft
+            shim
+          )
+          git -C /tmp/et/executorch submodule update --init --recursive --depth 1 "${SUBS[@]}" || \
+            git -C /tmp/et/executorch submodule update --init --recursive "${SUBS[@]}"
+
+      - name: Cross-compile armeabi-v7a (API 27, NEON/VFPv4, NDK r28c)
+        run: |
+          NDK="${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}"
+          echo "Using NDK at ${NDK}"
+          test -f "${NDK}/build/cmake/android.toolchain.cmake"
+
+          cmake -S dictation/native -B /tmp/build_armv7 -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="${NDK}/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=armeabi-v7a \
+            -DANDROID_PLATFORM=android-27 \
+            -DANDROID_ARM_NEON=TRUE \
+            -DANDROID_STL=c++_static \
+            -DCMAKE_C_FLAGS="-mfpu=neon-vfpv4 -mfloat-abi=softfp" \
+            -DCMAKE_CXX_FLAGS="-mfpu=neon-vfpv4 -mfloat-abi=softfp" \
+            -DCMAKE_ASM_FLAGS="-mfpu=neon-vfpv4 -mfloat-abi=softfp" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DEXECUTORCH_DIR=/tmp/et/executorch \
+            -DPYTHON_EXECUTABLE="$(which python3)"
+
+          cmake --build /tmp/build_armv7 --target asr4all_bench asr4all -j"$(nproc)"
+
+          mkdir -p out_armv7
+          STRIP="${NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
+          cp /tmp/build_armv7/asr4all_bench out_armv7/asr4all_bench
+          cp /tmp/build_armv7/libasr4all.so out_armv7/libasr4all.so
+          "${STRIP}" --strip-unneeded out_armv7/asr4all_bench out_armv7/libasr4all.so
+          ls -lh out_armv7/
+
+      - name: Verify armeabi-v7a ELF headers, NEON/VFPv4, JNI exports, and API 27 symbols
+        run: |
+          NDK="${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}"
+          python3 dictation/native/scripts/ci_check_android_elf.py \
+            --ndk "${NDK}" \
+            --bench out_armv7/asr4all_bench \
+            --bench-unstripped /tmp/build_armv7/asr4all_bench \
+            --so out_armv7/libasr4all.so \
+            --so-unstripped /tmp/build_armv7/libasr4all.so
+
+      - name: Compute armeabi-v7a sha256sums
+        run: |
+          (cd out_armv7 && sha256sum asr4all_bench libasr4all.so > sha256sums.txt)
+          cat out_armv7/sha256sums.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dictation-android-armv7
+          path: out_armv7/
+          if-no-files-found: error
+
+  package-artifacts:
+    needs: [x86-golden-and-verify, android-armv7]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dictation-golden-and-x86
+          path: bundle
+      - uses: actions/download-artifact@v4
+        with:
+          name: dictation-android-armv7
+          path: bundle/armeabi-v7a
+      - name: Assemble unified phase1 bundle and sha256sums.txt
+        run: |
+          rm -f bundle/sha256sums.txt bundle/armeabi-v7a/sha256sums.txt
+          mv bundle/armeabi-v7a/asr4all_bench bundle/asr4all_bench
+          mv bundle/armeabi-v7a/libasr4all.so bundle/libasr4all.so
+          rmdir bundle/armeabi-v7a
+          (cd bundle && find . -type f ! -name sha256sums.txt | sort | sed 's|^\./||' | xargs sha256sum > sha256sums.txt)
+          ls -lh bundle/
+          cat bundle/sha256sums.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dictation-phase1-bundle
+          path: bundle/
+          if-no-files-found: error
