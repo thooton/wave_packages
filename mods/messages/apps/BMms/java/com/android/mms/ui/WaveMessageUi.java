@@ -452,8 +452,9 @@ public final class WaveMessageUi {
             WaveIMessageDb.Info info = mi.mMessageUri != null
                     ? WaveIMessageDb.get(ctx).infoForUri(mi.mMessageUri) : null;
 
-            String rawBody = bodyTv != null && bodyTv.getText() != null
-                    ? bodyTv.getText().toString() : "";
+            CharSequence rawCs = bodyTv != null ? bodyTv.getText() : null;
+            String rawBody = rawCs == null ? ""
+                    : (rawCs instanceof String ? (String) rawCs : rawCs.toString());
 
             // 1. Group event notice -> centered subtle system line
             boolean isNotice = (info != null && info.notice()) || isLegacyGroupNotice(rawBody);
@@ -863,13 +864,19 @@ public final class WaveMessageUi {
     // --- Group Notice Style ---
 
     private static boolean isLegacyGroupNotice(String s) {
-        if (TextUtils.isEmpty(s) || s.length() > 140) return false;
-        return s.contains(" named the conversation ")
-                || s.contains(" left the conversation.")
-                || s.contains(" changed the group photo.")
-                || s.contains(" removed the group photo.")
-                || (s.contains(" added ") && s.endsWith("."))
-                || (s.contains(" removed ") && s.endsWith("."));
+        if (s == null) return false;
+        int len = s.length();
+        if (len < 12 || len > 140) return false;
+        if (s.charAt(len - 1) == '.') {
+            if (s.contains(" left the conversation.")
+                    || s.contains(" changed the group photo.")
+                    || s.contains(" removed the group photo.")
+                    || s.contains(" added ")
+                    || s.contains(" removed ")) {
+                return true;
+            }
+        }
+        return len >= 24 && s.contains(" named the conversation ");
     }
 
     private static void applyGroupNoticeStyle(Context ctx, RowHolder h,
@@ -1847,13 +1854,19 @@ public final class WaveMessageUi {
         return end > 0 ? raw.substring(end + 2) : raw;
     }
 
+    private static volatile float sDensity;
+
     private static boolean isAttachmentPlaceholder(String s) {
-        if (TextUtils.isEmpty(s)) return false;
-        String t = s.trim();
-        return t.startsWith("[") && t.endsWith("]")
-                && (t.contains("couldn't download") || t.startsWith("[File:")
+        if (s == null) return false;
+        int start = 0;
+        int end = s.length();
+        while (start < end && s.charAt(start) <= ' ') start++;
+        while (end > start && s.charAt(end - 1) <= ' ') end--;
+        if (end - start < 7 || s.charAt(start) != '[' || s.charAt(end - 1) != ']') return false;
+        String t = (start == 0 && end == s.length()) ? s : s.substring(start, end);
+        return t.contains("couldn't download") || t.startsWith("[File:")
                 || t.startsWith("[Photo") || t.startsWith("[Video")
-                || t.startsWith("[Audio") || t.startsWith("[Voice"));
+                || t.startsWith("[Audio") || t.startsWith("[Voice");
     }
 
     private static int activeAccentColor() {
@@ -1867,6 +1880,11 @@ public final class WaveMessageUi {
     private static String safeStr(String s) { return s == null ? "" : s.trim(); }
 
     private static int dp(Context c, int v) {
-        return Math.round(v * c.getResources().getDisplayMetrics().density);
+        float d = sDensity;
+        if (d <= 0f) {
+            d = c.getResources().getDisplayMetrics().density;
+            sDensity = d;
+        }
+        return Math.round(v * d);
     }
 }

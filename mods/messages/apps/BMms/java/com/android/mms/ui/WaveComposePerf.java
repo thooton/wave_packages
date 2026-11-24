@@ -101,27 +101,29 @@ public final class WaveComposePerf {
 
     /** Safe on a worker with a private cursor; never retain a cursor or message body. */
     static List<PduWarmup> collectPduWarmups(Cursor c, int limit) {
-        List<PduWarmup> result = new ArrayList<>();
+        List<PduWarmup> result = null;
         int iType = c.getColumnIndex("transport_type");
         int iId = c.getColumnIndex("_id");
         int iMType = c.getColumnIndex("m_type");
-        if (iType < 0 || iId < 0 || iMType < 0) return result;
+        if (iType < 0 || iId < 0 || iMType < 0) return java.util.Collections.emptyList();
         int iText = c.getColumnIndex("wave_text");
         int iFrom = c.getColumnIndex("wave_from");
         int pos = c.getPosition();
         try {
             int count = c.getCount();
-            for (int i = count - 1; i >= Math.max(0, count - PREFETCH) && result.size() < limit; i--) {
+            for (int i = count - 1; i >= Math.max(0, count - PREFETCH); i--) {
+                if (result != null && result.size() >= limit) break;
                 if (!c.moveToPosition(i)) break;
                 if (!"mms".equals(c.getString(iType))) continue;
                 int mType = c.getInt(iMType);
                 if (WaveTextMms.ready(c, iText, iFrom, mType)) continue;
+                if (result == null) result = new ArrayList<PduWarmup>(limit);
                 result.add(new PduWarmup(c.getLong(iId), mType != 130));
             }
         } finally {
             c.moveToPosition(pos);
         }
-        return result;
+        return result == null ? java.util.Collections.<PduWarmup>emptyList() : result;
     }
 
     /** PduLoaderManager owns an unsynchronized callback queue; call only on the UI thread. */
@@ -180,19 +182,23 @@ public final class WaveComposePerf {
                 }
                 baseLinkMask = mask;
             }
+            if (text instanceof String && type == BufferType.NORMAL && text.equals(getText())) {
+                return;
+            }
             if ((baseLinkMask == 0 && !linkStreets) || TextUtils.isEmpty(text)) {
                 if (getAutoLinkMask() != 0) setAutoLinkMask(0);
                 super.setText(text, type);
                 return;
             }
 
-            // Single-pass ASCII character scan: ~85-95% of normal chat messages cannot contain
-            // URLs, emails, phone numbers, or street addresses, so skip Linkify & PhoneNumberUtil.
-            boolean hasDotOrColon = false;
+            // Single-pass ASCII character scan: skip Linkify & PhoneNumberUtil on normal prose
+            // (including sentences ending with '.' or times like "3:45"!).
+            boolean hasUrlHint = false;
             boolean hasAt = false;
             boolean hasNonAscii = false;
             int digits = 0;
-            for (int i = 0, len = text.length(); i < len; i++) {
+            int len = text.length();
+            for (int i = 0; i < len; i++) {
                 char ch = text.charAt(i);
                 if (ch >= 0x80) {
                     hasNonAscii = true;
@@ -200,18 +206,29 @@ public final class WaveComposePerf {
                 }
                 if (ch >= '0' && ch <= '9') {
                     digits++;
-                } else if (ch == '.' || ch == ':') {
-                    hasDotOrColon = true;
+                } else if (ch == '.') {
+                    if (i + 1 < len) {
+                        char nx = text.charAt(i + 1);
+                        if ((nx >= 'a' && nx <= 'z') || (nx >= 'A' && nx <= 'Z')) {
+                            hasUrlHint = true;
+                        }
+                    }
+                } else if (ch == ':') {
+                    if (i + 1 < len && text.charAt(i + 1) == '/') {
+                        hasUrlHint = true;
+                    }
                 } else if (ch == '@') {
-                    hasAt = true;
+                    if (i > 0 && i + 1 < len) {
+                        hasAt = true;
+                    }
                 }
             }
 
             int effectiveMask = 0;
-            if ((baseLinkMask & Linkify.WEB_URLS) != 0 && (hasDotOrColon || hasNonAscii)) {
+            if ((baseLinkMask & Linkify.WEB_URLS) != 0 && (hasUrlHint || hasNonAscii)) {
                 effectiveMask |= Linkify.WEB_URLS;
             }
-            if ((baseLinkMask & Linkify.EMAIL_ADDRESSES) != 0 && hasAt && (hasDotOrColon || hasNonAscii)) {
+            if ((baseLinkMask & Linkify.EMAIL_ADDRESSES) != 0 && hasAt && (hasUrlHint || hasNonAscii)) {
                 effectiveMask |= Linkify.EMAIL_ADDRESSES;
             }
             if ((baseLinkMask & Linkify.PHONE_NUMBERS) != 0 && (digits >= 5 || hasNonAscii)) {
