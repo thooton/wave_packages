@@ -21,24 +21,29 @@ public final class WaveInit {
         if (sDone) return;
         sDone = true;
         final Context c = app.getApplicationContext();
-        final Handler main = new Handler(Looper.getMainLooper());
-        // PERF: run SharedPreferences receipt-policy check off the main thread.
-        Thread t = new Thread(new Runnable() {
+        // PERF: defer receipt-policy SharedPreferences check + held-MMS sweep past frame #1
+        // so zero non-critical background threads contend with the 4-core CPU during cold launch.
+        MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
-                try {
-                    applyReceiptPolicy(c);
-                } catch (Throwable ex) {
-                    Log.w(TAG, "receipt policy", ex);
-                }
+                Thread t = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            applyReceiptPolicy(c);
+                        } catch (Throwable ex) {
+                            Log.w(TAG, "receipt policy", ex);
+                        }
+                    }
+                }, "wave-receipt-policy");
+                t.setDaemon(true);
+                t.start();
             }
-        }, "wave-receipt-policy");
-        t.setDaemon(true);
-        t.start();
+        }, 850L);
         try {
             // PERF: defer held-MMS TelephonyProvider sweep 2s past initial frame #1 so it never
             // contends with cold inbox/conversation SQLite queries.
-            main.postDelayed(new Runnable() {
+            MAIN_HANDLER.postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     try {
@@ -46,7 +51,7 @@ public final class WaveInit {
                     } catch (Throwable ignored) {}
                 }
             }, 2000L);
-            main.postDelayed(new Runnable() {
+            MAIN_HANDLER.postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     WaveMmsReceive.sweepAsync(c, false);
@@ -78,19 +83,24 @@ public final class WaveInit {
         return enabled;
     }
 
-    /** Run PreferenceManager.setDefaultValues off the main thread during cold startup. */
+    /** Run PreferenceManager.setDefaultValues off the main thread AFTER frame #1 (avoids flash/CPU contention during cold launch). */
     public static void setDefaultValuesAsync(final Context c, final int xmlResId) {
         final Context app = c.getApplicationContext();
-        Thread t = new Thread(new Runnable() {
+        MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
-                try {
-                    PreferenceManager.setDefaultValues(app, xmlResId, false);
-                } catch (Throwable ignored) {}
+                Thread t = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            PreferenceManager.setDefaultValues(app, xmlResId, false);
+                        } catch (Throwable ignored) {}
+                    }
+                }, "wave-def-prefs");
+                t.setDaemon(true);
+                t.start();
             }
-        }, "wave-def-prefs");
-        t.setDaemon(true);
-        t.start();
+        }, 750L);
     }
 
     private static volatile long sAirplaneCheckedAt;
@@ -216,28 +226,33 @@ public final class WaveInit {
         return on;
     }
 
-    /** Run PackageManager.setComponentEnabledSetting off the main thread, only if state differs. */
+    /** Run PackageManager.setComponentEnabledSetting AFTER frame #1, only if state differs. */
     public static void applyComponentStateAsync(final Context c, final Class<?> cls, final int state) {
         final Context app = c.getApplicationContext();
-        Thread t = new Thread(new Runnable() {
+        MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
-                try {
-                    android.content.pm.PackageManager pm = app.getPackageManager();
-                    android.content.ComponentName cn = new android.content.ComponentName(app, cls);
-                    if (pm.getComponentEnabledSetting(cn) != state) {
-                        pm.setComponentEnabledSetting(cn, state, android.content.pm.PackageManager.DONT_KILL_APP);
+                Thread t = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            android.content.pm.PackageManager pm = app.getPackageManager();
+                            android.content.ComponentName cn = new android.content.ComponentName(app, cls);
+                            if (pm.getComponentEnabledSetting(cn) != state) {
+                                pm.setComponentEnabledSetting(cn, state, android.content.pm.PackageManager.DONT_KILL_APP);
+                            }
+                        } catch (Throwable ignored) {}
                     }
-                } catch (Throwable ignored) {}
+                }, "wave-pm-state");
+                t.setDaemon(true);
+                t.start();
             }
-        }, "wave-pm-state");
-        t.setDaemon(true);
-        t.start();
+        }, 800L);
     }
 
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
 
-    /** Defer DownloadManager.init() (SharedPreferences disk stall + SERVICE_STATE registerReceiver IPC) and RateController.init() past frame #1. */
+    /** Defer DownloadManager.init(), RateController.init(), and MessagingNotification.init() past frame #1. */
     public static void deferDownloadAndRateInit(final Context c) {
         final Context app = c.getApplicationContext();
         MAIN_HANDLER.postDelayed(new Runnable() {
@@ -251,8 +266,27 @@ public final class WaveInit {
                     Class.forName("com.android.mms.util.RateController")
                             .getMethod("init", Context.class).invoke(null, app);
                 } catch (Throwable ignored) {}
+                try {
+                    Class.forName("com.android.mms.transaction.MessagingNotification")
+                            .getMethod("init", Context.class).invoke(null, app);
+                } catch (Throwable ignored) {}
             }
         }, 350L);
+    }
+
+    /** Defer Contact.init()'s ContactsContract ContentObserver Binder IPC past frame #1. */
+    public static void deferContentObserver(final Context c, final android.net.Uri uri,
+                                            final boolean notifyForDescendents,
+                                            final android.database.ContentObserver observer) {
+        final Context app = c.getApplicationContext();
+        MAIN_HANDLER.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    app.getContentResolver().registerContentObserver(uri, notifyForDescendents, observer);
+                } catch (Throwable ignored) {}
+            }
+        }, 400L);
     }
 
     /** Defer MessagingNotification's BroadcastReceiver registration IPC past frame #1. */

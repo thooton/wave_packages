@@ -1,6 +1,6 @@
 id=messages_improved
 name=Messages Improved
-version=1.8.37
-versionCode=64
+version=1.8.38
+versionCode=65
 author=thooton
 description=System overlay for the Sonim XP3800 messages stack.

@@ -545,7 +545,8 @@
     invoke-static {p0}, Lcom/android/mms/layout/LayoutManager;->init(Landroid/content/Context;)V
 
     .line 114
-    invoke-static {p0}, Lcom/android/mms/transaction/MessagingNotification;->init(Landroid/content/Context;)V
+    # PERF: MessagingNotification.init() (PduPersister + extdisplay ServiceManager IPC +
+    # registerReceiver) is deferred 350ms inside deferDownloadAndRateInit().
 
     .line 115
     # PERF: skip Suntek RCS SDK initialization (~114ms cold-start stall binding missing services)
