@@ -429,6 +429,45 @@
 
     .line 223
     :goto_2
+    # PERF: for read, non-draft inbox rows at normal fontScale, skip allocating
+    # a SpannableStringBuilder with zero spans and return the plain String directly.
+    iget-object v4, p0, Lcom/android/mms/ui/ConversationListItem;->mConversation:Lcom/android/mms/data/Conversation;
+
+    invoke-virtual {v4}, Lcom/android/mms/data/Conversation;->hasDraft()Z
+
+    move-result v4
+
+    if-nez v4, :wave_alloc_ssb
+
+    iget-object v4, p0, Lcom/android/mms/ui/ConversationListItem;->mConversation:Lcom/android/mms/data/Conversation;
+
+    invoke-virtual {v4}, Lcom/android/mms/data/Conversation;->hasUnreadMessages()Z
+
+    move-result v4
+
+    if-nez v4, :wave_alloc_ssb
+
+    invoke-virtual {p0}, Lcom/android/mms/ui/ConversationListItem;->getContext()Landroid/content/Context;
+
+    move-result-object v4
+
+    invoke-virtual {v4}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+
+    move-result-object v4
+
+    invoke-virtual {v4}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+
+    move-result-object v4
+
+    iget v4, v4, Landroid/content/res/Configuration;->fontScale:F
+
+    cmpl-float v4, v4, v8
+
+    if-eqz v4, :wave_alloc_ssb
+
+    return-object v1
+
+    :wave_alloc_ssb
     new-instance v4, Landroid/text/SpannableStringBuilder;
 
     invoke-direct {v4, v1}, Landroid/text/SpannableStringBuilder;-><init>(Ljava/lang/CharSequence;)V

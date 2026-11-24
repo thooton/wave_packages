@@ -137,6 +137,18 @@ public final class WaveMessageUi {
     private static final ExecutorService IO_EXEC = Executors.newFixedThreadPool(2);
     private static final Set<Long> IN_FLIGHT_META =
             Collections.synchronizedSet(new java.util.HashSet<Long>());
+    private static final Set<String> IN_FLIGHT_THUMB =
+            Collections.synchronizedSet(new java.util.HashSet<String>());
+    private static volatile Typeface sMediumTypeface;
+
+    private static Typeface mediumTypeface() {
+        Typeface tf = sMediumTypeface;
+        if (tf == null) {
+            tf = Typeface.create("sans-serif-medium", Typeface.NORMAL);
+            sMediumTypeface = tf;
+        }
+        return tf;
+    }
 
     /** Cached view references and dirty-style bitmask per recycled MessageListItem. */
     private static final class RowHolder {
@@ -147,6 +159,11 @@ public final class WaveMessageUi {
         final TextView dateTv;
         final View metaRow;
         final TextView subjTv;
+        final View mmsView;
+        final View playAudio;
+        final View playVideoPic;
+        final View mmsMultiView;
+        final View attachFooter;
         LinearLayout mediaHost;
         QuoteView quoteView;
         boolean metricsSaved;
@@ -161,6 +178,11 @@ public final class WaveMessageUi {
             this.metaRow = (dateTv != null && dateTv.getParent() instanceof View)
                     ? (View) dateTv.getParent() : null;
             this.subjTv = (TextView) block.findViewById(ID_SUBJECT_TEXT);
+            this.mmsView = block.findViewById(ID_MMS_VIEW);
+            this.playAudio = block.findViewById(ID_PLAY_AUDIO);
+            this.playVideoPic = block.findViewById(ID_PLAY_VIDEO_PIC);
+            this.mmsMultiView = block.findViewById(ID_MMS_MULTI_VIEW);
+            this.attachFooter = block.findViewById(ID_ATTACH_FOOTER);
         }
     }
 
@@ -363,11 +385,16 @@ public final class WaveMessageUi {
                 handled = (mi.mAttachmentType >= 1 && mi.mAttachmentType <= 4);
             }
             if (!handled) return false;
-            View blockView = row.findViewById(ID_MESSAGE_BLOCK);
-            if (blockView instanceof LinearLayout) {
-                LinearLayout block = (LinearLayout) blockView;
-                hideStockMmsViews(block);
-                hideId(block, ID_ATTACH_FOOTER);
+            RowHolder h = (RowHolder) row.getTag(TAG_ROW_HOLDER);
+            if (h == null) {
+                View blockView = row.findViewById(ID_MESSAGE_BLOCK);
+                if (blockView instanceof LinearLayout) {
+                    h = new RowHolder(row, (LinearLayout) blockView);
+                    row.setTag(TAG_ROW_HOLDER, h);
+                }
+            }
+            if (h != null) {
+                hideStockMmsViews(h);
             }
             return true;
         } catch (Throwable t) {
@@ -416,7 +443,7 @@ public final class WaveMessageUi {
                 String noticeText = (info != null && !TextUtils.isEmpty(info.text))
                         ? info.text : rawBody;
                 applyGroupNoticeStyle(ctx, h, bodyTv, metaRow, noticeText);
-                hideStockMmsViews(block);
+                hideStockMmsViews(h);
                 return;
             }
 
@@ -429,7 +456,7 @@ public final class WaveMessageUi {
             if (isLegacyUnsent && !isUnsent) {
                 saveOriginalMetrics(h);
                 applyLegacyUnsentStyle(ctx, h, bodyTv, dateTv, isMe);
-                hideStockMmsViews(block);
+                hideStockMmsViews(h);
                 return;
             }
 
@@ -470,7 +497,7 @@ public final class WaveMessageUi {
             if (isUnsent && TextUtils.isEmpty(displayBody.trim()) && !mi.isMms()) {
                 saveOriginalMetrics(h);
                 applyLegacyUnsentStyle(ctx, h, bodyTv, dateTv, isMe);
-                hideStockMmsViews(block);
+                hideStockMmsViews(h);
                 return;
             }
 
@@ -854,7 +881,7 @@ public final class WaveMessageUi {
         }
         block.setPadding(dp(ctx, 6), dp(ctx, 3), dp(ctx, 6), dp(ctx, 3));
         if (metaRow != null) metaRow.setVisibility(View.GONE);
-        hideId(block, ID_ATTACH_FOOTER);
+        hideView(h.attachFooter);
 
         if (bodyTv != null) {
             bodyTv.setVisibility(View.VISIBLE);
@@ -907,8 +934,8 @@ public final class WaveMessageUi {
     // --- Inline Media Binding ---
 
     /**
-     * Off-main prewarm of inline media metadata (photo/video/audio parts) for the tail rows of a
-     * filled conversation cursor so frame #1 renders media immediately without a secondary rebind.
+     * Off-main prewarm of inline media metadata AND single-part thumbnails for the tail rows of a
+     * filled conversation cursor so frame #1 renders photos/videos immediately with zero placeholder jump.
      */
     public static void warmMediaMetaForCursor(final Context app, Cursor c, int tailCount) {
         if (app == null || c == null || tailCount <= 0) return;
@@ -925,12 +952,22 @@ public final class WaveMessageUi {
                 if (!"mms".equals(c.getString(colType))) continue;
                 if (colTextId >= 0 && c.getLong(colTextId) > 0L) continue;
                 final long mmsId = c.getLong(colId);
-                if (mmsId <= 0L || META_CACHE.get(mmsId) != null) continue;
+                if (mmsId <= 0L) continue;
+                MediaMeta existing = META_CACHE.get(mmsId);
+                if (existing != null) {
+                    if (existing.parts.size() == 1 && !existing.parts.get(0).isAudio) {
+                        warmThumbForPartAsync(app, existing.parts.get(0));
+                    }
+                    continue;
+                }
                 if (!IN_FLIGHT_META.add(mmsId)) continue;
                 META_EXEC.execute(() -> {
                     try {
                         MediaMeta meta = queryMediaMeta(app, mmsId);
                         META_CACHE.put(mmsId, meta);
+                        if (meta.parts.size() == 1 && !meta.parts.get(0).isAudio) {
+                            warmThumbForPartAsync(app, meta.parts.get(0));
+                        }
                     } finally {
                         IN_FLIGHT_META.remove(mmsId);
                     }
@@ -940,6 +977,35 @@ public final class WaveMessageUi {
         } finally {
             try { c.moveToPosition(savedPos); } catch (Throwable ignored) {}
         }
+    }
+
+    private static void warmThumbForPartAsync(final Context app, final MediaPart part) {
+        if (app == null || part == null || part.isAudio) return;
+        final String key = (part.isVideo ? "vid:" : "img:") + part.uri.toString();
+        Bitmap cached = THUMB_CACHE.get(key);
+        if (cached != null && !cached.isRecycled()) return;
+        if (!IN_FLIGHT_THUMB.add(key)) return;
+        final float den = app.getResources().getDisplayMetrics().density;
+        IO_EXEC.execute(() -> {
+            try {
+                Bitmap raw;
+                if (part.isVideo) {
+                    int[] durOut = new int[]{-1};
+                    raw = decodeVideoFrameAndDuration(app, part.uri, durOut);
+                    if (durOut[0] >= 0) DUR_CACHE.put(part.uri.toString(), durOut[0]);
+                } else {
+                    raw = WaveAttachmentViewer.decodeCrispBitmap(app, part.uri, 340);
+                }
+                if (raw != null) {
+                    int[] sz = visualSize(den, raw.getWidth(), raw.getHeight());
+                    Bitmap scaled = prescaleToCover(raw, sz[0], sz[1]);
+                    if (scaled != null) THUMB_CACHE.put(key, scaled);
+                }
+            } catch (Throwable ignored) {
+            } finally {
+                IN_FLIGHT_THUMB.remove(key);
+            }
+        });
     }
 
     private static boolean bindInlineMedia(final MessageListItem row, final RowHolder h,
@@ -957,8 +1023,7 @@ public final class WaveMessageUi {
         }
 
         if (mi.mAttachmentType >= 1 && mi.mAttachmentType <= 4) {
-            hideStockMmsViews(block);
-            hideId(block, ID_ATTACH_FOOTER);
+            hideStockMmsViews(h);
         }
 
         if (!IN_FLIGHT_META.add(mmsId)) return false;
@@ -1013,8 +1078,7 @@ public final class WaveMessageUi {
                                           List<MediaPart> parts, boolean isMe) {
         LinearLayout block = h.block;
         saveOriginalMetrics(h);
-        hideStockMmsViews(block);
-        hideId(block, ID_ATTACH_FOOTER);
+        hideStockMmsViews(h);
 
         boolean singleAudio = (parts.size() == 1 && parts.get(0).isAudio);
 
@@ -1068,10 +1132,14 @@ public final class WaveMessageUi {
             return;
         }
         host.setTag(TAG_MEDIA_KEY, mediaKey);
-        host.removeAllViews();
 
         if (parts.size() == 1) {
             MediaPart p = parts.get(0);
+            if (!p.isAudio && host.getChildCount() == 1 && host.getChildAt(0) instanceof InlineVisualView) {
+                ((InlineVisualView) host.getChildAt(0)).rebind(p);
+                return;
+            }
+            host.removeAllViews();
             if (p.isAudio) {
                 InlineVoiceView voice = new InlineVoiceView(ctx, isMe, activeAccentColor());
                 voice.bind(p.uri, p.name);
@@ -1083,20 +1151,21 @@ public final class WaveMessageUi {
                 host.addView(visual);
             }
         } else {
+            host.removeAllViews();
             InlineGridView grid = new InlineGridView(ctx, parts);
             host.addView(grid);
         }
     }
 
-    private static void hideStockMmsViews(LinearLayout block) {
-        hideId(block, ID_MMS_VIEW);
-        hideId(block, ID_PLAY_AUDIO);
-        hideId(block, ID_PLAY_VIDEO_PIC);
-        hideId(block, ID_MMS_MULTI_VIEW);
+    private static void hideStockMmsViews(RowHolder h) {
+        hideView(h.mmsView);
+        hideView(h.playAudio);
+        hideView(h.playVideoPic);
+        hideView(h.mmsMultiView);
+        hideView(h.attachFooter);
     }
 
-    private static void hideId(ViewGroup parent, int id) {
-        View v = parent.findViewById(id);
+    private static void hideView(View v) {
         if (v != null && v.getVisibility() != View.GONE) {
             v.setVisibility(View.GONE);
         }
@@ -1178,11 +1247,12 @@ public final class WaveMessageUi {
      * minification.
      */
     private static final class InlineVisualView extends View {
-        private final MediaPart part;
+        private MediaPart part;
         private Bitmap bmp;
         private BitmapShader shader;
         private int durationMs = -1;
         private int dispW, dispH;
+        private int bindGen;
         private final Paint shaderPaint = new Paint(
                 Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
         private final Paint overlayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -1194,39 +1264,55 @@ public final class WaveMessageUi {
 
         InlineVisualView(Context ctx, MediaPart part) {
             super(ctx);
-            this.part = part;
             float den = ctx.getResources().getDisplayMetrics().density;
-            dispW = Math.round(148f * den);
-            dispH = Math.round(112f * den);
             textPaint.setColor(Color.WHITE);
             textPaint.setTextSize(10f * den);
-            textPaint.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-            loadAsync();
+            textPaint.setTypeface(mediumTypeface());
+            rebind(part);
         }
 
-        private void loadAsync() {
-            final String key = (part.isVideo ? "vid:" : "img:") + part.uri.toString();
+        void rebind(MediaPart nextPart) {
+            this.part = nextPart;
+            this.bmp = null;
+            this.shader = null;
+            this.durationMs = -1;
+            int gen = ++bindGen;
+            float den = getResources().getDisplayMetrics().density;
+            int defW = Math.round(148f * den);
+            int defH = Math.round(112f * den);
+            if (dispW != defW || dispH != defH) {
+                dispW = defW;
+                dispH = defH;
+                requestLayout();
+            }
+            loadAsync(gen);
+        }
+
+        private void loadAsync(final int gen) {
+            final MediaPart p = this.part;
+            final String key = (p.isVideo ? "vid:" : "img:") + p.uri.toString();
             Bitmap cached = THUMB_CACHE.get(key);
-            if (part.isVideo) {
-                Integer d = DUR_CACHE.get(part.uri.toString());
+            if (p.isVideo) {
+                Integer d = DUR_CACHE.get(p.uri.toString());
                 if (d != null) durationMs = d;
             }
             if (cached != null && !cached.isRecycled()) {
                 applyBitmap(cached);
                 return;
             }
+            invalidate();
             final Context app = getContext().getApplicationContext();
             final float den = getResources().getDisplayMetrics().density;
             IO_EXEC.execute(() -> {
                 Bitmap raw;
                 int dur = -1;
-                if (part.isVideo) {
+                if (p.isVideo) {
                     int[] durOut = new int[]{-1};
-                    raw = decodeVideoFrameAndDuration(app, part.uri, durOut);
+                    raw = decodeVideoFrameAndDuration(app, p.uri, durOut);
                     dur = durOut[0];
-                    if (dur >= 0) DUR_CACHE.put(part.uri.toString(), dur);
+                    if (dur >= 0) DUR_CACHE.put(p.uri.toString(), dur);
                 } else {
-                    raw = WaveAttachmentViewer.decodeCrispBitmap(app, part.uri, 340);
+                    raw = WaveAttachmentViewer.decodeCrispBitmap(app, p.uri, 340);
                 }
                 Bitmap scaled = null;
                 if (raw != null) {
@@ -1237,6 +1323,7 @@ public final class WaveMessageUi {
                 if (loaded != null) THUMB_CACHE.put(key, loaded);
                 final int finalDur = dur;
                 MAIN.post(() -> {
+                    if (bindGen != gen) return;
                     if (finalDur >= 0) durationMs = finalDur;
                     if (loaded != null && !loaded.isRecycled()) {
                         applyBitmap(loaded);
