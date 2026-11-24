@@ -92,19 +92,30 @@ public final class WaveThreadPrefetch implements AdapterView.OnItemSelectedListe
         if (ticket != generation) return;
         Uri uri = WaveTextMms.queryUri(ContentUris.withAppendedId(Telephony.Threads.CONTENT_URI, id))
                 .buildUpon().appendQueryParameter("wave_page", "1").build();
-        try (Cursor cursor = context.getContentResolver().query(uri, MessageListAdapter.PROJECTION,
-                null, null, null)) {
+        Cursor cursor = null;
+        boolean handedOff = false;
+        try {
+            cursor = context.getContentResolver().query(uri, MessageListAdapter.PROJECTION,
+                    null, null, null);
             // Without the indexed provider, don't traverse an unbounded stock result.
             if (ticket != generation || cursor == null || cursor.getColumnIndex("wave_older") < 0) return;
             int rows = cursor.getCount();
+            WaveMessageUi.warmMediaMetaForCursor(context, cursor, 6);
             List<WaveComposePerf.PduWarmup> media = WaveComposePerf.collectPduWarmups(cursor, MEDIA_LIMIT);
             if (ticket != generation) return;
+            cursor.moveToPosition(-1);
+            WaveHistory.offerPrefetchedCursor(id, cursor);
+            handedOff = true;
             if (Log.isLoggable(TAG, Log.DEBUG)) Log.d(TAG, "ready rows=" + rows + " media=" + media.size());
             if (!media.isEmpty()) list.post(() -> {
                 if (ticket == generation && selection() == id) WaveComposePerf.warmPdus(media);
             });
         } catch (RuntimeException e) {
             if (Log.isLoggable(TAG, Log.DEBUG)) Log.d(TAG, "Prefetch unavailable");
+        } finally {
+            if (!handedOff && cursor != null) {
+                try { cursor.close(); } catch (Throwable ignored) {}
+            }
         }
     }
 }

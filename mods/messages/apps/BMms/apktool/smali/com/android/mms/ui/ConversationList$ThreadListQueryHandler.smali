@@ -305,6 +305,8 @@
     const-string v0, "inbox_cursor"
     invoke-static {v0}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
 
+    invoke-static {}, Lcom/android/mms/ui/WaveHistory;->clearPrefetchedCursor()V
+
     iget-object v0, p0, Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;->this$0:Lcom/android/mms/ui/ConversationList;
 
     invoke-static {v0}, Lcom/android/mms/ui/ConversationList;->-get11(Lcom/android/mms/ui/ConversationList;)Lcom/android/mms/ui/ConversationListAdapter;

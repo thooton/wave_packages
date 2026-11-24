@@ -906,6 +906,42 @@ public final class WaveMessageUi {
 
     // --- Inline Media Binding ---
 
+    /**
+     * Off-main prewarm of inline media metadata (photo/video/audio parts) for the tail rows of a
+     * filled conversation cursor so frame #1 renders media immediately without a secondary rebind.
+     */
+    public static void warmMediaMetaForCursor(final Context app, Cursor c, int tailCount) {
+        if (app == null || c == null || tailCount <= 0) return;
+        int savedPos = c.getPosition();
+        try {
+            int count = c.getCount();
+            if (count <= 0) return;
+            int colType = 0; // MessageListAdapter.PROJECTION[0] == "transport_type"
+            int colId = 1;   // MessageListAdapter.PROJECTION[1] == "_id"
+            int colTextId = c.getColumnIndex("wave_text_id");
+            int start = Math.max(0, count - tailCount);
+            for (int i = count - 1; i >= start; i--) {
+                if (!c.moveToPosition(i)) continue;
+                if (!"mms".equals(c.getString(colType))) continue;
+                if (colTextId >= 0 && c.getLong(colTextId) > 0L) continue;
+                final long mmsId = c.getLong(colId);
+                if (mmsId <= 0L || META_CACHE.get(mmsId) != null) continue;
+                if (!IN_FLIGHT_META.add(mmsId)) continue;
+                META_EXEC.execute(() -> {
+                    try {
+                        MediaMeta meta = queryMediaMeta(app, mmsId);
+                        META_CACHE.put(mmsId, meta);
+                    } finally {
+                        IN_FLIGHT_META.remove(mmsId);
+                    }
+                });
+            }
+        } catch (Throwable ignored) {
+        } finally {
+            try { c.moveToPosition(savedPos); } catch (Throwable ignored) {}
+        }
+    }
+
     private static boolean bindInlineMedia(final MessageListItem row, final RowHolder h,
                                            final MessageItem mi, final boolean isMe) {
         final LinearLayout block = h.block;

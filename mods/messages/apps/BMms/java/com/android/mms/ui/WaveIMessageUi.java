@@ -123,15 +123,21 @@ public final class WaveIMessageUi {
         return requiresMms ? HINT_MMS : HINT_SMS;
     }
 
+    private static long sCachedConvId = -1;
+    private static int sCachedConvCount = -1;
+    private static String sCachedFirstNum;
+    private static List<String> sCachedTargets;
+
     private static List<String> collectNormalizedTargets(
             ComposeMessageActivity activity,
             Conversation conv,
             RecipientsEditor recipientsEditor,
             WaveIMessageConfig cfg
     ) {
+        boolean editorVisible = recipientsEditor != null && recipientsEditor.getVisibility() == View.VISIBLE;
         ContactList contacts = null;
         try {
-            if (recipientsEditor != null && recipientsEditor.getVisibility() == View.VISIBLE) {
+            if (editorVisible) {
                 ContactList ed = recipientsEditor.constructContactsFromInput(false);
                 if (ed != null && !ed.isEmpty()) {
                     contacts = ed;
@@ -146,10 +152,21 @@ public final class WaveIMessageUi {
             }
         }
 
-        List<String> out = new ArrayList<String>();
-        if (contacts == null) return out;
+        if (contacts == null || contacts.isEmpty()) return java.util.Collections.emptyList();
+
+        // Fast path for existing conversations while typing: recipients don't change on every keystroke.
+        long convId = (!editorVisible && conv != null) ? conv.getThreadId() : -1L;
+        int count = contacts.size();
+        Contact first = contacts.get(0);
+        String firstNum = first != null ? first.getNumber() : null;
+        if (convId > 0 && convId == sCachedConvId && count == sCachedConvCount
+                && TextUtils.equals(firstNum, sCachedFirstNum) && sCachedTargets != null) {
+            return sCachedTargets;
+        }
+
+        List<String> out = new ArrayList<String>(count);
         List<String> myHandles = cfg.getHandles();
-        for (int i = 0; i < contacts.size(); i++) {
+        for (int i = 0; i < count; i++) {
             Contact contact = contacts.get(i);
             if (contact == null) continue;
             String num = contact.getNumber();
@@ -165,6 +182,12 @@ public final class WaveIMessageUi {
                 }
             }
             if (!dup) out.add(target);
+        }
+        if (convId > 0) {
+            sCachedConvId = convId;
+            sCachedConvCount = count;
+            sCachedFirstNum = firstNum;
+            sCachedTargets = out;
         }
         return out;
     }

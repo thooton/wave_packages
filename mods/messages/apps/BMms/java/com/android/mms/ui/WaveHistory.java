@@ -96,6 +96,64 @@ public final class WaveHistory {
         }
     }
 
+    private static final Object PREFETCH_LOCK = new Object();
+    private static final long PREFETCH_TTL_MS = 2500L;
+    private static long sPrefetchThreadId = -1;
+    private static long sPrefetchAtMs;
+    private static Cursor sPrefetchCursor;
+
+    /** Store a freshly filled page-1 cursor from WaveThreadPrefetch for immediate adoption. */
+    public static void offerPrefetchedCursor(long threadId, Cursor cursor) {
+        if (threadId <= 0 || cursor == null) return;
+        Cursor toClose;
+        synchronized (PREFETCH_LOCK) {
+            toClose = sPrefetchCursor;
+            sPrefetchThreadId = threadId;
+            sPrefetchAtMs = android.os.SystemClock.uptimeMillis();
+            sPrefetchCursor = cursor;
+        }
+        if (toClose != null && toClose != cursor) {
+            try { toClose.close(); } catch (Throwable ignored) {}
+        }
+    }
+
+    /** Discard any cached prefetched cursor (e.g. when inbox data refreshes). */
+    public static void clearPrefetchedCursor() {
+        Cursor toClose;
+        synchronized (PREFETCH_LOCK) {
+            toClose = sPrefetchCursor;
+            sPrefetchCursor = null;
+            sPrefetchThreadId = -1;
+        }
+        if (toClose != null) {
+            try { toClose.close(); } catch (Throwable ignored) {}
+        }
+    }
+
+    private static Cursor takePrefetchedCursor(long threadId) {
+        Cursor found = null;
+        Cursor expired = null;
+        synchronized (PREFETCH_LOCK) {
+            if (sPrefetchCursor != null) {
+                long age = android.os.SystemClock.uptimeMillis() - sPrefetchAtMs;
+                if (sPrefetchThreadId == threadId && age >= 0 && age <= PREFETCH_TTL_MS
+                        && !sPrefetchCursor.isClosed()) {
+                    found = sPrefetchCursor;
+                    sPrefetchCursor = null;
+                    sPrefetchThreadId = -1;
+                } else if (age > PREFETCH_TTL_MS) {
+                    expired = sPrefetchCursor;
+                    sPrefetchCursor = null;
+                    sPrefetchThreadId = -1;
+                }
+            }
+        }
+        if (expired != null) {
+            try { expired.close(); } catch (Throwable ignored) {}
+        }
+        return found;
+    }
+
     /**
      * Launch the initial conversation history query directly from ComposeMessageActivity.initialize()
      * on a dedicated high-priority thread so harvestEarlyQuery() at the end of onResume() can
@@ -112,6 +170,13 @@ public final class WaveHistory {
         h.pendingQuery = p;
         h.earlyQueryThread = threadId;
         h.skipFirstStartTitle = true;
+
+        final Cursor prefetched = takePrefetchedCursor(threadId);
+        if (prefetched != null) {
+            p.future = java.util.concurrent.CompletableFuture.completedFuture(prefetched);
+            return true;
+        }
+
         p.future = QUERY_EXEC.submit(new Callable<Cursor>() {
             @Override
             public Cursor call() {
@@ -119,7 +184,10 @@ public final class WaveHistory {
                 Cursor c = null;
                 try {
                     c = app.getContentResolver().query(qUri, proj, null, null, null);
-                    if (c != null) c.getCount(); // force CursorWindow fill off the UI thread
+                    if (c != null) {
+                        c.getCount(); // force CursorWindow fill off the UI thread
+                        WaveMessageUi.warmMediaMetaForCursor(app, c, 6);
+                    }
                 } catch (Throwable t) {
                     Log.w("Mms", "WaveHistory early query failed", t);
                     if (c != null) {
