@@ -1976,15 +1976,9 @@
     sput-boolean v0, Lcom/android/mms/ui/ConversationList;->mIsRcsEnabled:Z
 
     .line 294
-    invoke-virtual {p0}, Lcom/android/mms/ui/ConversationList;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v0
-
-    .line 295
     const v1, 0x7f09001d
 
-    .line 294
-    invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getBoolean(I)Z
+    invoke-static {p0, v1}, Lcom/android/mms/wave/WaveInit;->getBoolResCached(Landroid/content/Context;I)Z
 
     move-result v0
 
@@ -2058,13 +2052,7 @@
 
     move-result-object v0
 
-    invoke-virtual {p0}, Lcom/android/mms/ui/ConversationList;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v1
-
-    const v2, 0x7f080024
-
-    invoke-virtual {v1, v2}, Landroid/content/res/Resources;->getColor(I)I
+    invoke-static {p0}, Lcom/android/mms/ui/WaveInboxUi;->getStatusBarColor(Landroid/content/Context;)I
 
     move-result v1
 

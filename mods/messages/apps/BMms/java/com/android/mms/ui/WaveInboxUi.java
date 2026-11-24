@@ -43,7 +43,18 @@ public final class WaveInboxUi {
     private static volatile int sDefaultContactColor;
     private static volatile boolean sDefaultContactColorLoaded;
     private static volatile int[] sTileColors;
+    private static volatile int sStatusBarColor;
     private static final android.util.SparseIntArray DIMEN_CACHE = new android.util.SparseIntArray(4);
+
+    /** Cached ConversationList status bar color (0x7f080024). */
+    public static int getStatusBarColor(Context ctx) {
+        int c = sStatusBarColor;
+        if (c == 0) {
+            c = ctx.getResources().getColor(0x7f080024);
+            sStatusBarColor = c;
+        }
+        return c;
+    }
 
     /** Cached getDimensionPixelSize(resId) for fixed layout dimensions read per inbox row bind. */
     public static int getDimenPxCached(Context ctx, int resId) {

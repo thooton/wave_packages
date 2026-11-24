@@ -83,6 +83,20 @@ public final class WaveInit {
         return enabled;
     }
 
+    /**
+     * Non-blocking SharedPreferences async disk load kick-off at app_start.
+     * getSharedPreferences() returns immediately after spawning Android's startLoadFromDisk()
+     * worker thread, so both XML files are already in RAM before ConversationList.isMailboxMode()
+     * or ComposeMessageActivity.initResourceRefs() reads a key (~35ms flash stall eliminated).
+     */
+    public static void primePrefsAsync(Context c) {
+        try {
+            Context app = c.getApplicationContext();
+            PreferenceManager.getDefaultSharedPreferences(app);
+            app.getSharedPreferences("wave_imessage", Context.MODE_PRIVATE);
+        } catch (Throwable ignored) {}
+    }
+
     /** Run PreferenceManager.setDefaultValues off the main thread AFTER frame #1 (avoids flash/CPU contention during cold launch). */
     public static void setDefaultValuesAsync(final Context c, final int xmlResId) {
         final Context app = c.getApplicationContext();

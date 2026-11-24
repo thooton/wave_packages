@@ -446,6 +446,9 @@
     .line 75
     invoke-super {p0}, Landroid/app/Application;->onCreate()V
 
+    # PERF(prefs): kick off non-blocking SharedPreferences XML disk loads in parallel with MmsApp init.
+    invoke-static {p0}, Lcom/android/mms/wave/WaveInit;->primePrefsAsync(Landroid/content/Context;)V
+
     # PERF(phone map): start reading the compact phone map immediately in parallel with MmsApp init.
     invoke-static {p0}, Lcom/android/mms/data/WavePhoneSnapshot;->primeAsync(Landroid/content/Context;)V
 
