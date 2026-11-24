@@ -5632,6 +5632,10 @@
     :pswitch_1
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mImageView:Landroid/widget/ImageView;
 
+    # FIX(imessage): the stock image box is never inflated when WaveMessageUi draws the media
+    # itself (suppressStockMms), so mImageView can be null here: a photo message crashed the thread.
+    if-eqz v0, :cond_0
+
     new-instance v1, Lcom/android/mms/ui/MessageListItem$14;
 
     invoke-direct {v1, p0, p1}, Lcom/android/mms/ui/MessageListItem$14;-><init>(Lcom/android/mms/ui/MessageListItem;Lcom/android/mms/ui/MessageItem;)V
