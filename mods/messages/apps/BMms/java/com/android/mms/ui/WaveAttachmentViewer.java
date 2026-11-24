@@ -689,6 +689,7 @@ public final class WaveAttachmentViewer {
     private void startVideoFullscreen(PartItem item, final boolean autoPlay) {
         if (item == null || destroyed) return;
         videoFullscreen = true;
+        setSystemFullscreen(true);
         setStatusBar(Color.BLACK);
         root.setBackgroundColor(Color.BLACK);
         contentHost.setBackgroundColor(Color.BLACK);
@@ -791,11 +792,24 @@ public final class WaveAttachmentViewer {
 
     private void setVideoHudVisible(boolean visible) {
         if (videoHud != null) videoHud.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
+    private void setSystemFullscreen(boolean fullscreen) {
         Window w = act.getWindow();
-        if (w != null && w.getDecorView() != null) {
-            int flags = visible ? View.SYSTEM_UI_FLAG_VISIBLE
-                    : (View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_LOW_PROFILE);
-            w.getDecorView().setSystemUiVisibility(flags);
+        if (w == null) return;
+        if (fullscreen) {
+            w.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        } else {
+            w.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        }
+        View decor = w.getDecorView();
+        if (decor != null) {
+            int flags = fullscreen
+                    ? (View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_LOW_PROFILE
+                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+                    : View.SYSTEM_UI_FLAG_VISIBLE;
+            decor.setSystemUiVisibility(flags);
         }
     }
 
@@ -805,6 +819,7 @@ public final class WaveAttachmentViewer {
         videoFullscreen = false;
         singleVideoDirect = false;
         setVideoHudVisible(true);
+        setSystemFullscreen(false);
         if (videoView != null) {
             try { videoView.stopPlayback(); } catch (Throwable ignored) {}
             videoView = null;
@@ -1222,7 +1237,7 @@ public final class WaveAttachmentViewer {
         if (photoView != null) {
             photoView.setZoomed(zoomed);
         }
-        setVideoHudVisible(!fs);
+        setSystemFullscreen(fs);
         setStatusBar(fs ? Color.BLACK : COLOR_STATUS_BAR);
         if (root != null) root.setBackgroundColor(fs ? Color.BLACK : COLOR_BG);
         if (contentHost != null) contentHost.setBackgroundColor(fs ? Color.BLACK : COLOR_BG);
@@ -1358,6 +1373,7 @@ public final class WaveAttachmentViewer {
         videoPosTv = null;
         videoDurTv = null;
         setVideoHudVisible(true);
+        setSystemFullscreen(false);
         if (root != null) root.setBackgroundColor(COLOR_BG);
         if (contentHost != null) contentHost.setBackgroundColor(COLOR_BG);
         setStatusBar(COLOR_STATUS_BAR);
