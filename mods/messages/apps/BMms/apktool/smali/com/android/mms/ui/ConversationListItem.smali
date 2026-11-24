@@ -848,15 +848,9 @@
 
     iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mContext:Landroid/content/Context;
 
-    invoke-virtual {v1}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v1
-
-    .line 265
     const v2, 0x7f0b0019
 
-    .line 264
-    invoke-virtual {v1, v2}, Landroid/content/res/Resources;->getDimensionPixelSize(I)I
+    invoke-static {v1, v2}, Lcom/android/mms/ui/WaveInboxUi;->getDimenPxCached(Landroid/content/Context;I)I
 
     move-result v1
 
@@ -872,15 +866,9 @@
 
     iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mContext:Landroid/content/Context;
 
-    invoke-virtual {v1}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v1
-
-    .line 268
     const v2, 0x7f0b001a
 
-    .line 267
-    invoke-virtual {v1, v2}, Landroid/content/res/Resources;->getDimensionPixelSize(I)I
+    invoke-static {v1, v2}, Lcom/android/mms/ui/WaveInboxUi;->getDimenPxCached(Landroid/content/Context;I)I
 
     move-result v1
 
@@ -1042,7 +1030,7 @@
     iget-object v0, p0, Lcom/android/mms/ui/ConversationListItem;->mContext:Landroid/content/Context;
 
     .line 357
-    invoke-static {v0, p2}, Lcom/android/mms/util/MaterialColorMapUtils;->getLetterTitleDraw(Landroid/content/Context;Lcom/android/mms/data/Contact;)Landroid/graphics/drawable/Drawable;
+    invoke-static {v0, p1, p2}, Lcom/android/mms/ui/WaveInboxUi;->obtainLetterImageDrawable(Landroid/content/Context;Landroid/widget/ImageView;Lcom/android/mms/data/Contact;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0
 
@@ -1056,10 +1044,10 @@
 
     .line 384
     :goto_2
-    invoke-virtual {p1, v0}, Landroid/widget/QuickContactBadge;->setImageDrawable(Landroid/graphics/drawable/Drawable;)V
+    invoke-static {p1, v0}, Lcom/android/mms/ui/WaveInboxUi;->setImageDrawableIfChanged(Landroid/widget/ImageView;Landroid/graphics/drawable/Drawable;)V
 
     .line 385
-    invoke-virtual {p1, v5}, Landroid/widget/QuickContactBadge;->setVisibility(I)V
+    invoke-static {p1, v5}, Lcom/android/mms/ui/WaveMessageUi;->setVisibilityIfChanged(Landroid/view/View;I)V
 
     .line 386
     return-void
@@ -1068,12 +1056,7 @@
     :cond_2
     iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mContext:Landroid/content/Context;
 
-    invoke-static {v1, p2}, Lcom/android/mms/util/MaterialColorMapUtils;->getLetterTitleDraw(Landroid/content/Context;Lcom/android/mms/data/Contact;)Landroid/graphics/drawable/Drawable;
-
-    move-result-object v1
-
-    .line 362
-    invoke-virtual {p1, v1}, Landroid/widget/QuickContactBadge;->setBackgroundDrawable(Landroid/graphics/drawable/Drawable;)V
+    invoke-static {v1, p1, p2}, Lcom/android/mms/ui/WaveInboxUi;->applyLetterAvatar(Landroid/content/Context;Landroid/widget/QuickContactBadge;Lcom/android/mms/data/Contact;)V
 
     goto :goto_1
 

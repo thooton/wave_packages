@@ -38,10 +38,78 @@ public final class WaveInboxUi {
     private static final int TAG_HOLDER = 0x57440002;
     private static final int TAG_GROUP_AVATAR = 0x57440003;
     private static final int TAG_LETTER_KEY = 0x57440004;
+    private static final int TAG_IMAGE_LETTER_KEY = 0x57440005;
     private static volatile android.graphics.drawable.Drawable sGroupAvatarDrawable;
     private static volatile int sDefaultContactColor;
     private static volatile boolean sDefaultContactColorLoaded;
     private static volatile int[] sTileColors;
+    private static final android.util.SparseIntArray DIMEN_CACHE = new android.util.SparseIntArray(4);
+
+    /** Cached getDimensionPixelSize(resId) for fixed layout dimensions read per inbox row bind. */
+    public static int getDimenPxCached(Context ctx, int resId) {
+        synchronized (DIMEN_CACHE) {
+            int idx = DIMEN_CACHE.indexOfKey(resId);
+            if (idx >= 0) return DIMEN_CACHE.valueAt(idx);
+        }
+        int px = ctx.getResources().getDimensionPixelSize(resId);
+        synchronized (DIMEN_CACHE) {
+            DIMEN_CACHE.put(resId, px);
+        }
+        return px;
+    }
+
+    /** Reuse existing LetterTileDrawable on ImageView's image drawable in-place (named contacts without photo). */
+    public static android.graphics.drawable.Drawable obtainLetterImageDrawable(
+            Context ctx,
+            android.widget.ImageView iv,
+            com.android.mms.data.Contact contact
+    ) {
+        if (ctx == null || iv == null) return null;
+        android.graphics.drawable.Drawable cur = iv.getDrawable();
+        if (cur instanceof LetterTileDrawable && contact != null) {
+            String name = contact.getNameForAvatar();
+            String id = contact.getLookup();
+            if (TextUtils.isEmpty(id)) id = contact.getNumber();
+            if (TextUtils.isEmpty(name)) name = contact.getNumber();
+            String disp = (name != null && id != null && name.equals(id)) ? null : name;
+            String key = (disp != null ? disp : "") + '\0' + (id != null ? id : "");
+            LetterTileDrawable ltd = (LetterTileDrawable) cur;
+            if (!key.equals(iv.getTag(TAG_IMAGE_LETTER_KEY))) {
+                ltd.setContactDetails(disp, id);
+                iv.setTag(TAG_IMAGE_LETTER_KEY, key);
+                iv.invalidate();
+            }
+            contact.setContactColor(ltd.getColor());
+            return ltd;
+        }
+        android.graphics.drawable.Drawable d =
+                com.android.mms.util.MaterialColorMapUtils.getLetterTitleDraw(ctx, contact);
+        if (d instanceof LetterTileDrawable && contact != null) {
+            String name = contact.getNameForAvatar();
+            String id = contact.getLookup();
+            if (TextUtils.isEmpty(id)) id = contact.getNumber();
+            if (TextUtils.isEmpty(name)) name = contact.getNumber();
+            String disp = (name != null && id != null && name.equals(id)) ? null : name;
+            iv.setTag(TAG_IMAGE_LETTER_KEY, (disp != null ? disp : "") + '\0' + (id != null ? id : ""));
+        } else {
+            iv.setTag(TAG_IMAGE_LETTER_KEY, null);
+        }
+        return d;
+    }
+
+    /** Avoid ImageView.updateDrawable() + invalidate() when the Drawable instance is unchanged. */
+    public static void setImageDrawableIfChanged(android.widget.ImageView iv, android.graphics.drawable.Drawable d) {
+        if (iv != null && iv.getDrawable() != d) {
+            iv.setImageDrawable(d);
+        }
+    }
+
+    /** Avoid TextView StaticLayout rebuild + requestLayout() when exact String text is unchanged. */
+    public static void setTextIfChanged(TextView tv, CharSequence text) {
+        if (tv == null) return;
+        if (text instanceof String && text.equals(tv.getText())) return;
+        tv.setText(text);
+    }
 
     /** Unpack LetterTileDrawable.sColors TypedArray once into an int[] to eliminate per-frame JNI getColor(). */
     public static int pickTileColor(android.content.res.TypedArray colors, int defaultColor, String identifier) {
