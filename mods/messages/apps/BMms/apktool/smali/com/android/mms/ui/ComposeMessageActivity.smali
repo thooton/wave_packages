@@ -26523,6 +26523,9 @@
     const-string v1, "compose_start"
     invoke-static {v1}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
 
+    # PERF(row pool): pre-inflate message rows off-main in parallel with onCreate/onStart/onResume.
+    invoke-static {p0}, Lcom/android/mms/ui/WaveRowPool;->prewarmMessages(Landroid/content/Context;)V
+
     .line 3026
     invoke-static {p0}, Lcom/android/mms/MmsConfig;->isSmsEnabled(Landroid/content/Context;)Z
 

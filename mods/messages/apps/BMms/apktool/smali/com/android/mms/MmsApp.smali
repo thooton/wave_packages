@@ -404,6 +404,9 @@
     # PERF(phone map): start reading the compact phone map immediately in parallel with MmsApp init.
     invoke-static {p0}, Lcom/android/mms/data/WavePhoneSnapshot;->primeAsync(Landroid/content/Context;)V
 
+    # PERF(row pool): pre-inflate inbox rows off-main while MmsApp + ConversationList initialize.
+    invoke-static {p0}, Lcom/android/mms/ui/WaveRowPool;->prewarmInbox(Landroid/content/Context;)V
+
     .line 77
     const-string/jumbo v0, "Mms"
 

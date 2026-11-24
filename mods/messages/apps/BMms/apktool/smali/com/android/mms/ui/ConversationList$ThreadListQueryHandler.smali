@@ -359,6 +359,8 @@
     :wave_inbox_timed
     iget-object v0, p0, Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;->this$0:Lcom/android/mms/ui/ConversationList;
 
+    invoke-static {v0}, Lcom/android/mms/ui/WaveRowPool;->prewarmMessagesDelayed(Landroid/content/Context;)V
+
     invoke-static {v0}, Lcom/android/mms/ui/ConversationList;->-wrap10(Lcom/android/mms/ui/ConversationList;)V
 
     .line 1472

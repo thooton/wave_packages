@@ -45,6 +45,22 @@ public final class WaveInit {
         }
     }
 
+    private static volatile long sSmsEnabledAtMs;
+    private static volatile boolean sSmsEnabledVal;
+
+    /** Short-TTL cache for MmsConfig.isSmsEnabled() to avoid repeated Binder IPCs during launch. */
+    public static boolean isSmsEnabledCached(Context c) {
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - sSmsEnabledAtMs < 2000L && sSmsEnabledAtMs != 0L) {
+            return sSmsEnabledVal;
+        }
+        String pkg = android.provider.Telephony.Sms.getDefaultSmsPackage(c);
+        boolean enabled = "com.android.mms".equals(pkg);
+        sSmsEnabledVal = enabled;
+        sSmsEnabledAtMs = now;
+        return enabled;
+    }
+
     /** Run PackageManager.setComponentEnabledSetting off the main thread, only if state differs. */
     public static void applyComponentStateAsync(final Context c, final Class<?> cls, final int state) {
         final Context app = c.getApplicationContext();

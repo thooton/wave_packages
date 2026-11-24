@@ -2003,7 +2003,7 @@
 
     .line 480
     :goto_3
-    invoke-virtual {v1, v0, p3, v3}, Landroid/view/LayoutInflater;->inflate(ILandroid/view/ViewGroup;Z)Landroid/view/View;
+    invoke-static {v1, v0, p3}, Lcom/android/mms/ui/WaveRowPool;->obtainMessageRow(Landroid/view/LayoutInflater;ILandroid/view/ViewGroup;)Landroid/view/View;
 
     move-result-object v1
 

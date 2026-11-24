@@ -1080,33 +1080,12 @@
 .end method
 
 .method public static isSmsEnabled(Landroid/content/Context;)Z
-    .locals 2
+    .locals 1
 
     .prologue
-    .line 191
-    invoke-static {p0}, Landroid/provider/Telephony$Sms;->getDefaultSmsPackage(Landroid/content/Context;)Ljava/lang/String;
-
-    move-result-object v0
-
-    .line 193
-    if-eqz v0, :cond_0
-
-    const-string/jumbo v1, "com.android.mms"
-
-    invoke-virtual {v0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    invoke-static {p0}, Lcom/android/mms/wave/WaveInit;->isSmsEnabledCached(Landroid/content/Context;)Z
 
     move-result v0
-
-    if-eqz v0, :cond_0
-
-    .line 194
-    const/4 v0, 0x1
-
-    return v0
-
-    .line 196
-    :cond_0
-    const/4 v0, 0x0
 
     return v0
 .end method
