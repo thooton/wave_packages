@@ -6,4 +6,7 @@ public class Contact {
     public synchronized String getNumber() { return null; }
     public boolean isMe() { return false; }
     public synchronized String getName() { return null; }
+    public synchronized String getNameForAvatar() { return null; }
+    public synchronized String getLookup() { return null; }
+    public void setContactColor(int color) {}
 }

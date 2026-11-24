@@ -34,9 +34,78 @@ public final class WaveInboxUi {
     private static final int ID_ATTACH_STATUS = 0x7f0f0067;
     private static final int ID_ATTACH_INFO = 0x7f0f0069;
     private static final int DRAWABLE_GROUP_AVATAR = 0x7f02003f;
+    private static final int COLOR_DEFAULT_CONTACT = 0x7f080031;
     private static final int TAG_HOLDER = 0x57440002;
     private static final int TAG_GROUP_AVATAR = 0x57440003;
+    private static final int TAG_LETTER_KEY = 0x57440004;
     private static volatile android.graphics.drawable.Drawable sGroupAvatarDrawable;
+    private static volatile int sDefaultContactColor;
+    private static volatile boolean sDefaultContactColorLoaded;
+    private static volatile int[] sTileColors;
+
+    /** Unpack LetterTileDrawable.sColors TypedArray once into an int[] to eliminate per-frame JNI getColor(). */
+    public static int pickTileColor(android.content.res.TypedArray colors, int defaultColor, String identifier) {
+        if (colors == null) return defaultColor;
+        int[] palette = sTileColors;
+        if (palette == null) {
+            int len = colors.length();
+            if (len <= 0) return defaultColor;
+            int[] arr = new int[len];
+            for (int i = 0; i < len; i++) {
+                arr[i] = colors.getColor(i, defaultColor);
+            }
+            sTileColors = arr;
+            palette = arr;
+        }
+        int idx = Math.abs(identifier.hashCode()) % palette.length;
+        return palette[idx];
+    }
+
+    /** Reuse existing LetterTileDrawable on QuickContactBadge in-place (zero new Paint/Drawable/relayout per bind). */
+    public static void applyLetterAvatar(
+            Context ctx,
+            android.widget.QuickContactBadge badge,
+            com.android.mms.data.Contact contact
+    ) {
+        if (ctx == null || badge == null) return;
+        if (!sDefaultContactColorLoaded) {
+            sDefaultContactColor = ctx.getResources().getColor(COLOR_DEFAULT_CONTACT);
+            sDefaultContactColorLoaded = true;
+        }
+        if (contact != null) {
+            contact.setContactColor(sDefaultContactColor);
+        }
+        android.graphics.drawable.Drawable bg = badge.getBackground();
+        if (bg instanceof LetterTileDrawable && contact != null) {
+            String name = contact.getNameForAvatar();
+            String id = contact.getLookup();
+            if (TextUtils.isEmpty(id)) id = contact.getNumber();
+            if (TextUtils.isEmpty(name)) name = contact.getNumber();
+            String disp = (name != null && id != null && name.equals(id)) ? null : name;
+            String key = (disp != null ? disp : "") + '\0' + (id != null ? id : "");
+            LetterTileDrawable ltd = (LetterTileDrawable) bg;
+            if (!key.equals(badge.getTag(TAG_LETTER_KEY))) {
+                ltd.setContactDetails(disp, id);
+                badge.setTag(TAG_LETTER_KEY, key);
+                badge.invalidate();
+            }
+            contact.setContactColor(ltd.getColor());
+            return;
+        }
+        android.graphics.drawable.Drawable d =
+                com.android.mms.util.MaterialColorMapUtils.getLetterTitleDraw(ctx, contact);
+        badge.setBackgroundDrawable(d);
+        if (d instanceof LetterTileDrawable && contact != null) {
+            String name = contact.getNameForAvatar();
+            String id = contact.getLookup();
+            if (TextUtils.isEmpty(id)) id = contact.getNumber();
+            if (TextUtils.isEmpty(name)) name = contact.getNumber();
+            String disp = (name != null && id != null && name.equals(id)) ? null : name;
+            badge.setTag(TAG_LETTER_KEY, (disp != null ? disp : "") + '\0' + (id != null ? id : ""));
+        } else {
+            badge.setTag(TAG_LETTER_KEY, null);
+        }
+    }
     private static final String REPLY_PREFIX = "\u21A9 \u201C";
     private static final Pattern E164_PAT = Pattern.compile("\\+[1-9][0-9]{7,14}");
 

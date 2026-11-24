@@ -487,28 +487,11 @@
 
     .line 177
     :cond_1
-    invoke-virtual {p1}, Ljava/lang/String;->hashCode()I
+    sget-object v0, Lcom/android/mms/ui/LetterTileDrawable;->sColors:Landroid/content/res/TypedArray;
 
-    move-result v0
+    sget v1, Lcom/android/mms/ui/LetterTileDrawable;->sDefaultColor:I
 
-    invoke-static {v0}, Ljava/lang/Math;->abs(I)I
-
-    move-result v0
-
-    sget-object v1, Lcom/android/mms/ui/LetterTileDrawable;->sColors:Landroid/content/res/TypedArray;
-
-    invoke-virtual {v1}, Landroid/content/res/TypedArray;->length()I
-
-    move-result v1
-
-    rem-int/2addr v0, v1
-
-    .line 178
-    sget-object v1, Lcom/android/mms/ui/LetterTileDrawable;->sColors:Landroid/content/res/TypedArray;
-
-    sget v2, Lcom/android/mms/ui/LetterTileDrawable;->sDefaultColor:I
-
-    invoke-virtual {v1, v0, v2}, Landroid/content/res/TypedArray;->getColor(II)I
+    invoke-static {v0, v1, p1}, Lcom/android/mms/ui/WaveInboxUi;->pickTileColor(Landroid/content/res/TypedArray;ILjava/lang/String;)I
 
     move-result v0
 

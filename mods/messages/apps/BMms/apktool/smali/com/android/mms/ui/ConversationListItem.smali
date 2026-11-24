@@ -1111,27 +1111,7 @@
     :goto_3
     iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mContext:Landroid/content/Context;
 
-    invoke-virtual {v1}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v1
-
-    const v2, 0x7f080031
-
-    invoke-virtual {v1, v2}, Landroid/content/res/Resources;->getColor(I)I
-
-    move-result v1
-
-    invoke-virtual {p2, v1}, Lcom/android/mms/data/Contact;->setContactColor(I)V
-
-    .line 381
-    iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mContext:Landroid/content/Context;
-
-    invoke-static {v1, p2}, Lcom/android/mms/util/MaterialColorMapUtils;->getLetterTitleDraw(Landroid/content/Context;Lcom/android/mms/data/Contact;)Landroid/graphics/drawable/Drawable;
-
-    move-result-object v1
-
-    .line 382
-    invoke-virtual {p1, v1}, Landroid/widget/QuickContactBadge;->setBackgroundDrawable(Landroid/graphics/drawable/Drawable;)V
+    invoke-static {v1, p1, p2}, Lcom/android/mms/ui/WaveInboxUi;->applyLetterAvatar(Landroid/content/Context;Landroid/widget/QuickContactBadge;Lcom/android/mms/data/Contact;)V
 
     goto :goto_2
 
