@@ -65,6 +65,16 @@ public final class ClientState {
         return copy;
     }
 
+    /** True while {@code seq} is in the outbox (sent or not, not ACKed yet). */
+    public synchronized boolean isPending(long seq) {
+        return outbox.containsKey(seq);
+    }
+
+    /** Drops {@code seq} from the outbox (it won't be resent); true if it was there. */
+    public synchronized boolean remove(long seq) {
+        return outbox.remove(seq) != null;
+    }
+
     public synchronized int outboxSize() {
         return outbox.size();
     }

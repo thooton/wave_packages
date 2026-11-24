@@ -97,7 +97,7 @@ public final class WaveIMessageSend {
             moveSms(c, uri, 4 /* OUTBOX */, 0);
             String convKey = WaveIMessageConfig.conversationKeyForTargets(Collections.singletonList(target));
             String senderGuid = cfg.getSenderGuid(convKey);
-            String clientMsgId = host.sendText(target, text, senderGuid);
+            final String clientMsgId = host.sendText(target, text, senderGuid);
             Log.i(TAG, "sms " + uri + " -> imessage " + clientMsgId + " to " + target);
             final String sentText = text;
             final String sentGuid = senderGuid;
@@ -116,8 +116,14 @@ public final class WaveIMessageSend {
                             cfg.setCapability(target, false);
                             WaveIMessageUi.refreshActiveComposeHint();
                         }
-                        if (cfg.isSmsFallbackEnabled()) {
+                        if (cfg.isSmsFallbackEnabled() && r.mayFallBack()) {
                             Log.w(TAG, "imessage failed (" + r + "), falling back to SMS for " + uri);
+                            host.onLateResult(clientMsgId, new WaveIMessageHost.SendCallback() {
+                                @Override
+                                public void onResult(WaveIMessageHost.SendOutcome late) {
+                                    if (late.ok) lateSuccess(c, uri, late, sentText, target, sentGuid);
+                                }
+                            });
                             fallbackSms(sender, c, uri, subId);
                         } else {
                             Log.w(TAG, "imessage failed (" + r + "), SMS fallback disabled for " + uri);
@@ -131,6 +137,36 @@ public final class WaveIMessageSend {
             Log.w(TAG, "interceptSms", t);
             return false;
         }
+    }
+
+    /**
+     * A send we gave up on went out over iMessage after all (the server had it; its ACK was lost
+     * with the connection). Drop the fallback if it hasn't gone yet: an SMS still queued (no
+     * service) or failed becomes the sent iMessage. One already sent (or sending) as SMS can't be
+     * taken back; the recipient gets it twice.
+     */
+    static void lateSuccess(Context c, Uri uri, WaveIMessageHost.SendOutcome r, String text, String target,
+                            String guid) {
+        int type = -1;
+        Cursor cur = c.getContentResolver().query(uri, new String[]{"type"}, null, null, null);
+        if (cur != null) {
+            try {
+                if (cur.moveToFirst()) type = cur.getInt(0);
+            } finally {
+                cur.close();
+            }
+        }
+        if (type != 6 /* QUEUED */ && type != 5 /* FAILED */) {
+            Log.w(TAG, "late iMessage success for " + uri + " after its SMS fallback (type " + type
+                    + "): delivered twice");
+            return;
+        }
+        WaveIMessageHost host = WaveIMessageHost.get(c);
+        host.config().setCapability(target, true);
+        host.config().recordSentAppleMsgId(r.appleMsgId, uri);
+        recordSent(c, r.appleMsgId, uri, text, Collections.singletonList(target), guid);
+        moveSms(c, uri, 2 /* SENT */, 0);
+        Log.i(TAG, "late iMessage success for " + uri + ": dropped its pending SMS fallback");
     }
 
     private static void fallbackSms(SmsSingleRecipientSender sender, Context c, Uri uri, int subId) {
@@ -242,9 +278,23 @@ public final class WaveIMessageSend {
                         cfg.recordSentAppleMsgId(r.appleMsgId, uri);
                         recordSent(c, r.appleMsgId, uri, text, Collections.singletonList(target), guid);
                         moveSms(c, uri, 2 /* SENT */, 0);
-                    } else {
+                    } else if (r.mayFallBack()) {
                         if (r.isNotRegisteredError()) cfg.setCapability(target, false);
                         moveSms(c, uri, 6 /* QUEUED */, 0);
+                        final Uri qUri = uri;
+                        final String qText = text;
+                        final String qTarget = target;
+                        final String qGuid = guid;
+                        host.onLateResult(clientId, new WaveIMessageHost.SendCallback() {
+                            @Override
+                            public void onResult(WaveIMessageHost.SendOutcome late) {
+                                if (late.ok) lateSuccess(c, qUri, late, qText, qTarget, qGuid);
+                            }
+                        });
+                    } else {
+                        // The server has it and may still send it: queueing it again could
+                        // deliver it twice. Show it as failed (the user can resend).
+                        moveSms(c, uri, 5 /* FAILED */, 1);
                     }
                 } catch (Throwable t) {
                     Log.w(TAG, "queued sms drain failed for " + uri, t);
@@ -338,7 +388,8 @@ public final class WaveIMessageSend {
                     cfg.setCapability(targets.get(0), false);
                     WaveIMessageUi.refreshActiveComposeHint();
                 }
-                Log.w(TAG, "mms iMessage failed (" + r + ") for " + uri);
+                Log.w(TAG, "mms iMessage failed (" + r + ") for " + uri
+                        + (r.mayFallBack() ? "" : "; the server has it, sending as MMS anyway (may arrive twice)"));
                 return null;
             }
 

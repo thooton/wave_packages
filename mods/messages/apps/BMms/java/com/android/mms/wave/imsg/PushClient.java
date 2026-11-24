@@ -72,6 +72,23 @@ public final class PushClient {
      * suspect; a server restart, BYE or unreachable server says nothing about the NAT.
      */
     private volatile boolean keepaliveFailed;
+    /**
+     * The server ACKs every MSG at once, so a MSG still unACKed after this means the connection
+     * is dead without us knowing (a NAT dropped it silently, or the network went away mid-send):
+     * reconnect now, and the WELCOME tells us what the server got, instead of finding out at the
+     * next keepalive (up to ~48 min) while the sender's 25 s timeout falls back to SMS.
+     */
+    private static final long ACK_TIMEOUT_MS = 10_000L;
+    /** When the oldest unACKed MSG of this connection times out; 0 if none (watchdogLock). */
+    private long ackDeadlineElapsedMs = 0L;
+    /** Client message id to its outbox seq, for sends still being tracked (bounded). */
+    private final Map<String, Long> msgSeqs = java.util.Collections.synchronizedMap(
+            new java.util.LinkedHashMap<String, Long>(32, 0.75f, false) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Long> e) {
+                    return size() > 500;
+                }
+            });
     private volatile Status status = Status.OFFLINE;
     private volatile String statusDetail = "";
     private Thread mainThread;
@@ -151,7 +168,7 @@ public final class PushClient {
         running = false;
         clock.cancelWakeup();
         sendFrameQuietly(Frame.bye(Frame.BYE_NORMAL));
-        closeActiveSocket();
+        closeActiveSocketGracefully();
         synchronized (watchdogLock) {
             watchdogLock.notifyAll();
         }
@@ -329,15 +346,55 @@ public final class PushClient {
         byte[] encoded = body.encode();
         long seq = state.enqueue(encoded);
         state.save(config.stateFile);
+        if (body.clientMsgId != null) msgSeqs.put(body.clientMsgId, seq);
         if (isConnected()) {
             try {
                 writeFrame(Frame.msg(seq, encoded));
+                expectAck();
             } catch (IOException e) {
                 log("Write failed while sending seq " + seq + ": " + e.getMessage());
                 closeActiveSocket();
             }
         }
         return seq;
+    }
+
+    /** A MSG went out: the server must ACK it within ACK_TIMEOUT_MS (the watchdog checks). */
+    private void expectAck() {
+        synchronized (watchdogLock) {
+            if (ackDeadlineElapsedMs == 0L) {
+                ackDeadlineElapsedMs = clock.elapsedRealtimeMs() + ACK_TIMEOUT_MS;
+                clock.acquireBriefWakeLock(WakeupClock.HOLD_ACK, ACK_TIMEOUT_MS + 5_000L);
+                watchdogLock.notifyAll();
+            }
+        }
+    }
+
+    /**
+     * True once the server has the message sent as {@code clientMsgId} (it ACKed it): it will send
+     * it and its SEND_RESULT will come, even across reconnects. False while it's only in our outbox.
+     */
+    public boolean isAccepted(String clientMsgId) {
+        Long seq = msgSeqs.get(clientMsgId);
+        return seq != null && !state.isPending(seq);
+    }
+
+    /**
+     * Takes {@code clientMsgId} back if the server hasn't ACKed it yet, so it isn't sent later
+     * (on the next connect) after the caller has given up on it and sent it another way. Returns
+     * true if it was still ours to take back. (If the server got it but its ACK was lost with the
+     * connection, the server still sends it; we can't know that until the next WELCOME.)
+     */
+    public boolean cancelIfPending(String clientMsgId) {
+        Long seq = msgSeqs.remove(clientMsgId);
+        if (seq == null || !state.remove(seq)) return false;
+        try {
+            state.save(config.stateFile);
+        } catch (IOException e) {
+            log("Failed to save state after cancelling seq " + seq + ": " + e.getMessage());
+        }
+        log("Took back unACKed seq " + seq + " (" + clientMsgId + ")");
+        return true;
     }
 
     public void triggerProbeNow() {
@@ -452,6 +509,7 @@ public final class PushClient {
                 for (Map.Entry<Long, byte[]> e : pending.entrySet()) {
                     writeFrame(Frame.msg(e.getKey(), e.getValue()));
                 }
+                if (!pending.isEmpty()) expectAck();
 
                 if (config.autoProbe) {
                     maybeScheduleProbe(netKey);
@@ -478,6 +536,16 @@ public final class PushClient {
                             case Frame.TYPE_ACK:
                                 if (state.ackUpTo(frame.seq) > 0) {
                                     state.save(config.stateFile);
+                                }
+                                synchronized (watchdogLock) {
+                                    if (state.outboxSize() == 0) {
+                                        ackDeadlineElapsedMs = 0L;
+                                        clock.releaseWakeLock(WakeupClock.HOLD_ACK);
+                                    } else if (ackDeadlineElapsedMs != 0L) {
+                                        // Progress: give the rest a fresh window.
+                                        ackDeadlineElapsedMs = clock.elapsedRealtimeMs() + ACK_TIMEOUT_MS;
+                                    }
+                                    watchdogLock.notifyAll();
                                 }
                                 break;
                             case Frame.TYPE_PONG:
@@ -522,6 +590,8 @@ public final class PushClient {
                 boolean wasConnected;
                 synchronized (watchdogLock) {
                     if (pingInFlight) keepaliveFailed = true; // died waiting for a PONG
+                    ackDeadlineElapsedMs = 0L;
+                    clock.releaseWakeLock(WakeupClock.HOLD_ACK);
                     wasConnected = connected;
                     connected = false;
                     activeSocket = null;
@@ -630,14 +700,25 @@ public final class PushClient {
             boolean shouldSendPing = false;
             int pingNonce = 0;
             boolean pongTimedOut = false;
+            boolean ackTimedOut = false;
             long waitMs = 0L; // 0 = wait indefinitely until notified
             long alarmTargetElapsed = 0L;
+            long ackWaitMs = 0L;
 
             synchronized (watchdogLock) {
                 if (!running) {
                     break;
                 }
                 long now = clock.elapsedRealtimeMs();
+                if (connected && ackDeadlineElapsedMs != 0L) {
+                    // HOLD_ACK keeps the CPU up meanwhile, so a plain timed wait is enough.
+                    if (now >= ackDeadlineElapsedMs) {
+                        ackTimedOut = true;
+                        ackDeadlineElapsedMs = 0L;
+                    } else {
+                        ackWaitMs = ackDeadlineElapsedMs - now;
+                    }
+                }
                 if (connected) {
                     if (pingInFlight) {
                         if (now >= pingDeadlineElapsedMs) {
@@ -664,6 +745,16 @@ public final class PushClient {
                 } else {
                     waitMs = 0L;
                 }
+            }
+
+            if (ackTimedOut) {
+                log("No ACK for " + ACK_TIMEOUT_MS / 1000L + "s; the connection is dead, reconnecting");
+                clock.releaseWakeLock(WakeupClock.HOLD_ACK);
+                closeActiveSocket();
+                continue;
+            }
+            if (ackWaitMs > 0L && (waitMs == 0L || ackWaitMs < waitMs)) {
+                waitMs = Math.max(100L, ackWaitMs);
             }
 
             if (pongTimedOut) {
@@ -697,7 +788,9 @@ public final class PushClient {
                     }
                 }
                 if (needSchedule) {
-                    clock.scheduleWakeup(waitMs);
+                    // The alarm is for the keepalive/PONG deadline; waitMs may be the shorter
+                    // ACK wait, which runs awake under HOLD_ACK and needs no alarm.
+                    clock.scheduleWakeup(Math.max(100L, alarmTargetElapsed - clock.elapsedRealtimeMs()));
                 }
                 // The next wakeup is scheduled: the alarm that woke us is handled (an in-flight PING
                 // keeps its own wakelock until the PONG), so the CPU can sleep until the alarm.
@@ -895,7 +988,29 @@ public final class PushClient {
         }
     }
 
+    /**
+     * Drops the main connection we've given up on (dead, or on a network that's gone). Abortive
+     * (SO_LINGER 0, RST): a plain close keeps retransmitting the unsent part of the socket buffer
+     * after we've moved on, so a MSG we already took back (cancelIfPending) and sent another way
+     * could still reach the server minutes later and go out twice. Seen on the phone: a MSG written
+     * into a dead connection arrived when the network came back, after its SMS fallback.
+     */
     private void closeActiveSocket() {
+        SSLSocket s;
+        synchronized (watchdogLock) {
+            s = activeSocket;
+        }
+        if (s != null) {
+            try {
+                s.setSoLinger(true, 0);
+            } catch (IOException ignored) {
+            }
+        }
+        closeSocketQuietly(s);
+    }
+
+    /** Ends the main connection normally (after a BYE), letting the BYE go out. */
+    private void closeActiveSocketGracefully() {
         SSLSocket s;
         synchronized (watchdogLock) {
             s = activeSocket;

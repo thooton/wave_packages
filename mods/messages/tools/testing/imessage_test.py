@@ -156,6 +156,9 @@ public class IMessageHostTest {
         check(reloaded.pendingAfter(1L).size() == 1, "pendingAfter 1");
         check(Integer.valueOf(1500).equals(reloaded.getLearnedInterval("mobile:310260:ipv4")), "learned interval");
         check(reloaded.ackUpTo(1L) == 1 && reloaded.outboxSize() == 1, "ackUpTo");
+        check(!reloaded.isPending(1L) && reloaded.isPending(2L), "isPending after ack");
+        check(reloaded.remove(2L) && !reloaded.remove(2L) && reloaded.outboxSize() == 0
+                && reloaded.pendingAfter(0L).isEmpty(), "remove takes a send back (not resent)");
 
         // 4. Hex helpers
         byte[] sample = new byte[] {0x00, (byte) 0xab, (byte) 0xff};

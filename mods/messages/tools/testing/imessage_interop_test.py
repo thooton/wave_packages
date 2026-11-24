@@ -5,7 +5,9 @@ Builds nothing on the phone: it compiles the client's plain-Java protocol classe
 (apps/BMms/java/com/android/mms/wave/imsg) for the host JVM, starts `imsg-server run --no-apple`
 (the echo backend) with a throwaway localhost certificate, and drives it like the phone does:
 setup, sending text, uploading a photo and a video, receiving the echo with media, fetching
-previews and full-size files, tapbacks, inline replies, edits, unsends and group changes.
+previews and full-size files, tapbacks, inline replies, edits, unsends and group changes. Then it
+runs the real PushClient through a relay that can go silent like a dead NAT (ACK deadline,
+reconnect and resend, taking back a send the server never got).
 
 Needs ffmpeg/ffprobe (server conversions) and an imsg-server binary:
     IMSG_SERVER=/path/to/imsg-server tools/testing/imessage_interop_test.py
@@ -26,7 +28,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 IMSG_DIR = ROOT / "apps" / "BMms" / "java" / "com" / "android" / "mms" / "wave" / "imsg"
 DEFAULT_SERVER = ROOT.parents[2] / "imsg-server" / "target" / "debug" / "imsg-server"
 # Host-JVM code, kept out of tools/testing/*.java (push.sh compiles those for the phone).
-HARNESS = pathlib.Path(__file__).parent / "interop" / "IMessageInteropTest.java"
+HARNESSES = [pathlib.Path(__file__).parent / "interop" / n
+             for n in ("IMessageInteropTest.java", "PushClientInteropTest.java")]
 
 CONFIG = """server_name = "localhost"
 listen_addrs = ["127.0.0.1:{port}"]
@@ -38,6 +41,10 @@ apple_dir = "{tmp}/apple"
 [[clients]]
 id = "phone"
 token_sha256 = "{token_hash}"
+
+[[clients]]
+id = "pushclient"
+token_sha256 = "{token2_hash}"
 """
 
 
@@ -86,8 +93,10 @@ def main():
 
         port = free_port()
         token = secrets.token_hex(32)
+        token2 = secrets.token_hex(32)
         cfg = tmp / "config.toml"
-        cfg.write_text(CONFIG.format(port=port, tmp=tmp, token_hash=hashlib.sha256(token.encode()).hexdigest()))
+        cfg.write_text(CONFIG.format(port=port, tmp=tmp, token_hash=hashlib.sha256(token.encode()).hexdigest(),
+                                     token2_hash=hashlib.sha256(token2.encode()).hexdigest()))
         log = open(tmp / "server.log", "w")
         proc = subprocess.Popen([str(server), "-c", str(cfg), "run", "--no-apple"], stdout=log, stderr=log,
                                 env=dict(os.environ, RUST_LOG="info"))
@@ -101,10 +110,13 @@ def main():
             classes = tmp / "classes"
             classes.mkdir()
             run(["javac", "-nowarn", "-d", str(classes)]
-                + [str(p) for p in sorted(IMSG_DIR.glob("*.java"))] + [str(HARNESS)])
-            res = subprocess.run(["java", f"-Djavax.net.ssl.trustStore={tmp / 'trust.p12'}",
-                                  "-Djavax.net.ssl.trustStorePassword=changeit", "-cp", str(classes),
-                                  "IMessageInteropTest", str(port), token, str(work)])
+                + [str(p) for p in sorted(IMSG_DIR.glob("*.java"))] + [str(p) for p in HARNESSES])
+            java = ["java", f"-Djavax.net.ssl.trustStore={tmp / 'trust.p12'}",
+                    "-Djavax.net.ssl.trustStorePassword=changeit", "-cp", str(classes)]
+            res = subprocess.run(java + ["IMessageInteropTest", str(port), token, str(work)])
+            if res.returncode == 0:
+                # Runs after the first one: that one sets up the echo backend's registration.
+                res = subprocess.run(java + ["PushClientInteropTest", str(port), token2, str(work)], timeout=300)
             if res.returncode != 0:
                 print("---- server log ----")
                 print((tmp / "server.log").read_text()[-6000:])

@@ -685,11 +685,27 @@ public final class WaveIMessageHost implements PushClient.Listener {
         public final boolean ok;
         public final String appleMsgId;
         public final String error;
+        /**
+         * A timeout on a message the server already has (it ACKed it): it may still go out, so
+         * the caller must not send it another way (SMS/MMS fallback, re-queueing): that would
+         * deliver it twice. Mark it failed instead.
+         */
+        public final boolean serverHasIt;
 
         public SendOutcome(boolean ok, String appleMsgId, String error) {
+            this(ok, appleMsgId, error, false);
+        }
+
+        public SendOutcome(boolean ok, String appleMsgId, String error, boolean serverHasIt) {
             this.ok = ok;
             this.appleMsgId = appleMsgId;
             this.error = error;
+            this.serverHasIt = serverHasIt;
+        }
+
+        /** Whether the caller may send the message another way after this failure. */
+        public boolean mayFallBack() {
+            return !ok && !serverHasIt;
         }
 
         public boolean isNotRegisteredError() {
@@ -749,20 +765,38 @@ public final class WaveIMessageHost implements PushClient.Listener {
             cb.onResult((SendOutcome) already);
             return;
         }
+        final long giveUpAt = SystemClock.elapsedRealtime() + Math.max(timeoutMs, ACCEPTED_WAIT_MS);
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
+                synchronized (sendWaiters) {
+                    if (sendWaiters.get(clientMsgId) != cb) return; // answered meanwhile
+                }
+                PushClient c = client;
+                boolean accepted = c != null && c.isAccepted(clientMsgId);
+                // The server has it: its SEND_RESULT will come (it's queued for us across
+                // reconnects), so keep waiting rather than sending the message a second way.
+                if (accepted && SystemClock.elapsedRealtime() < giveUpAt) {
+                    handler.postDelayed(this, 15_000L);
+                    return;
+                }
+                // Not accepted: take it back so it isn't delivered later behind the fallback.
+                if (!accepted && c != null) c.cancelIfPending(clientMsgId);
                 Object w;
                 synchronized (sendWaiters) {
                     w = sendWaiters.get(clientMsgId);
                     if (w == cb) sendWaiters.remove(clientMsgId);
                 }
                 if (w == cb) {
-                    cb.onResult(new SendOutcome(false, null, "Timed out waiting for iMessage server"));
+                    cb.onResult(new SendOutcome(false, null, accepted
+                            ? "No answer from iMessage server" : "Timed out waiting for iMessage server", accepted));
                 }
             }
         }, timeoutMs);
     }
+
+    /** How long to wait for the result of a message the server has accepted. */
+    private static final long ACCEPTED_WAIT_MS = 5L * 60L * 1000L;
 
     public SendOutcome awaitSendResult(String clientMsgId, long timeoutMs) {
         final SendOutcome[] result = new SendOutcome[1];
@@ -1073,14 +1107,38 @@ public final class WaveIMessageHost implements PushClient.Listener {
         }
     }
 
+    /** Callbacks for results that come after their sender gave up (see {@link #onLateResult}). */
+    private final Map<String, SendCallback> lateWaiters = new HashMap<String, SendCallback>();
+
+    /**
+     * After a send timed out and the caller fell back (SMS), the server may still have sent it
+     * (it got the MSG but its ACK was lost with the connection) and answer later. {@code cb} gets
+     * that late result, so the caller can drop a fallback that hasn't gone out yet.
+     */
+    public void onLateResult(String clientMsgId, SendCallback cb) {
+        synchronized (sendWaiters) {
+            if (lateWaiters.size() > 100) lateWaiters.clear();
+            lateWaiters.put(clientMsgId, cb);
+        }
+    }
+
     private void handleSendResult(Body body) {
         SendOutcome outcome = new SendOutcome(body.ok, body.appleMsgId, body.error);
         Object waiter;
+        SendCallback late;
         synchronized (sendWaiters) {
             waiter = sendWaiters.remove(body.clientMsgId);
-            if (waiter == null) {
+            late = lateWaiters.remove(body.clientMsgId);
+            if (waiter == null && late == null) {
                 if (sendWaiters.size() > 200) sendWaiters.clear();
                 sendWaiters.put(body.clientMsgId, outcome);
+            }
+        }
+        if (late != null) {
+            try {
+                late.onResult(outcome);
+            } catch (Throwable t) {
+                Log.e(TAG, "late SendCallback error", t);
             }
         }
         if (waiter instanceof SendCallback) {

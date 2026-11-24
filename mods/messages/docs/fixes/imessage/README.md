@@ -67,6 +67,18 @@ resources, or conversation UI.
      keepalives and started a full re-probe (7 TLS connections, up to an hour). Now only a PONG
      timeout, a PING that can't be written, or the socket dying while a PING is out do; other
      disconnects reconnect with backoff on the learned interval.
+   - **Sent messages aren't delivered twice.** The server ACKs every `MSG` at once, so one still
+     unACKed after 10 s means the connection is dead without anyone saying so (a NAT that forgot
+     it): the client reconnects then and resends (it used to find out at the next keepalive, up to
+     ~48 min, while the sender had long fallen back to SMS). A send the server never ACKed is taken
+     back from the outbox when the sender gives up, and the dead socket is closed abortively (RST)
+     so a MSG left in its buffer can't reach the server minutes later after its SMS went out. A send
+     the server has (ACKed) but hasn't answered for isn't sent another way: the sender waits up to
+     5 min for its result, then shows a text as failed (the user can resend; a picture message
+     still goes as MMS then, the stock MMS sender has no failed-without-sending state). If a result comes after
+     its SMS fallback was queued (no service) or failed, the fallback is dropped and the message
+     becomes the sent iMessage. Covered by `PushClientInteropTest` (the real client through a relay
+     that goes silent).
    - Tracks network changes via `ConnectivityManager.registerDefaultNetworkCallback` +
      `TelephonyManager`, learning and persisting per-network optimal keepalive intervals via
      parallel `ROLE_PROBE` NAT probing.

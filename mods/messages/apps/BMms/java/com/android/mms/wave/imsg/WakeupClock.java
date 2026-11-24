@@ -22,6 +22,8 @@ public interface WakeupClock {
     String HOLD_PING = "ping";
     /** The AlarmManager wakeup, until the loop that it woke has handled it. */
     String HOLD_ALARM = "alarm";
+    /** A sent MSG waiting for the server's ACK (see PushClient ACK_TIMEOUT_MS). */
+    String HOLD_ACK = "ack";
 
     /** Monotonic milliseconds including deep sleep. */
     long elapsedRealtimeMs();
