@@ -29,6 +29,22 @@ public final class WaveTimeFormat {
     private static final int STR_JUST_NOW = 0x7f070365;
     private static final int PLURAL_MINS_AGO = 0x7f0d0005;
     private static final int STR_TIMESTAMP_FORMAT = 0x7f070290;
+    private static final int STR_ME_LABEL = 0x7f07012e;
+
+    private static volatile String sMeLabel;
+    private static volatile Locale sMeLabelLocale;
+
+    /** Cached R.string.messagelist_sender_self ("Me") avoiding JNI AssetManager lookup per outgoing row/isMe(). */
+    public static String meLabel(Context ctx) {
+        Locale loc = Locale.getDefault();
+        String s = sMeLabel;
+        if (s == null || !loc.equals(sMeLabelLocale)) {
+            s = ctx.getString(STR_ME_LABEL);
+            sMeLabel = s;
+            sMeLabelLocale = loc;
+        }
+        return s;
+    }
 
     private static volatile String sGroupSep;
     private static volatile Locale sGroupSepLocale;

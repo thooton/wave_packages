@@ -1274,7 +1274,7 @@
     .line 342
     new-instance v0, Lcom/android/mms/ui/MessageListAdapter$MessageItemCache;
 
-    const/16 v1, 0x32
+    const/16 v1, 0x60
 
     invoke-direct {v0, v1}, Lcom/android/mms/ui/MessageListAdapter$MessageItemCache;-><init>(I)V
 

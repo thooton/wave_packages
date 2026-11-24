@@ -1757,7 +1757,7 @@
     move v0, v1
 
     :goto_0
-    invoke-virtual {v5, v0}, Landroid/view/View;->setVisibility(I)V
+    invoke-static {v5, v0}, Lcom/android/mms/ui/WaveMessageUi;->setVisibilityIfChanged(Landroid/view/View;I)V
 
     .line 426
     iget-object v0, p0, Lcom/android/mms/ui/ConversationListItem;->mDateView:Landroid/widget/TextView;

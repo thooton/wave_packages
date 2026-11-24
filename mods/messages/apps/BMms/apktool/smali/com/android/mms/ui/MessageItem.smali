@@ -349,11 +349,8 @@
 
     if-eqz v0, :cond_7
 
-    .line 195
-    const v0, 0x7f07012e
-
     .line 194
-    invoke-virtual {p1, v0}, Landroid/content/Context;->getString(I)Ljava/lang/String;
+    invoke-static {p1}, Lcom/android/mms/ui/WaveTimeFormat;->meLabel(Landroid/content/Context;)Ljava/lang/String;
 
     move-result-object v0
 
@@ -1563,9 +1560,7 @@
 
     iget-object v1, p0, Lcom/android/mms/ui/MessageItem;->mContext:Landroid/content/Context;
 
-    const v2, 0x7f07012e
-
-    invoke-virtual {v1, v2}, Landroid/content/Context;->getString(I)Ljava/lang/String;
+    invoke-static {v1}, Lcom/android/mms/ui/WaveTimeFormat;->meLabel(Landroid/content/Context;)Ljava/lang/String;
 
     move-result-object v1
 

@@ -39,8 +39,17 @@ public final class WaveInboxQuery {
     private static final ExecutorService EXEC = Executors.newSingleThreadExecutor(
             new ThreadFactory() {
                 @Override
-                public Thread newThread(Runnable r) {
-                    Thread t = new Thread(r, "wave-inbox-query");
+                public Thread newThread(final Runnable r) {
+                    Thread t = new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                android.os.Process.setThreadPriority(
+                                        android.os.Process.THREAD_PRIORITY_MORE_FAVORABLE);
+                            } catch (Throwable ignored) {}
+                            r.run();
+                        }
+                    }, "wave-inbox-query");
                     t.setDaemon(true);
                     t.setPriority(Thread.MAX_PRIORITY - 1);
                     return t;
