@@ -31,7 +31,9 @@ import java.util.regex.Pattern;
 public final class WaveInboxUi {
     private static final String TAG = "WaveInboxUi";
     private static final int ID_SUBJECT = 0x7f0f003b;
-    private static final int TAG_THREAD_ID = 0x57440001;
+    private static final int ID_ATTACH_STATUS = 0x7f0f0067;
+    private static final int ID_ATTACH_INFO = 0x7f0f0069;
+    private static final int TAG_HOLDER = 0x57440002;
     private static final String REPLY_PREFIX = "\u21A9 \u201C";
     private static final Pattern E164_PAT = Pattern.compile("\\+[1-9][0-9]{7,14}");
 
@@ -39,53 +41,109 @@ public final class WaveInboxUi {
     private static final ExecutorService IO_EXEC = Executors.newSingleThreadExecutor();
     private static final LruCache<Long, String> MEDIA_LABEL_CACHE = new LruCache<>(128);
 
+    private static final class Holder {
+        final TextView subjectTv;
+        final TextView attachInfoTv;
+        final TextView attachStatusTv;
+        long threadId = -1;
+        boolean styledItalic;
+
+        Holder(ConversationListItem row) {
+            subjectTv = (TextView) row.findViewById(ID_SUBJECT);
+            attachInfoTv = (TextView) row.findViewById(ID_ATTACH_INFO);
+            attachStatusTv = (TextView) row.findViewById(ID_ATTACH_STATUS);
+        }
+    }
+
     private WaveInboxUi() {}
 
     /** Called at the end of ConversationListItem.bind(Context, Conversation). */
     public static void onBind(final ConversationListItem row, final Conversation conv) {
         try {
             if (row == null || conv == null) return;
-            final TextView snippetTv = (TextView) row.findViewById(ID_SUBJECT);
+            Holder h = (Holder) row.getTag(TAG_HOLDER);
+            if (h == null) {
+                h = new Holder(row);
+                row.setTag(TAG_HOLDER, h);
+            }
+            final TextView snippetTv = h.subjectTv;
             if (snippetTv == null) return;
 
             final long threadId = conv.getThreadId();
-            snippetTv.setTag(TAG_THREAD_ID, threadId);
+            h.threadId = threadId;
 
-            // Reset italic styling on recycled rows
             boolean unread = conv.hasUnreadMessages();
-            snippetTv.setTypeface(Typeface.SANS_SERIF, unread ? Typeface.BOLD : Typeface.NORMAL);
+            // Reset italic styling only on rows we previously italicized.
+            if (h.styledItalic) {
+                h.styledItalic = false;
+                snippetTv.setTypeface(Typeface.SANS_SERIF, unread ? Typeface.BOLD : Typeface.NORMAL);
+            }
+
+            // Stock ConversationListItem.updateAttachmentView() displays MMS text in
+            // mAttachmentInfoView (0x7f0f0069) when threads.snippet is empty. Clean it in place
+            // and never duplicate it into mSubjectView.
+            TextView attachInfoTv = h.attachInfoTv;
+            if (attachInfoTv != null && attachInfoTv.getVisibility() == View.VISIBLE) {
+                CharSequence infoCs = attachInfoTv.getText();
+                String infoStr = infoCs == null ? "" : infoCs.toString();
+                if (!TextUtils.isEmpty(infoStr.trim())) {
+                    String cleanedInfo = cleanSnippet(infoStr);
+                    if (!cleanedInfo.equals(infoStr)) {
+                        attachInfoTv.setText(cleanedInfo);
+                    }
+                    // Guard against stock showing identical text in both subject and attachment info.
+                    if (snippetTv.getVisibility() == View.VISIBLE) {
+                        CharSequence subjCs = snippetTv.getText();
+                        if (subjCs != null && subjCs.toString().trim().equals(cleanedInfo.trim())) {
+                            snippetTv.setVisibility(View.GONE);
+                        }
+                    }
+                    return;
+                }
+            }
+
+            // Stock is showing an MMS download/failure status line; don't add a fallback snippet.
+            if (h.attachStatusTv != null && h.attachStatusTv.getVisibility() == View.VISIBLE) {
+                return;
+            }
 
             String snippet = conv.getSnippet();
             if (!TextUtils.isEmpty(snippet) && !TextUtils.isEmpty(snippet.trim())) {
                 String cleaned = cleanSnippet(snippet);
                 if (!cleaned.equals(snippet)) {
                     snippetTv.setText(cleaned);
-                    snippetTv.setVisibility(View.VISIBLE);
+                    if (snippetTv.getVisibility() != View.VISIBLE) {
+                        snippetTv.setVisibility(View.VISIBLE);
+                    }
                 }
                 return;
             }
 
-            // Missing snippet (media-only MMS or text-only group MMS without threads.snippet)
+            // Truly missing snippet (media-only MMS with no text in either view).
             if (threadId <= 0) return;
 
             String cached = MEDIA_LABEL_CACHE.get(threadId);
             if (cached != null) {
-                if (!cached.isEmpty()) applyFallbackSnippet(snippetTv, cached, unread);
+                if (!cached.isEmpty()) applyFallbackSnippet(h, cached, unread);
                 return;
             }
             if (conv.hasAttachment()) {
-                applyFallbackSnippet(snippetTv, "\u0001Attachment", unread);
+                applyFallbackSnippet(h, "\u0001Attachment", unread);
             }
+            final Holder holder = h;
             final Context app = row.getContext().getApplicationContext();
             IO_EXEC.execute(() -> {
                 String resolved = resolveLatestSnippet(app, threadId);
                 MEDIA_LABEL_CACHE.put(threadId, resolved);
                 if (resolved.isEmpty()) return;
                 MAIN.post(() -> {
-                    Object tag = snippetTv.getTag(TAG_THREAD_ID);
-                    if (tag instanceof Long && ((Long) tag) == threadId) {
-                        applyFallbackSnippet(snippetTv, resolved, conv.hasUnreadMessages());
+                    if (holder.threadId != threadId) return;
+                    if (holder.attachInfoTv != null
+                            && holder.attachInfoTv.getVisibility() == View.VISIBLE
+                            && !TextUtils.isEmpty(holder.attachInfoTv.getText())) {
+                        return;
                     }
+                    applyFallbackSnippet(holder, resolved, conv.hasUnreadMessages());
                 });
             });
         } catch (Throwable t) {
@@ -98,14 +156,19 @@ public final class WaveInboxUi {
         MEDIA_LABEL_CACHE.evictAll();
     }
 
-    private static void applyFallbackSnippet(TextView tv, String encoded, boolean unread) {
+    private static void applyFallbackSnippet(Holder h, String encoded, boolean unread) {
+        TextView tv = h.subjectTv;
         boolean isMediaLabel = encoded.startsWith("\u0001");
         String text = isMediaLabel ? encoded.substring(1) : encoded;
         tv.setText(text);
-        tv.setVisibility(View.VISIBLE);
+        if (tv.getVisibility() != View.VISIBLE) {
+            tv.setVisibility(View.VISIBLE);
+        }
         if (isMediaLabel) {
+            h.styledItalic = true;
             tv.setTypeface(Typeface.SANS_SERIF, unread ? Typeface.BOLD_ITALIC : Typeface.ITALIC);
-        } else {
+        } else if (h.styledItalic) {
+            h.styledItalic = false;
             tv.setTypeface(Typeface.SANS_SERIF, unread ? Typeface.BOLD : Typeface.NORMAL);
         }
     }
