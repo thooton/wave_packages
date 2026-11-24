@@ -24587,13 +24587,9 @@
     iput-object v2, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mWorkingMessage:Lcom/android/mms/data/WorkingMessage;
 
     .line 3150
-    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v2
-
     const v3, 0x7f09001b
 
-    invoke-virtual {v2, v3}, Landroid/content/res/Resources;->getBoolean(I)Z
+    invoke-static {p0, v3}, Lcom/android/mms/wave/WaveInit;->getBoolResCached(Landroid/content/Context;I)Z
 
     move-result v2
 
@@ -26523,6 +26519,10 @@
 
     const-string v1, "compose_start"
     invoke-static {v1}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
+
+    # PERF(prelaunch): start page-1 history query + Conversation.Cache warmup from Intent
+    # BEFORE super.onCreate()/initResourceRefs() (~180ms earlier on cold chat open!).
+    invoke-static {p0, p1}, Lcom/android/mms/ui/WaveHistory;->prelaunchFromIntent(Lcom/android/mms/ui/ComposeMessageActivity;Landroid/os/Bundle;)V
 
     # PERF(row pool): pre-inflate message rows off-main in parallel with onCreate/onStart/onResume.
     invoke-static {p0}, Lcom/android/mms/ui/WaveRowPool;->prewarmMessages(Landroid/content/Context;)V

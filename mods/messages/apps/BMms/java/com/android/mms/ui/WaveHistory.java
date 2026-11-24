@@ -154,6 +154,121 @@ public final class WaveHistory {
         return found;
     }
 
+    private static final java.util.WeakHashMap<ComposeMessageActivity, PendingQuery> PRELAUNCH =
+            new java.util.WeakHashMap<ComposeMessageActivity, PendingQuery>();
+    private static final ExecutorService CONV_EXEC = Executors.newSingleThreadExecutor(
+            new ThreadFactory() {
+                @Override
+                public Thread newThread(final Runnable r) {
+                    Thread t = new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                android.os.Process.setThreadPriority(
+                                        android.os.Process.THREAD_PRIORITY_MORE_FAVORABLE);
+                            } catch (Throwable ignored) {}
+                            r.run();
+                        }
+                    }, "wave-conv-warm");
+                    t.setDaemon(true);
+                    t.setPriority(Thread.MAX_PRIORITY - 1);
+                    return t;
+                }
+            });
+
+    /**
+     * Called at the very top of ComposeMessageActivity.onCreate() (before super.onCreate() and
+     * initResourceRefs()) so BOTH the page-1 history SQLite query AND Conversation.Cache warmup
+     * overlap the entire Activity view inflation (~150-180ms earlier on cold chat open!).
+     */
+    public static void prelaunchFromIntent(final ComposeMessageActivity activity, android.os.Bundle savedInstanceState) {
+        if (activity == null || savedInstanceState != null) return;
+        android.content.Intent intent = activity.getIntent();
+        if (intent == null) return;
+        if (intent.getLongExtra("select_id", -1L) != -1L) return;
+        long tid = intent.getLongExtra("thread_id", 0L);
+        if (tid <= 0L) {
+            Uri data = intent.getData();
+            if (data != null && "content".equals(data.getScheme())
+                    && "mms-sms".equals(data.getAuthority())) {
+                try {
+                    tid = android.content.ContentUris.parseId(data);
+                } catch (Throwable ignored) {
+                    tid = 0L;
+                }
+            }
+        }
+        final long threadId = tid;
+        if (threadId <= 0L) return;
+
+        final Context app = activity.getApplicationContext();
+        // Touch Conversation static field on main thread so Conversation.<clinit> runs on a Looper thread.
+        @SuppressWarnings("unused")
+        Uri initCheck = com.android.mms.data.Conversation.sAllThreadsUri;
+        CONV_EXEC.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    com.android.mms.data.Conversation.get(app, threadId, false);
+                } catch (Throwable ignored) {}
+            }
+        });
+
+        final PendingQuery p = new PendingQuery(threadId);
+        synchronized (PRELAUNCH) {
+            PendingQuery prev = PRELAUNCH.put(activity, p);
+            if (prev != null) prev.cancelled = true;
+        }
+        final Cursor prefetched = takePrefetchedCursor(threadId);
+        if (prefetched != null) {
+            p.future = java.util.concurrent.CompletableFuture.completedFuture(prefetched);
+            return;
+        }
+        final Uri qUri = WaveTextMms.queryUri(
+                android.content.ContentUris.withAppendedId(android.provider.Telephony.Threads.CONTENT_URI, threadId))
+                .buildUpon().appendQueryParameter("wave_page", "1").build();
+        final String[] proj = MessageListAdapter.PROJECTION;
+        p.future = QUERY_EXEC.submit(new Callable<Cursor>() {
+            @Override
+            public Cursor call() {
+                if (p.cancelled) return null;
+                Cursor c = null;
+                try {
+                    c = app.getContentResolver().query(qUri, proj, null, null, null);
+                    if (c != null) {
+                        c.getCount();
+                        WaveMessageUi.warmMediaMetaForCursor(app, c, 6);
+                    }
+                } catch (Throwable t) {
+                    Log.w("Mms", "WaveHistory prelaunch query failed", t);
+                    if (c != null) {
+                        try { c.close(); } catch (Throwable ignored) {}
+                        c = null;
+                    }
+                }
+                if (p.cancelled) {
+                    if (c != null) {
+                        try { c.close(); } catch (Throwable ignored) {}
+                    }
+                    return null;
+                }
+                final Cursor ready = c;
+                Message msg = Message.obtain(MAIN, new Runnable() {
+                    @Override
+                    public void run() {
+                        WaveHistory h = (WaveHistory) activity.mWaveHistory;
+                        if (h != null && h.pendingQuery == p) {
+                            deliverPendingOnMain(activity, h, p, ready);
+                        }
+                    }
+                });
+                msg.setAsynchronous(true);
+                MAIN.sendMessage(msg);
+                return ready;
+            }
+        });
+    }
+
     /**
      * Launch the initial conversation history query directly from ComposeMessageActivity.initialize()
      * on a dedicated high-priority thread so harvestEarlyQuery() at the end of onResume() can
@@ -163,6 +278,25 @@ public final class WaveHistory {
         final WaveHistory h = (WaveHistory) activity.mWaveHistory;
         if (h == null || threadId <= 0 || conversationUri == null) return false;
         cancelPending(h);
+        PendingQuery prelaunched;
+        synchronized (PRELAUNCH) {
+            prelaunched = PRELAUNCH.remove(activity);
+        }
+        if (prelaunched != null) {
+            if (h.selectedId == -1L && prelaunched.threadId == threadId && !prelaunched.cancelled) {
+                h.pendingQuery = prelaunched;
+                h.earlyQueryThread = threadId;
+                h.skipFirstStartTitle = true;
+                return true;
+            }
+            prelaunched.cancelled = true;
+            if (prelaunched.future != null && prelaunched.future.isDone()) {
+                try {
+                    Cursor stale = prelaunched.future.get();
+                    if (stale != null && !stale.isClosed()) stale.close();
+                } catch (Throwable ignored) {}
+            }
+        }
         final Uri qUri = queryUri(activity, HISTORY, conversationUri);
         final Context app = activity.getApplicationContext();
         final String[] proj = MessageListAdapter.PROJECTION;
@@ -306,6 +440,20 @@ public final class WaveHistory {
 
     /** Cancel deferred registration or unregister any receivers registered by registerReceiversDeferred(). */
     public static void unregisterReceivers(ComposeMessageActivity activity) {
+        if (activity == null) return;
+        PendingQuery orphan;
+        synchronized (PRELAUNCH) {
+            orphan = PRELAUNCH.remove(activity);
+        }
+        if (orphan != null) {
+            orphan.cancelled = true;
+            if (orphan.future != null && orphan.future.isDone()) {
+                try {
+                    Cursor c = orphan.future.get();
+                    if (c != null && !c.isClosed()) c.close();
+                } catch (Throwable ignored) {}
+            }
+        }
         DeferredReceivers state = RECEIVERS.remove(activity);
         if (state == null) return;
         if (state.pending != null) {

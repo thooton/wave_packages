@@ -45,7 +45,9 @@ public final class WaveIMessageUi {
             RecipientsEditor recipientsEditor
     ) {
         if (activity == null || textEditor == null) return;
-        sActiveCompose = new WeakReference<ComposeMessageActivity>(activity);
+        if (sActiveCompose.get() != activity) {
+            sActiveCompose = new WeakReference<ComposeMessageActivity>(activity);
+        }
         if (!isSmsEnabled) return;
 
         try {
@@ -92,11 +94,12 @@ public final class WaveIMessageUi {
         }
 
         WaveIMessageConfig cfg = host.config();
-        List<String> unknown = new ArrayList<String>();
+        List<String> unknown = null;
         boolean allRegistered = true;
         boolean anyUnregistered = false;
 
-        for (String target : targets) {
+        for (int i = 0, n = targets.size(); i < n; i++) {
+            String target = targets.get(i);
             int cap = cfg.getCapability(target);
             if (cap == WaveIMessageConfig.CAP_REGISTERED) {
                 continue;
@@ -106,14 +109,15 @@ public final class WaveIMessageUi {
                 allRegistered = false;
                 continue;
             }
+            if (unknown == null) unknown = new ArrayList<String>(n);
             unknown.add(target);
-            if (targets.size() == 1 && target.startsWith("mailto:")) {
+            if (n == 1 && target.startsWith("mailto:")) {
                 continue;
             }
             allRegistered = false;
         }
 
-        if (!unknown.isEmpty()) {
+        if (unknown != null) {
             host.requestTargetCheckAsync(unknown);
         }
 

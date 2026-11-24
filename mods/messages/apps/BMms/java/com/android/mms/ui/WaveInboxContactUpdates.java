@@ -22,7 +22,7 @@ final class WaveInboxContactUpdates implements Runnable {
             updates = new WaveInboxContactUpdates(row, handler);
             row.mWaveContactUpdates = updates;
         }
-        updates.setRecipients(recipients == null ? null : recipients.toArray(new Contact[0]));
+        updates.setRecipients(recipients == null ? null : recipients.toArray(new Contact[recipients.size()]));
     }
 
     static void unbind(ConversationListItem row) {
