@@ -1,0 +1,247 @@
+import java.security.MessageDigest
+
+plugins {
+    id "com.android.application"
+}
+
+apply from: rootProject.file("gradle/app.gradle")
+
+// Pinned Hugging Face model revision and SHA-256 digests (futo-org/asr4all-s).
+def HF_REVISION = "87a6b5d093723fe37e9f69ad26307a3b95a31af0"
+def HF_BASE_URL = "https://huggingface.co/futo-org/asr4all-s/resolve/${HF_REVISION}/"
+
+def MODEL_ASSETS = [
+    [
+        dest: "asr_encoder.pte",
+        remote: "executorch/xnnpack_int8/asr_encoder.pte",
+        localNames: ["asr_encoder.pte", "executorch/xnnpack_int8/asr_encoder.pte"],
+        sha256: "7d5679688ca57a7e42d4b42e093b7a29b85d595f454d41cf0aa5f95e7c8c27ec"
+    ],
+    [
+        dest: "metadata.json",
+        remote: "executorch/xnnpack_int8/metadata.json",
+        localNames: ["metadata.json", "executorch/xnnpack_int8/metadata.json"],
+        sha256: "ef52d88b6ce61f967015e64ec5a9d6b9d5c22a6367c802f1a2a05d5f03b8d1f8"
+    ],
+    [
+        dest: "FUTO_LICENSE.txt",
+        remote: "LICENSE",
+        localNames: ["FUTO_LICENSE.txt", "LICENSE"],
+        sha256: "83b76d2789c7c8e2d0e9249875ac4cb4130e661bb508cce8a5de54f8dbd77984"
+    ]
+]
+
+// TODO(Phase 3b): Populate with immutable GitHub release URL and SHA-256 of armeabi-v7a/libasr4all.so
+// once Phase 1/2 publishes the verified runtime artifact.
+def NATIVE_LIB_URL = ""
+def NATIVE_LIB_SHA256 = ""
+
+def generatedAssetsDir = layout.buildDirectory.dir("generated/dictationAssets")
+def generatedJniDir = layout.buildDirectory.dir("generated/dictationJni")
+
+def sha256Of = { File file ->
+    MessageDigest md = MessageDigest.getInstance("SHA-256")
+    file.withInputStream { input ->
+        byte[] buf = new byte[65536]
+        int n
+        while ((n = input.read(buf)) >= 0) {
+            md.update(buf, 0, n)
+        }
+    }
+    md.digest().collect { String.format("%02x", it) }.join("")
+}
+
+def downloadFile = { String urlStr, File dest ->
+    dest.parentFile.mkdirs()
+    File tmp = new File(dest.parentFile, dest.name + ".part")
+    HttpURLConnection conn = null
+    URL current = new URL(urlStr)
+    for (int redirects = 0; redirects < 8; redirects++) {
+        conn = (HttpURLConnection) current.openConnection()
+        conn.setInstanceFollowRedirects(false)
+        conn.setConnectTimeout(30000)
+        conn.setReadTimeout(120000)
+        int code = conn.getResponseCode()
+        if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
+            String loc = conn.getHeaderField("Location")
+            conn.disconnect()
+            if (loc == null) throw new GradleException("Redirect without Location for ${urlStr}")
+            current = new URL(current, loc)
+            continue
+        }
+        if (code != 200) {
+            conn.disconnect()
+            throw new GradleException("HTTP ${code} fetching ${urlStr}")
+        }
+        break
+    }
+    try {
+        conn.getInputStream().withCloseable { input ->
+            tmp.withOutputStream { output ->
+                byte[] buf = new byte[65536]
+                int n
+                while ((n = input.read(buf)) >= 0) {
+                    output.write(buf, 0, n)
+                }
+            }
+        }
+    } finally {
+        if (conn != null) conn.disconnect()
+    }
+    if (!tmp.renameTo(dest)) {
+        dest.bytes = tmp.bytes
+        tmp.delete()
+    }
+}
+
+def stageDictationAssets = tasks.register("stageDictationAssets") {
+    def outDir = generatedAssetsDir.get().asFile
+    inputs.property("hfRevision", HF_REVISION)
+    inputs.property("dictationAssetDir", project.findProperty("dictationAssetDir")?.toString() ?: "")
+    inputs.property("assetDigests", MODEL_ASSETS.collect { "${it.dest}:${it.sha256}" }.join(","))
+    outputs.dir(outDir)
+    doLast {
+        outDir.mkdirs()
+        String localDirProp = project.findProperty("dictationAssetDir")?.toString()
+        File localDir = localDirProp ? file(localDirProp) : null
+
+        MODEL_ASSETS.each { spec ->
+            File target = new File(outDir, spec.dest)
+            if (target.isFile() && sha256Of(target) == spec.sha256) {
+                return
+            }
+            File localMatch = null
+            if (localDir != null && localDir.isDirectory()) {
+                for (String candidate : spec.localNames) {
+                    File f = new File(localDir, candidate)
+                    if (f.isFile()) {
+                        localMatch = f
+                        break
+                    }
+                }
+            }
+            if (localMatch != null) {
+                target.parentFile.mkdirs()
+                localMatch.withInputStream { input ->
+                    target.withOutputStream { output -> output << input }
+                }
+            } else {
+                String url = HF_BASE_URL + spec.remote
+                logger.lifecycle("Downloading ${spec.dest} from ${url}")
+                downloadFile(url, target)
+            }
+            String actual = sha256Of(target)
+            if (actual != spec.sha256) {
+                target.delete()
+                throw new GradleException(
+                    "SHA-256 mismatch for ${spec.dest}: expected ${spec.sha256}, got ${actual}")
+            }
+        }
+    }
+}
+
+def stageDictationJni = tasks.register("stageDictationJni") {
+    def outDir = generatedJniDir.get().asFile
+    inputs.property("nativeLibUrl", NATIVE_LIB_URL)
+    inputs.property("nativeLibSha256", NATIVE_LIB_SHA256)
+    inputs.property("dictationJniDir", project.findProperty("dictationJniDir")?.toString() ?: "")
+    outputs.dir(outDir)
+    doLast {
+        outDir.mkdirs()
+        String jniDirProp = project.findProperty("dictationJniDir")?.toString()
+        File abiOut = new File(outDir, "armeabi-v7a")
+        File target = new File(abiOut, "libasr4all.so")
+
+        if (jniDirProp) {
+            File srcDir = file(jniDirProp)
+            File src = new File(srcDir, "armeabi-v7a/libasr4all.so")
+            if (!src.isFile()) src = new File(srcDir, "libasr4all.so")
+            if (!src.isFile()) {
+                throw new GradleException("dictationJniDir set to ${srcDir}, but libasr4all.so not found")
+            }
+            abiOut.mkdirs()
+            src.withInputStream { input ->
+                target.withOutputStream { output -> output << input }
+            }
+            if (NATIVE_LIB_SHA256) {
+                String actual = sha256Of(target)
+                if (actual != NATIVE_LIB_SHA256) {
+                    target.delete()
+                    throw new GradleException(
+                        "SHA-256 mismatch for libasr4all.so: expected ${NATIVE_LIB_SHA256}, got ${actual}")
+                }
+            }
+            // Copy optional x86_64 library if present in dictationJniDir.
+            File x86Src = new File(srcDir, "x86_64/libasr4all.so")
+            if (x86Src.isFile()) {
+                File x86Out = new File(outDir, "x86_64/libasr4all.so")
+                x86Out.parentFile.mkdirs()
+                x86Src.withInputStream { input ->
+                    x86Out.withOutputStream { output -> output << input }
+                }
+            }
+            return
+        }
+
+        if (NATIVE_LIB_URL && NATIVE_LIB_SHA256) {
+            if (target.isFile() && sha256Of(target) == NATIVE_LIB_SHA256) {
+                return
+            }
+            abiOut.mkdirs()
+            logger.lifecycle("Downloading libasr4all.so from ${NATIVE_LIB_URL}")
+            downloadFile(NATIVE_LIB_URL, target)
+            String actual = sha256Of(target)
+            if (actual != NATIVE_LIB_SHA256) {
+                target.delete()
+                throw new GradleException(
+                    "SHA-256 mismatch for libasr4all.so: expected ${NATIVE_LIB_SHA256}, got ${actual}")
+            }
+            return
+        }
+
+        if (target.isFile()) target.delete()
+        File staleX86 = new File(outDir, "x86_64/libasr4all.so")
+        if (staleX86.isFile()) staleX86.delete()
+        logger.lifecycle("stageDictationJni: no dictationJniDir or pinned NATIVE_LIB_URL configured yet; building without bundled libasr4all.so.")
+    }
+}
+
+android {
+    namespace "com.dictation.xp3"
+
+    defaultConfig {
+        applicationId "com.dictation.xp3"
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs += generatedAssetsDir
+            jniLibs.srcDirs += generatedJniDir
+        }
+    }
+
+    // Store the 32.45 MB ExecuTorch program uncompressed so it can be memory-mapped
+    // directly from the APK via AssetFileDescriptor without double storage.
+    androidResources {
+        noCompress "pte"
+    }
+
+    // Keep libasr4all.so uncompressed and page-aligned inside the APK so Android loads
+    // it straight from the APK without extracting a second copy to /data.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(stageDictationAssets, stageDictationJni)
+}
+
+dependencies {
+    implementation project(":dictation:core")
+    implementation project(":common:ui")
+}

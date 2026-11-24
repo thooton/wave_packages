@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Crisp microphone glyph on the app's slate-blue rounded square. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#0057B8"
+        android:pathData="M10,4h28a6,6 0,0 1,6 6v28a6,6 0,0 1,-6 6h-28a6,6 0,0 1,-6 -6v-28a6,6 0,0 1,6 -6z" />
+    <!-- Microphone capsule -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,10a5,5 0,0 1,5 5v10a5,5 0,0 1,-10 0v-10a5,5 0,0 1,5 -5z" />
+    <!-- Cradle arc -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M15,24a9,9 0,0 0,18 0"
+        android:strokeColor="#D4E6FA"
+        android:strokeLineCap="round"
+        android:strokeWidth="2.8" />
+    <!-- Stem and base -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M24,33v5M19,38h10"
+        android:strokeColor="#D4E6FA"
+        android:strokeLineCap="round"
+        android:strokeWidth="2.8" />
+</vector>

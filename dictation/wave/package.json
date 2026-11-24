@@ -1,0 +1,19 @@
+{
+  "id": "com.dictation.xp3",
+  "type": "apk",
+  "name": "Dictation",
+  "summary": "Offline voice dictation into text fields",
+  "description": "On-device English voice dictation with live streaming and automatic punctuation, integrated with Keyboard Improved. Runs completely offline using bundled Asr4All speech weights.",
+  "author": "thooton",
+  "homepage": "https://github.com/thooton/wave_packages/tree/master/dictation",
+  "requires": {
+    "device": [
+      "XP3800"
+    ],
+    "sdk": 27
+  },
+  "depends": [],
+  "conflicts": [],
+  "replaces": [],
+  "section": "tools"
+}

@@ -1,0 +1,15 @@
+// Pure Java dictation engine, PCEC decoder, streaming display, VAD silence tracking, and fixture replay.
+apply from: rootProject.file("gradle/core.gradle")
+
+dependencies {
+    api project(":common:core")
+}
+
+tasks.named("selfTest", JavaExec) {
+    ["dictation.fixtures", "dictation.metadata"].each { prop ->
+        def val = System.getProperty(prop) ?: project.findProperty(prop)
+        if (val != null) {
+            systemProperty(prop, val.toString())
+        }
+    }
+}
