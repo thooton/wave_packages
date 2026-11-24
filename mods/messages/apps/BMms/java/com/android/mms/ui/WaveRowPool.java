@@ -46,7 +46,7 @@ public final class WaveRowPool {
     private static final int TARGET_SEND = 5;
     private static final int TARGET_INBOX = 4;
 
-    private static final long ROOT_HARVEST_TIMEOUT_MS = 160L;
+    private static final long ROOT_HARVEST_TIMEOUT_MS = 450L;
 
     private static final class Entry {
         final View view;
@@ -95,13 +95,14 @@ public final class WaveRowPool {
 
     private WaveRowPool() {}
 
-    /** Kick off background inbox-root, compose-root, and inbox-row inflation during MmsApp.onCreate(). */
+    /** Kick off background compose-root and inbox-root inflation during MmsApp.onCreate().
+     *  Inbox rows are chained right after inbox-root finishes so they never contend with root inflation
+     *  and immediately yield if ComposeMessageActivity launches cold. */
     public static void prewarmInbox(Context ctx) {
         if (ctx == null) return;
         final Context app = ctx.getApplicationContext();
         scheduleComposeRootIfNeeded(app);
         scheduleInboxRootIfNeeded(app);
-        scheduleInboxRowsIfNeeded(app);
     }
 
     private static void scheduleComposeRootIfNeeded(final Context app) {
@@ -137,9 +138,11 @@ public final class WaveRowPool {
                         if (sInboxRootFuture != null) {
                             if (e != null) INBOX_ROOT_POOL.offer(e);
                             sInboxRootFuture = null;
+                            if (!sComposeActive) scheduleInboxRowsIfNeeded(app);
                             return null;
                         }
                     }
+                    if (!sComposeActive) scheduleInboxRowsIfNeeded(app);
                     return e;
                 }
             });
@@ -168,7 +171,7 @@ public final class WaveRowPool {
         });
     }
 
-    /** Kick off background message-row & compose-root inflation (immediately or after inbox settles). */
+    /** Kick off background message-row & compose-root inflation (interleaved on 1 worker to avoid AssetManager contention). */
     public static void prewarmMessages(Context ctx) {
         if (ctx == null) return;
         sComposeActive = true;
@@ -180,7 +183,6 @@ public final class WaveRowPool {
             @Override
             public void run() {
                 try {
-                    // Interleave recv/send so even partial prewarming covers both directions.
                     while (RECV_POOL.size() < TARGET_RECV || SEND_POOL.size() < TARGET_SEND) {
                         if (RECV_POOL.size() < TARGET_RECV) {
                             Entry e = inflateMessageEntry(app, LAYOUT_MSG_RECV);
@@ -244,6 +246,7 @@ public final class WaveRowPool {
 
     /** Obtain a pre-inflated 70-view compose_message_activity.xml root layout for ComposeMessageActivity. */
     public static View obtainComposeRoot(LayoutInflater fallbackInflater, int layoutRes) {
+        sComposeActive = true;
         if (layoutRes == LAYOUT_COMPOSE_ROOT) {
             Entry e = COMPOSE_ROOT_POOL.poll();
             if (e == null) {
