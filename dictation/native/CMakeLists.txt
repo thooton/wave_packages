@@ -55,6 +55,8 @@ if(ANDROID)
     set(XNNPACK_ENABLE_ARM_FP16_VECTOR OFF CACHE BOOL "" FORCE)
     set(XNNPACK_ENABLE_ARM_FP16_SCALAR OFF CACHE BOOL "" FORCE)
     set(XNNPACK_ENABLE_ARM_DOTPROD OFF CACHE BOOL "" FORCE)
+    # Override NDK android.toolchain.cmake's -mfpu=neon with neon-vfpv4 for Cortex-A7.
+    add_compile_options(-mfpu=neon-vfpv4 -mfloat-abi=softfp)
   endif()
 else()
   set(EXECUTORCH_PAL_DEFAULT "posix" CACHE STRING "" FORCE)
