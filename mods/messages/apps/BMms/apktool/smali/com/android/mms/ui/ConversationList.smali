@@ -3717,7 +3717,7 @@
 
     move-result v0
 
-    if-nez v0, :wave_skip_split_main
+    if-nez v0, :wave_defer_secondary
 
     iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mQueryHandler:Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;
 
@@ -3764,7 +3764,7 @@
 
     move-result v0
 
-    if-nez v0, :wave_skip_all_main
+    if-nez v0, :wave_defer_all
 
     iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mQueryHandler:Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;
 
@@ -3784,6 +3784,26 @@
     .catch Landroid/database/sqlite/SQLiteException; {:try_start_0 .. :try_end_0} :catch_0
 
     goto :goto_0
+
+    # PERF(inbox startup): the early 0x6a5 query is in flight. Start the notification-thread
+    # (0x6a7) and unread-count (0x6a6) queries from its onQueryComplete instead, so they don't
+    # compete with it in TelephonyProvider (WaveInboxQuery.runDeferredSecondary).
+    :wave_defer_secondary
+    invoke-static {p0}, Lcom/android/mms/ui/WaveInboxQuery;->deferSecondary(Lcom/android/mms/ui/ConversationList;)V
+
+    goto :goto_1
+
+    :wave_defer_all
+    :try_start_1
+    const/4 v0, 0x0
+
+    invoke-direct {p0, v0}, Lcom/android/mms/ui/ConversationList;->toggleNotificationGroup(Z)V
+    :try_end_1
+    .catch Landroid/database/sqlite/SQLiteException; {:try_start_1 .. :try_end_1} :catch_0
+
+    invoke-static {p0}, Lcom/android/mms/ui/WaveInboxQuery;->deferSecondary(Lcom/android/mms/ui/ConversationList;)V
+
+    goto :goto_1
 
     .line 782
     :catch_0

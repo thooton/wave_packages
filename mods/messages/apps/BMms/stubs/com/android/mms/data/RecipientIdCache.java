@@ -7,4 +7,5 @@ public class RecipientIdCache {
         public String number;
         public Entry(long id, String number) { this.id = id; this.number = number; }
     }
+    public static java.util.List<Entry> getAddresses(String spaceSepIds) { return null; }
 }

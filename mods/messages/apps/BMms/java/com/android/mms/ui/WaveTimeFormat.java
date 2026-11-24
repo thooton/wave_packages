@@ -75,15 +75,17 @@ public final class WaveTimeFormat {
     }
 
     private static final Object LOCK = new Object();
-    private static long sDayStartMs;
-    private static long sDayEndMs;
+    // Written only under LOCK. Volatile so the lock-free fast path in ensureBoundaries()
+    // sees whole values when the inbox prefetch formats from a worker thread.
+    private static volatile long sDayStartMs;
+    private static volatile long sDayEndMs;
     private static long sYearStartMs;
     private static long sYearEndMs;
     private static String sTzId;
     private static Locale sLocale;
     private static boolean sIs24Hour;
-    private static long sEnvCheckedAtMs;
-    private static String sJustNow;
+    private static volatile long sEnvCheckedAtMs;
+    private static volatile String sJustNow;
     private static final LruCache<Long, String> CACHE = new LruCache<>(512);
 
     private WaveTimeFormat() {}
@@ -94,9 +96,15 @@ public final class WaveTimeFormat {
 
         int flags;
         int bucket;
+        long key;
         if (fullFormat) {
             flags = FLAGS_THIS_YEAR;
             bucket = 4;
+            key = ((when / MINUTE_MS) << 3) | bucket;
+            synchronized (LOCK) {
+                String cached = CACHE.get(key);
+                if (cached != null) return cached;
+            }
         } else {
             long age = now - when;
             if (age < MINUTE_MS) {
@@ -112,27 +120,29 @@ public final class WaveTimeFormat {
                 String fmt = ctx.getResources().getQuantityString(PLURAL_MINS_AGO, mins);
                 return String.format(fmt, (long) mins);
             }
-            if (when >= sDayStartMs && when < sDayEndMs) {
-                flags = FLAGS_TODAY;
-                bucket = 0;
-            } else if (age < WEEK_MS) {
-                flags = FLAGS_WEEK;
-                bucket = 1;
-            } else if (when >= sYearStartMs && when < sYearEndMs) {
-                flags = FLAGS_THIS_YEAR;
-                bucket = 2;
-            } else {
-                flags = FLAGS_OTHER_YEAR;
-                bucket = 3;
+            // The inbox prefetch formats from a worker thread: read the day/year boundaries
+            // under LOCK so a concurrent ensureBoundaries() update is never seen half-written.
+            synchronized (LOCK) {
+                if (when >= sDayStartMs && when < sDayEndMs) {
+                    flags = FLAGS_TODAY;
+                    bucket = 0;
+                } else if (age < WEEK_MS) {
+                    flags = FLAGS_WEEK;
+                    bucket = 1;
+                } else if (when >= sYearStartMs && when < sYearEndMs) {
+                    flags = FLAGS_THIS_YEAR;
+                    bucket = 2;
+                } else {
+                    flags = FLAGS_OTHER_YEAR;
+                    bucket = 3;
+                }
+                // Minute granularity covers all formatted outputs (hours:mins / day / date).
+                key = ((when / MINUTE_MS) << 3) | bucket;
+                String cached = CACHE.get(key);
+                if (cached != null) return cached;
             }
         }
 
-        // Minute granularity covers all formatted outputs (hours:mins / day / date).
-        long key = ((when / MINUTE_MS) << 3) | bucket;
-        synchronized (LOCK) {
-            String cached = CACHE.get(key);
-            if (cached != null) return cached;
-        }
         String formatted = DateUtils.formatDateTime(ctx, when, flags);
         synchronized (LOCK) {
             CACHE.put(key, formatted);
@@ -140,9 +150,20 @@ public final class WaveTimeFormat {
         return formatted;
     }
 
+    /** Warm Calendar boundaries and ICU DateUtils off the main thread during startup. */
+    public static void warm(Context ctx) {
+        if (ctx == null) return;
+        try {
+            long now = System.currentTimeMillis();
+            // 2 hours ago bypasses the <1h plurals path and warms ICU DateUtils.formatDateTime.
+            format(ctx, now - 2L * HOUR_MS, false);
+        } catch (Throwable ignored) {}
+    }
+
     private static void ensureBoundaries(Context ctx, long now) {
-        // Fast path: same day and checked environment within last 5 seconds.
-        if (now >= sDayStartMs && now < sDayEndMs && (now - sEnvCheckedAtMs) < 5_000L) {
+        // Fast path: sEnvCheckedAtMs is written last under LOCK after all boundaries are published.
+        long checked = sEnvCheckedAtMs;
+        if (checked != 0L && (now - checked) < 5_000L && now >= sDayStartMs && now < sDayEndMs) {
             return;
         }
         synchronized (LOCK) {
@@ -152,8 +173,10 @@ public final class WaveTimeFormat {
             boolean is24 = DateFormat.is24HourFormat(ctx);
             boolean envChanged = !tzId.equals(sTzId) || !locale.equals(sLocale) || is24 != sIs24Hour;
             boolean dayChanged = now < sDayStartMs || now >= sDayEndMs;
-            sEnvCheckedAtMs = now;
-            if (!envChanged && !dayChanged) return;
+            if (!envChanged && !dayChanged) {
+                sEnvCheckedAtMs = now;
+                return;
+            }
 
             if (envChanged) {
                 sTzId = tzId;
@@ -183,6 +206,9 @@ public final class WaveTimeFormat {
             sYearStartMs = cal.getTimeInMillis();
             cal.add(Calendar.YEAR, 1);
             sYearEndMs = cal.getTimeInMillis();
+
+            // Publish last so lock-free readers only pass once day/year boundaries are complete.
+            sEnvCheckedAtMs = now;
         }
     }
 }

@@ -33,6 +33,7 @@ public final class WaveInboxUi {
     private static final int ID_SUBJECT = 0x7f0f003b;
     private static final int ID_ATTACH_STATUS = 0x7f0f0067;
     private static final int ID_ATTACH_INFO = 0x7f0f0069;
+    private static final int ID_AVATAR_CONTAINER = 0x7f0f0063;
     private static final int DRAWABLE_GROUP_AVATAR = 0x7f02003f;
     private static final int COLOR_DEFAULT_CONTACT = 0x7f080031;
     private static final int TAG_HOLDER = 0x57440002;
@@ -260,6 +261,7 @@ public final class WaveInboxUi {
         final TextView subjectTv;
         final TextView attachInfoTv;
         final TextView attachStatusTv;
+        final android.view.ViewGroup avatarContainer;
         long threadId = -1;
         int bgResId;
         boolean styledItalic;
@@ -268,17 +270,34 @@ public final class WaveInboxUi {
             subjectTv = (TextView) row.findViewById(ID_SUBJECT);
             attachInfoTv = (TextView) row.findViewById(ID_ATTACH_INFO);
             attachStatusTv = (TextView) row.findViewById(ID_ATTACH_STATUS);
+            avatarContainer = (android.view.ViewGroup) row.findViewById(ID_AVATAR_CONTAINER);
         }
     }
 
-    /** Skip Resources.getDrawable() + setBackground() when the row's background state is unchanged. */
-    public static void updateBackground(ConversationListItem row, int resId) {
-        if (row == null) return;
+    private static Holder holder(ConversationListItem row) {
         Holder h = (Holder) row.getTag(TAG_HOLDER);
         if (h == null) {
             h = new Holder(row);
             row.setTag(TAG_HOLDER, h);
         }
+        return h;
+    }
+
+    /** Cached findViewById(0x7f0f0063) for ConversationListItem.updateAvatarView() on every bind. */
+    public static android.view.ViewGroup avatarContainer(ConversationListItem row) {
+        return holder(row).avatarContainer;
+    }
+
+    /** Write the row's LayoutParams.height only when it differs. */
+    public static void setRowHeightIfChanged(View row, int height) {
+        android.view.ViewGroup.LayoutParams lp = row.getLayoutParams();
+        if (lp != null && lp.height != height) lp.height = height;
+    }
+
+    /** Skip Resources.getDrawable() + setBackground() when the row's background state is unchanged. */
+    public static void updateBackground(ConversationListItem row, int resId) {
+        if (row == null) return;
+        Holder h = holder(row);
         if (h.bgResId == resId) return;
         h.bgResId = resId;
         row.setBackground(row.getContext().getResources().getDrawable(resId));

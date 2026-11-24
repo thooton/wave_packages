@@ -660,25 +660,18 @@
     if-nez v0, :cond_2
 
     .line 259
-    invoke-virtual {p0}, Lcom/android/mms/ui/ConversationListItem;->getLayoutParams()Landroid/view/ViewGroup$LayoutParams;
-
-    move-result-object v0
-
+    # PERF(inbox bind): cached dimension, and write LayoutParams.height only when it differs.
     iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mContext:Landroid/content/Context;
-
-    invoke-virtual {v1}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v1
 
     .line 260
     const v2, 0x7f0b001c
 
     .line 259
-    invoke-virtual {v1, v2}, Landroid/content/res/Resources;->getDimensionPixelSize(I)I
+    invoke-static {v1, v2}, Lcom/android/mms/ui/WaveInboxUi;->getDimenPxCached(Landroid/content/Context;I)I
 
     move-result v1
 
-    iput v1, v0, Landroid/view/ViewGroup$LayoutParams;->height:I
+    invoke-static {p0, v1}, Lcom/android/mms/ui/WaveInboxUi;->setRowHeightIfChanged(Landroid/view/View;I)V
 
     .line 271
     :cond_2
@@ -817,10 +810,6 @@
     if-eqz v0, :cond_b
 
     .line 264
-    invoke-virtual {p0}, Lcom/android/mms/ui/ConversationListItem;->getLayoutParams()Landroid/view/ViewGroup$LayoutParams;
-
-    move-result-object v0
-
     iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mContext:Landroid/content/Context;
 
     const v2, 0x7f0b0019
@@ -829,16 +818,12 @@
 
     move-result v1
 
-    iput v1, v0, Landroid/view/ViewGroup$LayoutParams;->height:I
+    invoke-static {p0, v1}, Lcom/android/mms/ui/WaveInboxUi;->setRowHeightIfChanged(Landroid/view/View;I)V
 
     goto/16 :goto_4
 
     .line 267
     :cond_b
-    invoke-virtual {p0}, Lcom/android/mms/ui/ConversationListItem;->getLayoutParams()Landroid/view/ViewGroup$LayoutParams;
-
-    move-result-object v0
-
     iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mContext:Landroid/content/Context;
 
     const v2, 0x7f0b001a
@@ -847,7 +832,7 @@
 
     move-result v1
 
-    iput v1, v0, Landroid/view/ViewGroup$LayoutParams;->height:I
+    invoke-static {p0, v1}, Lcom/android/mms/ui/WaveInboxUi;->setRowHeightIfChanged(Landroid/view/View;I)V
 
     goto/16 :goto_4
 
@@ -924,13 +909,9 @@
 
     const/4 v3, 0x0
 
-    .line 340
-    sget-object v0, Landroid/widget/ImageView$ScaleType;->CENTER_INSIDE:Landroid/widget/ImageView$ScaleType;
-
-    invoke-virtual {p1, v0}, Landroid/widget/QuickContactBadge;->setScaleType(Landroid/widget/ImageView$ScaleType;)V
-
-    .line 341
-    invoke-virtual {p1, v3}, Landroid/widget/QuickContactBadge;->setOverlay(Landroid/graphics/drawable/Drawable;)V
+    # PERF(inbox bind): set only the final scale type per branch below instead of
+    # CENTER_INSIDE then CENTER_CROP (two requestLayout+invalidate per photo row). The overlay
+    # is already cleared in onFinishInflate() and nothing sets it again.
 
     .line 345
     if-eqz p3, :cond_0
@@ -950,6 +931,10 @@
     const v1, 0x7f0200fd
 
     invoke-virtual {p1, v1}, Landroid/widget/QuickContactBadge;->setBackgroundResource(I)V
+
+    sget-object v2, Landroid/widget/ImageView$ScaleType;->CENTER_INSIDE:Landroid/widget/ImageView$ScaleType;
+
+    invoke-virtual {p1, v2}, Landroid/widget/QuickContactBadge;->setScaleType(Landroid/widget/ImageView$ScaleType;)V
 
     .line 349
     invoke-virtual {p1, v0}, Landroid/widget/QuickContactBadge;->setImageDrawable(Landroid/graphics/drawable/Drawable;)V
@@ -1009,6 +994,10 @@
 
     move-result-object v0
 
+    sget-object v1, Landroid/widget/ImageView$ScaleType;->CENTER_INSIDE:Landroid/widget/ImageView$ScaleType;
+
+    invoke-virtual {p1, v1}, Landroid/widget/QuickContactBadge;->setScaleType(Landroid/widget/ImageView$ScaleType;)V
+
     .line 369
     :goto_1
     invoke-virtual {p2}, Lcom/android/mms/data/Contact;->getUri()Landroid/net/Uri;
@@ -1029,6 +1018,10 @@
 
     .line 360
     :cond_2
+    sget-object v1, Landroid/widget/ImageView$ScaleType;->CENTER_INSIDE:Landroid/widget/ImageView$ScaleType;
+
+    invoke-virtual {p1, v1}, Landroid/widget/QuickContactBadge;->setScaleType(Landroid/widget/ImageView$ScaleType;)V
+
     iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mContext:Landroid/content/Context;
 
     invoke-static {v1, p1, p2}, Lcom/android/mms/ui/WaveInboxUi;->applyLetterAvatar(Landroid/content/Context;Landroid/widget/QuickContactBadge;Lcom/android/mms/data/Contact;)V
@@ -1067,6 +1060,10 @@
 
     .line 380
     :goto_3
+    sget-object v1, Landroid/widget/ImageView$ScaleType;->CENTER_INSIDE:Landroid/widget/ImageView$ScaleType;
+
+    invoke-virtual {p1, v1}, Landroid/widget/QuickContactBadge;->setScaleType(Landroid/widget/ImageView$ScaleType;)V
+
     iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mContext:Landroid/content/Context;
 
     invoke-static {v1, p1, p2}, Lcom/android/mms/ui/WaveInboxUi;->applyLetterAvatar(Landroid/content/Context;Landroid/widget/QuickContactBadge;Lcom/android/mms/data/Contact;)V
@@ -1483,13 +1480,10 @@
 
     .line 290
     :cond_1
-    const v0, 0x7f0f0063
-
-    invoke-virtual {p0, v0}, Lcom/android/mms/ui/ConversationListItem;->findViewById(I)Landroid/view/View;
+    # PERF(inbox bind): findViewById(0x7f0f0063) cached in the row's WaveInboxUi holder.
+    invoke-static {p0}, Lcom/android/mms/ui/WaveInboxUi;->avatarContainer(Lcom/android/mms/ui/ConversationListItem;)Landroid/view/ViewGroup;
 
     move-result-object v0
-
-    check-cast v0, Landroid/view/ViewGroup;
 
     .line 292
     iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mConversation:Lcom/android/mms/data/Conversation;

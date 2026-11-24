@@ -41,6 +41,10 @@
 
 .field private mAvatarData:[B
 
+.field private mRoundAvatar:Landroid/graphics/drawable/Drawable;
+
+.field private mRoundAvatarSrc:[B
+
 .field private mColor:I
 
 .field private mContactMethodId:J
@@ -1183,73 +1187,61 @@
     .locals 3
 
     .prologue
-    const/4 v0, 0x0
+    const/4 v1, 0x0
 
     monitor-enter p0
 
+    # PERF(avatar cache): getRoundDrawable() returns a RoundedBitmapDrawable, which is not a
+    # BitmapDrawable, so the stock mAvatar cache never filled and every bind decoded the photo
+    # on the UI thread under this monitor. Cache the rounded drawable keyed by the mAvatarData
+    # array instance: updateContact() installs a new array (-set1), which invalidates it.
     .line 400
     :try_start_0
-    iget-object v1, p0, Lcom/android/mms/data/Contact;->mAvatar:Landroid/graphics/drawable/BitmapDrawable;
-
-    if-nez v1, :cond_2
-
-    .line 401
-    iget-object v1, p0, Lcom/android/mms/data/Contact;->mAvatarData:[B
-
-    if-eqz v1, :cond_0
-
-    .line 402
     iget-object v0, p0, Lcom/android/mms/data/Contact;->mAvatarData:[B
 
-    iget-object v1, p0, Lcom/android/mms/data/Contact;->mAvatarData:[B
+    if-eqz v0, :cond_0
 
-    array-length v1, v1
+    iget-object v1, p0, Lcom/android/mms/data/Contact;->mRoundAvatarSrc:[B
+
+    if-ne v0, v1, :cond_1
+
+    iget-object v1, p0, Lcom/android/mms/data/Contact;->mRoundAvatar:Landroid/graphics/drawable/Drawable;
+
+    if-nez v1, :goto_0
+
+    .line 402
+    :cond_1
+    array-length v1, v0
 
     const/4 v2, 0x0
 
     invoke-static {v0, v2, v1}, Landroid/graphics/BitmapFactory;->decodeByteArray([BII)Landroid/graphics/Bitmap;
 
-    move-result-object v0
-
-    .line 403
-    invoke-direct {p0, p1, v0}, Lcom/android/mms/data/Contact;->getRoundDrawable(Landroid/content/Context;Landroid/graphics/Bitmap;)Landroid/graphics/drawable/Drawable;
-
-    move-result-object v0
-
-    instance-of v1, v0, Landroid/graphics/drawable/BitmapDrawable;
+    move-result-object v1
 
     if-eqz v1, :cond_0
 
-    move-object v1, v0
+    .line 403
+    invoke-direct {p0, p1, v1}, Lcom/android/mms/data/Contact;->getRoundDrawable(Landroid/content/Context;Landroid/graphics/Bitmap;)Landroid/graphics/drawable/Drawable;
 
-    check-cast v1, Landroid/graphics/drawable/BitmapDrawable;
+    move-result-object v1
 
-    iput-object v1, p0, Lcom/android/mms/data/Contact;->mAvatar:Landroid/graphics/drawable/BitmapDrawable;
+    iput-object v1, p0, Lcom/android/mms/data/Contact;->mRoundAvatar:Landroid/graphics/drawable/Drawable;
+
+    iput-object v0, p0, Lcom/android/mms/data/Contact;->mRoundAvatarSrc:[B
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
     .line 408
-    :cond_0
     :goto_0
-    if-eqz v0, :cond_1
+    monitor-exit p0
 
-    move-object p2, v0
+    return-object v1
 
-    :cond_1
+    :cond_0
     monitor-exit p0
 
     return-object p2
-
-    .line 406
-    :cond_2
-    :try_start_1
-    # PERF: mAvatar is already rounded and cached; return directly instead of re-allocating
-    # an ARGB_8888 Bitmap + Canvas + PorterDuff SRC_IN on every inbox bind and scroll.
-    iget-object v0, p0, Lcom/android/mms/data/Contact;->mAvatar:Landroid/graphics/drawable/BitmapDrawable;
-    :try_end_1
-    .catchall {:try_start_1 .. :try_end_1} :catchall_0
-
-    goto :goto_0
 
     :catchall_0
     move-exception v0

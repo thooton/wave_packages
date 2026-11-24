@@ -190,6 +190,22 @@ public final class WaveInit {
         if (cached != null && (now - sCountryIsoCheckedAt) < 30_000L) {
             return cached;
         }
+        // WavePhoneSnapshot warms this from a worker at startup. Serialise the slow path so a
+        // concurrent caller waits for the in-flight detectCountry() instead of taking (and
+        // MmsApp caching for good) the Locale fallback.
+        synchronized (COUNTRY_ISO_LOCK) {
+            return getCountryIsoLocked(detector);
+        }
+    }
+
+    private static final Object COUNTRY_ISO_LOCK = new Object();
+
+    private static String getCountryIsoLocked(Object detector) {
+        String cached = sCountryIsoCached;
+        long now = android.os.SystemClock.uptimeMillis();
+        if (cached != null && (now - sCountryIsoCheckedAt) < 30_000L) {
+            return cached;
+        }
         if (sCountryIsoCheckedAt != 0L && (now - sCountryIsoCheckedAt) < 30_000L) {
             return java.util.Locale.getDefault().getCountry();
         }

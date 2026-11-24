@@ -1,5 +1,6 @@
 package com.android.mms.ui;
 
+import android.content.AsyncQueryHandler;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
@@ -10,6 +11,7 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 
 import com.android.mms.data.Conversation;
+import com.android.mms.data.RecipientIdCache;
 
 import java.util.WeakHashMap;
 import java.util.concurrent.Callable;
@@ -28,7 +30,11 @@ import java.util.concurrent.TimeoutException;
 public final class WaveInboxQuery {
     private static final String TAG = "WaveInboxQuery";
     private static final int TOKEN_MAIN_INBOX = 0x6a5;
+    private static final int TOKEN_UNREAD_COUNT = 0x6a6;
+    private static final int TOKEN_NOTIFICATION_THREADS = 0x6a7;
     private static final long HARVEST_WAIT_MS = 50L;
+    /** About 6-7 rows are visible on 240x320; 8 covers the first frame with minimal work. */
+    private static final int PREFETCH_ROWS = 8;
 
     private static final String SEL_NON_EMPTY =
             "(EXISTS (SELECT 1 FROM sms WHERE sms.thread_id=threads._id)"
@@ -65,6 +71,7 @@ public final class WaveInboxQuery {
     }
 
     private static final WeakHashMap<ConversationList, Pending> PENDING = new WeakHashMap<>();
+    private static final WeakHashMap<ConversationList, Boolean> DEFERRED = new WeakHashMap<>();
 
     private WaveInboxQuery() {}
 
@@ -98,7 +105,10 @@ public final class WaveInboxQuery {
                             selection,
                             null,
                             sortOrder);
-                    if (c != null) c.getCount(); // force CursorWindow fill off-main
+                    if (c != null) {
+                        c.getCount(); // force CursorWindow fill off-main
+                        prefetchVisibleRecipients(c);
+                    }
                 } catch (Throwable t) {
                     Log.w(TAG, "early inbox query failed", t);
                     if (c != null) {
@@ -160,6 +170,62 @@ public final class WaveInboxQuery {
             // Async main message will deliver immediately on completion (even across VSync barrier).
         } catch (Throwable t) {
             Log.w(TAG, "harvest failed", t);
+        }
+    }
+
+    /**
+     * Resolve the first visible rows' canonical recipient addresses in one batched indexed query
+     * so main-thread binds don't issue one provider IPC per row. Kept tight (no ICU time format
+     * here — WaveTimeFormat is warmed in parallel on the WavePhoneSnapshot worker) so cursor
+     * handoff stays inside harvest()'s window before frame 1.
+     */
+    private static void prefetchVisibleRecipients(Cursor c) {
+        try {
+            int rows = Math.min(c.getCount(), PREFETCH_ROWS);
+            if (rows <= 0) return;
+            int recipCol = c.getColumnIndex("recipient_ids");
+            if (recipCol < 0) return;
+            StringBuilder ids = null;
+            for (int i = 0; i < rows && c.moveToPosition(i); i++) {
+                String r = c.getString(recipCol);
+                if (r != null && !r.isEmpty()) {
+                    if (ids == null) ids = new StringBuilder(rows * 4);
+                    else ids.append(' ');
+                    ids.append(r);
+                }
+            }
+            if (ids != null) {
+                // One indexed IN(...) query for cache misses only; a warm cache costs no IPC.
+                RecipientIdCache.getAddresses(ids.toString());
+            }
+        } catch (Throwable ignored) {
+            // e.g. RecipientIdCache not initialised yet: binds take the stock path.
+        } finally {
+            try { c.moveToPosition(-1); } catch (Throwable ignored) {}
+        }
+    }
+
+    /**
+     * Called from startAsyncQuery() when the early 0x6a5 query is in flight: the notification
+     * thread list (0x6a7) and unread count (0x6a6) queries wait for the inbox cursor instead of
+     * competing with it in the provider.
+     */
+    public static void deferSecondary(ConversationList act) {
+        if (act == null) return;
+        DEFERRED.put(act, Boolean.TRUE);
+    }
+
+    /** Called from the 0x6a5 onQueryComplete after changeCursor(). */
+    public static void runDeferredSecondary(ConversationList act, AsyncQueryHandler handler) {
+        if (act == null || handler == null || DEFERRED.remove(act) == null) return;
+        try {
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(act);
+            if (sp.getBoolean("pref_key_seperate_notification_msg", true)) {
+                Conversation.startQuery(handler, TOKEN_NOTIFICATION_THREADS, "notification=1 and " + SEL_NON_EMPTY);
+            }
+            Conversation.startQuery(handler, TOKEN_UNREAD_COUNT, "read=0 and " + SEL_NON_EMPTY);
+        } catch (Throwable t) {
+            Log.w(TAG, "deferred inbox queries failed", t);
         }
     }
 

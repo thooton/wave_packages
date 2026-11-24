@@ -315,6 +315,11 @@
 
     invoke-virtual {v0, p3}, Lcom/android/mms/ui/ConversationListAdapter;->changeCursor(Landroid/database/Cursor;)V
 
+    # PERF(inbox startup): start the 0x6a7/0x6a6 queries deferred by startAsyncQuery().
+    iget-object v0, p0, Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;->this$0:Lcom/android/mms/ui/ConversationList;
+
+    invoke-static {v0, p0}, Lcom/android/mms/ui/WaveInboxQuery;->runDeferredSecondary(Lcom/android/mms/ui/ConversationList;Landroid/content/AsyncQueryHandler;)V
+
     .line 1464
     iget-object v0, p0, Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;->this$0:Lcom/android/mms/ui/ConversationList;
 

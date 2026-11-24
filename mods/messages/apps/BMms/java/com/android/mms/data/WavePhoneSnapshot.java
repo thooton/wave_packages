@@ -95,6 +95,28 @@ public final class WavePhoneSnapshot {
         if (Log.isLoggable(TAG, Log.DEBUG)) {
             Log.d(TAG, "snapshot rows=" + rows + " read_ms=" + (SystemClock.uptimeMillis() - start));
         }
+        warmStartupFormatters(context);
+    }
+
+    private static volatile boolean sNumberFormattingWarm;
+
+    /**
+     * The first resolveSingleName() hit calls formatNumberToE164(number, getCurrentCountryIso()),
+     * which loads libphonenumber region metadata and asks CountryDetector over Binder, and the
+     * first row bind initializes ICU DateUtils in WaveTimeFormat. Warm both here, off the main
+     * thread and off the inbox cursor handoff path.
+     */
+    private static void warmStartupFormatters(Context app) {
+        if (sNumberFormattingWarm || Looper.myLooper() == Looper.getMainLooper()) return;
+        sNumberFormattingWarm = true;
+        try {
+            // primeAsync() can run before MmsApp.onCreate() publishes the instance. MmsApp never
+            // assigns mCountryDetector, so its ISO is WaveInit's Locale-country fallback anyway.
+            MmsApp mmsApp = MmsApp.getApplication();
+            String iso = mmsApp != null ? mmsApp.getCurrentCountryIso() : java.util.Locale.getDefault().getCountry();
+            PhoneNumberUtils.formatNumberToE164("2025550123", iso != null && !iso.isEmpty() ? iso : "US");
+        } catch (Throwable ignored) {}
+        com.android.mms.ui.WaveTimeFormat.warm(app);
     }
 
     /** Resolve phone-only display names without waiting for the stock metadata/photo worker. */
