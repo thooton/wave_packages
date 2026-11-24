@@ -1483,6 +1483,15 @@
 
     .line 1672
     :cond_1
+    invoke-static {v0, v1}, Lcom/android/mms/ui/WaveInboxUi;->decodeEncStrFast(Ljava/lang/String;I)Ljava/lang/String;
+
+    move-result-object v2
+
+    if-eqz v2, :wave_enc_fallback
+
+    return-object v2
+
+    :wave_enc_fallback
     new-instance v2, Lcom/google/android/mms/pdu/EncodedStringValue;
 
     invoke-static {v0}, Lcom/google/android/mms/pdu/PduPersister;->getBytes(Ljava/lang/String;)[B

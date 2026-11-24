@@ -111,6 +111,31 @@ public final class WaveInboxUi {
         tv.setText(text);
     }
 
+    /**
+     * Fast path for MessageUtils.extractEncStrFromCursor() on UTF-8 (106) and US-ASCII (3) MMS
+     * snippets/subjects: returns raw String directly with zero allocations when pure ASCII (~90%),
+     * or decodes ISO-8859-1 bytes as UTF-8 directly without EncodedStringValue + byte[] clone.
+     * Returns null for rare non-UTF-8/ASCII charsets so caller falls back to EncodedStringValue.
+     */
+    public static String decodeEncStrFast(String raw, int charset) {
+        if (charset != 106 && charset != 3) return null;
+        int len = raw.length();
+        boolean nonAscii = false;
+        for (int i = 0; i < len; i++) {
+            if (raw.charAt(i) >= 0x80) {
+                nonAscii = true;
+                break;
+            }
+        }
+        if (!nonAscii) return raw;
+        if (charset != 106) return null;
+        byte[] bytes = new byte[len];
+        for (int i = 0; i < len; i++) {
+            bytes[i] = (byte) raw.charAt(i);
+        }
+        return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
     /** Unpack LetterTileDrawable.sColors TypedArray once into an int[] to eliminate per-frame JNI getColor(). */
     public static int pickTileColor(android.content.res.TypedArray colors, int defaultColor, String identifier) {
         if (colors == null) return defaultColor;

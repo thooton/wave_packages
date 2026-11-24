@@ -5258,48 +5258,7 @@
     const/4 v5, 0x0
 
     .line 1165
-    const-string/jumbo v0, "Mms"
-
-    new-instance v1, Ljava/lang/StringBuilder;
-
-    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
-
-    const-string/jumbo v4, " Attachment type initSlideShow "
-
-    invoke-virtual {v1, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    iget-object v4, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
-
-    iget v4, v4, Lcom/android/mms/ui/MessageItem;->mAttachmentType:I
-
-    invoke-virtual {v1, v4}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    .line 1166
-    const-string/jumbo v4, " position : "
-
-    .line 1165
-    invoke-virtual {v1, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    .line 1166
-    iget v4, p0, Lcom/android/mms/ui/MessageListItem;->mPosition:I
-
-    .line 1165
-    invoke-virtual {v1, v4}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-
-    move-result-object v1
-
-    invoke-static {v0, v1}, Landroid/util/Log;->v(Ljava/lang/String;Ljava/lang/String;)I
-
+    # PERF: drop unguarded StringBuilder + Log.v in presentMessage().
     .line 1167
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mPlayVideoPicLayout:Landroid/view/ViewGroup;
 
