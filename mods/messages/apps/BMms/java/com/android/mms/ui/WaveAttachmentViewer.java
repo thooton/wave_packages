@@ -119,14 +119,17 @@ public final class WaveAttachmentViewer {
     private FrameLayout videoPlayerBox;
     private VideoView videoView;
     private View videoPauseOverlay;
+    private View videoHud;
     private SonimProgressView videoProgress;
+    private TextView videoPosTv;
+    private TextView videoDurTv;
     private boolean videoFullscreen = false;
 
     private final Runnable hideVideoScrubber = new Runnable() {
         @Override
         public void run() {
-            if (videoFullscreen && videoView != null && videoView.isPlaying() && videoProgress != null) {
-                videoProgress.setVisibility(View.GONE);
+            if (videoFullscreen && videoView != null && videoView.isPlaying() && videoHud != null) {
+                videoHud.setVisibility(View.GONE);
             }
         }
     };
@@ -645,11 +648,36 @@ public final class WaveAttachmentViewer {
         videoPauseOverlay = pauseRing;
         box.addView(pauseRing, new FrameLayout.LayoutParams(dp(46), dp(46), Gravity.CENTER));
 
+        LinearLayout hud = new LinearLayout(act);
+        hud.setOrientation(LinearLayout.HORIZONTAL);
+        hud.setGravity(Gravity.CENTER_VERTICAL);
+        hud.setPadding(dp(10), dp(6), dp(10), dp(8));
+        hud.setBackground(new GradientDrawable(
+                GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xB3000000, 0x00000000}));
+        videoHud = hud;
+
+        videoPosTv = new TextView(act);
+        videoPosTv.setText("0:00");
+        videoPosTv.setTextColor(Color.WHITE);
+        videoPosTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
+        videoPosTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        hud.addView(videoPosTv);
+
         videoProgress = new SonimProgressView(act);
-        FrameLayout.LayoutParams plp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(6), Gravity.BOTTOM);
-        plp.setMargins(dp(10), 0, dp(10), dp(8));
-        box.addView(videoProgress, plp);
+        LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(0, dp(8), 1f);
+        plp.leftMargin = dp(8);
+        plp.rightMargin = dp(8);
+        hud.addView(videoProgress, plp);
+
+        videoDurTv = new TextView(act);
+        videoDurTv.setText("0:00");
+        videoDurTv.setTextColor(0xD9FFFFFF);
+        videoDurTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
+        hud.addView(videoDurTv);
+
+        box.addView(hud, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM));
 
         contentHost.addView(box, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -657,6 +685,7 @@ public final class WaveAttachmentViewer {
         vv.setVideoURI(item.uri);
         vv.setOnPreparedListener(mp -> {
             if (destroyed || !videoFullscreen || videoView != vv) return;
+            if (videoDurTv != null) videoDurTv.setText(formatDuration(vv.getDuration()));
             vv.start();
             if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.GONE);
             main.removeCallbacks(progressTick);
@@ -664,10 +693,11 @@ public final class WaveAttachmentViewer {
             scheduleScrubberHide();
         });
         vv.setOnCompletionListener(mp -> {
-            if (videoProgress != null) {
-                videoProgress.setProgress(1f);
-                videoProgress.setVisibility(View.VISIBLE);
-            }
+            int dur = vv.getDuration();
+            if (videoProgress != null) videoProgress.setProgress(1f);
+            if (videoPosTv != null && dur > 0) videoPosTv.setText(formatDuration(dur));
+            if (videoDurTv != null && dur > 0) videoDurTv.setText(formatDuration(dur));
+            if (videoHud != null) videoHud.setVisibility(View.VISIBLE);
             main.removeCallbacks(hideVideoScrubber);
             if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.VISIBLE);
         });
@@ -691,7 +721,10 @@ public final class WaveAttachmentViewer {
             videoPlayerBox = null;
         }
         videoPauseOverlay = null;
+        videoHud = null;
         videoProgress = null;
+        videoPosTv = null;
+        videoDurTv = null;
         setStatusBar(COLOR_STATUS_BAR);
         root.setBackgroundColor(COLOR_BG);
         contentHost.setBackgroundColor(COLOR_BG);
@@ -702,7 +735,7 @@ public final class WaveAttachmentViewer {
 
     private void scheduleScrubberHide() {
         main.removeCallbacks(hideVideoScrubber);
-        if (videoProgress != null) videoProgress.setVisibility(View.VISIBLE);
+        if (videoHud != null) videoHud.setVisibility(View.VISIBLE);
         main.postDelayed(hideVideoScrubber, 2200);
     }
 
@@ -714,7 +747,7 @@ public final class WaveAttachmentViewer {
         if (videoView.isPlaying()) {
             videoView.pause();
             main.removeCallbacks(hideVideoScrubber);
-            if (videoProgress != null) videoProgress.setVisibility(View.VISIBLE);
+            if (videoHud != null) videoHud.setVisibility(View.VISIBLE);
             if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.VISIBLE);
         } else {
             videoView.start();
@@ -1133,6 +1166,8 @@ public final class WaveAttachmentViewer {
             int pos = videoView.getCurrentPosition();
             if (dur > 0) {
                 videoProgress.setProgress(Math.min(1f, Math.max(0f, pos / (float) dur)));
+                if (videoPosTv != null) videoPosTv.setText(formatDuration(pos));
+                if (videoDurTv != null) videoDurTv.setText(formatDuration(dur));
             }
         }
         if (audioPlayer != null && audioPrepared && audioProgress != null) {
@@ -1181,7 +1216,10 @@ public final class WaveAttachmentViewer {
         }
         videoThumbBmp = null;
         videoPauseOverlay = null;
+        videoHud = null;
         videoProgress = null;
+        videoPosTv = null;
+        videoDurTv = null;
         if (root != null) root.setBackgroundColor(COLOR_BG);
         if (contentHost != null) contentHost.setBackgroundColor(COLOR_BG);
         setStatusBar(COLOR_STATUS_BAR);
