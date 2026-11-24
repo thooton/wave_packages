@@ -118,9 +118,9 @@ public final class WaveAttachmentViewer {
     private Bitmap videoThumbBmp;
     private FrameLayout videoPlayerBox;
     private VideoView videoView;
-    private View videoPauseOverlay;
     private View videoHud;
-    private SonimProgressView videoProgress;
+    private MovieSeekBarView videoProgress;
+    private MovieControlsView videoControls;
     private TextView videoPosTv;
     private TextView videoDurTv;
     private boolean videoFullscreen = false;
@@ -128,8 +128,8 @@ public final class WaveAttachmentViewer {
     private final Runnable hideVideoScrubber = new Runnable() {
         @Override
         public void run() {
-            if (videoFullscreen && videoView != null && videoView.isPlaying() && videoHud != null) {
-                videoHud.setVisibility(View.GONE);
+            if (videoFullscreen && videoView != null && videoView.isPlaying()) {
+                setVideoHudVisible(false);
             }
         }
     };
@@ -643,37 +643,47 @@ public final class WaveAttachmentViewer {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
                 Gravity.CENTER));
 
-        SonimPlayRingView pauseRing = new SonimPlayRingView(act);
-        pauseRing.setVisibility(View.GONE);
-        videoPauseOverlay = pauseRing;
-        box.addView(pauseRing, new FrameLayout.LayoutParams(dp(46), dp(46), Gravity.CENTER));
-
+        // Matches Sonim's built-in MovieView HUD: 00:00 [teal seekbar w/ white thumb] 00:00
+        // over <<  ( || / > )  >> transport controls.
         LinearLayout hud = new LinearLayout(act);
-        hud.setOrientation(LinearLayout.HORIZONTAL);
-        hud.setGravity(Gravity.CENTER_VERTICAL);
-        hud.setPadding(dp(10), dp(6), dp(10), dp(8));
+        hud.setOrientation(LinearLayout.VERTICAL);
+        hud.setPadding(dp(8), dp(14), dp(8), dp(6));
         hud.setBackground(new GradientDrawable(
-                GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xB3000000, 0x00000000}));
+                GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xD9000000, 0x00000000}));
         videoHud = hud;
 
-        videoPosTv = new TextView(act);
-        videoPosTv.setText("0:00");
-        videoPosTv.setTextColor(Color.WHITE);
-        videoPosTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
-        videoPosTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        hud.addView(videoPosTv);
+        LinearLayout timeRow = new LinearLayout(act);
+        timeRow.setOrientation(LinearLayout.HORIZONTAL);
+        timeRow.setGravity(Gravity.CENTER_VERTICAL);
 
-        videoProgress = new SonimProgressView(act);
-        LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(0, dp(8), 1f);
+        videoPosTv = new TextView(act);
+        videoPosTv.setText("00:00");
+        videoPosTv.setTextColor(0xFFE0E0E0);
+        videoPosTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+        videoPosTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        timeRow.addView(videoPosTv);
+
+        videoProgress = new MovieSeekBarView(act);
+        LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(0, dp(16), 1f);
         plp.leftMargin = dp(8);
         plp.rightMargin = dp(8);
-        hud.addView(videoProgress, plp);
+        timeRow.addView(videoProgress, plp);
 
         videoDurTv = new TextView(act);
-        videoDurTv.setText("0:00");
-        videoDurTv.setTextColor(0xD9FFFFFF);
-        videoDurTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
-        hud.addView(videoDurTv);
+        videoDurTv.setText("00:00");
+        videoDurTv.setTextColor(0xFFE0E0E0);
+        videoDurTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+        videoDurTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        timeRow.addView(videoDurTv);
+
+        hud.addView(timeRow, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        videoControls = new MovieControlsView(act);
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(42));
+        clp.topMargin = dp(4);
+        hud.addView(videoControls, clp);
 
         box.addView(hud, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -685,9 +695,9 @@ public final class WaveAttachmentViewer {
         vv.setVideoURI(item.uri);
         vv.setOnPreparedListener(mp -> {
             if (destroyed || !videoFullscreen || videoView != vv) return;
-            if (videoDurTv != null) videoDurTv.setText(formatDuration(vv.getDuration()));
+            if (videoDurTv != null) videoDurTv.setText(formatMovieTime(vv.getDuration()));
             vv.start();
-            if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.GONE);
+            if (videoControls != null) videoControls.setPlaying(true);
             main.removeCallbacks(progressTick);
             main.post(progressTick);
             scheduleScrubberHide();
@@ -695,11 +705,11 @@ public final class WaveAttachmentViewer {
         vv.setOnCompletionListener(mp -> {
             int dur = vv.getDuration();
             if (videoProgress != null) videoProgress.setProgress(1f);
-            if (videoPosTv != null && dur > 0) videoPosTv.setText(formatDuration(dur));
-            if (videoDurTv != null && dur > 0) videoDurTv.setText(formatDuration(dur));
-            if (videoHud != null) videoHud.setVisibility(View.VISIBLE);
+            if (videoPosTv != null && dur > 0) videoPosTv.setText(formatMovieTime(dur));
+            if (videoDurTv != null && dur > 0) videoDurTv.setText(formatMovieTime(dur));
+            if (videoControls != null) videoControls.setPlaying(false);
             main.removeCallbacks(hideVideoScrubber);
-            if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.VISIBLE);
+            setVideoHudVisible(true);
         });
         vv.setOnErrorListener((mp, what, extra) -> {
             exitVideoFullscreen();
@@ -708,10 +718,21 @@ public final class WaveAttachmentViewer {
         });
     }
 
+    private void setVideoHudVisible(boolean visible) {
+        if (videoHud != null) videoHud.setVisibility(visible ? View.VISIBLE : View.GONE);
+        Window w = act.getWindow();
+        if (w != null && w.getDecorView() != null) {
+            int flags = visible ? View.SYSTEM_UI_FLAG_VISIBLE
+                    : (View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_LOW_PROFILE);
+            w.getDecorView().setSystemUiVisibility(flags);
+        }
+    }
+
     private void exitVideoFullscreen() {
         main.removeCallbacks(progressTick);
         main.removeCallbacks(hideVideoScrubber);
         videoFullscreen = false;
+        setVideoHudVisible(true);
         if (videoView != null) {
             try { videoView.stopPlayback(); } catch (Throwable ignored) {}
             videoView = null;
@@ -720,9 +741,9 @@ public final class WaveAttachmentViewer {
             contentHost.removeView(videoPlayerBox);
             videoPlayerBox = null;
         }
-        videoPauseOverlay = null;
         videoHud = null;
         videoProgress = null;
+        videoControls = null;
         videoPosTv = null;
         videoDurTv = null;
         setStatusBar(COLOR_STATUS_BAR);
@@ -735,8 +756,8 @@ public final class WaveAttachmentViewer {
 
     private void scheduleScrubberHide() {
         main.removeCallbacks(hideVideoScrubber);
-        if (videoHud != null) videoHud.setVisibility(View.VISIBLE);
-        main.postDelayed(hideVideoScrubber, 2200);
+        setVideoHudVisible(true);
+        main.postDelayed(hideVideoScrubber, 2500);
     }
 
     private void toggleVideoPlayPause(PartItem item) {
@@ -747,11 +768,11 @@ public final class WaveAttachmentViewer {
         if (videoView.isPlaying()) {
             videoView.pause();
             main.removeCallbacks(hideVideoScrubber);
-            if (videoHud != null) videoHud.setVisibility(View.VISIBLE);
-            if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.VISIBLE);
+            if (videoControls != null) videoControls.setPlaying(false);
+            setVideoHudVisible(true);
         } else {
             videoView.start();
-            if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.GONE);
+            if (videoControls != null) videoControls.setPlaying(true);
             main.removeCallbacks(progressTick);
             main.post(progressTick);
             scheduleScrubberHide();
@@ -1032,17 +1053,27 @@ public final class WaveAttachmentViewer {
                 toggleVideoPlayPause(cur);
                 return true;
             }
-            if (videoFullscreen && videoView != null
-                    && (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT)) {
-                int dur = videoView.getDuration();
-                if (dur > 0) {
-                    int pos = videoView.getCurrentPosition()
-                            + (key == KeyEvent.KEYCODE_DPAD_RIGHT ? 5000 : -5000);
-                    videoView.seekTo(Math.max(0, Math.min(dur, pos)));
-                    updateMediaProgress();
-                    scheduleScrubberHide();
+            if (videoFullscreen && videoView != null) {
+                if (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    int dur = videoView.getDuration();
+                    if (dur > 0) {
+                        int pos = videoView.getCurrentPosition()
+                                + (key == KeyEvent.KEYCODE_DPAD_RIGHT ? 5000 : -5000);
+                        videoView.seekTo(Math.max(0, Math.min(dur, pos)));
+                        updateMediaProgress();
+                        scheduleScrubberHide();
+                    }
+                    return true;
                 }
-                return true;
+                if (key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    if (videoHud != null && videoHud.getVisibility() == View.VISIBLE && videoView.isPlaying()) {
+                        main.removeCallbacks(hideVideoScrubber);
+                        setVideoHudVisible(false);
+                    } else {
+                        scheduleScrubberHide();
+                    }
+                    return true;
+                }
             }
         }
 
@@ -1166,8 +1197,8 @@ public final class WaveAttachmentViewer {
             int pos = videoView.getCurrentPosition();
             if (dur > 0) {
                 videoProgress.setProgress(Math.min(1f, Math.max(0f, pos / (float) dur)));
-                if (videoPosTv != null) videoPosTv.setText(formatDuration(pos));
-                if (videoDurTv != null) videoDurTv.setText(formatDuration(dur));
+                if (videoPosTv != null) videoPosTv.setText(formatMovieTime(pos));
+                if (videoDurTv != null) videoDurTv.setText(formatMovieTime(dur));
             }
         }
         if (audioPlayer != null && audioPrepared && audioProgress != null) {
@@ -1189,7 +1220,8 @@ public final class WaveAttachmentViewer {
     private void pauseActiveMedia() {
         if (videoView != null && videoView.isPlaying()) {
             videoView.pause();
-            if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.VISIBLE);
+            if (videoControls != null) videoControls.setPlaying(false);
+            setVideoHudVisible(true);
         }
         if (audioPlayer != null && audioPrepared) {
             try {
@@ -1215,11 +1247,12 @@ public final class WaveAttachmentViewer {
             videoThumbBmp.recycle();
         }
         videoThumbBmp = null;
-        videoPauseOverlay = null;
         videoHud = null;
         videoProgress = null;
+        videoControls = null;
         videoPosTv = null;
         videoDurTv = null;
+        setVideoHudVisible(true);
         if (root != null) root.setBackgroundColor(COLOR_BG);
         if (contentHost != null) contentHost.setBackgroundColor(COLOR_BG);
         setStatusBar(COLOR_STATUS_BAR);
@@ -1547,7 +1580,121 @@ public final class WaveAttachmentViewer {
         }
     }
 
-    /** Sonim red horizontal progress bar for video/audio playback. */
+    /** Sonim MovieView-matched teal progress bar with crisp white circular thumb. */
+    private static final class MovieSeekBarView extends View {
+        private float progress = 0f;
+        private final Paint track = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint thumb = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF rect = new RectF();
+
+        MovieSeekBarView(Context ctx) {
+            super(ctx);
+            track.setColor(0xFF4A4A4A);
+            fill.setColor(0xFF009688);
+            thumb.setColor(Color.WHITE);
+        }
+
+        void setProgress(float p) {
+            progress = Math.max(0f, Math.min(1f, p));
+            invalidate();
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            float den = getResources().getDisplayMetrics().density;
+            float h = 3.5f * den;
+            float r = 4.8f * den;
+            float cy = getHeight() * 0.5f;
+            float left = r;
+            float right = getWidth() - r;
+            float w = Math.max(1f, right - left);
+
+            rect.set(left, cy - h * 0.5f, right, cy + h * 0.5f);
+            c.drawRoundRect(rect, h * 0.5f, h * 0.5f, track);
+
+            float thumbX = left + w * progress;
+            if (progress > 0f) {
+                rect.set(left, cy - h * 0.5f, thumbX, cy + h * 0.5f);
+                c.drawRoundRect(rect, h * 0.5f, h * 0.5f, fill);
+            }
+            c.drawCircle(thumbX, cy, r, thumb);
+        }
+    }
+
+    /** Sonim MovieView-matched bottom transport row: <<   ( || / > )   >>. */
+    private static final class MovieControlsView extends View {
+        private boolean playing = true;
+        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF rect = new RectF();
+
+        MovieControlsView(Context ctx) {
+            super(ctx);
+            float den = ctx.getResources().getDisplayMetrics().density;
+            fill.setColor(Color.WHITE);
+            ring.setStyle(Paint.Style.STROKE);
+            ring.setColor(0xFF9FA8DA);
+            ring.setStrokeWidth(2f * den);
+        }
+
+        void setPlaying(boolean p) {
+            if (playing != p) {
+                playing = p;
+                invalidate();
+            }
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            float den = getResources().getDisplayMetrics().density;
+            float w = getWidth();
+            float cy = getHeight() * 0.5f;
+            float cx = w * 0.5f;
+
+            // Left: Rewind <<
+            drawDoubleTri(c, w * 0.17f, cy, 7.5f * den, true);
+
+            // Center: Sonim circular focus ring + Play/Pause icon
+            float cr = 17f * den;
+            c.drawCircle(cx, cy, cr, ring);
+            if (playing) {
+                float bw = 4.5f * den;
+                float bh = 15f * den;
+                float gap = 4.5f * den;
+                rect.set(cx - gap * 0.5f - bw, cy - bh * 0.5f, cx - gap * 0.5f, cy + bh * 0.5f);
+                c.drawRect(rect, fill);
+                rect.set(cx + gap * 0.5f, cy - bh * 0.5f, cx + gap * 0.5f + bw, cy + bh * 0.5f);
+                c.drawRect(rect, fill);
+            } else {
+                float s = 8.5f * den;
+                Path tri = new Path();
+                tri.moveTo(cx - s * 0.45f, cy - s);
+                tri.lineTo(cx + s * 1.05f, cy);
+                tri.lineTo(cx - s * 0.45f, cy + s);
+                tri.close();
+                c.drawPath(tri, fill);
+            }
+
+            // Right: Fast-forward >>
+            drawDoubleTri(c, w * 0.83f, cy, 7.5f * den, false);
+        }
+
+        private void drawDoubleTri(Canvas c, float cx, float cy, float s, boolean left) {
+            float dir = left ? -1f : 1f;
+            for (int k = 0; k < 2; k++) {
+                float ox = cx + (k == 0 ? -s * 0.55f : s * 0.55f);
+                Path p = new Path();
+                p.moveTo(ox + dir * s * 0.65f, cy);
+                p.lineTo(ox - dir * s * 0.55f, cy - s * 0.85f);
+                p.lineTo(ox - dir * s * 0.55f, cy + s * 0.85f);
+                p.close();
+                c.drawPath(p, fill);
+            }
+        }
+    }
+
+    /** Sonim red horizontal progress bar for audio playback. */
     private static final class SonimProgressView extends View {
         private float progress = 0f;
         private final Paint track = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -1621,6 +1768,14 @@ public final class WaveAttachmentViewer {
             }
         }
         return s.isEmpty() ? fallback : s;
+    }
+
+    static String formatMovieTime(int ms) {
+        if (ms < 0) ms = 0;
+        int sec = Math.round(ms / 1000f);
+        int m = sec / 60;
+        int s = sec % 60;
+        return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
     }
 
     static String formatDuration(int ms) {
