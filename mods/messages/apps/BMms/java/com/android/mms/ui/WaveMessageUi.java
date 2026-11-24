@@ -807,9 +807,7 @@ public final class WaveMessageUi {
         hideId(block, ID_ATTACH_FOOTER);
 
         boolean singleAudio = (parts.size() == 1 && parts.get(0).isAudio);
-        if (singleAudio) {
-            block.setPadding(dp(ctx, 8), dp(ctx, 6), dp(ctx, 8), dp(ctx, 2));
-        } else {
+        if (!singleAudio) {
             block.setPadding(dp(ctx, 5), dp(ctx, 5), dp(ctx, 5), dp(ctx, 3));
         }
 
@@ -830,7 +828,9 @@ public final class WaveMessageUi {
             if (p.isAudio) {
                 InlineVoiceView voice = new InlineVoiceView(ctx, isMe, activeAccentColor());
                 voice.bind(p.uri, p.name);
-                host.addView(voice, new LinearLayout.LayoutParams(dp(ctx, 170), dp(ctx, 36)));
+                LinearLayout.LayoutParams vlp = new LinearLayout.LayoutParams(dp(ctx, 166), dp(ctx, 32));
+                vlp.setMargins(dp(ctx, 10), dp(ctx, 10), dp(ctx, 12), dp(ctx, 2));
+                host.addView(voice, vlp);
             } else {
                 InlineVisualView visual = new InlineVisualView(ctx, p);
                 host.addView(visual);
@@ -1235,12 +1235,12 @@ public final class WaveMessageUi {
             int pos = isActive ? sVoicePosMs : 0;
             float frac = (isActive && dur > 0) ? Math.min(1f, Math.max(0f, pos / (float) dur)) : 0f;
 
-            // Left: clean Material Play triangle or Pause bars (no glossy iOS bubble)
-            float iconCx = 12f * den;
+            // Left: clean Material Play triangle or Pause bars aligned with Sonim's 10dp left grid
+            float iconCx = 7f * den;
             if (isPlaying) {
-                float bw = 3.5f * den;
-                float bh = 13f * den;
-                float gap = 3.5f * den;
+                float bw = 3.2f * den;
+                float bh = 12.5f * den;
+                float gap = 3.2f * den;
                 rect.set(iconCx - gap * 0.5f - bw, cy - bh * 0.5f,
                         iconCx - gap * 0.5f, cy + bh * 0.5f);
                 c.drawRoundRect(rect, den, den, iconPaint);
@@ -1248,7 +1248,7 @@ public final class WaveMessageUi {
                         iconCx + gap * 0.5f + bw, cy + bh * 0.5f);
                 c.drawRoundRect(rect, den, den, iconPaint);
             } else {
-                float s = 7.2f * den;
+                float s = 6.8f * den;
                 Path tri = new Path();
                 tri.moveTo(iconCx - s * 0.55f, cy - s);
                 tri.lineTo(iconCx + s * 0.95f, cy);
@@ -1257,8 +1257,8 @@ public final class WaveMessageUi {
                 c.drawPath(tri, iconPaint);
             }
 
-            float contentLeft = 27f * den;
-            float contentRight = w - 2f * den;
+            float contentLeft = 22f * den;
+            float contentRight = w;
 
             // Top line: "Voice message" on left, duration / live elapsed on right
             String timeLabel;
@@ -1270,7 +1270,7 @@ public final class WaveMessageUi {
             } else {
                 timeLabel = "";
             }
-            float topBaseY = 13f * den;
+            float topBaseY = 11.5f * den;
             float timeW = timeLabel.isEmpty() ? 0f : timePaint.measureText(timeLabel);
             float availTitleW = Math.max(20f * den, contentRight - contentLeft - timeW - (timeW > 0f ? 8f * den : 0f));
             String drawnTitle = TextUtils.ellipsize(title, new android.text.TextPaint(titlePaint),
@@ -1281,12 +1281,12 @@ public final class WaveMessageUi {
             }
 
             // Bottom line: clean Material horizontal seekbar with subtle circular thumb
-            float barY = h - 9f * den;
+            float barY = h - 7f * den;
             float barH = 3f * den;
             float barRad = barH * 0.5f;
-            float thumbR = 4.2f * den;
-            float trackLeft = contentLeft + thumbR * 0.5f;
-            float trackRight = contentRight - thumbR * 0.5f;
+            float thumbR = 4f * den;
+            float trackLeft = contentLeft + thumbR;
+            float trackRight = contentRight - thumbR;
             float trackW = Math.max(10f, trackRight - trackLeft);
 
             rect.set(trackLeft, barY - barRad, trackRight, barY + barRad);
