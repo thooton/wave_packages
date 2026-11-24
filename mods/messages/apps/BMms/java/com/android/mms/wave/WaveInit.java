@@ -310,6 +310,27 @@ public final class WaveInit {
         }, 400L);
     }
 
+    /** Defer CountryDetector getSystemService + addCountryListener Binder IPC off the critical cold-start path. */
+    public static void deferCountryDetector(final Context app, final Object listener) {
+        if (app == null || listener == null) return;
+        MAIN_HANDLER.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Object detector = app.getSystemService("country_detector");
+                    if (detector == null) return;
+                    java.lang.reflect.Field f = app.getClass().getDeclaredField("mCountryDetector");
+                    f.setAccessible(true);
+                    f.set(app, detector);
+                    Class<?> listenerCls = Class.forName("android.location.CountryListener");
+                    detector.getClass()
+                            .getMethod("addCountryListener", listenerCls, Looper.class)
+                            .invoke(detector, listener, Looper.getMainLooper());
+                } catch (Throwable ignored) {}
+            }
+        }, 500L);
+    }
+
     /** Defer CountryDetector.addCountryListener() Binder IPC off the critical cold-start path. */
     public static void deferCountryListener(final Object detector, final Object listener, final Looper looper) {
         if (detector == null || listener == null) return;

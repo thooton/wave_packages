@@ -250,14 +250,41 @@
     return-object v0
 .end method
 
-.method public getPduLoaderManager()Lcom/android/mms/util/PduLoaderManager;
-    .locals 1
+.method public declared-synchronized getPduLoaderManager()Lcom/android/mms/util/PduLoaderManager;
+    .locals 2
 
     .prologue
+    monitor-enter p0
+
     .line 204
+    :try_start_0
     iget-object v0, p0, Lcom/android/mms/MmsApp;->mPduLoaderManager:Lcom/android/mms/util/PduLoaderManager;
 
+    if-nez v0, :wave_has_pdu
+
+    new-instance v0, Lcom/android/mms/util/PduLoaderManager;
+
+    invoke-virtual {p0}, Lcom/android/mms/MmsApp;->getApplicationContext()Landroid/content/Context;
+
+    move-result-object v1
+
+    invoke-direct {v0, v1}, Lcom/android/mms/util/PduLoaderManager;-><init>(Landroid/content/Context;)V
+
+    iput-object v0, p0, Lcom/android/mms/MmsApp;->mPduLoaderManager:Lcom/android/mms/util/PduLoaderManager;
+    :try_end_0
+    .catchall {:try_start_0 .. :try_end_0} :catchall_0
+
+    :wave_has_pdu
+    monitor-exit p0
+
     return-object v0
+
+    :catchall_0
+    move-exception v0
+
+    monitor-exit p0
+
+    throw v0
 .end method
 
 .method public getRecentSuggestions()Landroid/provider/SearchRecentSuggestions;
@@ -303,14 +330,41 @@
     return-object v0
 .end method
 
-.method public getThumbnailManager()Lcom/android/mms/util/ThumbnailManager;
-    .locals 1
+.method public declared-synchronized getThumbnailManager()Lcom/android/mms/util/ThumbnailManager;
+    .locals 2
 
     .prologue
+    monitor-enter p0
+
     .line 208
+    :try_start_0
     iget-object v0, p0, Lcom/android/mms/MmsApp;->mThumbnailManager:Lcom/android/mms/util/ThumbnailManager;
 
+    if-nez v0, :wave_has_thumb
+
+    new-instance v0, Lcom/android/mms/util/ThumbnailManager;
+
+    invoke-virtual {p0}, Lcom/android/mms/MmsApp;->getApplicationContext()Landroid/content/Context;
+
+    move-result-object v1
+
+    invoke-direct {v0, v1}, Lcom/android/mms/util/ThumbnailManager;-><init>(Landroid/content/Context;)V
+
+    iput-object v0, p0, Lcom/android/mms/MmsApp;->mThumbnailManager:Lcom/android/mms/util/ThumbnailManager;
+    :try_end_0
+    .catchall {:try_start_0 .. :try_end_0} :catchall_0
+
+    :wave_has_thumb
+    monitor-exit p0
+
     return-object v0
+
+    :catchall_0
+    move-exception v0
+
+    monitor-exit p0
+
+    throw v0
 .end method
 
 .method public initPermissionRelated()V
@@ -464,54 +518,17 @@
 
     invoke-static {p0, v0}, Lcom/android/mms/wave/WaveInit;->setDefaultValuesAsync(Landroid/content/Context;I)V
 
-    .line 97
     :goto_0
-    const-string/jumbo v0, "country_detector"
-
-    invoke-virtual {p0, v0}, Lcom/android/mms/MmsApp;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
-
-    move-result-object v0
-
-    check-cast v0, Landroid/location/CountryDetector;
-
-    iput-object v0, p0, Lcom/android/mms/MmsApp;->mCountryDetector:Landroid/location/CountryDetector;
-
     .line 98
+    # PERF: defer CountryDetector ServiceManager IPC + addCountryListener, and lazy-init
+    # PduLoaderManager + ThumbnailManager (which decodes 2 PNGs synchronously) on first use.
     new-instance v0, Lcom/android/mms/MmsApp$1;
 
     invoke-direct {v0, p0}, Lcom/android/mms/MmsApp$1;-><init>(Lcom/android/mms/MmsApp;)V
 
     iput-object v0, p0, Lcom/android/mms/MmsApp;->mCountryListener:Landroid/location/CountryListener;
 
-    .line 104
-    iget-object v0, p0, Lcom/android/mms/MmsApp;->mCountryDetector:Landroid/location/CountryDetector;
-
-    iget-object v3, p0, Lcom/android/mms/MmsApp;->mCountryListener:Landroid/location/CountryListener;
-
-    invoke-virtual {p0}, Lcom/android/mms/MmsApp;->getMainLooper()Landroid/os/Looper;
-
-    move-result-object v4
-
-    invoke-static {v0, v3, v4}, Lcom/android/mms/wave/WaveInit;->deferCountryListener(Ljava/lang/Object;Ljava/lang/Object;Landroid/os/Looper;)V
-
-    .line 106
-    invoke-virtual {p0}, Lcom/android/mms/MmsApp;->getApplicationContext()Landroid/content/Context;
-
-    move-result-object v0
-
-    .line 107
-    new-instance v3, Lcom/android/mms/util/PduLoaderManager;
-
-    invoke-direct {v3, v0}, Lcom/android/mms/util/PduLoaderManager;-><init>(Landroid/content/Context;)V
-
-    iput-object v3, p0, Lcom/android/mms/MmsApp;->mPduLoaderManager:Lcom/android/mms/util/PduLoaderManager;
-
-    .line 108
-    new-instance v3, Lcom/android/mms/util/ThumbnailManager;
-
-    invoke-direct {v3, v0}, Lcom/android/mms/util/ThumbnailManager;-><init>(Landroid/content/Context;)V
-
-    iput-object v3, p0, Lcom/android/mms/MmsApp;->mThumbnailManager:Lcom/android/mms/util/ThumbnailManager;
+    invoke-static {p0, v0}, Lcom/android/mms/wave/WaveInit;->deferCountryDetector(Landroid/content/Context;Ljava/lang/Object;)V
 
     .line 110
     invoke-static {p0}, Lcom/android/mms/MmsConfig;->init(Landroid/content/Context;)V
@@ -610,13 +627,19 @@
     .line 199
     iget-object v0, p0, Lcom/android/mms/MmsApp;->mPduLoaderManager:Lcom/android/mms/util/PduLoaderManager;
 
+    if-eqz v0, :wave_lowmem_thumb
+
     invoke-virtual {v0}, Lcom/android/mms/util/PduLoaderManager;->onLowMemory()V
 
+    :wave_lowmem_thumb
     .line 200
     iget-object v0, p0, Lcom/android/mms/MmsApp;->mThumbnailManager:Lcom/android/mms/util/ThumbnailManager;
 
+    if-eqz v0, :wave_lowmem_done
+
     invoke-virtual {v0}, Lcom/android/mms/util/ThumbnailManager;->onLowMemory()V
 
+    :wave_lowmem_done
     .line 201
     return-void
 .end method
@@ -628,10 +651,13 @@
     .line 192
     iget-object v0, p0, Lcom/android/mms/MmsApp;->mCountryDetector:Landroid/location/CountryDetector;
 
+    if-eqz v0, :wave_term_done
+
     iget-object v1, p0, Lcom/android/mms/MmsApp;->mCountryListener:Landroid/location/CountryListener;
 
     invoke-virtual {v0, v1}, Landroid/location/CountryDetector;->removeCountryListener(Landroid/location/CountryListener;)V
 
+    :wave_term_done
     .line 193
     return-void
 .end method
