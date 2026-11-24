@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The family look (DESIGN.md) in one hue, a terracotta pot's: a deep
+         header and status bar, the accent on focus, the main action and a
+         scaled amount, a pale wash under the d-pad, and greys tinted toward
+         it. The dim header text is 9.4:1 on the header, the accent 5.5:1 on
+         its wash, and muted text 6.3:1 on white. -->
+    <color name="primary">#3A1C12</color>
+    <color name="primary_dark">#3A1C12</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="on_primary_dim">#E3C2B5</color>
+
+    <color name="row">#FFFFFF</color>
+    <color name="section_fill">#F6EEEB</color>
+    <color name="grouped_page">#F6F0EE</color>
+    <color name="divider">#EADFDB</color>
+    <color name="field_fill">#F6EEEB</color>
+    <color name="code_fill">#F6EEEB</color>
+
+    <color name="focus_rule">#A3402A</color>
+    <color name="focus_fill">#FBEDE8</color>
+    <color name="press_fill">#F4D9CF</color>
+    <color name="highlight">#24A3402A</color>
+
+    <color name="text">#201A18</color>
+    <color name="text_muted">#6E5C56</color>
+
+    <!-- The family's fixed green for what is done: a ticked ingredient or step. -->
+    <color name="done">#1E7B34</color>
+</resources>

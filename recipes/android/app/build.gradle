@@ -1,0 +1,22 @@
+plugins {
+    id "com.android.application"
+}
+
+apply from: rootProject.file("gradle/app.gradle")
+
+// No login and no network: the recipes live in the app's own storage.
+
+android {
+    namespace "com.recipes.xp3"
+
+    defaultConfig {
+        applicationId "com.recipes.xp3"
+        versionCode 1
+        versionName "1.0.0"
+    }
+}
+
+dependencies {
+    implementation project(":recipes:core")
+    implementation project(":common:ui")
+}

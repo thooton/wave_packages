@@ -1,0 +1,7 @@
+// The recipes, their storage, searching and scaling: plain Java, tested on a
+// desktop JVM by SelfTest.
+apply from: rootProject.file("gradle/core.gradle")
+
+dependencies {
+    api project(":common:core")
+}
