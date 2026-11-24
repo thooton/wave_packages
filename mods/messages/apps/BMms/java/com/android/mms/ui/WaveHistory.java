@@ -1,8 +1,12 @@
 package com.android.mms.ui;
 
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewTreeObserver;
@@ -10,15 +14,48 @@ import android.widget.ListView;
 
 import com.android.mms.util.WaveLaunch;
 
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 /** Keep the stock full-history scroll range and anchor when the cursor refreshes. */
 public final class WaveHistory {
     private static final int HISTORY = 9527;
     public static final int ANCHORED = -2;
+    private static final long HARVEST_WAIT_MS = 45L;
+
+    private static final Handler MAIN = new Handler(Looper.getMainLooper());
+    private static final ExecutorService QUERY_EXEC = Executors.newSingleThreadExecutor(
+            new ThreadFactory() {
+                @Override
+                public Thread newThread(Runnable r) {
+                    Thread t = new Thread(r, "wave-history-query");
+                    t.setDaemon(true);
+                    t.setPriority(Thread.MAX_PRIORITY - 1);
+                    return t;
+                }
+            });
+
+    private static final class PendingQuery {
+        final long threadId;
+        Future<Cursor> future;
+        boolean delivered;
+        volatile boolean cancelled;
+
+        PendingQuery(long threadId) {
+            this.threadId = threadId;
+        }
+    }
 
     private final ComposeMessageActivity activity;
     private final ListView list;
     private long thread;
     private long earlyQueryThread = -1;
+    private PendingQuery pendingQuery;
     private boolean keepFocus, firstRowsMeasured, opened;
     private BottomAlignment bottomAlignment;
     private WaveConversationReveal reveal;
@@ -50,12 +87,104 @@ public final class WaveHistory {
         }
     }
 
-    /** Record that ComposeMessageActivity.initialize() already started the history query. */
-    public static boolean markEarlyQuery(ComposeMessageActivity activity, long threadId) {
-        WaveHistory h = (WaveHistory) activity.mWaveHistory;
-        if (h == null || threadId <= 0) return false;
+    /**
+     * Launch the initial conversation history query directly from ComposeMessageActivity.initialize()
+     * on a dedicated high-priority thread so harvestEarlyQuery() at the end of onResume() can
+     * deliver the cursor BEFORE WindowManager.addView() schedules an empty VSync-blocked frame.
+     */
+    public static boolean startEarlyQuery(final ComposeMessageActivity activity, final long threadId, Uri conversationUri) {
+        final WaveHistory h = (WaveHistory) activity.mWaveHistory;
+        if (h == null || threadId <= 0 || conversationUri == null) return false;
+        cancelPending(h);
+        final Uri qUri = queryUri(activity, HISTORY, conversationUri);
+        final Context app = activity.getApplicationContext();
+        final String[] proj = MessageListAdapter.PROJECTION;
+        final PendingQuery p = new PendingQuery(threadId);
+        h.pendingQuery = p;
         h.earlyQueryThread = threadId;
+        p.future = QUERY_EXEC.submit(new Callable<Cursor>() {
+            @Override
+            public Cursor call() {
+                if (p.cancelled) return null;
+                Cursor c = null;
+                try {
+                    c = app.getContentResolver().query(qUri, proj, null, null, null);
+                    if (c != null) c.getCount(); // force CursorWindow fill off the UI thread
+                } catch (Throwable t) {
+                    Log.w("Mms", "WaveHistory early query failed", t);
+                    if (c != null) {
+                        try { c.close(); } catch (Throwable ignored) {}
+                        c = null;
+                    }
+                }
+                if (p.cancelled) {
+                    if (c != null) {
+                        try { c.close(); } catch (Throwable ignored) {}
+                    }
+                    return null;
+                }
+                final Cursor ready = c;
+                Message msg = Message.obtain(MAIN, new Runnable() {
+                    @Override
+                    public void run() {
+                        deliverPendingOnMain(activity, h, p, ready);
+                    }
+                });
+                msg.setAsynchronous(true);
+                MAIN.sendMessage(msg);
+                return ready;
+            }
+        });
         return true;
+    }
+
+    /**
+     * Called at the end of ComposeMessageActivity.onResume() (before WindowManager.addView()).
+     * Harvests the already-completed (or nearly-completed) early query synchronously so the very
+     * first ViewRootImpl layout/draw pass renders populated message rows with zero empty frame.
+     */
+    public static void harvestEarlyQuery(ComposeMessageActivity activity) {
+        WaveHistory h = (WaveHistory) activity.mWaveHistory;
+        if (h == null) return;
+        PendingQuery p = h.pendingQuery;
+        if (p == null || p.delivered || p.cancelled || p.future == null) return;
+        try {
+            Cursor c = p.future.get(HARVEST_WAIT_MS, TimeUnit.MILLISECONDS);
+            deliverPendingOnMain(activity, h, p, c);
+        } catch (TimeoutException ignored) {
+            // Still running; the background thread's asynchronous main message will deliver it.
+        } catch (Throwable t) {
+            Log.w("Mms", "WaveHistory harvest failed", t);
+        }
+    }
+
+    private static void deliverPendingOnMain(
+            ComposeMessageActivity activity, WaveHistory h, PendingQuery p, Cursor c) {
+        if (p.delivered) return;
+        p.delivered = true;
+        if (h.pendingQuery == p) h.pendingQuery = null;
+        if (p.cancelled || activity.isFinishing() || activity.isDestroyed()) {
+            if (c != null) {
+                try { c.close(); } catch (Throwable ignored) {}
+            }
+            return;
+        }
+        activity.waveDeliverQuery(HISTORY, Long.valueOf(p.threadId), c);
+    }
+
+    private static void cancelPending(WaveHistory h) {
+        PendingQuery p = h.pendingQuery;
+        if (p != null) {
+            p.cancelled = true;
+            h.pendingQuery = null;
+            if (!p.delivered && p.future != null && p.future.isDone()) {
+                p.delivered = true;
+                try {
+                    Cursor c = p.future.get();
+                    if (c != null) c.close();
+                } catch (Throwable ignored) {}
+            }
+        }
     }
 
     /** Consume the early-query marker in loadMessageContent() so onStart() does not query twice. */
@@ -64,6 +193,7 @@ public final class WaveHistory {
         if (h == null) return false;
         boolean matched = h.earlyQueryThread > 0 && h.earlyQueryThread == threadId;
         h.earlyQueryThread = -1;
+        if (!matched) cancelPending(h);
         return matched;
     }
 

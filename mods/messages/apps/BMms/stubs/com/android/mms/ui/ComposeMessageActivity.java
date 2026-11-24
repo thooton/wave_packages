@@ -6,6 +6,7 @@ public class ComposeMessageActivity extends android.app.Activity {
     public MessageListAdapter mMsgListAdapter;
     boolean waveScrollOnSend() { return false; }
     void waveUpdateComposeHint() {}
+    void waveDeliverQuery(int token, Object cookie, android.database.Cursor c) {}
     /** Stock: the conversation's color (tints received bubbles and the title bar). */
     public static int getSendContactColor() { return 0; }
 }

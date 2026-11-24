@@ -24756,10 +24756,10 @@
     invoke-virtual {v2}, Lcom/android/mms/data/Conversation;->getThreadId()J
     move-result-wide v2
     invoke-static {p0, v2, v3}, Lcom/android/mms/ui/WaveHistory;->beginReveal(Lcom/android/mms/ui/ComposeMessageActivity;J)V
-    invoke-static {p0, v2, v3}, Lcom/android/mms/ui/WaveHistory;->markEarlyQuery(Lcom/android/mms/ui/ComposeMessageActivity;J)Z
-    move-result v2
-    if-eqz v2, :wave_reveal_armed
-    invoke-direct {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->startMsgListQuery()V
+    iget-object v5, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mConversation:Lcom/android/mms/data/Conversation;
+    invoke-virtual {v5}, Lcom/android/mms/data/Conversation;->getUri()Landroid/net/Uri;
+    move-result-object v5
+    invoke-static {p0, v2, v3, v5}, Lcom/android/mms/ui/WaveHistory;->startEarlyQuery(Lcom/android/mms/ui/ComposeMessageActivity;JLandroid/net/Uri;)Z
     goto :wave_reveal_armed
 
     :wave_no_reveal
@@ -30656,6 +30656,22 @@
 
     .line 3626
     :cond_2
+    # PERF: deliver already-completed early history query synchronously before WindowManager.addView()
+    invoke-static {p0}, Lcom/android/mms/ui/WaveHistory;->harvestEarlyQuery(Lcom/android/mms/ui/ComposeMessageActivity;)V
+
+    return-void
+.end method
+
+.method waveDeliverQuery(ILjava/lang/Object;Landroid/database/Cursor;)V
+    .locals 1
+
+    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mBackgroundQueryHandler:Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;
+
+    if-eqz v0, :wave_deliver_done
+
+    invoke-virtual {v0, p1, p2, p3}, Lcom/android/mms/ui/ComposeMessageActivity$BackgroundQueryHandler;->onQueryComplete(ILjava/lang/Object;Landroid/database/Cursor;)V
+
+    :wave_deliver_done
     return-void
 .end method
 

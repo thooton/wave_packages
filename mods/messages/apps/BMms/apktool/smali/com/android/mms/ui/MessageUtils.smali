@@ -1873,150 +1873,15 @@
 .end method
 
 .method public static formatTimeStampString(Landroid/content/Context;JZ)Ljava/lang/String;
-    .locals 11
+    .locals 1
 
     .prologue
-    const-wide/32 v8, 0xea60
-
-    const v0, 0x80b11
-
-    .line 1056
-    new-instance v1, Landroid/text/format/Time;
-
-    invoke-direct {v1}, Landroid/text/format/Time;-><init>()V
-
-    .line 1057
-    invoke-virtual {v1, p1, p2}, Landroid/text/format/Time;->set(J)V
-
-    .line 1058
-    new-instance v2, Landroid/text/format/Time;
-
-    invoke-direct {v2}, Landroid/text/format/Time;-><init>()V
-
-    .line 1059
-    invoke-virtual {v2}, Landroid/text/format/Time;->setToNow()V
-
-    .line 1069
-    if-eqz p3, :cond_1
-
-    .line 1097
-    :cond_0
-    :goto_0
-    invoke-static {p0, p1, p2, v0}, Landroid/text/format/DateUtils;->formatDateTime(Landroid/content/Context;JI)Ljava/lang/String;
+    # PERF: cached day/year boundaries + minute-bucket LRU cache (eliminates 2x Time + ICU lock).
+    invoke-static {p0, p1, p2, p3}, Lcom/android/mms/ui/WaveTimeFormat;->format(Landroid/content/Context;JZ)Ljava/lang/String;
 
     move-result-object v0
 
     return-object v0
-
-    .line 1072
-    :cond_1
-    invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
-
-    move-result-wide v4
-
-    sub-long/2addr v4, p1
-
-    .line 1073
-    cmp-long v3, v4, v8
-
-    if-gez v3, :cond_2
-
-    .line 1075
-    invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v0
-
-    const v1, 0x7f070365
-
-    invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getString(I)Ljava/lang/String;
-
-    move-result-object v0
-
-    return-object v0
-
-    .line 1076
-    :cond_2
-    const-wide/32 v6, 0x36ee80
-
-    cmp-long v3, v4, v6
-
-    if-gez v3, :cond_3
-
-    .line 1078
-    div-long v0, v4, v8
-
-    .line 1079
-    invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v2
-
-    .line 1080
-    long-to-int v3, v0
-
-    const v4, 0x7f0d0005
-
-    .line 1079
-    invoke-virtual {v2, v4, v3}, Landroid/content/res/Resources;->getQuantityString(II)Ljava/lang/String;
-
-    move-result-object v2
-
-    .line 1081
-    const/4 v3, 0x1
-
-    new-array v3, v3, [Ljava/lang/Object;
-
-    invoke-static {v0, v1}, Ljava/lang/Long;->valueOf(J)Ljava/lang/Long;
-
-    move-result-object v0
-
-    const/4 v1, 0x0
-
-    aput-object v0, v3, v1
-
-    invoke-static {v2, v3}, Ljava/lang/String;->format(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;
-
-    move-result-object v0
-
-    return-object v0
-
-    .line 1082
-    :cond_3
-    iget v3, v1, Landroid/text/format/Time;->yearDay:I
-
-    iget v6, v2, Landroid/text/format/Time;->yearDay:I
-
-    if-ne v3, v6, :cond_4
-
-    .line 1084
-    const v0, 0x80b01
-
-    goto :goto_0
-
-    .line 1085
-    :cond_4
-    const-wide/32 v6, 0x240c8400
-
-    cmp-long v3, v4, v6
-
-    if-gez v3, :cond_5
-
-    .line 1087
-    const v0, 0x80b03
-
-    goto :goto_0
-
-    .line 1088
-    :cond_5
-    iget v1, v1, Landroid/text/format/Time;->year:I
-
-    iget v2, v2, Landroid/text/format/Time;->year:I
-
-    if-eq v1, v2, :cond_0
-
-    .line 1093
-    const v0, 0x80b14
-
-    goto :goto_0
 .end method
 
 .method public static getActivatedIccCardCount()I

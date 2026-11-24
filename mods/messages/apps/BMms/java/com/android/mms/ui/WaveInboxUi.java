@@ -33,7 +33,10 @@ public final class WaveInboxUi {
     private static final int ID_SUBJECT = 0x7f0f003b;
     private static final int ID_ATTACH_STATUS = 0x7f0f0067;
     private static final int ID_ATTACH_INFO = 0x7f0f0069;
+    private static final int DRAWABLE_GROUP_AVATAR = 0x7f02003f;
     private static final int TAG_HOLDER = 0x57440002;
+    private static final int TAG_GROUP_AVATAR = 0x57440003;
+    private static volatile android.graphics.drawable.Drawable sGroupAvatarDrawable;
     private static final String REPLY_PREFIX = "\u21A9 \u201C";
     private static final Pattern E164_PAT = Pattern.compile("\\+[1-9][0-9]{7,14}");
 
@@ -75,6 +78,26 @@ public final class WaveInboxUi {
         if (container.getChildCount() == 1 && container.getChildAt(0) == avatar) return;
         container.removeAllViews();
         container.addView(avatar);
+    }
+
+    /** Reuse cached group avatar drawable and ImageView without removeAllViews/new ImageView per row. */
+    public static void setGroupAvatar(android.view.ViewGroup container) {
+        if (container == null) return;
+        if (container.getChildCount() == 1
+                && Boolean.TRUE.equals(container.getChildAt(0).getTag(TAG_GROUP_AVATAR))) {
+            return;
+        }
+        container.removeAllViews();
+        android.content.Context ctx = container.getContext();
+        android.widget.ImageView iv = new android.widget.ImageView(ctx);
+        iv.setTag(TAG_GROUP_AVATAR, Boolean.TRUE);
+        android.graphics.drawable.Drawable d = sGroupAvatarDrawable;
+        if (d == null) {
+            d = ctx.getResources().getDrawable(DRAWABLE_GROUP_AVATAR);
+            sGroupAvatarDrawable = d;
+        }
+        iv.setImageDrawable(d);
+        container.addView(iv);
     }
 
     private WaveInboxUi() {}

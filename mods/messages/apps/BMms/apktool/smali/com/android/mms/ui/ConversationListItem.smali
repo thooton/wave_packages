@@ -1570,9 +1570,7 @@
 
     .line 301
     :cond_3
-    invoke-virtual {v0}, Landroid/view/ViewGroup;->removeAllViews()V
-
-    invoke-direct {p0, v0}, Lcom/android/mms/ui/ConversationListItem;->setGroupAvatar(Landroid/view/ViewGroup;)V
+    invoke-static {v0}, Lcom/android/mms/ui/WaveInboxUi;->setGroupAvatar(Landroid/view/ViewGroup;)V
 
     goto :goto_0
 .end method
