@@ -6882,35 +6882,14 @@
 .end method
 
 .method public static isAirplaneModeOn(Landroid/content/Context;)Z
-    .locals 4
+    .locals 1
 
     .prologue
-    const/4 v0, 0x1
+    invoke-static {p0}, Lcom/android/mms/wave/WaveInit;->isAirplaneModeCached(Landroid/content/Context;)Z
 
-    const/4 v1, 0x0
+    move-result v0
 
-    .line 2365
-    invoke-virtual {p0}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
-
-    move-result-object v2
-
-    .line 2366
-    const-string/jumbo v3, "airplane_mode_on"
-
-    .line 2365
-    invoke-static {v2, v3, v1}, Landroid/provider/Settings$Global;->getInt(Landroid/content/ContentResolver;Ljava/lang/String;I)I
-
-    move-result v2
-
-    if-ne v2, v0, :cond_0
-
-    :goto_0
     return v0
-
-    :cond_0
-    move v0, v1
-
-    goto :goto_0
 .end method
 
 .method public static isAlias(Ljava/lang/String;)Z

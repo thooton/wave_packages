@@ -30682,6 +30682,34 @@
     return-void
 .end method
 
+.method private waveRegisterReceiversDeferred()V
+    .locals 9
+
+    move-object v0, p0
+
+    iget-object v1, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mHttpProgressReceiver:Landroid/content/BroadcastReceiver;
+
+    iget-object v2, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mHttpProgressFilter:Landroid/content/IntentFilter;
+
+    iget-object v3, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mMediaStateReceiver:Landroid/content/BroadcastReceiver;
+
+    invoke-direct {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getMediaStateFilter()Landroid/content/IntentFilter;
+
+    move-result-object v4
+
+    iget-object v5, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mAirplaneModeBroadcastReceiver:Landroid/content/BroadcastReceiver;
+
+    iget-object v6, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mAirplaneModeFilter:Landroid/content/IntentFilter;
+
+    iget-object v7, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mSimBroadcastReceiver:Landroid/content/BroadcastReceiver;
+
+    iget-object v8, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mSIMStatusChangeFilter:Landroid/content/IntentFilter;
+
+    invoke-static/range {v0 .. v8}, Lcom/android/mms/ui/WaveHistory;->registerReceiversDeferred(Lcom/android/mms/ui/ComposeMessageActivity;Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;)V
+
+    return-void
+.end method
+
 .method public onSaveInstanceState(Landroid/os/Bundle;)V
     .locals 3
 
@@ -30842,34 +30870,8 @@
 
     .line 3421
     :cond_1
-    iget-object v1, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mHttpProgressReceiver:Landroid/content/BroadcastReceiver;
-
-    iget-object v2, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mHttpProgressFilter:Landroid/content/IntentFilter;
-
-    invoke-virtual {p0, v1, v2}, Lcom/android/mms/ui/ComposeMessageActivity;->registerReceiver(Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;)Landroid/content/Intent;
-
-    .line 3424
-    iget-object v1, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mMediaStateReceiver:Landroid/content/BroadcastReceiver;
-
-    invoke-direct {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getMediaStateFilter()Landroid/content/IntentFilter;
-
-    move-result-object v2
-
-    invoke-virtual {p0, v1, v2}, Lcom/android/mms/ui/ComposeMessageActivity;->registerReceiver(Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;)Landroid/content/Intent;
-
-    .line 3426
-    iget-object v1, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mAirplaneModeBroadcastReceiver:Landroid/content/BroadcastReceiver;
-
-    iget-object v2, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mAirplaneModeFilter:Landroid/content/IntentFilter;
-
-    invoke-virtual {p0, v1, v2}, Lcom/android/mms/ui/ComposeMessageActivity;->registerReceiver(Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;)Landroid/content/Intent;
-
-    .line 3427
-    iget-object v1, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mSimBroadcastReceiver:Landroid/content/BroadcastReceiver;
-
-    iget-object v2, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mSIMStatusChangeFilter:Landroid/content/IntentFilter;
-
-    invoke-virtual {p0, v1, v2}, Lcom/android/mms/ui/ComposeMessageActivity;->registerReceiver(Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;)Landroid/content/Intent;
+    # PERF: defer 4 ActivityManagerService registerReceiver Binder IPCs until post-first-frame.
+    invoke-direct {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->waveRegisterReceiversDeferred()V
 
     .line 3428
     iget-boolean v1, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mIsRcsEnabled:Z
@@ -31093,24 +31095,7 @@
 
     .line 3711
     :cond_1
-    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mHttpProgressReceiver:Landroid/content/BroadcastReceiver;
-
-    invoke-virtual {p0, v0}, Lcom/android/mms/ui/ComposeMessageActivity;->unregisterReceiver(Landroid/content/BroadcastReceiver;)V
-
-    .line 3712
-    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mMediaStateReceiver:Landroid/content/BroadcastReceiver;
-
-    invoke-virtual {p0, v0}, Lcom/android/mms/ui/ComposeMessageActivity;->unregisterReceiver(Landroid/content/BroadcastReceiver;)V
-
-    .line 3713
-    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mAirplaneModeBroadcastReceiver:Landroid/content/BroadcastReceiver;
-
-    invoke-virtual {p0, v0}, Lcom/android/mms/ui/ComposeMessageActivity;->unregisterReceiver(Landroid/content/BroadcastReceiver;)V
-
-    .line 3714
-    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mSimBroadcastReceiver:Landroid/content/BroadcastReceiver;
-
-    invoke-virtual {p0, v0}, Lcom/android/mms/ui/ComposeMessageActivity;->unregisterReceiver(Landroid/content/BroadcastReceiver;)V
+    invoke-static {p0}, Lcom/android/mms/ui/WaveHistory;->unregisterReceivers(Lcom/android/mms/ui/ComposeMessageActivity;)V
 
     .line 3715
     iget-boolean v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mIsRcsEnabled:Z

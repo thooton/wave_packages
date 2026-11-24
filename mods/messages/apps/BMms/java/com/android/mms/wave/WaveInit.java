@@ -76,6 +76,25 @@ public final class WaveInit {
         t.start();
     }
 
+    private static volatile long sAirplaneCheckedAt;
+    private static volatile boolean sAirplaneCached;
+
+    /** Cached Settings.Global.AIRPLANE_MODE_ON (2s TTL) to avoid SettingsProvider IPC on every onResume/keystroke. */
+    public static boolean isAirplaneModeCached(Context c) {
+        long now = android.os.SystemClock.uptimeMillis();
+        if (sAirplaneCheckedAt != 0L && (now - sAirplaneCheckedAt) < 2000L) {
+            return sAirplaneCached;
+        }
+        boolean on = false;
+        try {
+            on = android.provider.Settings.Global.getInt(
+                    c.getContentResolver(), "airplane_mode_on", 0) == 1;
+        } catch (Throwable ignored) {}
+        sAirplaneCached = on;
+        sAirplaneCheckedAt = now;
+        return on;
+    }
+
     /** Run PackageManager.setComponentEnabledSetting off the main thread, only if state differs. */
     public static void applyComponentStateAsync(final Context c, final Class<?> cls, final int state) {
         final Context app = c.getApplicationContext();

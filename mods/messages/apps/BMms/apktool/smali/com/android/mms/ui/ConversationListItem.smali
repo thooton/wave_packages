@@ -606,22 +606,21 @@
     .line 252
     :cond_1
     :goto_3
+    # PERF: read fontScale directly from Resources Configuration in memory instead of
+    # synchronous Settings.System.getFloat("font_scale") SettingsProvider Binder IPC per inbox row.
     invoke-virtual {p0}, Lcom/android/mms/ui/ConversationListItem;->getContext()Landroid/content/Context;
 
     move-result-object v0
 
-    invoke-virtual {v0}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
+    invoke-virtual {v0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
 
     move-result-object v0
 
-    .line 253
-    const-string/jumbo v1, "font_scale"
+    invoke-virtual {v0}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
 
-    const/4 v2, 0x0
+    move-result-object v0
 
-    invoke-static {v0, v1, v2}, Landroid/provider/Settings$System;->getFloat(Landroid/content/ContentResolver;Ljava/lang/String;F)F
-
-    move-result v0
+    iget v0, v0, Landroid/content/res/Configuration;->fontScale:F
 
     .line 255
     iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mConversation:Lcom/android/mms/data/Conversation;

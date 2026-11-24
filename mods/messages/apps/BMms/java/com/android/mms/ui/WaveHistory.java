@@ -57,6 +57,14 @@ public final class WaveHistory {
     private long earlyQueryThread = -1;
     private boolean skipFirstStartTitle;
     private PendingQuery pendingQuery;
+
+    private static final class DeferredReceivers {
+        Runnable pending;
+        android.content.BroadcastReceiver[] registered;
+    }
+
+    private static final java.util.WeakHashMap<ComposeMessageActivity, DeferredReceivers> RECEIVERS =
+            new java.util.WeakHashMap<>();
     private boolean keepFocus, firstRowsMeasured, opened;
     private BottomAlignment bottomAlignment;
     private WaveConversationReveal reveal;
@@ -185,6 +193,66 @@ public final class WaveHistory {
                     Cursor c = p.future.get();
                     if (c != null) c.close();
                 } catch (Throwable ignored) {}
+            }
+        }
+    }
+
+    /**
+     * Defer ComposeMessageActivity's 4 onStart() BroadcastReceiver registrations until right after
+     * frame #1 draws, removing 4 synchronous ActivityManagerService Binder IPCs from open latency.
+     */
+    public static void registerReceiversDeferred(
+            final ComposeMessageActivity activity,
+            final android.content.BroadcastReceiver r1, final android.content.IntentFilter f1,
+            final android.content.BroadcastReceiver r2, final android.content.IntentFilter f2,
+            final android.content.BroadcastReceiver r3, final android.content.IntentFilter f3,
+            final android.content.BroadcastReceiver r4, final android.content.IntentFilter f4) {
+        unregisterReceivers(activity);
+        final DeferredReceivers state = new DeferredReceivers();
+        RECEIVERS.put(activity, state);
+        final Runnable task = new Runnable() {
+            @Override
+            public void run() {
+                if (state.pending != this) return;
+                state.pending = null;
+                if (activity.isFinishing() || activity.isDestroyed()) return;
+                android.content.BroadcastReceiver[] list = new android.content.BroadcastReceiver[4];
+                android.content.BroadcastReceiver[] rs = new android.content.BroadcastReceiver[] { r1, r2, r3, r4 };
+                android.content.IntentFilter[] fs = new android.content.IntentFilter[] { f1, f2, f3, f4 };
+                for (int i = 0; i < 4; i++) {
+                    if (rs[i] != null && fs[i] != null) {
+                        try {
+                            activity.registerReceiver(rs[i], fs[i]);
+                            list[i] = rs[i];
+                        } catch (Throwable t) {
+                            Log.w("WaveHistory", "deferred registerReceiver failed", t);
+                        }
+                    }
+                }
+                state.registered = list;
+            }
+        };
+        state.pending = task;
+        MAIN.post(task);
+    }
+
+    /** Cancel deferred registration or unregister any receivers registered by registerReceiversDeferred(). */
+    public static void unregisterReceivers(ComposeMessageActivity activity) {
+        DeferredReceivers state = RECEIVERS.remove(activity);
+        if (state == null) return;
+        if (state.pending != null) {
+            MAIN.removeCallbacks(state.pending);
+            state.pending = null;
+        }
+        android.content.BroadcastReceiver[] list = state.registered;
+        state.registered = null;
+        if (list != null) {
+            for (android.content.BroadcastReceiver r : list) {
+                if (r != null) {
+                    try {
+                        activity.unregisterReceiver(r);
+                    } catch (Throwable ignored) {}
+                }
             }
         }
     }
