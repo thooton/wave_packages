@@ -82,6 +82,7 @@ jobs:
             backends/xnnpack/third-party/pthreadpool
             kernels/optimized/third-party/eigen
             third-party/flatbuffers
+            third-party/flatcc
             third-party/gflags
             third-party/json
             third-party/pocketfft
@@ -156,6 +157,7 @@ jobs:
             backends/xnnpack/third-party/pthreadpool
             kernels/optimized/third-party/eigen
             third-party/flatbuffers
+            third-party/flatcc
             third-party/gflags
             third-party/json
             third-party/pocketfft
