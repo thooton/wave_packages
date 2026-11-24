@@ -748,7 +748,10 @@ public final class WaveMessageUi {
         }
         if (resetLayout) {
             tv.setGravity(Gravity.START);
-            tv.setAutoLinkMask(android.text.util.Linkify.ALL);
+            // Never set Linkify.ALL: MAP_ADDRESSES triggers Chromium WebView (~800ms on main thread).
+            tv.setAutoLinkMask(android.text.util.Linkify.WEB_URLS
+                    | android.text.util.Linkify.EMAIL_ADDRESSES
+                    | android.text.util.Linkify.PHONE_NUMBERS);
             tv.setLinksClickable(true);
             if (tv.getLayoutParams() instanceof LinearLayout.LayoutParams) {
                 LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) tv.getLayoutParams();

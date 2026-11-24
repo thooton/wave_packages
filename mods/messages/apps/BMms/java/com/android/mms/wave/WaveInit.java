@@ -53,7 +53,6 @@ public final class WaveInit {
      */
     static void applyReceiptPolicy(Context c) {
         SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(c);
-        SharedPreferences.Editor e = p.edit();
         String[] off = {
                 "pref_key_sms_delivery_reports", "pref_key_sms_delivery_reports_no_multi",
                 "pref_key_sms_delivery_reports_slot1", "pref_key_sms_delivery_reports_slot2",
@@ -64,12 +63,24 @@ public final class WaveInit {
                 "pref_key_mms_read_reports_card1", "pref_key_mms_read_reports_card2",
                 "pref_key_mms_send_read_report",
         };
+        boolean dirty = false;
+        for (String k : off) {
+            if (!p.contains(k) || p.getBoolean(k, true)) {
+                dirty = true;
+                break;
+            }
+        }
+        boolean migrateArgon = !p.contains("wave_prefs_version") && p.contains("argon_prefs_version");
+        boolean needsInit = !migrateArgon && p.getInt("wave_prefs_version", 0) < 1;
+        if (!dirty && !migrateArgon && !needsInit) return;
+
+        SharedPreferences.Editor e = p.edit();
         for (String k : off) e.putBoolean(k, false);
         // Keep the previous migration level so existing receipt choices aren't reset.
-        if (!p.contains("wave_prefs_version") && p.contains("argon_prefs_version")) {
+        if (migrateArgon) {
             e.putInt("wave_prefs_version", p.getInt("argon_prefs_version", 0));
             e.remove("argon_prefs_version");
-        } else if (p.getInt("wave_prefs_version", 0) < 1) {
+        } else if (needsInit) {
             e.putBoolean("pref_key_mms_send_delivery_report", true);
             e.putInt("wave_prefs_version", 1);
         }

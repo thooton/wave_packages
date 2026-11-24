@@ -174,22 +174,31 @@ public final class WaveIMessageHost implements PushClient.Listener {
     // -----------------------------------------------------------------------------------------
     // Lifecycle hooks
 
-    /** Called from WaveInit.onAppCreate (main thread): never blocks. */
+    /** Called from WaveInit.onAppCreate (main thread): never blocks or touches disk on UI thread. */
     public static void onAppCreate(Context app) {
         final Context appCtx = app.getApplicationContext();
-        final WaveIMessageHost h = get(appCtx);
-        h.handler.post(new Runnable() {
+        Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
                     WaveIMessageDb.get(appCtx).ensureInfoKeys();
                     com.android.mms.ui.WaveTapbacks.warmCache(appCtx);
                 } catch (Throwable ignored) {}
-                if (h.config.isEnabled()) {
-                    h.startHostService(null);
-                }
+                try {
+                    final WaveIMessageHost h = get(appCtx);
+                    h.handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (h.config.isEnabled()) {
+                                h.startHostService(null);
+                            }
+                        }
+                    });
+                } catch (Throwable ignored) {}
             }
-        });
+        }, "wave-imsg-init");
+        t.setDaemon(true);
+        t.start();
     }
 
     /** Called from MmsSystemEventReceiver.onReceive on BOOT_COMPLETED. */

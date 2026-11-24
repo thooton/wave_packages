@@ -7,7 +7,7 @@ import java.util.List;
 final class WaveConversationSchema {
     private WaveConversationSchema() {}
 
-    static final int VERSION = 1;
+    static final int VERSION = 2;
     static final String TABLE = "wave_msg";
     static final String META = "wave_msg_version";
     static final String[] PROJECTION = ("transport_type,_id,thread_id,address,body,sub_id,date,date_sent,"
@@ -51,26 +51,24 @@ final class WaveConversationSchema {
             + "p.sub,p.sub_cs,p.m_type,p.msg_box,p.d_rpt,p.rr,p.st,p.text_only";
     private static final String MMS_TARGET = MMS_FIELDS.replace("p.", "") + ",err_type,wave_text,wave_from,wave_size";
 
-    // Fast-path only known one-slide plain-text layouts. Do not guess what arbitrary SMIL shows.
-    private static final String SIMPLE_SMIL = "<smil><head><layout><root-layout/><region id=\"Text\" top=\"0\""
-            + " left=\"0\" height=\"100%\" width=\"100%\"/></layout></head><body><par dur=\"5000ms\">"
-            + "<text src=\"text.000000.txt\" region=\"Text\" /></par></body></smil>";
-    private static final String STOCK_SMIL = "<smil><head><layout><root-layout width=\"296px\" height=\"240px\"/>"
-            + "<region id=\"Text\" left=\"0\" top=\"216\" width=\"296px\" height=\"24px\" fit=\"meet\"/>"
-            + "</layout></head><body><par dur=\"2000ms\"><text src=\"text_0.txt\" region=\"Text\"/></par></body></smil>";
-    // The common test/network template also has one text object and an unused Image region.
-    private static final String NETWORK_SMIL = "<smil><head><layout><root-layout/><region id=\"Image\" top=\"0\" left=\"0\""
-            + " height=\"80%\" width=\"100%\"/><region id=\"Text\" top=\"80%\" left=\"0\" height=\"20%\" width=\"100%\"/>"
-            + "</layout></head><body><par dur=\"5000ms\"><text src=\"text_0.txt\" region=\"Text\"/></par></body></smil>";
+    // Fast-path single-text-part plain-text MMS: either no SMIL (e.g. text-only group iMessages,
+    // 1 part total) or a single-slide SMIL referencing that text part with no media elements
+    // (covers stock, carrier UUID-named text_<uuid>.txt, and indented network SMIL templates).
     private static final String TEXT_ID = "CASE WHEN p.text_only=1 AND p.m_type IN (128,132)"
             + " AND coalesce(p.d_rpt,0)<>128 AND coalesce(p.rr,0)<>128"
-            + " AND (SELECT count(*) FROM part WHERE mid=p._id)=2"
-            + " THEN (SELECT t._id FROM part t JOIN part s ON s.mid=t.mid AND s.ct='application/smil'"
+            + " AND (SELECT count(*) FROM part WHERE mid=p._id) IN (1,2)"
+            + " THEN (SELECT t._id FROM part t"
             + " WHERE t.mid=p._id AND t.ct='text/plain' AND t._data IS NULL AND t.text IS NOT NULL"
             + " AND length(CAST(t.text AS BLOB))<=16384"
             + " AND (t.chset=106 OR (t.chset=3 AND length(CAST(t.text AS BLOB))=length(t.text)))"
-            + " AND ((t.cl='text.000000.txt' AND s.text='" + SIMPLE_SMIL + "')"
-            + " OR (t.cl='text_0.txt' AND s.text IN ('" + STOCK_SMIL + "','" + NETWORK_SMIL + "')))) END";
+            + " AND ((SELECT count(*) FROM part WHERE mid=p._id)=1"
+            + " OR EXISTS (SELECT 1 FROM part s WHERE s.mid=t.mid AND s.ct='application/smil'"
+            + " AND t.cl IS NOT NULL AND s.text IS NOT NULL"
+            + " AND instr(s.text, '<text src=\"' || t.cl || '\"')>0"
+            + " AND instr(lower(s.text), '<par')>0"
+            + " AND instr(substr(lower(s.text), instr(lower(s.text), '<par')+4), '<par')=0"
+            + " AND instr(lower(s.text), '<img')=0 AND instr(lower(s.text), '<video')=0"
+            + " AND instr(lower(s.text), '<audio')=0 AND instr(lower(s.text), '<ref')=0))) END";
 
     static List<String> rebuild() {
         List<String> sql = new ArrayList<>();

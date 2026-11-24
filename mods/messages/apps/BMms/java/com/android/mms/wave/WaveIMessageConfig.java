@@ -55,6 +55,11 @@ public final class WaveIMessageConfig {
     private final SharedPreferences guidsSp;
     private final SharedPreferences dedupeSp;
 
+    private volatile List<String> cachedHandles;
+    private static volatile String sCachedCountryIso;
+    private final java.util.concurrent.ConcurrentHashMap<String, Long> capCache =
+            new java.util.concurrent.ConcurrentHashMap<String, Long>();
+
     private final Object dedupeLock = new Object();
     private LinkedHashSet<String> recentIds;
     private final LinkedHashMap<String, String> appleIdToUri = new LinkedHashMap<String, String>(128, 0.75f, true) {
@@ -191,18 +196,26 @@ public final class WaveIMessageConfig {
                 .putString(K_HANDLES, sb.toString())
                 .putString(K_PREFERRED, preferred == null ? "" : preferred.trim())
                 .apply();
+        cachedHandles = null;
     }
 
     public List<String> getHandles() {
+        List<String> cached = cachedHandles;
+        if (cached != null) return cached;
         String raw = sp.getString(K_HANDLES, "");
-        if (TextUtils.isEmpty(raw)) return Collections.emptyList();
+        if (TextUtils.isEmpty(raw)) {
+            cachedHandles = Collections.emptyList();
+            return cachedHandles;
+        }
         String[] parts = raw.split("\n");
         List<String> out = new ArrayList<String>(parts.length);
         for (String p : parts) {
             String t = p.trim();
             if (!t.isEmpty()) out.add(t);
         }
-        return out;
+        List<String> result = Collections.unmodifiableList(out);
+        cachedHandles = result;
+        return result;
     }
 
     public String getPreferredHandle() {
@@ -229,8 +242,24 @@ public final class WaveIMessageConfig {
     public int getCapability(String normalizedTarget) {
         if (TextUtils.isEmpty(normalizedTarget)) return CAP_UNKNOWN;
         String key = normalizedTarget.toLowerCase(Locale.ROOT);
+        Long packed = capCache.get(key);
+        if (packed != null) {
+            long p = packed;
+            if (p == 0L) return CAP_UNKNOWN;
+            int val = (int) (p & 0x3L);
+            long ts = p >>> 2;
+            long now = System.currentTimeMillis();
+            if (now >= ts && (now - ts) > CAP_TTL_MS) {
+                capCache.remove(key);
+                return CAP_UNKNOWN;
+            }
+            return val;
+        }
         String raw = capsSp.getString(key, null);
-        if (raw == null) return CAP_UNKNOWN;
+        if (raw == null) {
+            capCache.put(key, 0L);
+            return CAP_UNKNOWN;
+        }
         int colon = raw.indexOf(':');
         if (colon <= 0) return CAP_UNKNOWN;
         try {
@@ -239,8 +268,10 @@ public final class WaveIMessageConfig {
             long now = System.currentTimeMillis();
             // Handle 1970 clock safely: only expire if now >= ts and elapsed > TTL.
             if (now >= ts && (now - ts) > CAP_TTL_MS) {
+                capCache.put(key, 0L);
                 return CAP_UNKNOWN;
             }
+            capCache.put(key, (ts << 2) | (val & 0x3L));
             return val;
         } catch (NumberFormatException e) {
             return CAP_UNKNOWN;
@@ -251,10 +282,13 @@ public final class WaveIMessageConfig {
         if (TextUtils.isEmpty(normalizedTarget)) return;
         String key = normalizedTarget.toLowerCase(Locale.ROOT);
         int val = registered ? CAP_REGISTERED : CAP_UNREGISTERED;
-        capsSp.edit().putString(key, val + ":" + System.currentTimeMillis()).apply();
+        long now = System.currentTimeMillis();
+        capCache.put(key, (now << 2) | (val & 0x3L));
+        capsSp.edit().putString(key, val + ":" + now).apply();
     }
 
     public void clearCapabilities() {
+        capCache.clear();
         capsSp.edit().clear().apply();
     }
 
@@ -412,17 +446,25 @@ public final class WaveIMessageConfig {
     }
 
     private static String countryIso(Context c) {
+        String cached = sCachedCountryIso;
+        if (cached != null) return cached;
         try {
             TelephonyManager tm = (TelephonyManager) c.getSystemService(Context.TELEPHONY_SERVICE);
             if (tm != null) {
                 String iso = tm.getSimCountryIso();
                 if (TextUtils.isEmpty(iso)) iso = tm.getNetworkCountryIso();
-                if (!TextUtils.isEmpty(iso)) return iso.toUpperCase(Locale.ROOT);
+                if (!TextUtils.isEmpty(iso)) {
+                    String up = iso.toUpperCase(Locale.ROOT);
+                    sCachedCountryIso = up;
+                    return up;
+                }
             }
         } catch (Throwable ignored) {
         }
         String l = Locale.getDefault().getCountry();
-        return TextUtils.isEmpty(l) ? "US" : l.toUpperCase(Locale.ROOT);
+        String fallback = TextUtils.isEmpty(l) ? "US" : l.toUpperCase(Locale.ROOT);
+        sCachedCountryIso = fallback;
+        return fallback;
     }
 
     public static boolean isOwnHandle(String handle, List<String> myHandles) {

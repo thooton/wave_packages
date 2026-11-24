@@ -30885,18 +30885,11 @@
 
     .line 3466
     :cond_4
-    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mHandler:Landroid/os/Handler;
+    # PERF(mms rows): run loadMessagesAndDraft directly in onStart so the history provider query
+    # executes in parallel with onResume and window setup instead of waiting for a posted runnable.
+    const/4 v0, 0x2
 
-    new-instance v1, Lcom/android/mms/ui/ComposeMessageActivity$43;
-
-    invoke-direct {v1, p0}, Lcom/android/mms/ui/ComposeMessageActivity$43;-><init>(Lcom/android/mms/ui/ComposeMessageActivity;)V
-
-    .line 3470
-    # PERF(mms rows): was 500 ms; still posted, so it runs after onStart/onResume
-    const-wide/16 v2, 0x0
-
-    .line 3466
-    invoke-virtual {v0, v1, v2, v3}, Landroid/os/Handler;->postDelayed(Ljava/lang/Runnable;J)Z
+    invoke-direct {p0, v0}, Lcom/android/mms/ui/ComposeMessageActivity;->loadMessagesAndDraft(I)V
 
     .line 3476
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mWorkingMessage:Lcom/android/mms/data/WorkingMessage;
