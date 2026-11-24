@@ -91,6 +91,8 @@ public class IMessageHostTest {
                     Body.REACT_HEART, null, false),
             Body.edit("apple-4", "tel:+15551234567", 2L, "apple-2", "Hi from Mac!"),
             Body.unsend("apple-5", "tel:+15551234567", 3L, "apple-2"),
+            Body.sendEdit("e-1", Arrays.asList("tel:+15551234567"), "guid-1", "apple-2", 2, "Hi there!"),
+            Body.sendUnsend("u-1", Arrays.asList("tel:+15551234567", "mailto:bob@icloud.com"), null, "apple-2", 3),
             Body.groupEvent("apple-6", "tel:+15551234567", Arrays.asList("tel:+15551234567", "mailto:bob@icloud.com"),
                     "guid-g", 4L, Body.GROUP_PARTICIPANTS, "", Arrays.asList("tel:+15551234567")),
             Body.setupStatus(Body.SETUP_WAITING_SMS, "Waiting for Apple"),
@@ -131,6 +133,12 @@ public class IMessageHostTest {
                 check("Hi from Mac!".equals(dec.text) && "apple-2".equals(dec.targetId), "edit");
             } else if (b.kind == Body.KIND_UNSEND) {
                 check("apple-2".equals(dec.targetId), "unsend");
+            } else if (b.kind == Body.KIND_SEND_EDIT) {
+                check("e-1".equals(dec.clientMsgId) && "apple-2".equals(dec.targetId) && dec.part == 2
+                        && "Hi there!".equals(dec.text) && "guid-1".equals(dec.senderGuid), "sendEdit");
+            } else if (b.kind == Body.KIND_SEND_UNSEND) {
+                check("u-1".equals(dec.clientMsgId) && "apple-2".equals(dec.targetId) && dec.part == 3
+                        && dec.participants.size() == 2 && dec.senderGuid == null, "sendUnsend");
             } else if (b.kind == Body.KIND_GROUP_EVENT) {
                 check(dec.event == Body.GROUP_PARTICIPANTS && dec.newParticipants.size() == 1, "groupEvent");
             }

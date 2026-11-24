@@ -187,6 +187,17 @@ public class IMessageInteropTest {
         Body un = sendAndEcho(peer, "/unsend", null);
         check(un.kind == Body.KIND_UNSEND && reply.appleMsgId.equals(un.targetId), "unsend targets the last echo");
 
+        // Our own edits and unsends.
+        send(Body.sendEdit("e-1", peer, "guid-1", firstEcho, 0, "hello there (fixed)"));
+        Body er = next(Body.KIND_SEND_RESULT);
+        check("e-1".equals(er.clientMsgId) && er.ok && er.appleMsgId != null, "own edit sent");
+        send(Body.sendEdit("e-2", peer, "guid-1", firstEcho, 0, "/fail"));
+        Body ef = next(Body.KIND_SEND_RESULT);
+        check("e-2".equals(ef.clientMsgId) && !ef.ok && ef.error != null, "refused edit reported (" + ef.error + ")");
+        send(Body.sendUnsend("u-1", peer, "guid-1", firstEcho, 1));
+        Body ur = next(Body.KIND_SEND_RESULT);
+        check("u-1".equals(ur.clientMsgId) && ur.ok, "own unsend sent");
+
         List<String> group = Arrays.asList("tel:+15557654321", "mailto:alice@icloud.com");
         Body rn = sendAndEcho(group, "/rename Hike crew", null);
         check(rn.kind == Body.KIND_GROUP_EVENT && rn.event == Body.GROUP_RENAMED && "Hike crew".equals(rn.name),

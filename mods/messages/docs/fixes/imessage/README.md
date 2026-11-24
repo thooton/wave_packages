@@ -166,6 +166,16 @@ resources, or conversation UI.
      **Unsends** keep the message (text, attachments, tapbacks) and add a last line `Unsent`;
      before 1.6.0 they replaced it with `This message was unsent` and dropped its attachments and
      tapbacks. **Inline replies** start with a quote of the original (`↩ "..."`).
+   - **Editing and unsending your own iMessages** (`WaveIMessageEdit`, needs imsg-server 528bd3c
+     or later): within Apple's limits, edit within 15 minutes (5 times), unsend within 2 minutes.
+     `check(context, uri)` says what's allowed and for how long still (cheap, for building a
+     menu); `edit(context, uri, text, cb)` / `unsend(context, uri, cb)` send `SEND_EDIT` /
+     `SEND_UNSEND` and, once the server confirms, show the change as for the other side's edits
+     and unsends (edit history kept, `Unsent` under the message); `cb` gets null or an error to
+     show. For a message with attachments the edit applies to its text part and the unsend takes
+     back every part. Test hook (`setprop persist.wave.imsg.debug 1`, then restart Messages):
+     `am broadcast -a com.android.mms.wave.DEBUG_EDIT --es uri content://sms/N --es text "new"`
+     and `com.android.mms.wave.DEBUG_UNSEND --es uri ...`; only shell (DUMP) can send them.
    - **What the UI draws** (`WaveIMessageDb.infoForUri`, cached, a set lookup for ordinary rows):
      flags `FLAG_EDITED` / `FLAG_UNSENT` / `FLAG_NOTICE` (group notices), the text alone (no quote,
      ` (edited)` or `Unsent` line), and the replied-to message's id and text. The stored body keeps

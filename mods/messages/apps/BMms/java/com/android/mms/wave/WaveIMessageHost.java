@@ -133,6 +133,11 @@ public final class WaveIMessageHost implements PushClient.Listener {
         this.handler = new Handler(t.getLooper());
         this.wakeupClock = new AndroidWakeupClock();
         this.networkInfoProvider = new AndroidNetworkInfoProvider();
+        try {
+            com.android.mms.transaction.WaveIMessageEdit.registerDebugReceiver(this.ctx);
+        } catch (Throwable e) {
+            Log.w(TAG, "debug receiver", e);
+        }
     }
 
     public static synchronized WaveIMessageHost get(Context c) {
@@ -761,6 +766,22 @@ public final class WaveIMessageHost implements PushClient.Listener {
         PushClient c = client;
         if (c == null || !c.isConnected()) throw new IllegalStateException("iMessage not connected");
         return c.sendReaction(normalizedTargets, senderGuid, targetId, reaction, emoji, enable, targetText);
+    }
+
+    /** Edits our own message {@code targetId}; the result comes as a SEND_RESULT. */
+    public String sendEdit(List<String> normalizedTargets, String senderGuid, String targetId, int part, String text)
+            throws Exception {
+        PushClient c = client;
+        if (c == null || !c.isConnected()) throw new IllegalStateException("iMessage not connected");
+        return c.sendEdit(normalizedTargets, senderGuid, targetId, part, text);
+    }
+
+    /** Unsends our own message {@code targetId}; the result comes as a SEND_RESULT. */
+    public String sendUnsend(List<String> normalizedTargets, String senderGuid, String targetId, int parts)
+            throws Exception {
+        PushClient c = client;
+        if (c == null || !c.isConnected()) throw new IllegalStateException("iMessage not connected");
+        return c.sendUnsend(normalizedTargets, senderGuid, targetId, parts);
     }
 
     /** A client for attachment downloads and uploads, or null while not set up / not running. */

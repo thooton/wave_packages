@@ -211,6 +211,18 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
         return out;
     }
 
+    /** When {@code appleId} was stored or sent (ms since the epoch), or 0 if unknown. */
+    public long timeOf(String appleId) {
+        if (TextUtils.isEmpty(appleId)) return 0L;
+        Cursor c = getReadableDatabase().query("msgs", new String[]{"ts"}, "apple_id=?", new String[]{appleId},
+                null, null, null, "1");
+        try {
+            return c.moveToFirst() ? c.getLong(0) : 0L;
+        } finally {
+            c.close();
+        }
+    }
+
     /** Edit history of the message stored at {@code uri} (see {@link #editHistory}). */
     public List<Version> editHistoryForUri(Uri uri) {
         Msg m = byUri(uri);

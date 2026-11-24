@@ -47,6 +47,10 @@ public final class Body {
     public static final int KIND_UNSEND = 0x12;
     /** Server to phone: a group was renamed, changed members or changed its photo. */
     public static final int KIND_GROUP_EVENT = 0x13;
+    /** Phone to server: replace the text (part {@code part}) of our own message {@code targetId}. */
+    public static final int KIND_SEND_EDIT = 0x14;
+    /** Phone to server: take back our own message {@code targetId} ({@code part} = its part count). */
+    public static final int KIND_SEND_UNSEND = 0x15;
 
     public static final int SETUP_READY = 0;
     public static final int SETUP_NEED_SIM = 1;
@@ -141,6 +145,8 @@ public final class Body {
     /** REACTION / SEND_REACTION / EDIT / UNSEND: the message acted on. */
     public String targetId;
     public int reaction;
+    /** SEND_EDIT: index of the text part; SEND_UNSEND: how many parts the message has. */
+    public int part;
     public String emoji;
     public boolean enable;
     /** GROUP_EVENT: GROUP_RENAMED / GROUP_PARTICIPANTS / GROUP_ICON. */
@@ -237,6 +243,29 @@ public final class Body {
         b.emoji = emoji;
         b.enable = enable;
         b.text = targetText == null ? "" : targetText;
+        return b;
+    }
+
+    public static Body sendEdit(String clientMsgId, List<String> participants, String senderGuid, String targetId,
+                                int part, String text) {
+        Body b = new Body(KIND_SEND_EDIT);
+        b.clientMsgId = clientMsgId;
+        b.participants = copy(participants);
+        b.senderGuid = senderGuid;
+        b.targetId = targetId;
+        b.part = part;
+        b.text = text == null ? "" : text;
+        return b;
+    }
+
+    public static Body sendUnsend(String clientMsgId, List<String> participants, String senderGuid, String targetId,
+                                  int parts) {
+        Body b = new Body(KIND_SEND_UNSEND);
+        b.clientMsgId = clientMsgId;
+        b.participants = copy(participants);
+        b.senderGuid = senderGuid;
+        b.targetId = targetId;
+        b.part = parts;
         return b;
     }
 
@@ -402,6 +431,21 @@ public final class Body {
                 dos.writeByte(enable ? 1 : 0);
                 writeText(dos, text);
                 break;
+            case KIND_SEND_EDIT:
+                writeStr(dos, clientMsgId);
+                writeStrList(dos, participants);
+                writeOptStr(dos, senderGuid);
+                writeStr(dos, targetId);
+                dos.writeByte(part);
+                writeText(dos, text);
+                break;
+            case KIND_SEND_UNSEND:
+                writeStr(dos, clientMsgId);
+                writeStrList(dos, participants);
+                writeOptStr(dos, senderGuid);
+                writeStr(dos, targetId);
+                dos.writeByte(part);
+                break;
             case KIND_SETUP_STATUS:
                 dos.writeByte(receiptKind);
                 writeStr(dos, text);
@@ -549,6 +593,23 @@ public final class Body {
                 boolean enable = readBool(dis);
                 String targetText = readText(dis);
                 body = sendReaction(clientMsgId, participants, senderGuid, targetId, reaction, emoji, enable, targetText);
+                break;
+            }
+            case KIND_SEND_EDIT: {
+                String clientMsgId = readStr(dis);
+                List<String> participants = readStrList(dis);
+                String senderGuid = readOptStr(dis);
+                String targetId = readStr(dis);
+                int part = dis.readUnsignedByte();
+                body = sendEdit(clientMsgId, participants, senderGuid, targetId, part, readText(dis));
+                break;
+            }
+            case KIND_SEND_UNSEND: {
+                String clientMsgId = readStr(dis);
+                List<String> participants = readStrList(dis);
+                String senderGuid = readOptStr(dis);
+                String targetId = readStr(dis);
+                body = sendUnsend(clientMsgId, participants, senderGuid, targetId, dis.readUnsignedByte());
                 break;
             }
             case KIND_SETUP_STATUS: {
@@ -755,6 +816,10 @@ public final class Body {
                 return "TARGET_STATUS(reqId=" + reqId + ", reg=" + registered.size() + ", unreg=" + unregistered.size() + ")";
             case KIND_SEND_REACTION:
                 return "SEND_REACTION(id=" + clientMsgId + ", on=" + targetId + ", kind=" + reaction + ", enable=" + enable + ")";
+            case KIND_SEND_EDIT:
+                return "SEND_EDIT(id=" + clientMsgId + ", on=" + targetId + ", part=" + part + ", len=" + len(text) + ")";
+            case KIND_SEND_UNSEND:
+                return "SEND_UNSEND(id=" + clientMsgId + ", on=" + targetId + ", parts=" + part + ")";
             case KIND_REACTION:
                 return "REACTION(appleId=" + appleMsgId + ", from=" + sender + ", on=" + targetId + ", kind=" + reaction
                         + ", enable=" + enable + ")";

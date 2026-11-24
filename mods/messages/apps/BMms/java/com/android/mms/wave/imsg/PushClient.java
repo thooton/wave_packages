@@ -330,6 +330,22 @@ public final class PushClient {
         return clientMsgId;
     }
 
+    /** Replaces the text (part {@code part}) of our own message {@code targetId}. */
+    public String sendEdit(List<String> participants, String senderGuid, String targetId, int part, String text)
+            throws IOException {
+        String clientMsgId = "e-" + UUID.randomUUID().toString();
+        sendBody(Body.sendEdit(clientMsgId, participants, senderGuid, targetId, part, text));
+        return clientMsgId;
+    }
+
+    /** Takes back our own message {@code targetId} ({@code parts}: attachments plus text). */
+    public String sendUnsend(List<String> participants, String senderGuid, String targetId, int parts)
+            throws IOException {
+        String clientMsgId = "u-" + UUID.randomUUID().toString();
+        sendBody(Body.sendUnsend(clientMsgId, participants, senderGuid, targetId, parts));
+        return clientMsgId;
+    }
+
     /** A client for attachment transfers to the same server with the same credentials. */
     public MediaClient mediaClient() {
         return new MediaClient(config.mainHost, config.mainPort, config.tokenHex);

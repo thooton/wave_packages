@@ -501,26 +501,36 @@ public final class WaveIMessageStore {
     }
 
     private static void applyEdit(Context c, Body body) {
+        applyEdit(c, body.targetId, body.text, body.timestampMs);
+    }
+
+    /** Shows {@code targetId} as edited to {@code text} (incoming edits, and our own once sent). */
+    static void applyEdit(Context c, String targetId, String newText, long timestampMs) {
         WaveIMessageDb db = WaveIMessageDb.get(c);
-        WaveIMessageDb.Msg m = db.byAppleId(body.targetId);
+        WaveIMessageDb.Msg m = db.byAppleId(targetId);
         if (m == null) {
-            Log.i(TAG, "edit for unknown message " + body.targetId);
+            Log.i(TAG, "edit for unknown message " + targetId);
             return;
         }
-        String text = body.text == null ? "" : body.text;
+        String text = newText == null ? "" : newText;
         WaveIMessageDb.Info info = db.infoForUri(m.uri);
         boolean unsent = info != null && info.unsent();
         setText(c, m.uri, replyQuoteOf(c, m.uri) + text + EDITED + (unsent ? "\n" + UNSENT_NOTE : ""), false);
         // Keeps the replaced text: WaveIMessageDb.editHistory lists every version.
-        db.markEdited(body.targetId, text, body.timestampMs > 0 ? body.timestampMs : System.currentTimeMillis());
+        db.markEdited(targetId, text, timestampMs > 0 ? timestampMs : System.currentTimeMillis());
         refresh(c);
     }
 
     private static void applyUnsend(Context c, Body body) {
+        applyUnsend(c, body.targetId);
+    }
+
+    /** Shows {@code targetId} as unsent (incoming unsends, and our own once sent). */
+    static void applyUnsend(Context c, String targetId) {
         WaveIMessageDb db = WaveIMessageDb.get(c);
-        WaveIMessageDb.Msg m = db.byAppleId(body.targetId);
+        WaveIMessageDb.Msg m = db.byAppleId(targetId);
         if (m == null) {
-            Log.i(TAG, "unsend for unknown message " + body.targetId);
+            Log.i(TAG, "unsend for unknown message " + targetId);
             return;
         }
         WaveIMessageDb.Info info = db.infoForUri(m.uri);
@@ -529,7 +539,7 @@ public final class WaveIMessageStore {
         boolean edited = info != null && info.edited();
         String shown = replyQuoteOf(c, m.uri) + (m.text == null ? "" : m.text) + (edited ? EDITED : "");
         setText(c, m.uri, shown.isEmpty() ? UNSENT_NOTE : shown + "\n" + UNSENT_NOTE, false);
-        db.markUnsent(body.targetId);
+        db.markUnsent(targetId);
         refresh(c);
     }
 
