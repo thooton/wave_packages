@@ -165,7 +165,11 @@ public final class WaveComposePerf {
 
     /** Replaces the framework's WebView-backed street detection and skips Linkify on plain text. */
     public static class RowTextView extends TextView {
-        private int baseLinkMask = -1;
+        // TextView.<init> calls setText() before subclass field initializers run, so these fields
+        // must stay zero-initialized (no `= ...`) or post-super initializers would overwrite them.
+        private boolean maskLoaded;
+        private boolean textReady;
+        private int baseLinkMask;
         private boolean linkStreets;
 
         public RowTextView(Context c, AttributeSet a) {
@@ -174,20 +178,25 @@ public final class WaveComposePerf {
 
         @Override
         public void setText(CharSequence text, BufferType type) {
-            if (baseLinkMask < 0) {
+            if (!maskLoaded) {
                 int mask = getAutoLinkMask(); // Also called by the TextView constructor.
                 if ((mask & Linkify.MAP_ADDRESSES) != 0) {
                     linkStreets = true;
                     mask &= ~Linkify.MAP_ADDRESSES;
                 }
                 baseLinkMask = mask;
+                maskLoaded = true;
             }
-            if (text instanceof String && type == BufferType.NORMAL && text.equals(getText())) {
+            // Never short-circuit before the first super.setText(): TextView.<init> starts with
+            // mText="" and mTransformed=null, so skipping super.setText("", NORMAL) leaves
+            // mTransformed null and crashes BoringLayout.isBoring() in onMeasure().
+            if (textReady && text instanceof String && type == BufferType.NORMAL && text.equals(getText())) {
                 return;
             }
             if ((baseLinkMask == 0 && !linkStreets) || TextUtils.isEmpty(text)) {
                 if (getAutoLinkMask() != 0) setAutoLinkMask(0);
                 super.setText(text, type);
+                textReady = true;
                 return;
             }
 
@@ -242,10 +251,12 @@ public final class WaveComposePerf {
                     ? WaveStreetAddress.matches(text) : null;
             if (addresses == null || !addresses.find()) {
                 super.setText(text, type);
+                textReady = true;
                 return;
             }
             // Add geo spans after stock Linkify (which replaces pre-existing URLSpans).
             super.setText(text, type == BufferType.NORMAL ? BufferType.SPANNABLE : type);
+            textReady = true;
             if (!(getText() instanceof Spannable)) return;
             Spannable displayed = (Spannable) getText();
             if (displayed.length() != text.length()) return; // Input filters changed offsets.

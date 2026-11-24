@@ -275,7 +275,8 @@ public final class WaveHistory {
         }
         final Uri qUri = WaveTextMms.queryUri(
                 android.content.ContentUris.withAppendedId(android.provider.Telephony.Threads.CONTENT_URI, threadId))
-                .buildUpon().appendQueryParameter("wave_page", "1").build();
+                .buildUpon().appendQueryParameter("wave_page", "1")
+                .appendQueryParameter("wave_full", "1").build();
         final String[] proj = MessageListAdapter.PROJECTION;
         p.future = QUERY_EXEC.submit(new Callable<Cursor>() {
             @Override
@@ -333,6 +334,12 @@ public final class WaveHistory {
         }
         if (prelaunched != null) {
             if (h.selectedId == -1L && prelaunched.threadId == threadId && !prelaunched.cancelled) {
+                if (threadId != h.thread) {
+                    h.stopBottomAlignment();
+                    h.thread = threadId;
+                    h.selectedIntent = null;
+                    h.opened = false;
+                }
                 h.pendingQuery = prelaunched;
                 h.earlyQueryThread = threadId;
                 h.skipFirstStartTitle = true;
@@ -591,10 +598,16 @@ public final class WaveHistory {
         long selected = selectionId(activity);
         Cursor old = adapter.getCursor();
         boolean indexed = next != null && next.getColumnIndex("wave_date") >= 0;
+        if (h.thread <= 0 && next != null && next.getCount() > 0) {
+            int savedPos = next.getPosition();
+            if (next.moveToFirst()) h.thread = next.getLong(2);
+            next.moveToPosition(savedPos);
+        }
+        int oldCount = old == null ? 0 : old.getCount();
         boolean sameThread = old != null && next != null && next.getCount() > 0 && belongsTo(old, h.thread);
+        boolean atBottom = sameThread && oldCount > 0 && h.list.getLastVisiblePosition() >= oldCount - 1;
         Anchor anchor = null;
-        if (indexed && sameThread && selected == -1 && !activity.waveScrollOnSend()
-                && h.list.getLastVisiblePosition() < old.getCount() - 1) {
+        if (indexed && sameThread && selected == -1 && !activity.waveScrollOnSend() && !atBottom) {
             anchor = Anchor.capture(h.list, old);
         }
         if (selected != -1 && next != null) {
@@ -626,6 +639,13 @@ public final class WaveHistory {
             h.keepFocus = true;
             h.list.setSelectionFromTop(position, anchor.top);
             return ANCHORED;
+        }
+        // When returning from a child activity (e.g. attachment viewer) while at the bottom,
+        // stock computes selection = oldCount - 1 before changeCursor(next). Keep it at the
+        // actual bottom of `next` even if row count changed between cursors.
+        if (atBottom && selected == -1 && selection >= 0 && selection == oldCount - 1
+                && next != null && next.getCount() > 0) {
+            return next.getCount() - 1;
         }
         return selection;
     }

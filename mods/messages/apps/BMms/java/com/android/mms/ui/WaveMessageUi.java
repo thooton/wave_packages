@@ -152,6 +152,7 @@ public final class WaveMessageUi {
 
     /** Cached view references and dirty-style bitmask per recycled MessageListItem. */
     private static final class RowHolder {
+        final MessageListItem row;
         final View listParent;
         final LinearLayout block;
         final TextView bottomTv;
@@ -159,17 +160,19 @@ public final class WaveMessageUi {
         final TextView dateTv;
         final View metaRow;
         final TextView subjTv;
-        final View mmsView;
-        final View playAudio;
-        final View playVideoPic;
-        final View mmsMultiView;
-        final View attachFooter;
+        // Stock MMS views are lazily inflated from ViewStubs, so re-resolve while null.
+        View mmsView;
+        View playAudio;
+        View playVideoPic;
+        View mmsMultiView;
+        View attachFooter;
         LinearLayout mediaHost;
         QuoteView quoteView;
         boolean metricsSaved;
         int styledFlags;
 
         RowHolder(MessageListItem row, LinearLayout block) {
+            this.row = row;
             this.listParent = row.findViewById(ID_LIST_PARENT);
             this.block = block;
             this.bottomTv = (TextView) block.findViewById(ID_TEXT_BOTTOM);
@@ -178,11 +181,11 @@ public final class WaveMessageUi {
             this.metaRow = (dateTv != null && dateTv.getParent() instanceof View)
                     ? (View) dateTv.getParent() : null;
             this.subjTv = (TextView) block.findViewById(ID_SUBJECT_TEXT);
-            this.mmsView = block.findViewById(ID_MMS_VIEW);
-            this.playAudio = block.findViewById(ID_PLAY_AUDIO);
-            this.playVideoPic = block.findViewById(ID_PLAY_VIDEO_PIC);
-            this.mmsMultiView = block.findViewById(ID_MMS_MULTI_VIEW);
-            this.attachFooter = block.findViewById(ID_ATTACH_FOOTER);
+            this.mmsView = row.findViewById(ID_MMS_VIEW);
+            this.playAudio = row.findViewById(ID_PLAY_AUDIO);
+            this.playVideoPic = row.findViewById(ID_PLAY_VIDEO_PIC);
+            this.mmsMultiView = row.findViewById(ID_MMS_MULTI_VIEW);
+            this.attachFooter = row.findViewById(ID_ATTACH_FOOTER);
         }
     }
 
@@ -243,6 +246,31 @@ public final class WaveMessageUi {
         }
     };
     private static final LruCache<String, Integer> DUR_CACHE = new LruCache<>(200);
+    private static final java.util.HashMap<Long, ArrayList<Runnable>> PENDING_META_REBINDS =
+            new java.util.HashMap<>();
+
+    private static void queueMetaRebind(long mmsId, Runnable r) {
+        synchronized (PENDING_META_REBINDS) {
+            ArrayList<Runnable> list = PENDING_META_REBINDS.get(mmsId);
+            if (list == null) {
+                list = new ArrayList<>(2);
+                PENDING_META_REBINDS.put(mmsId, list);
+            }
+            list.add(r);
+        }
+    }
+
+    private static void flushMetaRebinds(long mmsId, boolean hasParts) {
+        ArrayList<Runnable> list;
+        synchronized (PENDING_META_REBINDS) {
+            list = PENDING_META_REBINDS.remove(mmsId);
+        }
+        if (hasParts && list != null) {
+            for (int i = 0; i < list.size(); i++) {
+                MAIN.post(list.get(i));
+            }
+        }
+    }
 
     private WaveMessageUi() {}
 
@@ -261,7 +289,7 @@ public final class WaveMessageUi {
             MediaMeta meta = META_CACHE.get(mi.mMsgId);
             if (meta == null) {
                 meta = queryMediaMeta(act.getApplicationContext(), mi.mMsgId);
-                META_CACHE.put(mi.mMsgId, meta);
+                if (!meta.parts.isEmpty()) META_CACHE.put(mi.mMsgId, meta);
             }
             if (meta.parts.size() != 1 || !meta.parts.get(0).isAudio) return false;
             toggleVoicePlayback(act.getApplicationContext(), meta.parts.get(0).uri);
@@ -1028,14 +1056,19 @@ public final class WaveMessageUi {
                 }
                 if (!IN_FLIGHT_META.add(mmsId)) continue;
                 META_EXEC.execute(() -> {
+                    boolean hasParts = false;
                     try {
                         MediaMeta meta = queryMediaMeta(app, mmsId);
-                        META_CACHE.put(mmsId, meta);
-                        if (meta.parts.size() == 1 && !meta.parts.get(0).isAudio) {
-                            warmThumbForPartAsync(app, meta.parts.get(0));
+                        hasParts = !meta.parts.isEmpty();
+                        if (hasParts) {
+                            META_CACHE.put(mmsId, meta);
+                            if (meta.parts.size() == 1 && !meta.parts.get(0).isAudio) {
+                                warmThumbForPartAsync(app, meta.parts.get(0));
+                            }
                         }
                     } finally {
                         IN_FLIGHT_META.remove(mmsId);
+                        flushMetaRebinds(mmsId, hasParts);
                     }
                 });
             }
@@ -1092,21 +1125,33 @@ public final class WaveMessageUi {
             hideStockMmsViews(h);
         }
 
-        if (!IN_FLIGHT_META.add(mmsId)) return false;
+        final Runnable rebindTask = () -> {
+            if (boundKey.equals(block.getTag(TAG_BOUND_URI))) {
+                onBindRow(row);
+                WaveTapbacks.onBind(row);
+            }
+        };
+        queueMetaRebind(mmsId, rebindTask);
+        if (!IN_FLIGHT_META.add(mmsId)) {
+            // Another query (e.g. warmMediaMetaForCursor) is already running or just finished.
+            MediaMeta race = META_CACHE.get(mmsId);
+            if (race != null && !race.parts.isEmpty()) {
+                flushMetaRebinds(mmsId, true);
+            }
+            return false;
+        }
         final Context app = row.getContext().getApplicationContext();
         META_EXEC.execute(() -> {
+            boolean hasParts = false;
             try {
                 MediaMeta meta = queryMediaMeta(app, mmsId);
-                META_CACHE.put(mmsId, meta);
-                if (meta.parts.isEmpty()) return;
-                MAIN.post(() -> {
-                    if (boundKey.equals(block.getTag(TAG_BOUND_URI))) {
-                        onBindRow(row);
-                        WaveTapbacks.onBind(row);
-                    }
-                });
+                hasParts = !meta.parts.isEmpty();
+                if (hasParts) {
+                    META_CACHE.put(mmsId, meta);
+                }
             } finally {
                 IN_FLIGHT_META.remove(mmsId);
+                flushMetaRebinds(mmsId, hasParts);
             }
         });
         return false;
@@ -1122,6 +1167,8 @@ public final class WaveMessageUi {
                 while (c.moveToNext()) {
                     long id = c.getLong(0);
                     String ct = safeStr(c.getString(1)).toLowerCase(Locale.ROOT);
+                    int semi = ct.indexOf(';');
+                    if (semi >= 0) ct = ct.substring(0, semi).trim();
                     if (ct.isEmpty() || "application/smil".equals(ct) || "text/plain".equals(ct)) continue;
                     if (!ct.startsWith("image/") && !ct.startsWith("video/")
                             && !ct.startsWith("audio/") && !"application/ogg".equals(ct)) {
@@ -1195,6 +1242,11 @@ public final class WaveMessageUi {
         // and re-queue duplicate thumbnail/video decodes for the same MMS row.
         String mediaKey = mmsId + ":" + isMe + ":" + parts.size() + ":" + parts.get(0).uri;
         if (host.getChildCount() > 0 && mediaKey.equals(host.getTag(TAG_MEDIA_KEY))) {
+            View first = host.getChildAt(0);
+            if (!(first instanceof InlineVisualView) || ((InlineVisualView) first).hasBitmap()) {
+                return;
+            }
+            ((InlineVisualView) first).rebind(parts.get(0));
             return;
         }
         host.setTag(TAG_MEDIA_KEY, mediaKey);
@@ -1224,6 +1276,11 @@ public final class WaveMessageUi {
     }
 
     private static void hideStockMmsViews(RowHolder h) {
+        if (h.mmsView == null) h.mmsView = h.row.findViewById(ID_MMS_VIEW);
+        if (h.playAudio == null) h.playAudio = h.row.findViewById(ID_PLAY_AUDIO);
+        if (h.playVideoPic == null) h.playVideoPic = h.row.findViewById(ID_PLAY_VIDEO_PIC);
+        if (h.mmsMultiView == null) h.mmsMultiView = h.row.findViewById(ID_MMS_MULTI_VIEW);
+        if (h.attachFooter == null) h.attachFooter = h.row.findViewById(ID_ATTACH_FOOTER);
         hideView(h.mmsView);
         hideView(h.playAudio);
         hideView(h.playVideoPic);
@@ -1398,6 +1455,10 @@ public final class WaveMessageUi {
                     }
                 });
             });
+        }
+
+        boolean hasBitmap() {
+            return bmp != null && !bmp.isRecycled();
         }
 
         private void applyBitmap(Bitmap b) {

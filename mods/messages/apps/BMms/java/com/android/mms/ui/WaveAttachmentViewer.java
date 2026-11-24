@@ -113,6 +113,7 @@ public final class WaveAttachmentViewer {
 
     // Active media views/players
     private ZoomPhotoView photoView;
+    private boolean photoFullscreen = false;
     private GifView gifView;
     private FrameLayout videoPreviewBox;
     private Bitmap videoThumbBmp;
@@ -1104,10 +1105,10 @@ public final class WaveAttachmentViewer {
             return true;
         }
 
-        // Photo zoom & pan (no hint banner; bottom strip hides while zoomed for max viewing area)
-        if (cur.kind == PartItem.Kind.IMAGE && photoView != null) {
+        // Photo full-screen & zoom: OK cycles Normal -> Full-screen -> 2.2x Zoom -> Normal
+        if (photoView != null && (cur.kind == PartItem.Kind.IMAGE || cur.kind == PartItem.Kind.GIF)) {
             if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER) {
-                togglePhotoZoom();
+                advancePhotoMode();
                 return true;
             }
             if (photoView.isZoomed()) {
@@ -1116,6 +1117,11 @@ public final class WaveAttachmentViewer {
                 if (key == KeyEvent.KEYCODE_DPAD_RIGHT) { photoView.pan(-step, 0); return true; }
                 if (key == KeyEvent.KEYCODE_DPAD_UP) { photoView.pan(0, step); return true; }
                 if (key == KeyEvent.KEYCODE_DPAD_DOWN) { photoView.pan(0, -step); return true; }
+            }
+        } else if (cur.kind == PartItem.Kind.GIF && gifView != null) {
+            if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER) {
+                setPhotoMode(!photoFullscreen, false);
+                return true;
             }
         }
 
@@ -1180,22 +1186,48 @@ public final class WaveAttachmentViewer {
             return true;
         }
         if (photoView != null && photoView.isZoomed()) {
-            setZoomed(false);
+            setPhotoMode(true, false);
+            return true;
+        }
+        if (photoFullscreen) {
+            setPhotoMode(false, false);
             return true;
         }
         return false;
     }
 
-    private void togglePhotoZoom() {
+    private void advancePhotoMode() {
         if (photoView == null) return;
-        setZoomed(!photoView.isZoomed());
+        if (!photoFullscreen) {
+            setPhotoMode(true, false);
+        } else if (!photoView.isZoomed()) {
+            setPhotoMode(true, true);
+        } else {
+            setPhotoMode(false, false);
+        }
     }
 
-    private void setZoomed(boolean zoomed) {
+    private void togglePhotoZoom() {
         if (photoView == null) return;
-        photoView.setZoomed(zoomed);
-        bottomSection.setVisibility(zoomed ? View.GONE : View.VISIBLE);
-        captionTv.setVisibility((zoomed || captionText.isEmpty()) ? View.GONE : View.VISIBLE);
+        if (photoView.isZoomed()) {
+            setPhotoMode(false, false);
+        } else {
+            setPhotoMode(true, true);
+        }
+    }
+
+    private void setPhotoMode(boolean fullscreen, boolean zoomed) {
+        boolean fs = fullscreen || zoomed;
+        photoFullscreen = fs;
+        if (photoView != null) {
+            photoView.setZoomed(zoomed);
+        }
+        setVideoHudVisible(!fs);
+        setStatusBar(fs ? Color.BLACK : COLOR_STATUS_BAR);
+        if (root != null) root.setBackgroundColor(fs ? Color.BLACK : COLOR_BG);
+        if (contentHost != null) contentHost.setBackgroundColor(fs ? Color.BLACK : COLOR_BG);
+        bottomSection.setVisibility(fs ? View.GONE : View.VISIBLE);
+        captionTv.setVisibility((fs || captionText.isEmpty()) ? View.GONE : View.VISIBLE);
     }
 
     // --- Menu ---
@@ -1308,6 +1340,7 @@ public final class WaveAttachmentViewer {
         main.removeCallbacks(progressTick);
         main.removeCallbacks(hideVideoScrubber);
         videoFullscreen = false;
+        photoFullscreen = false;
         singleVideoDirect = false;
         if (videoView != null) {
             try { videoView.stopPlayback(); } catch (Throwable ignored) {}

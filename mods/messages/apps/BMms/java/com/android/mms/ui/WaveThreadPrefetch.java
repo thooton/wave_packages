@@ -91,7 +91,8 @@ public final class WaveThreadPrefetch implements AdapterView.OnItemSelectedListe
     private void load(long id, long ticket) {
         if (ticket != generation) return;
         Uri uri = WaveTextMms.queryUri(ContentUris.withAppendedId(Telephony.Threads.CONTENT_URI, id))
-                .buildUpon().appendQueryParameter("wave_page", "1").build();
+                .buildUpon().appendQueryParameter("wave_page", "1")
+                .appendQueryParameter("wave_full", "1").build();
         Cursor cursor = null;
         boolean handedOff = false;
         try {
