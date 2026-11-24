@@ -654,9 +654,19 @@ public final class WaveIMessageSend {
         }
     }
 
+    /** Normalized MIME type without parameters (e.g. {@code audio/amr; name=...} -> {@code audio/amr}). */
+    static String normalizeMime(byte[] ctb) {
+        if (ctb == null || ctb.length == 0) return "";
+        String ct = new String(ctb, StandardCharsets.UTF_8).toLowerCase(Locale.ROOT);
+        int semi = ct.indexOf(';');
+        if (semi >= 0) ct = ct.substring(0, semi);
+        return ct.trim();
+    }
+
     /** True for a part type iMessage carries (the server converts it for iPhones). */
     static boolean isSendableMedia(String ct) {
         return ct.startsWith("image/") || ct.startsWith("video/") || ct.startsWith("audio/")
+                || "application/ogg".equals(ct)
                 || "text/x-vcard".equals(ct) || "text/vcard".equals(ct);
     }
 
@@ -671,6 +681,7 @@ public final class WaveIMessageSend {
             }
         }
         String ext = ct.startsWith("image/") ? ".jpg" : ct.startsWith("video/") ? ".3gp"
+                : "application/ogg".equals(ct) ? ".ogg"
                 : ct.startsWith("audio/") ? ".amr" : ".vcf";
         return "attachment" + (i + 1) + ext;
     }
@@ -684,8 +695,7 @@ public final class WaveIMessageSend {
         try {
             for (int i = 0; i < n; i++) {
                 PduPart p = body.getPart(i);
-                byte[] ctb = p.getContentType();
-                String ct = ctb == null ? "" : new String(ctb, StandardCharsets.UTF_8).toLowerCase(Locale.ROOT);
+                String ct = normalizeMime(p.getContentType());
                 if (!isSendableMedia(ct)) continue;
                 try {
                     byte[] data = readPartData(c, p);
@@ -718,8 +728,7 @@ public final class WaveIMessageSend {
         long mediaBytes = 0;
         for (int i = 0; i < n; i++) {
             PduPart p = body.getPart(i);
-            byte[] ctb = p.getContentType();
-            String ct = ctb == null ? "" : new String(ctb, StandardCharsets.UTF_8).toLowerCase(Locale.ROOT);
+            String ct = normalizeMime(p.getContentType());
             if ("application/smil".equals(ct)) continue;
             if ("text/plain".equals(ct)) {
                 hasContent = true;
@@ -790,8 +799,7 @@ public final class WaveIMessageSend {
         int n = body == null ? 0 : body.getPartsNum();
         for (int i = 0; i < n; i++) {
             PduPart p = body.getPart(i);
-            byte[] ctb = p.getContentType();
-            String ct = ctb == null ? "" : new String(ctb, StandardCharsets.UTF_8).toLowerCase(Locale.ROOT);
+            String ct = normalizeMime(p.getContentType());
             if (!"text/plain".equals(ct)) continue;
             byte[] data = readPartData(c, p);
             if (data != null && data.length > 0) {
