@@ -62,6 +62,15 @@ public final class WaveIMessageSend {
     private static final Set<Uri> IMSG_FAILED_MMS = new HashSet<Uri>();
     private static final Object DRAIN_LOCK = new Object();
     private static volatile boolean sDrainPending;
+    /**
+     * This process's id for pending-send records: a record from another session was sent by a
+     * process that died before its result came, so nobody in memory waits for it any more.
+     */
+    static final String SESSION = java.util.UUID.randomUUID().toString();
+    /** How long stock MMS's retry of an earlier send waits for that send's result before sending again. */
+    private static final long RESUME_UNKNOWN_WAIT_MS = 20_000L;
+    /** A send from an earlier session with no result after this is given up on (SMS shown failed). */
+    private static final long PENDING_GIVE_UP_MS = 10L * 60L * 1000L;
 
     private WaveIMessageSend() {}
 
@@ -81,10 +90,20 @@ public final class WaveIMessageSend {
     ) {
         try {
             if (Boolean.TRUE.equals(BYPASS.get())) return false;
-            final WaveIMessageHost host = WaveIMessageHost.sending();
-            if (host == null || uri == null || TextUtils.isEmpty(text)) return false;
-
+            if (uri == null || TextUtils.isEmpty(text)) return false;
             final Context c = MmsApp.getApplication();
+            WaveIMessageHost h = WaveIMessageHost.sending();
+            if (h == null) {
+                // Not connected (yet): right after a restart stock Messages resends rows left in
+                // Outbox before we're connected. One an earlier process gave to the server must
+                // not go out as SMS meanwhile; it waits for that send below.
+                WaveIMessageHost any = WaveIMessageHost.get(c);
+                WaveIMessageConfig.PendingSend ps = any.config().isSendEnabled()
+                        ? any.config().pendingSendForUri(uri) : null;
+                if (ps == null || SESSION.equals(ps.session)) return false;
+                h = any;
+            }
+            final WaveIMessageHost host = h;
             final WaveIMessageConfig cfg = host.config();
             final String target = WaveIMessageConfig.toIMessageTarget(c, dest);
             if (target == null) return false;
@@ -94,17 +113,42 @@ public final class WaveIMessageSend {
                 return false; // Known non-iMessage contact -> stock SMS immediately
             }
 
-            moveSms(c, uri, 4 /* OUTBOX */, 0);
-            String convKey = WaveIMessageConfig.conversationKeyForTargets(Collections.singletonList(target));
-            String senderGuid = cfg.getSenderGuid(convKey);
-            final String clientMsgId = host.sendText(target, text, senderGuid);
-            Log.i(TAG, "sms " + uri + " -> imessage " + clientMsgId + " to " + target);
+            // Stock Messages sends rows left in Outbox again when it restarts. If an earlier
+            // process already gave this one to the server, wait for that send instead of
+            // sending it a second time (or as SMS while iMessage isn't connected yet).
+            int rowType = smsType(c, uri);
+            if (rowType == 2 /* SENT */) {
+                Log.i(TAG, "sms " + uri + " is already sent (settled after a restart); not sending it again");
+                reportSent(c, uri, subId, -1 /* Activity.RESULT_OK */);
+                return true;
+            }
+            WaveIMessageConfig.PendingSend adopted = adoptEarlierSms(cfg, uri);
+            if (adopted != null && adopted.result != null && adopted.result.startsWith("ok:")) {
+                Log.i(TAG, "sms " + uri + " went out before a restart; not sending it again");
+                cfg.removePendingSend(adopted.id);
+                moveSms(c, uri, 2 /* SENT */, 0);
+                reportSent(c, uri, subId, -1 /* Activity.RESULT_OK */);
+                return true;
+            }
+            final String clientMsgId;
+            if (adopted != null && adopted.result == null) {
+                clientMsgId = adopted.id;
+                moveSms(c, uri, 4 /* OUTBOX */, 0);
+            } else {
+                moveSms(c, uri, 4 /* OUTBOX */, 0);
+                String convKey = WaveIMessageConfig.conversationKeyForTargets(Collections.singletonList(target));
+                clientMsgId = host.sendText(target, text, cfg.getSenderGuid(convKey));
+                cfg.putPendingSend(clientMsgId, "sms", SESSION, uri);
+                Log.i(TAG, "sms " + uri + " -> imessage " + clientMsgId + " to " + target);
+            }
             final String sentText = text;
-            final String sentGuid = senderGuid;
+            final String sentGuid = cfg.getSenderGuid(
+                    WaveIMessageConfig.conversationKeyForTargets(Collections.singletonList(target)));
 
             host.expectSendResult(clientMsgId, new WaveIMessageHost.SendCallback() {
                 @Override
                 public void onResult(WaveIMessageHost.SendOutcome r) {
+                    keepIfServerHasIt(cfg, clientMsgId, uri, r);
                     if (r.ok) {
                         cfg.setCapability(target, true);
                         cfg.recordSentAppleMsgId(r.appleMsgId, uri);
@@ -167,6 +211,152 @@ public final class WaveIMessageSend {
         recordSent(c, r.appleMsgId, uri, text, Collections.singletonList(target), guid);
         moveSms(c, uri, 2 /* SENT */, 0);
         Log.i(TAG, "late iMessage success for " + uri + ": dropped its pending SMS fallback");
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Sends from before a restart
+
+    /**
+     * A SEND_RESULT nobody in this process waits for. If it answers a send of a process that died
+     * meanwhile, settle that send: an SMS row left in Outbox ("Sending") becomes sent or failed;
+     * for an MMS the result is kept until stock MMS retries the message (resumeEarlierSend).
+     */
+    public static void onUnclaimedResult(Context c, String clientMsgId, WaveIMessageHost.SendOutcome r) {
+        WaveIMessageHost host = WaveIMessageHost.get(c);
+        WaveIMessageConfig cfg = host.config();
+        WaveIMessageConfig.PendingSend ps = cfg.getPendingSend(clientMsgId);
+        if (ps == null || SESSION.equals(ps.session) || ps.result != null) return; // ours, or done
+        Log.i(TAG, "result for " + ps.kind + " " + ps.uri + " sent before a restart: " + r);
+        // Kept with its result (the sweep drops it later): a resend of the row that started
+        // before this result came (stock re-queues Outbox rows on restart) must see it went out.
+        cfg.setPendingSendResult(clientMsgId, r.ok ? "ok:" + r.appleMsgId : "err:" + r.error);
+        if ("sms".equals(ps.kind)) settleSms(c, ps.uri, r);
+    }
+
+    /**
+     * The send's waiter is done with it. Usually that ends its record; but if we gave up on a send
+     * the server has (it may still go out), the record stays, as no longer this session's, so a
+     * result that comes later still turns the failed SMS into the sent iMessage.
+     */
+    private static void keepIfServerHasIt(WaveIMessageConfig cfg, String id, Uri uri, WaveIMessageHost.SendOutcome r) {
+        if (!r.ok && !r.mayFallBack()) {
+            cfg.putPendingSend(id, "sms", "gave-up", uri);
+        } else {
+            cfg.removePendingSend(id);
+        }
+    }
+
+    /**
+     * If an earlier process gave {@code uri} to the server, takes that send over for this process
+     * (its waiter here gets the result) and returns its id; null if there's none: send it now.
+     */
+    private static WaveIMessageConfig.PendingSend adoptEarlierSms(WaveIMessageConfig cfg, Uri uri) {
+        WaveIMessageConfig.PendingSend earlier = cfg.pendingSendForUri(uri);
+        if (earlier == null || SESSION.equals(earlier.session) || !"sms".equals(earlier.kind)) return null;
+        if (earlier.result != null) {
+            // Already answered (and its row settled). A failure: drop it, the caller sends anew.
+            if (!earlier.result.startsWith("ok:")) cfg.removePendingSend(earlier.id);
+            return earlier;
+        }
+        cfg.putPendingSend(earlier.id, "sms", SESSION, uri);
+        Log.i(TAG, "sms " + uri + " was sent before a restart as " + earlier.id + "; waiting for that send");
+        return earlier;
+    }
+
+    /** The row's type (1 inbox, 2 sent, 4 outbox, 5 failed, 6 queued), or -1. */
+    private static int smsType(Context c, Uri uri) {
+        Cursor cur = c.getContentResolver().query(uri, new String[]{"type"}, null, null, null);
+        if (cur == null) return -1;
+        try {
+            return cur.moveToFirst() ? cur.getInt(0) : -1;
+        } finally {
+            cur.close();
+        }
+    }
+
+    /** Marks an SMS row still waiting for its iMessage (Outbox, Queued or Failed) sent, or failed. */
+    private static void settleSms(Context c, Uri uri, WaveIMessageHost.SendOutcome r) {
+        int type = -1;
+        String address = null;
+        String text = null;
+        Cursor cur = c.getContentResolver().query(uri, new String[]{"type", "address", "body"}, null, null, null);
+        if (cur != null) {
+            try {
+                if (cur.moveToFirst()) {
+                    type = cur.getInt(0);
+                    address = cur.getString(1);
+                    text = cur.getString(2);
+                }
+            } finally {
+                cur.close();
+            }
+        }
+        if (type != 4 /* OUTBOX */ && type != 5 /* FAILED */ && type != 6 /* QUEUED */) return;
+        if (!r.ok) {
+            // Queued stays queued (the drain sends it again); only a stuck "Sending" fails.
+            if (type == 4) moveSms(c, uri, 5 /* FAILED */, 1);
+            return;
+        }
+        WaveIMessageConfig cfg = WaveIMessageHost.get(c).config();
+        String target = WaveIMessageConfig.toIMessageTarget(c, address);
+        List<String> targets = target == null ? Collections.<String>emptyList() : Collections.singletonList(target);
+        String guid = cfg.getSenderGuid(WaveIMessageConfig.conversationKeyForTargets(targets));
+        if (target != null) cfg.setCapability(target, true);
+        cfg.recordSentAppleMsgId(r.appleMsgId, uri);
+        recordSent(c, r.appleMsgId, uri, text, targets, guid);
+        moveSms(c, uri, 2 /* SENT */, 0);
+    }
+
+    /**
+     * After the host has been connected a while: sends from an earlier process that got no
+     * result and aren't going out any more (not in the outbox) are given up on, so an SMS doesn't
+     * stay "Sending" forever. MMS records are dropped once stale (stock MMS has its own retries).
+     */
+    public static void sweepPendingSends(Context c) {
+        WaveIMessageHost host = WaveIMessageHost.get(c);
+        WaveIMessageConfig cfg = host.config();
+        long now = System.currentTimeMillis();
+        for (WaveIMessageConfig.PendingSend ps : cfg.pendingSends()) {
+            if (SESSION.equals(ps.session) || host.isQueued(ps.id)) continue;
+            if (now - ps.createdMs < PENDING_GIVE_UP_MS) continue;
+            if (ps.result != null && "sms".equals(ps.kind)) {
+                cfg.removePendingSend(ps.id); // answered and settled; kept only to stop a resend
+                continue;
+            }
+            if ("mms".equals(ps.kind) && now - ps.createdMs < 24L * 60L * 60L * 1000L) continue;
+            Log.w(TAG, "no result for " + ps.kind + " " + ps.uri + " sent before a restart; giving up");
+            cfg.removePendingSend(ps.id);
+            if ("sms".equals(ps.kind)) {
+                settleSms(c, ps.uri, new WaveIMessageHost.SendOutcome(false, null, "No answer from iMessage server"));
+            }
+        }
+    }
+
+    /**
+     * Stock MMS is sending {@code uri} again (its sender died, or it retries): if an earlier
+     * process already handed it to the server, use that send's result instead of sending it a
+     * second time. Null when there is none, or it failed: send it now.
+     */
+    private static WaveIMessageHost.SendOutcome resumeEarlierSend(WaveIMessageHost host, WaveIMessageConfig cfg, Uri uri) {
+        WaveIMessageConfig.PendingSend ps = cfg.pendingSendForUri(uri);
+        if (ps == null || SESSION.equals(ps.session)) return null;
+        WaveIMessageHost.SendOutcome r;
+        if (ps.result != null) {
+            r = ps.result.startsWith("ok:")
+                    ? new WaveIMessageHost.SendOutcome(true, ps.result.substring(3), null)
+                    : null;
+        } else if (host.isQueued(ps.id) || host.isAccepted(ps.id)) {
+            Log.i(TAG, "mms " + uri + ": waiting for its earlier send " + ps.id);
+            r = host.awaitSendResult(ps.id, MEDIA_SEND_TIMEOUT_MS);
+        } else {
+            // The server may have it (ACKed before the restart): a result it kept comes right
+            // after connecting. None in a while: it's lost, send again.
+            r = host.awaitSendResult(ps.id, RESUME_UNKNOWN_WAIT_MS);
+            if (!r.ok && r.mayFallBack()) r = null;
+        }
+        cfg.removePendingSend(ps.id);
+        if (r != null) Log.i(TAG, "mms " + uri + ": earlier send " + ps.id + " -> " + r);
+        return r;
     }
 
     private static void fallbackSms(SmsSingleRecipientSender sender, Context c, Uri uri, int subId) {
@@ -271,8 +461,24 @@ public final class WaveIMessageSend {
                 try {
                     String convKey = WaveIMessageConfig.conversationKeyForTargets(Collections.singletonList(target));
                     String guid = cfg.getSenderGuid(convKey);
-                    String clientId = host.sendText(target, text, guid);
+                    // Stock Messages queues rows left in Outbox when it restarts without
+                    // service: one an earlier process already gave to the server waits for
+                    // that send (its result comes right after connecting) instead of going twice.
+                    WaveIMessageConfig.PendingSend earlier = adoptEarlierSms(cfg, uri);
+                    if (earlier != null && earlier.result != null && earlier.result.startsWith("ok:")) {
+                        Log.i(TAG, "queued sms " + uri + " went out before a restart; not sending it again");
+                        cfg.removePendingSend(earlier.id);
+                        moveSms(c, uri, 2 /* SENT */, 0);
+                        continue;
+                    }
+                    String clientId = earlier != null && earlier.result == null ? earlier.id : null;
+                    if (clientId == null) {
+                        clientId = host.sendText(target, text, guid);
+                        cfg.putPendingSend(clientId, "sms", SESSION, uri);
+                        Log.i(TAG, "queued sms " + uri + " -> imessage " + clientId);
+                    }
                     WaveIMessageHost.SendOutcome r = host.awaitSendResult(clientId, SEND_TIMEOUT_MS);
+                    keepIfServerHasIt(cfg, clientId, uri, r);
                     if (r.ok) {
                         cfg.setCapability(target, true);
                         cfg.recordSentAppleMsgId(r.appleMsgId, uri);
@@ -370,19 +576,24 @@ public final class WaveIMessageSend {
             List<String> targets = extractTargets(c, cfg, req);
             String text = extractText(c, req);
             if (targets == null || targets.isEmpty()) return null;
-
-            List<Body.OutAttachment> attachments = uploadMedia(c, host, req);
-            if (attachments == null) return null;
-            if (TextUtils.isEmpty(text) && attachments.isEmpty()) return null;
-
             String convKey = WaveIMessageConfig.conversationKeyForTargets(targets);
             String guid = cfg.getSenderGuid(convKey);
-            String clientMsgId = host.sendMessage(targets, text, guid, attachments);
 
-            Log.i(TAG, "mms " + uri + " -> imessage " + clientMsgId + " (" + targets.size() + " recipients, "
-                    + attachments.size() + " attachments)");
-            WaveIMessageHost.SendOutcome r = host.awaitSendResult(clientMsgId,
-                    attachments.isEmpty() ? SEND_TIMEOUT_MS : MEDIA_SEND_TIMEOUT_MS);
+            // Stock MMS retries a message whose sender died; the earlier send may have gone out.
+            WaveIMessageHost.SendOutcome r = resumeEarlierSend(host, cfg, uri);
+            if (r == null) {
+                List<Body.OutAttachment> attachments = uploadMedia(c, host, req);
+                if (attachments == null) return null;
+                if (TextUtils.isEmpty(text) && attachments.isEmpty()) return null;
+
+                String clientMsgId = host.sendMessage(targets, text, guid, attachments);
+                cfg.putPendingSend(clientMsgId, "mms", SESSION, uri);
+
+                Log.i(TAG, "mms " + uri + " -> imessage " + clientMsgId + " (" + targets.size() + " recipients, "
+                        + attachments.size() + " attachments)");
+                r = host.awaitSendResult(clientMsgId, attachments.isEmpty() ? SEND_TIMEOUT_MS : MEDIA_SEND_TIMEOUT_MS);
+                cfg.removePendingSend(clientMsgId);
+            }
             if (!r.ok) {
                 if (r.isNotRegisteredError() && targets.size() == 1) {
                     cfg.setCapability(targets.get(0), false);

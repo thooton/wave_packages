@@ -237,7 +237,21 @@ public class PushClientInteropTest {
         }
         check(!leaked && countEchoes("pc taken back") == 0, "the taken-back send never reached the server");
         check(countEchoes("pc through a dead link") == 1, "the resent message went out exactly once");
+
+        // The process dies with a send in the outbox: the next one must still know it by id
+        // (the app settles the SMS row by that id when its result comes).
+        relay.dead = true;
+        String id6 = pc.sendMessage(peer, "pc across a restart", "guid-pc", null);
+        Thread.sleep(500);
         pc.stop();
+        relay.dead = false;
+        PushClient again = new PushClient(cfg, listener());
+        check(again.isQueued(id6) && !again.isAccepted(id6), "a restarted client knows its queued send by id");
+        again.start();
+        Body r6 = await(Body.KIND_SEND_RESULT, id6, 30_000);
+        check(r6 != null && r6.ok, "the queued send goes out after the restart");
+        check(waitFor(() -> again.isAccepted(id6) && !again.isQueued(id6), 5_000), "and is accepted");
+        again.stop();
 
         // The phone loses its state (app data cleared, unreadable file): its seqs start at 1 again,
         // which the server has seen. They must be taken as new, not dropped as duplicates (and

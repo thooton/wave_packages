@@ -119,6 +119,14 @@ public final class PushClient {
         this.listener = listener;
         this.clock = config.wakeupClock != null ? config.wakeupClock : new WakeupClock.DefaultClock();
         this.state = ClientState.loadOrDefault(config.stateFile);
+        // Sends still in the outbox from before a restart: keep them answerable by id.
+        for (Map.Entry<Long, byte[]> e : state.pendingAfter(0L).entrySet()) {
+            try {
+                Body b = Body.decode(e.getValue());
+                if (b.clientMsgId != null) msgSeqs.put(b.clientMsgId, e.getKey());
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     public synchronized void start() {
@@ -379,6 +387,12 @@ public final class PushClient {
         return seq != null && !state.isPending(seq);
     }
 
+    /** True while {@code clientMsgId} is still in our outbox (sent or not, the server hasn't ACKed it). */
+    public boolean isQueued(String clientMsgId) {
+        Long seq = msgSeqs.get(clientMsgId);
+        return seq != null && state.isPending(seq);
+    }
+
     /**
      * Takes {@code clientMsgId} back if the server hasn't ACKed it yet, so it isn't sent later
      * (on the next connect) after the caller has given up on it and sent it another way. Returns
@@ -550,8 +564,10 @@ public final class PushClient {
                                         ackDeadlineElapsedMs = 0L;
                                         clock.releaseWakeLock(WakeupClock.HOLD_ACK);
                                     } else if (ackDeadlineElapsedMs != 0L) {
-                                        // Progress: give the rest a fresh window.
+                                        // Progress: give the rest a fresh window, awake (the
+                                        // lock taken for the first MSG would run out meanwhile).
                                         ackDeadlineElapsedMs = clock.elapsedRealtimeMs() + ACK_TIMEOUT_MS;
+                                        clock.acquireBriefWakeLock(WakeupClock.HOLD_ACK, ACK_TIMEOUT_MS + 5_000L);
                                     }
                                     watchdogLock.notifyAll();
                                 }

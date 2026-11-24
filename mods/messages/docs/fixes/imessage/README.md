@@ -86,6 +86,19 @@ resources, or conversation UI.
      WELCOME ACKed away from the outbox), and a new server (new VPS, lost `state/`) started at 1
      too, which the phone dropped. Now a new epoch makes the other side start over. Covered by
      `PushClientInteropTest` (client state deleted; server state deleted with the client's kept).
+   - **Sends survive the app being killed** (1.7.1). The waiter for a send's result lives in
+     memory, so if Android killed Messages between sending and the answer (low memory, a crash),
+     the SMS row stayed "Sending" until a reboot turned it "Failed" although the iMessage went out,
+     and stock MMS's retry sent a picture message a second time. Each send is now also recorded
+     (`wave_imessage_pending` prefs: id, row, process); the outbox remembers sends by id across
+     restarts. A result that comes for a send of an earlier process settles its row (sent, or
+     failed if it was still "Sending"); stock Messages re-sending (or re-queueing) a row left in
+     Outbox after the restart waits for that earlier send, or skips it once its result is in,
+     instead of sending it a second time; stock MMS's retry does the same; and a minute after connecting, sends of an earlier process with no result
+     for 10 min that aren't queued any more are shown failed instead of "Sending" forever. A
+     send the server has but never answered keeps its record, so a late result still turns the
+     failed SMS into the sent iMessage. Delivery and read receipts for messages sent before a
+     restart find their row in `WaveIMessageDb` (the id-to-row map was in memory only).
    - Tracks network changes via `ConnectivityManager.registerDefaultNetworkCallback` +
      `TelephonyManager`, learning and persisting per-network optimal keepalive intervals via
      parallel `ROLE_PROBE` NAT probing.

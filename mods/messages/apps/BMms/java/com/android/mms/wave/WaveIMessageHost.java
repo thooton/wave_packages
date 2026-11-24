@@ -885,7 +885,22 @@ public final class WaveIMessageHost implements PushClient.Listener {
         com.android.mms.transaction.WaveIMessageInbox.get(ctx).kick();
         WaveIMessageSend.drainQueuedAsync(ctx);
         WaveIMessageUi.refreshActiveComposeHint();
+        // Results the server kept for us come right after the WELCOME; then settle sends from
+        // before a restart that got none (a row stuck in "Sending" since).
+        handler.removeCallbacks(pendingSweep);
+        handler.postDelayed(pendingSweep, 60_000L);
     }
+
+    private final Runnable pendingSweep = new Runnable() {
+        @Override
+        public void run() {
+            try {
+                WaveIMessageSend.sweepPendingSends(ctx);
+            } catch (Throwable t) {
+                Log.w(TAG, "pending send sweep", t);
+            }
+        }
+    };
 
     @Override
     public void onDisconnected(String reason) {
@@ -1122,17 +1137,45 @@ public final class WaveIMessageHost implements PushClient.Listener {
         }
     }
 
+    /** Whether the server has the send {@code clientMsgId} (it ACKed it). */
+    public boolean isAccepted(String clientMsgId) {
+        PushClient c = client;
+        return c != null && c.isAccepted(clientMsgId);
+    }
+
+    /** Whether {@code clientMsgId} is still in the outbox, to be (re)sent on the next connection. */
+    public boolean isQueued(String clientMsgId) {
+        PushClient c = client;
+        return c != null && c.isQueued(clientMsgId);
+    }
+
     private void handleSendResult(Body body) {
-        SendOutcome outcome = new SendOutcome(body.ok, body.appleMsgId, body.error);
+        final SendOutcome outcome = new SendOutcome(body.ok, body.appleMsgId, body.error);
+        final String id = body.clientMsgId;
         Object waiter;
         SendCallback late;
+        boolean unclaimed = false;
         synchronized (sendWaiters) {
             waiter = sendWaiters.remove(body.clientMsgId);
             late = lateWaiters.remove(body.clientMsgId);
             if (waiter == null && late == null) {
                 if (sendWaiters.size() > 200) sendWaiters.clear();
                 sendWaiters.put(body.clientMsgId, outcome);
+                unclaimed = true;
             }
+        }
+        if (unclaimed && id != null) {
+            // Maybe a send from before the process restarted (its waiter is gone).
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        WaveIMessageSend.onUnclaimedResult(ctx, id, outcome);
+                    } catch (Throwable t) {
+                        Log.w(TAG, "unclaimed send result " + id, t);
+                    }
+                }
+            });
         }
         if (late != null) {
             try {
@@ -1155,6 +1198,16 @@ public final class WaveIMessageHost implements PushClient.Listener {
             return;
         }
         Uri sentUri = config.getSentUriForAppleMsgId(body.appleMsgId);
+        if (sentUri == null) {
+            // Sent before the process restarted (that map is in memory only): the message
+            // database has every message we sent.
+            try {
+                WaveIMessageDb.Msg m = WaveIMessageDb.get(ctx).byAppleId(body.appleMsgId);
+                if (m != null && WaveIMessageDb.ME.equals(m.sender)) sentUri = m.uri;
+            } catch (Throwable t) {
+                Log.w(TAG, "receipt lookup " + body.appleMsgId, t);
+            }
+        }
         if (sentUri != null && "sms".equals(sentUri.getAuthority())) {
             try {
                 ContentValues cv = new ContentValues(1);

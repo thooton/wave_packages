@@ -483,4 +483,126 @@ public final class WaveIMessageConfig {
         if (host.isEmpty() || host.contains(" ") || host.indexOf(':') >= 0) return null;
         return new ServerAddress(host.toLowerCase(Locale.ROOT), port);
     }
+
+    // -----------------------------------------------------------------------------------------
+    // Sends whose result we're still waiting for, kept across process restarts
+
+    private static final String PREFS_PENDING = "wave_imessage_pending";
+    private static final int MAX_PENDING = 64;
+
+    /**
+     * A message handed to the server whose SEND_RESULT we haven't handled yet. Its waiter lives in
+     * memory only, so after the process dies this record is what lets a result that comes later
+     * still mark the SMS sent (or failed), and lets stock MMS's retry wait for the earlier send
+     * instead of sending it a second time.
+     */
+    public static final class PendingSend {
+        public final String id;
+        /** "sms" or "mms". */
+        public final String kind;
+        /** Process that sent it (see WaveIMessageSend.SESSION). */
+        public final String session;
+        public final Uri uri;
+        public final long createdMs;
+        /** Result that came with no waiter: "ok:&lt;apple id&gt;", "err:&lt;message&gt;", or null. */
+        public final String result;
+
+        PendingSend(String id, String kind, String session, Uri uri, long createdMs, String result) {
+            this.id = id;
+            this.kind = kind;
+            this.session = session;
+            this.uri = uri;
+            this.createdMs = createdMs;
+            this.result = result;
+        }
+
+        String encode() {
+            return kind + "\t" + session + "\t" + uri + "\t" + createdMs + "\t" + (result == null ? "" : result);
+        }
+
+        static PendingSend decode(String id, String raw) {
+            if (raw == null) return null;
+            String[] f = raw.split("\t", 5);
+            if (f.length < 4) return null;
+            try {
+                return new PendingSend(id, f[0], f[1], Uri.parse(f[2]), Long.parseLong(f[3]),
+                        f.length > 4 && !f[4].isEmpty() ? f[4] : null);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+    }
+
+    private SharedPreferences pendingSp() {
+        return ctx.getSharedPreferences(PREFS_PENDING, Context.MODE_PRIVATE);
+    }
+
+    /** Records a send (synchronously: it must survive the process dying right after). */
+    public synchronized void putPendingSend(String id, String kind, String session, Uri uri) {
+        if (TextUtils.isEmpty(id) || uri == null) return;
+        SharedPreferences p = pendingSp();
+        SharedPreferences.Editor e = p.edit();
+        Map<String, ?> all = p.getAll();
+        if (all.size() >= MAX_PENDING) {
+            // Drop the oldest; a result that old isn't coming.
+            String oldest = null;
+            long oldestMs = Long.MAX_VALUE;
+            for (Map.Entry<String, ?> en : all.entrySet()) {
+                PendingSend ps = PendingSend.decode(en.getKey(), String.valueOf(en.getValue()));
+                long ms = ps == null ? 0L : ps.createdMs;
+                if (ms < oldestMs) {
+                    oldestMs = ms;
+                    oldest = en.getKey();
+                }
+            }
+            if (oldest != null) e.remove(oldest);
+        }
+        e.putString(id, new PendingSend(id, kind, session, uri, System.currentTimeMillis(), null).encode());
+        e.commit();
+    }
+
+    public synchronized PendingSend getPendingSend(String id) {
+        if (TextUtils.isEmpty(id)) return null;
+        return PendingSend.decode(id, pendingSp().getString(id, null));
+    }
+
+    /** The newest pending send of {@code uri}, or null. */
+    public synchronized PendingSend pendingSendForUri(Uri uri) {
+        if (uri == null) return null;
+        PendingSend best = null;
+        for (Map.Entry<String, ?> en : pendingSp().getAll().entrySet()) {
+            PendingSend ps = PendingSend.decode(en.getKey(), String.valueOf(en.getValue()));
+            if (ps != null && sameRow(uri, ps.uri) && (best == null || ps.createdMs > best.createdMs)) best = ps;
+        }
+        return best;
+    }
+
+    /** content://mms/5 and content://mms/outbox/5 are the same message. */
+    static boolean sameRow(Uri a, Uri b) {
+        if (a == null || b == null) return false;
+        return a.equals(b) || (TextUtils.equals(a.getAuthority(), b.getAuthority())
+                && TextUtils.equals(a.getLastPathSegment(), b.getLastPathSegment()));
+    }
+
+    public synchronized List<PendingSend> pendingSends() {
+        List<PendingSend> out = new ArrayList<PendingSend>();
+        for (Map.Entry<String, ?> en : pendingSp().getAll().entrySet()) {
+            PendingSend ps = PendingSend.decode(en.getKey(), String.valueOf(en.getValue()));
+            if (ps != null) out.add(ps);
+        }
+        return out;
+    }
+
+    public synchronized void setPendingSendResult(String id, String result) {
+        PendingSend ps = getPendingSend(id);
+        if (ps == null) return;
+        pendingSp().edit().putString(id,
+                new PendingSend(id, ps.kind, ps.session, ps.uri, ps.createdMs, result).encode()).commit();
+    }
+
+    public synchronized void removePendingSend(String id) {
+        if (TextUtils.isEmpty(id)) return;
+        SharedPreferences p = pendingSp();
+        if (p.contains(id)) p.edit().remove(id).apply();
+    }
 }
