@@ -235,10 +235,57 @@ public final class WaveInit {
         t.start();
     }
 
+    private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
+
+    /** Defer DownloadManager.init() (SharedPreferences disk stall + SERVICE_STATE registerReceiver IPC) and RateController.init() past frame #1. */
+    public static void deferDownloadAndRateInit(final Context c) {
+        final Context app = c.getApplicationContext();
+        MAIN_HANDLER.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Class.forName("com.android.mms.util.DownloadManager")
+                            .getMethod("init", Context.class).invoke(null, app);
+                } catch (Throwable ignored) {}
+                try {
+                    Class.forName("com.android.mms.util.RateController")
+                            .getMethod("init", Context.class).invoke(null, app);
+                } catch (Throwable ignored) {}
+            }
+        }, 350L);
+    }
+
+    /** Defer MessagingNotification's BroadcastReceiver registration IPC past frame #1. */
+    public static void deferRegisterReceiver(final Context c, final android.content.BroadcastReceiver r,
+                                             final android.content.IntentFilter filter) {
+        final Context app = c.getApplicationContext();
+        MAIN_HANDLER.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    app.registerReceiver(r, filter);
+                } catch (Throwable ignored) {}
+            }
+        }, 350L);
+    }
+
+    /** Defer DraftCache initial TelephonyProvider draft query past frame #1 to avoid SQLite contention on cold launch. */
+    public static void deferDraftRefresh(final Object draftCache) {
+        if (draftCache == null) return;
+        MAIN_HANDLER.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    draftCache.getClass().getMethod("refresh").invoke(draftCache);
+                } catch (Throwable ignored) {}
+            }
+        }, 450L);
+    }
+
     /** Defer Conversation.init() cacheAllThreads past frame #1 to avoid TelephonyProvider SQLite contention. */
     public static void deferConversationInit(final Context c) {
         final Context app = c.getApplicationContext();
-        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+        MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -251,7 +298,7 @@ public final class WaveInit {
 
     /** Defer MmsApp.registerMobileDataObserver() ContentService IPC past initial launch. */
     public static void deferMobileDataObserver(final Context c) {
-        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+        MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -266,7 +313,7 @@ public final class WaveInit {
     /** Defer CountryDetector.addCountryListener() Binder IPC off the critical cold-start path. */
     public static void deferCountryListener(final Object detector, final Object listener, final Looper looper) {
         if (detector == null || listener == null) return;
-        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+        MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -281,7 +328,7 @@ public final class WaveInit {
 
     /** Defer cold-start pending-message broadcast/service wakeup past the initial UI launch. */
     public static void deferActivePending(final Context c) {
-        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+        MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
                 try {

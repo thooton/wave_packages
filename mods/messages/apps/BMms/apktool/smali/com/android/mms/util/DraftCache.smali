@@ -155,7 +155,7 @@
     iput-object p1, p0, Lcom/android/mms/util/DraftCache;->mContext:Landroid/content/Context;
 
     .line 62
-    invoke-virtual {p0}, Lcom/android/mms/util/DraftCache;->refresh()V
+    invoke-static {p0}, Lcom/android/mms/wave/WaveInit;->deferDraftRefresh(Ljava/lang/Object;)V
 
     .line 63
     return-void

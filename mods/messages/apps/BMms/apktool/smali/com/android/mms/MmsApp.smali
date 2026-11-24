@@ -520,10 +520,9 @@
     invoke-static {v0}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
 
     .line 111
-    invoke-static {p0}, Lcom/android/mms/util/DownloadManager;->init(Landroid/content/Context;)V
-
-    .line 112
-    invoke-static {p0}, Lcom/android/mms/util/RateController;->init(Landroid/content/Context;)V
+    # PERF: defer DownloadManager.init (SharedPreferences disk stall + SERVICE_STATE registerReceiver IPC)
+    # and RateController.init past frame #1; both lazy-init safely in getInstance() if called early.
+    invoke-static {p0}, Lcom/android/mms/wave/WaveInit;->deferDownloadAndRateInit(Landroid/content/Context;)V
 
     .line 113
     invoke-static {p0}, Lcom/android/mms/layout/LayoutManager;->init(Landroid/content/Context;)V

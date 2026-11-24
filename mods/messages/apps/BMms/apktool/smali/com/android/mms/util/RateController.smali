@@ -64,6 +64,17 @@
 
     if-nez v0, :cond_0
 
+    invoke-static {}, Lcom/android/mms/MmsApp;->getApplication()Lcom/android/mms/MmsApp;
+
+    move-result-object v0
+
+    if-eqz v0, :wave_rc_uninit
+
+    invoke-static {v0}, Lcom/android/mms/util/RateController;->init(Landroid/content/Context;)V
+
+    goto :cond_0
+
+    :wave_rc_uninit
     .line 91
     new-instance v0, Ljava/lang/IllegalStateException;
 
