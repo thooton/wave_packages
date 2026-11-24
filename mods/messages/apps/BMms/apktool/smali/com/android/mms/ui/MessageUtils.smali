@@ -1062,6 +1062,18 @@
     .locals 1
 
     .prologue
+    # PERF: revoking runtime permissions SIGKILLs the process on Android, so once all basic +
+    # extended permissions are verified and initPermissionRelated() has run, skip all 14-16
+    # PackageManagerService Binder IPCs on subsequent Activity opens.
+    sget-boolean v0, Lcom/android/mms/wave/WaveInit;->sAllPermissionsGranted:Z
+
+    if-eqz v0, :wave_check_perms
+
+    const/4 v0, 0x0
+
+    return v0
+
+    :wave_check_perms
     .line 3323
     invoke-static {}, Lcom/android/mms/ui/MessageUtils;->hasBasicPermissions()Z
 
@@ -1084,6 +1096,10 @@
     move-result v0
 
     if-eqz v0, :cond_0
+
+    const/4 v0, 0x1
+
+    sput-boolean v0, Lcom/android/mms/wave/WaveInit;->sAllPermissionsGranted:Z
 
     .line 3326
     const/4 v0, 0x0
@@ -6672,6 +6688,15 @@
     .locals 1
 
     .prologue
+    sget-boolean v0, Lcom/android/mms/wave/WaveInit;->sBasicPermissionsGranted:Z
+
+    if-eqz v0, :wave_check_basic
+
+    const/4 v0, 0x1
+
+    return v0
+
+    :wave_check_basic
     .line 3306
     sget-object v0, Lcom/android/mms/ui/MessageUtils;->sSMSBasicPermissions:[Ljava/lang/String;
 
@@ -6679,6 +6704,11 @@
 
     move-result v0
 
+    if-eqz v0, :wave_basic_done
+
+    sput-boolean v0, Lcom/android/mms/wave/WaveInit;->sBasicPermissionsGranted:Z
+
+    :wave_basic_done
     return v0
 .end method
 

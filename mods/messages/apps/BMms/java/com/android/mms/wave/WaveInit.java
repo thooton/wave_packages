@@ -101,6 +101,9 @@ public final class WaveInit {
     private static volatile int sMultiSimCached = -1;
     private static volatile String sCountryIsoCached;
     private static volatile long sCountryIsoCheckedAt;
+    /** Once Android runtime permissions are granted, revocation kills the process (SIGKILL), so true is immutable per process. */
+    public static volatile boolean sBasicPermissionsGranted;
+    public static volatile boolean sAllPermissionsGranted;
 
     /** Immutable hardware multi-SIM config cached once per process (avoids TelephonyManager/SystemProperties per bind). */
     public static boolean isMultiSimEnabledCached() {
