@@ -736,27 +736,50 @@ public final class WaveIMessageStore {
         return true;
     }
 
-    /** The contact's name for a handle, else the number or address. */
+    private static final class NameCacheEntry {
+        final String name;
+        final long ts;
+
+        NameCacheEntry(String name, long ts) {
+            this.name = name;
+            this.ts = ts;
+        }
+    }
+
+    private static final long NAME_CACHE_TTL_MS = 60_000L;
+    private static final android.util.LruCache<String, NameCacheEntry> DISPLAY_NAME_CACHE =
+            new android.util.LruCache<String, NameCacheEntry>(128);
+
+    /** The contact's name for a handle, else the number or address (TTL-cached). */
     public static String displayName(Context c, String handle) {
         String addr = WaveIMessageConfig.stripHandlePrefix(handle);
         if (TextUtils.isEmpty(addr)) return "Someone";
+        long now = android.os.SystemClock.uptimeMillis();
+        NameCacheEntry cached = DISPLAY_NAME_CACHE.get(addr);
+        if (cached != null && (now - cached.ts) < NAME_CACHE_TTL_MS) {
+            return cached.name;
+        }
         Uri lookup = addr.indexOf('@') >= 0
                 ? Uri.withAppendedPath(ContactsContract.CommonDataKinds.Email.CONTENT_LOOKUP_URI, Uri.encode(addr))
                 : Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(addr));
         String col = addr.indexOf('@') >= 0
                 ? ContactsContract.Contacts.DISPLAY_NAME : ContactsContract.PhoneLookup.DISPLAY_NAME;
+        String resolved = addr;
         try {
             Cursor cur = c.getContentResolver().query(lookup, new String[]{col}, null, null, null);
             if (cur != null) {
                 try {
-                    if (cur.moveToFirst() && !TextUtils.isEmpty(cur.getString(0))) return cur.getString(0);
+                    if (cur.moveToFirst() && !TextUtils.isEmpty(cur.getString(0))) {
+                        resolved = cur.getString(0);
+                    }
                 } finally {
                     cur.close();
                 }
             }
         } catch (Throwable ignored) {
         }
-        return addr;
+        DISPLAY_NAME_CACHE.put(addr, new NameCacheEntry(resolved, now));
+        return resolved;
     }
 
     // -----------------------------------------------------------------------------------------

@@ -817,6 +817,9 @@
     invoke-direct {p0, v0, v1}, Lcom/android/mms/ui/MessageListItem;->updateAvatarView(Ljava/lang/String;Z)V
 
     .line 692
+    # PERF: bind() already called updateBodyTextView() immediately before bindCommonMessage(false).
+    if-eqz p1, :cond_4
+
     invoke-direct {p0}, Lcom/android/mms/ui/MessageListItem;->updateBodyTextView()V
 
     .line 696
@@ -3139,27 +3142,11 @@
     :cond_1
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mContext:Landroid/content/Context;
 
-    const/4 v1, 0x2
+    iget-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
 
-    new-array v1, v1, [Ljava/lang/Object;
+    iget-object v1, v1, Lcom/android/mms/ui/MessageItem;->mContact:Ljava/lang/String;
 
-    iget-object v2, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
-
-    iget-object v2, v2, Lcom/android/mms/ui/MessageItem;->mContact:Ljava/lang/String;
-
-    const/4 v3, 0x0
-
-    aput-object v2, v1, v3
-
-    .line 522
-    const/4 v2, 0x1
-
-    aput-object p1, v1, v2
-
-    .line 521
-    const v2, 0x7f070290
-
-    invoke-virtual {v0, v2, v1}, Landroid/content/Context;->getString(I[Ljava/lang/Object;)Ljava/lang/String;
+    invoke-static {v0, v1, p1}, Lcom/android/mms/ui/WaveTimeFormat;->formatGroupTimestamp(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 
@@ -5796,19 +5783,20 @@
 .method private setupOnTouchListener()V
     .locals 2
 
-    # Reset gesture state on a rebind just as stock does, but reuse the forwarding listener.
+    # Reset gesture state on a rebind just as stock does, and only attach forwarding listener once.
     const/4 v0, 0x0
     iput-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mGestureDetector:Landroid/view/GestureDetector;
 
     iget-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mWaveTouchListener:Landroid/view/View$OnTouchListener;
-    if-nez v1, :attach
+    if-nez v1, :done
     new-instance v1, Lcom/android/mms/ui/MessageListItem$6;
     invoke-direct {v1, p0}, Lcom/android/mms/ui/MessageListItem$6;-><init>(Lcom/android/mms/ui/MessageListItem;)V
     iput-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mWaveTouchListener:Landroid/view/View$OnTouchListener;
 
-    :attach
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageBlock:Landroid/view/View;
     invoke-virtual {v0, v1}, Landroid/view/View;->setOnTouchListener(Landroid/view/View$OnTouchListener;)V
+
+    :done
     return-void
 .end method
 
@@ -7295,9 +7283,15 @@
     :cond_0
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mSimIndicatorView:Landroid/widget/ImageView;
 
-    const/16 v1, 0x8
+    invoke-virtual {v0}, Landroid/widget/ImageView;->getVisibility()I
 
-    invoke-virtual {v0, v1}, Landroid/widget/ImageView;->setVisibility(I)V
+    move-result v1
+
+    const/16 v2, 0x8
+
+    if-eq v1, v2, :goto_0
+
+    invoke-virtual {v0, v2}, Landroid/widget/ImageView;->setVisibility(I)V
 
     goto :goto_0
 .end method

@@ -28,6 +28,35 @@ public final class WaveTimeFormat {
     // Stock string / plural resource IDs in BMms resources.arsc:
     private static final int STR_JUST_NOW = 0x7f070365;
     private static final int PLURAL_MINS_AGO = 0x7f0d0005;
+    private static final int STR_TIMESTAMP_FORMAT = 0x7f070290;
+
+    private static volatile String sGroupSep;
+    private static volatile Locale sGroupSepLocale;
+
+    /** Fast replacement for Context.getString(0x7f070290, contact, timestamp) avoiding java.util.Formatter per group row. */
+    public static String formatGroupTimestamp(Context ctx, String contact, String timestamp) {
+        Locale loc = Locale.getDefault();
+        String sep = sGroupSep;
+        if (sep == null || !loc.equals(sGroupSepLocale)) {
+            String probe = ctx.getString(STR_TIMESTAMP_FORMAT, "\u0001", "\u0002");
+            int i1 = probe.indexOf('\u0001');
+            int i2 = probe.indexOf('\u0002');
+            if (i1 == 0 && i2 > 1 && i2 == probe.length() - 1) {
+                sep = probe.substring(1, i2);
+            } else {
+                sep = ""; // unusual locale ordering -> fall back below
+            }
+            sGroupSep = sep;
+            sGroupSepLocale = loc;
+        }
+        if (sep.isEmpty()) {
+            return ctx.getString(STR_TIMESTAMP_FORMAT, contact, timestamp);
+        }
+        String a = contact != null ? contact : "";
+        String b = timestamp != null ? timestamp : "";
+        return new StringBuilder(a.length() + sep.length() + b.length())
+                .append(a).append(sep).append(b).toString();
+    }
 
     private static final Object LOCK = new Object();
     private static long sDayStartMs;
