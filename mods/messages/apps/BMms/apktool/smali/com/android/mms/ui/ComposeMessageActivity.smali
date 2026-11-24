@@ -13281,11 +13281,7 @@
     invoke-virtual {v2, v0}, Landroid/widget/EditText;->setTextSize(F)V
 
     .line 6727
-    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v0
-
-    invoke-virtual {v0, v8}, Landroid/content/res/Resources;->getInteger(I)I
+    invoke-static {p0, v8}, Lcom/android/mms/wave/WaveInit;->getIntResCached(Landroid/content/Context;I)I
 
     move-result v0
 
@@ -13313,11 +13309,7 @@
     .line 6734
     :cond_3
     :goto_1
-    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v0
-
-    invoke-virtual {v0, v8}, Landroid/content/res/Resources;->getInteger(I)I
+    invoke-static {p0, v8}, Lcom/android/mms/wave/WaveInit;->getIntResCached(Landroid/content/Context;I)I
 
     move-result v0
 
@@ -13329,13 +13321,9 @@
     move-result v0
 
     .line 6736
-    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v2
-
     const v3, 0x7f090023
 
-    invoke-virtual {v2, v3}, Landroid/content/res/Resources;->getBoolean(I)Z
+    invoke-static {p0, v3}, Lcom/android/mms/wave/WaveInit;->getBoolResCached(Landroid/content/Context;I)Z
 
     move-result v2
 

@@ -97,6 +97,20 @@ public final class WaveInit {
     private static volatile boolean sAirplaneCached;
 
     private static final android.util.SparseIntArray BOOL_RES_CACHE = new android.util.SparseIntArray(16);
+    private static final android.util.SparseIntArray INT_RES_CACHE = new android.util.SparseIntArray(8);
+
+    /** Cached Resources.getInteger(resId) for immutable integer config resources. */
+    public static int getIntResCached(Context ctx, int resId) {
+        synchronized (INT_RES_CACHE) {
+            int idx = INT_RES_CACHE.indexOfKey(resId);
+            if (idx >= 0) return INT_RES_CACHE.valueAt(idx);
+        }
+        int val = ctx.getResources().getInteger(resId);
+        synchronized (INT_RES_CACHE) {
+            INT_RES_CACHE.put(resId, val);
+        }
+        return val;
+    }
 
     private static volatile int sMultiSimCached = -1;
     private static volatile String sCountryIsoCached;

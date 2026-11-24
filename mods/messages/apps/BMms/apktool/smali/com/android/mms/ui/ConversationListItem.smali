@@ -1969,7 +1969,7 @@
     :cond_6
     iget-object v5, p0, Lcom/android/mms/ui/ConversationListItem;->mSubjectView:Landroid/widget/TextView;
 
-    invoke-virtual {v5, v0}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+    invoke-static {v5, v0}, Lcom/android/mms/ui/WaveInboxUi;->setTextIfChanged(Landroid/widget/TextView;Ljava/lang/CharSequence;)V
 
     goto :goto_2
 

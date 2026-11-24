@@ -348,11 +348,7 @@
     iput-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mUpdateProgressBar:Lcom/android/mms/ui/ComposeMessageActivity$IMMSUpdateProgressBar;
 
     .line 228
-    const-string/jumbo v0, "Mms"
-
-    const-string/jumbo v1, "MessageListItem with one param"
-
-    invoke-static {v0, v1}, Landroid/util/Log;->v(Ljava/lang/String;Ljava/lang/String;)I
+    # PERF: skip per-row Log.v JNI write in single-arg constructor.
 
     # PERF(row inflation): no country query; this row never uses the result.
     .line 232
@@ -7917,13 +7913,6 @@
 
     .line 269
     invoke-super {p0}, Lcom/android/mms/ui/zoom/ZoomMessageListItem;->onFinishInflate()V
-
-    .line 270
-    const-string/jumbo v0, "Mms"
-
-    const-string/jumbo v1, "onFinishInflate"
-
-    invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
 
     .line 272
     const v0, 0x7f0f00d3
