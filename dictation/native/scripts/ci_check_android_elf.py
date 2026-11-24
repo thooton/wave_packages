@@ -55,6 +55,22 @@ def collect_undef_dyn_syms(nm: str, binary: Path) -> list[str]:
     return sorted(set(syms))
 
 
+def parse_arm_attrs(text: str) -> dict[str, str]:
+    attrs: dict[str, str] = {}
+    cur_tag: str | None = None
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("TagName:"):
+            cur_tag = s.split(":", 1)[1].strip()
+        elif s.startswith("Description:") and cur_tag is not None:
+            attrs[cur_tag] = s.split(":", 1)[1].strip()
+            cur_tag = None
+        elif s.startswith("Tag_"):
+            k, _, v = s.partition(":")
+            attrs[k.removeprefix("Tag_").strip()] = v.strip()
+    return attrs
+
+
 def check_binary(
     *,
     binary: Path,
@@ -73,13 +89,14 @@ def check_binary(
     assert "DYN" in hdr, f"{binary.name}: not ET_DYN (PIE / shared object)"
 
     # 2. ARM build attributes
-    attrs = run([readelf, "-A", str(binary)])
-    print(attrs.strip())
-    assert "Tag_CPU_arch: v7" in attrs, f"{binary.name}: missing ARMv7 arch tag"
-    assert "NEON" in attrs, f"{binary.name}: missing NEON attribute"
-    assert "VFPv4" in attrs, f"{binary.name}: missing VFPv4 attribute"
-    assert "Tag_ABI_VFP_args: VFP registers" not in attrs, (
-        f"{binary.name}: compiled as hardfp instead of softfp!"
+    attrs_raw = run([readelf, "-A", str(binary)])
+    attrs = parse_arm_attrs(attrs_raw)
+    print(f"ARM EABI attributes: {attrs}")
+    assert "v7" in attrs.get("CPU_arch", ""), f"{binary.name}: missing ARMv7 arch tag ({attrs.get('CPU_arch')})"
+    assert "NEON" in attrs.get("Advanced_SIMD_arch", ""), f"{binary.name}: missing NEON attribute ({attrs.get('Advanced_SIMD_arch')})"
+    assert "VFPv4" in attrs.get("FP_arch", ""), f"{binary.name}: missing VFPv4 attribute ({attrs.get('FP_arch')})"
+    assert "VFP registers" not in attrs.get("ABI_VFP_args", ""), (
+        f"{binary.name}: compiled as hardfp instead of softfp! ({attrs.get('ABI_VFP_args')})"
     )
 
     # 3. DT_NEEDED
