@@ -1,7 +1,9 @@
 // Compile-time stub only (NOT packaged).
 package com.android.mms.ui;
 
-public class MessageListItem extends android.view.View {
+import android.widget.LinearLayout;
+
+public class MessageListItem extends LinearLayout {
     public MessageListItem(android.content.Context context) { super(context); }
     public MessageItem getMessageItem() { return null; }
 }

@@ -32,12 +32,6 @@ class SmsSingleRecipientSender {
     public boolean sendMessage(long token) throws com.google.android.mms.MmsException { return false; }
 }
 
-class MessagingNotification {
-    public static void blockingUpdateNewMessageIndicator(Context c, long threadId, boolean z) {}
-    public static void notifySendFailed(Context c, boolean z) {}
-    public static long getThreadId(Context c, Uri uri) { return 0; }
-}
-
 class TransactionService extends android.app.Service {
     public android.os.IBinder onBind(android.content.Intent i) { return null; }
 }

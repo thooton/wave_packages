@@ -9,6 +9,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.webkit.MimeTypeMap;
 import android.widget.Toast;
 
 import com.android.mms.wave.WaveIMessageDb;
@@ -27,9 +28,9 @@ import java.util.List;
 /**
  * FEAT(imessage): "Save attachment" on an iMessage saves the full-size photo or video from the
  * server instead of the screen-size preview stored on the phone ({@code
- * ComposeMessageActivity.saveAttachment}, and the attachment viewer's Save attachment / Save all in
- * {@code BaseAttachmentViewActivity}). Files go to the phone's Download folder. The download works
- * whether or not the push connection is up; it needs only the server.
+ * ComposeMessageActivity.saveAttachment}, and the attachment viewer's Save attachment / Save all).
+ * Reuses one media connection via {@code keepOpen()} when saving multiple files at once.
+ * Also provides local part saving to Download/ for non-iMessage MMS attachments.
  */
 public final class WaveIMessageSave {
     private static final String TAG = "WaveIMsg";
@@ -85,6 +86,73 @@ public final class WaveIMessageSave {
         }
     }
 
+    /** Saves a local MMS part URI directly to Download/ (fallback for carrier MMS). */
+    public static void saveLocalPart(Activity a, final Uri partUri, final String mime, final String filename) {
+        if (a == null || partUri == null) return;
+        final Context app = a.getApplicationContext();
+        new Thread(() -> {
+            try {
+                File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                dir.mkdirs();
+                File dest = unique(dir, cleanName(filename, mime));
+                try (InputStream in = app.getContentResolver().openInputStream(partUri);
+                     OutputStream out = new FileOutputStream(dest)) {
+                    if (in == null) {
+                        toast(app, "Couldn't read attachment");
+                        return;
+                    }
+                    byte[] buf = new byte[32 * 1024];
+                    int r;
+                    while ((r = in.read(buf)) > 0) out.write(buf, 0, r);
+                }
+                MediaScannerConnection.scanFile(app, new String[]{dest.getPath()},
+                        mime != null ? new String[]{mime} : null, null);
+                toast(app, "Saved to Download");
+            } catch (Throwable t) {
+                Log.w(TAG, "saveLocalPart failed", t);
+                toast(app, "Couldn't save attachment");
+            }
+        }, "wave-mms-save").start();
+    }
+
+    /** Saves multiple local MMS parts to Download/. */
+    public static void saveLocalParts(Activity a, final List<Uri> uris,
+                                      final List<String> mimes, final List<String> names) {
+        if (a == null || uris == null || uris.isEmpty()) return;
+        final Context app = a.getApplicationContext();
+        new Thread(() -> {
+            File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            dir.mkdirs();
+            List<String> paths = new ArrayList<String>();
+            int saved = 0;
+            for (int i = 0; i < uris.size(); i++) {
+                Uri u = uris.get(i);
+                String mime = (mimes != null && i < mimes.size()) ? mimes.get(i) : null;
+                String name = (names != null && i < names.size()) ? names.get(i) : null;
+                if (u == null) continue;
+                try {
+                    File dest = unique(dir, cleanName(name, mime));
+                    try (InputStream in = app.getContentResolver().openInputStream(u);
+                         OutputStream out = new FileOutputStream(dest)) {
+                        if (in == null) continue;
+                        byte[] buf = new byte[32 * 1024];
+                        int r;
+                        while ((r = in.read(buf)) > 0) out.write(buf, 0, r);
+                    }
+                    paths.add(dest.getPath());
+                    saved++;
+                } catch (Throwable t) {
+                    Log.w(TAG, "saveLocalParts item failed", t);
+                }
+            }
+            if (!paths.isEmpty()) {
+                MediaScannerConnection.scanFile(app, paths.toArray(new String[paths.size()]), null, null);
+            }
+            toast(app, saved == 0 ? "Couldn't save attachments"
+                    : (saved == 1 ? "Saved to Download" : saved + " files saved to Download"));
+        }, "wave-mms-save-all").start();
+    }
+
     /** Downloads {mediaId, name} items full-size into Download; false (stock saves the preview) if offline. */
     private static boolean start(Activity a, final List<String[]> items) {
         if (items.isEmpty()) return false;
@@ -105,21 +173,27 @@ public final class WaveIMessageSave {
                 File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
                 dir.mkdirs();
                 List<String> paths = new ArrayList<String>();
-                for (String[] m : items) {
-                    File tmp = new File(app.getCacheDir(), "full-" + m[0]);
-                    try {
-                        MediaClient.Result r = mc.download(m[0], true, tmp, null);
-                        File out = unique(dir, r.name != null && !r.name.isEmpty() ? r.name : m[1]);
-                        copy(r.file, out);
-                        paths.add(out.getPath());
-                        saved++;
-                        Log.i(TAG, "saved full-size " + m[0] + " to " + out + " (" + r.length + " bytes)");
-                    } catch (IOException e) {
-                        Log.w(TAG, "full-size download of " + m[0] + " failed", e);
-                        error = e.getMessage();
-                    } finally {
-                        tmp.delete();
+                boolean reuse = items.size() > 1;
+                if (reuse) mc.keepOpen();
+                try {
+                    for (String[] m : items) {
+                        File tmp = new File(app.getCacheDir(), "full-" + m[0]);
+                        try {
+                            MediaClient.Result r = mc.download(m[0], true, tmp, null);
+                            File out = unique(dir, r.name != null && !r.name.isEmpty() ? r.name : m[1]);
+                            copy(r.file, out);
+                            paths.add(out.getPath());
+                            saved++;
+                            Log.i(TAG, "saved full-size " + m[0] + " to " + out + " (" + r.length + " bytes)");
+                        } catch (IOException e) {
+                            Log.w(TAG, "full-size download of " + m[0] + " failed", e);
+                            error = e.getMessage();
+                        } finally {
+                            tmp.delete();
+                        }
                     }
+                } finally {
+                    if (reuse) mc.close();
                 }
                 if (!paths.isEmpty()) {
                     MediaScannerConnection.scanFile(app, paths.toArray(new String[paths.size()]), null, null);
@@ -128,15 +202,27 @@ public final class WaveIMessageSave {
                         ? (saved == 1 ? "Saved to Download" : saved + " files saved to Download")
                         : saved > 0 ? saved + " of " + items.size() + " saved to Download"
                         : "Couldn't download" + (error == null ? "" : ": " + error);
-                MAIN.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(app, msg, Toast.LENGTH_LONG).show();
-                    }
-                });
+                toast(app, msg);
             }
         }, "wave-imsg-save").start();
         return true;
+    }
+
+    private static String cleanName(String filename, String mime) {
+        String s = filename == null ? "" : filename.trim();
+        int slash = Math.max(s.lastIndexOf('/'), s.lastIndexOf('\\'));
+        if (slash >= 0) s = s.substring(slash + 1);
+        if (s.startsWith("imsg") && s.contains("_")) {
+            int us = s.indexOf('_');
+            if (us > 0 && us < 8 && us + 1 < s.length()) s = s.substring(us + 1);
+        }
+        s = s.replaceAll("[^A-Za-z0-9._-]", "_");
+        if (s.isEmpty() || ".".equals(s) || "..".equals(s)) s = "attachment";
+        if (s.indexOf('.') < 0 && mime != null) {
+            String ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime);
+            if (ext != null && !ext.isEmpty()) s = s + "." + ext;
+        }
+        return s;
     }
 
     private static File unique(File dir, String name) {
@@ -166,5 +252,14 @@ public final class WaveIMessageSave {
         } finally {
             in.close();
         }
+    }
+
+    private static void toast(final Context app, final String msg) {
+        MAIN.post(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(app, msg, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 }

@@ -7,6 +7,8 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.preference.Preference;
@@ -53,7 +55,7 @@ public final class WaveIMessageSettings {
     public static final String MSG_TYPE_SETTINGS = "wave_imessage";
     public static final String MSG_TYPE_WIZARD = "wave_imessage_wizard";
     private static final String HOST_ACTIVITY = "com.android.mms.ui.MessagingReportsPreferenceActivity";
-    private static final String TITLE = "Apple (iMessage) settings";
+    private static final String TITLE = "iMessage";
     private static final String WIZARD_TITLE = "iMessage setup";
 
     private static final WeakHashMap<Activity, WizardController> sWizards =
@@ -61,18 +63,24 @@ public final class WaveIMessageSettings {
 
     private WaveIMessageSettings() {}
 
-    /** Hooked in MessagingPreferenceActivity.loadPrefs under Advanced settings. */
+    /** Hooked in MessagingPreferenceActivity.loadPrefs — placed right at the top of Settings. */
     public static void addEntry(final PreferenceActivity a, PreferenceCategory advanced) {
         try {
-            if (advanced == null) return;
+            PreferenceScreen root = a.getPreferenceScreen();
+            if (root == null && advanced == null) return;
             Preference p = new Preference(a);
             p.setKey("wave_imessage_settings");
             p.setTitle(TITLE);
             p.setSummary(WaveIMessageHost.get(a).formatStatusSummary());
             p.setPersistent(false);
+            p.setOrder(-100);
             p.setIntent(new Intent().setClassName(a.getPackageName(), HOST_ACTIVITY)
                     .putExtra("msg_type", MSG_TYPE_SETTINGS));
-            advanced.addPreference(p);
+            if (root != null) {
+                root.addPreference(p);
+            } else {
+                advanced.addPreference(p);
+            }
         } catch (Throwable t) {
             Log.w(TAG, "addEntry", t);
         }
@@ -129,13 +137,12 @@ public final class WaveIMessageSettings {
         final SwitchPreference enable = new SwitchPreference(a);
         enable.setPersistent(false);
         enable.setTitle("iMessage");
-        enable.setSummary("Use iMessage when connected to your server");
+        enable.setSummary("Receive and send via your Apple server");
         enable.setChecked(cfg.isEnabledRaw());
         screen.addPreference(enable);
 
         final Preference statusPref = new Preference(a);
         statusPref.setPersistent(false);
-        statusPref.setSelectable(false);
         statusPref.setTitle("Status");
         screen.addPreference(statusPref);
 
@@ -151,49 +158,61 @@ public final class WaveIMessageSettings {
         renewalPref.setTitle("Renewal");
         screen.addPreference(renewalPref);
 
+        PreferenceCategory msgCat = new PreferenceCategory(a);
+        msgCat.setTitle("Messaging");
+        screen.addPreference(msgCat);
+
         final SwitchPreference sendPref = new SwitchPreference(a);
         sendPref.setPersistent(false);
         sendPref.setTitle("Send with iMessage");
         sendPref.setChecked(cfg.isSendEnabled());
-        screen.addPreference(sendPref);
+        msgCat.addPreference(sendPref);
 
         final SwitchPreference smsFallback = new SwitchPreference(a);
         smsFallback.setPersistent(false);
         smsFallback.setTitle("Send as SMS");
-        smsFallback.setSummary("Fall back to SMS when iMessage is unavailable");
+        smsFallback.setSummary("Use SMS when iMessage is unavailable");
         smsFallback.setChecked(cfg.isSmsFallbackEnabled());
-        screen.addPreference(smsFallback);
+        msgCat.addPreference(smsFallback);
+
+        PreferenceCategory connCat = new PreferenceCategory(a);
+        connCat.setTitle("Connection");
+        screen.addPreference(connCat);
 
         final SwitchPreference notifPref = new SwitchPreference(a);
         notifPref.setPersistent(false);
         notifPref.setTitle("Connection notification");
-        notifPref.setSummary("Show an ongoing notification while connected. Turn on if iMessages arrive late.");
+        notifPref.setSummary("Keep an ongoing status bar notification");
         notifPref.setChecked(cfg.isConnectionNotificationShown());
-        screen.addPreference(notifPref);
+        connCat.addPreference(notifPref);
 
         final Preference serverPref = new Preference(a);
         serverPref.setPersistent(false);
         serverPref.setTitle("Server & connection");
         serverPref.setSummary(cfg.getServerUrl());
-        screen.addPreference(serverPref);
+        connCat.addPreference(serverPref);
 
         final Preference reconnectPref = new Preference(a);
         reconnectPref.setPersistent(false);
         reconnectPref.setTitle("Reconnect");
-        reconnectPref.setSummary("Reconnect and refresh Apple handles");
-        screen.addPreference(reconnectPref);
+        reconnectPref.setSummary("Refresh connection and Apple handles");
+        connCat.addPreference(reconnectPref);
+
+        PreferenceCategory setupCat = new PreferenceCategory(a);
+        setupCat.setTitle("Setup");
+        screen.addPreference(setupCat);
 
         final Preference wizardPref = new Preference(a);
         wizardPref.setPersistent(false);
         wizardPref.setTitle("Pair again");
-        wizardPref.setSummary("Pair with a server using a new code");
-        screen.addPreference(wizardPref);
+        wizardPref.setSummary("Connect with a new pairing code");
+        setupCat.addPreference(wizardPref);
 
         final Preference clearPref = new Preference(a);
         clearPref.setPersistent(false);
         clearPref.setTitle("Clear setup");
-        clearPref.setSummary("Disconnect and remove saved server settings");
-        screen.addPreference(clearPref);
+        clearPref.setSummary("Disconnect and forget saved server");
+        setupCat.addPreference(clearPref);
 
         final Handler main = new Handler(Looper.getMainLooper());
         final Runnable update = new Runnable() {
@@ -208,11 +227,19 @@ public final class WaveIMessageSettings {
                 reconnectPref.setEnabled(on);
                 sendPref.setEnabled(on);
                 sendPref.setSummary(send
-                        ? "Replies go as iMessage when the contact has it"
-                        : "Off: replies go as SMS and contacts aren't checked. iMessages still arrive.");
+                        ? "Use iMessage when the contact has it"
+                        : "Off: replies go as SMS (iMessages still arrive)");
                 smsFallback.setEnabled(on && send);
             }
         };
+
+        statusPref.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference p) {
+                showConnectionDetailsDialog(a, host);
+                return true;
+            }
+        });
 
         enable.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
             @Override
@@ -318,23 +345,29 @@ public final class WaveIMessageSettings {
 
     private static void showConnectionDetailsDialog(final Activity a, final WaveIMessageHost host) {
         WaveIMessageConfig cfg = host.config();
-        String relayLine = host.hasRegInfo()
-                ? (host.isProviderConnected() ? "Online" : "Offline")
-                : "Unknown";
-        String msg = "Server: " + cfg.getHost() + ":" + cfg.getPort() + "\n"
-                + "Status: " + host.formatStatusSummary() + "\n"
-                + "Renewal: " + host.formatRenewalSummary() + "\n"
-                + "Relay: " + relayLine + "\n"
-                + "Keepalive: " + WaveIMessageHost.formatInterval(host.getCurrentIntervalSeconds()) + "\n"
-                + "Network: " + (TextUtils.isEmpty(host.getActiveNetworkKey()) ? "-" : host.getActiveNetworkKey()) + "\n"
-                + "Queued outbox: " + host.getOutboxSize();
+        float den = a.getResources().getDisplayMetrics().density;
+        int padH = Math.round(16 * den);
+        int padV = Math.round(6 * den);
+
+        ScrollView sv = new ScrollView(a);
+        LinearLayout body = new LinearLayout(a);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setPadding(padH, Math.round(4 * den), padH, Math.round(4 * den));
+
+        addDetailRow(a, body, "Server", cfg.getHost() + ":" + cfg.getPort());
+        addDetailRow(a, body, "Connection", host.formatStatusSummary());
+        addDetailRow(a, body, "Renewal", host.formatRenewalSummary());
+        String net = TextUtils.isEmpty(host.getActiveNetworkKey()) ? "-" : host.getActiveNetworkKey();
+        addDetailRow(a, body, "Network", net);
+        addDetailRow(a, body, "Queued outbox", String.valueOf(host.getOutboxSize()));
+        sv.addView(body);
 
         AlertDialog.Builder b = new AlertDialog.Builder(a)
                 .setTitle("Connection details")
-                .setMessage(msg)
-                .setPositiveButton("OK", null);
+                .setView(sv)
+                .setPositiveButton("Close", null);
         if (cfg.isEnabled()) {
-            b.setNeutralButton("Optimize keepalive", new DialogInterface.OnClickListener() {
+            b.setNeutralButton("Optimize", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface d, int w) {
                     host.triggerProbeNow();
@@ -343,6 +376,25 @@ public final class WaveIMessageSettings {
             });
         }
         b.show();
+    }
+
+    private static void addDetailRow(Activity a, LinearLayout parent, String label, String value) {
+        float den = a.getResources().getDisplayMetrics().density;
+        TextView lbl = new TextView(a);
+        lbl.setText(label);
+        lbl.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f);
+        lbl.setTextColor(0xFF8E8E93);
+        lbl.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        parent.addView(lbl);
+
+        TextView val = new TextView(a);
+        val.setText(value);
+        val.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+        val.setTextColor(0xFF1C1C1E);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = Math.round(4 * den);
+        parent.addView(val, lp);
     }
 
     // =========================================================================================
@@ -388,11 +440,13 @@ public final class WaveIMessageSettings {
         private void showPairForm() {
             step = 1;
             LinearLayout root = createPageLayout("Step 1 of 2", "Pair with your server");
-            addBody(root, "On your server, run: imsg-server pair");
+            addBody(root, "Run imsg-server pair on your server, then enter the code below.");
 
+            addFieldLabel(root, "Server");
             final EditText serverField = addEditField(root, "imsg.example.com", inputServer,
                     InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-            final EditText codeField = addEditField(root, "Pairing code", inputCode,
+            addFieldLabel(root, "Pairing code");
+            final EditText codeField = addEditField(root, "6-digit code", inputCode,
                     InputType.TYPE_CLASS_NUMBER);
 
             if (!TextUtils.isEmpty(errorText)) addError(root, errorText);
@@ -620,21 +674,50 @@ public final class WaveIMessageSettings {
             parent.addView(tv, lp);
         }
 
+        private void addFieldLabel(LinearLayout parent, String text) {
+            TextView tv = new TextView(activity);
+            tv.setText(text);
+            tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
+            tv.setTextColor(0xFF636366);
+            tv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.bottomMargin = dp(3);
+            parent.addView(tv, lp);
+        }
+
         private EditText addEditField(LinearLayout parent, String hint, String initial, int inputType) {
             EditText et = new EditText(activity);
             et.setHint(hint);
+            et.setHintTextColor(0xFF8E8E93);
+            et.setTextColor(0xFF1C1C1E);
             if (!TextUtils.isEmpty(initial)) {
                 et.setText(initial);
                 et.setSelection(initial.length());
             }
             et.setInputType(inputType);
             et.setSingleLine(true);
-            et.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+            et.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
+            et.setPadding(dp(10), dp(7), dp(10), dp(7));
             et.setFocusable(true);
             et.setFocusableInTouchMode(true);
+
+            GradientDrawable foc = new GradientDrawable();
+            foc.setColor(Color.WHITE);
+            foc.setCornerRadius(dp(10));
+            foc.setStroke(dp(2), 0xFF007AFF);
+            GradientDrawable idle = new GradientDrawable();
+            idle.setColor(0xFFF7F7F9);
+            idle.setCornerRadius(dp(10));
+            idle.setStroke(1, 0xFFD1D1D6);
+            StateListDrawable bg = new StateListDrawable();
+            bg.addState(new int[]{android.R.attr.state_focused}, foc);
+            bg.addState(new int[]{}, idle);
+            et.setBackground(bg);
+
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.bottomMargin = dp(8);
+            lp.bottomMargin = dp(9);
             parent.addView(et, lp);
             return et;
         }
@@ -643,9 +726,28 @@ public final class WaveIMessageSettings {
             Button b = new Button(activity);
             b.setText(label);
             b.setAllCaps(false);
-            b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+            b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
+            b.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            b.setTextColor(Color.WHITE);
+            b.setMinHeight(dp(36));
+            b.setMinimumHeight(dp(36));
+            b.setPadding(dp(12), dp(6), dp(12), dp(6));
             b.setFocusable(true);
             b.setOnClickListener(onClick);
+
+            GradientDrawable foc = new GradientDrawable();
+            foc.setColor(0xFF0062CC);
+            foc.setCornerRadius(dp(12));
+            foc.setStroke(dp(2), 0xFF1C1C1E);
+            GradientDrawable norm = new GradientDrawable();
+            norm.setColor(0xFF007AFF);
+            norm.setCornerRadius(dp(12));
+            StateListDrawable bg = new StateListDrawable();
+            bg.addState(new int[]{android.R.attr.state_focused}, foc);
+            bg.addState(new int[]{android.R.attr.state_pressed}, foc);
+            bg.addState(new int[]{}, norm);
+            b.setBackground(bg);
+
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             lp.topMargin = dp(4);
@@ -657,12 +759,31 @@ public final class WaveIMessageSettings {
             Button b = new Button(activity);
             b.setText(label);
             b.setAllCaps(false);
-            b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+            b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+            b.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            b.setTextColor(0xFF3A3A3C);
+            b.setMinHeight(dp(34));
+            b.setMinimumHeight(dp(34));
+            b.setPadding(dp(12), dp(6), dp(12), dp(6));
             b.setFocusable(true);
             b.setOnClickListener(onClick);
+
+            GradientDrawable foc = new GradientDrawable();
+            foc.setColor(0xFFE5E5EA);
+            foc.setCornerRadius(dp(12));
+            foc.setStroke(dp(2), 0xFF007AFF);
+            GradientDrawable norm = new GradientDrawable();
+            norm.setColor(0xFFF2F2F7);
+            norm.setCornerRadius(dp(12));
+            StateListDrawable bg = new StateListDrawable();
+            bg.addState(new int[]{android.R.attr.state_focused}, foc);
+            bg.addState(new int[]{android.R.attr.state_pressed}, foc);
+            bg.addState(new int[]{}, norm);
+            b.setBackground(bg);
+
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.topMargin = dp(2);
+            lp.topMargin = dp(6);
             parent.addView(b, lp);
             return b;
         }

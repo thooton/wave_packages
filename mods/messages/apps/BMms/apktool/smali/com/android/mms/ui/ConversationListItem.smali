@@ -1915,6 +1915,9 @@
     .line 497
     :cond_2
     :goto_5
+    # FEAT(imessage): clean media/reply/notice snippets in conversation list.
+    invoke-static {p0, p2}, Lcom/android/mms/ui/WaveInboxUi;->onBind(Lcom/android/mms/ui/ConversationListItem;Lcom/android/mms/data/Conversation;)V
+
     return-void
 
     :cond_3

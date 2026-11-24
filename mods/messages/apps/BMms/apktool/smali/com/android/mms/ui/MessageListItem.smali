@@ -502,6 +502,16 @@
     .locals 4
 
     .prologue
+    # FEAT(imessage): suppress stock "4 Attachments / 117KB" footer when WaveMessageUi renders inline media.
+    invoke-static {p0}, Lcom/android/mms/ui/WaveMessageUi;->suppressStockMms(Lcom/android/mms/ui/MessageListItem;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_stock_attach_details
+
+    return-void
+
+    :wave_stock_attach_details
     const v0, 0x7f0f00d7
 
     .line 2468
@@ -1168,6 +1178,11 @@
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
 
     invoke-direct {p0, v0}, Lcom/android/mms/ui/MessageListItem;->drawRightStatusIndicator(Lcom/android/mms/ui/MessageItem;)V
+
+    # FEAT(imessage): inline media, voice pill, reply quote, edit/unsend/notice bubble polish.
+    invoke-static {p0}, Lcom/android/mms/ui/WaveMessageUi;->onBindRow(Lcom/android/mms/ui/MessageListItem;)V
+
+    invoke-static {p0}, Lcom/android/mms/ui/WaveTapbacks;->onBind(Lcom/android/mms/ui/MessageListItem;)V
 
     .line 869
     invoke-virtual {p0}, Lcom/android/mms/ui/MessageListItem;->requestLayout()V
@@ -4515,6 +4530,16 @@
     .locals 6
 
     .prologue
+    # FEAT(imessage): suppress stock CD audio box when WaveMessageUi renders inline voice pill.
+    invoke-static {p0}, Lcom/android/mms/ui/WaveMessageUi;->suppressStockMms(Lcom/android/mms/ui/MessageListItem;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_stock_play_audio
+
+    return-void
+
+    :wave_stock_play_audio
     const/16 v3, 0x8
 
     const/4 v2, 0x0
@@ -4919,6 +4944,16 @@
     .locals 6
 
     .prologue
+    # FEAT(imessage): suppress stock 56x56 photo/video thumbnail box when WaveMessageUi renders inline media.
+    invoke-static {p0}, Lcom/android/mms/ui/WaveMessageUi;->suppressStockMms(Lcom/android/mms/ui/MessageListItem;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_stock_play_vidpic
+
+    return-void
+
+    :wave_stock_play_vidpic
     const/4 v3, 0x0
 
     const/16 v2, 0x8
@@ -5239,6 +5274,16 @@
     .locals 6
 
     .prologue
+    # FEAT(imessage): suppress stock slideshow/multi-attachment box when WaveMessageUi renders inline media.
+    invoke-static {p0}, Lcom/android/mms/ui/WaveMessageUi;->suppressStockMms(Lcom/android/mms/ui/MessageListItem;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_stock_slideshow
+
+    return-void
+
+    :wave_stock_slideshow
     const/4 v2, 0x0
 
     const/16 v3, 0x8
@@ -5793,6 +5838,16 @@
     .locals 7
 
     .prologue
+    # FEAT(imessage): suppress stock mms_view/multi_view when WaveMessageUi renders inline media.
+    invoke-static {p0}, Lcom/android/mms/ui/WaveMessageUi;->suppressStockMms(Lcom/android/mms/ui/MessageListItem;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_stock_show_mms
+
+    return-void
+
+    :wave_stock_show_mms
     const v6, 0x7f0f00ed
 
     const/4 v1, 0x0

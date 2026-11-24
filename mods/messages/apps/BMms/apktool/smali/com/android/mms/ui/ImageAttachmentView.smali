@@ -36,7 +36,7 @@
 
 # virtual methods
 .method protected onFinishInflate()V
-    .locals 1
+    .locals 2
 
     .prologue
     .line 53
@@ -49,6 +49,11 @@
     check-cast v0, Landroid/widget/ImageView;
 
     iput-object v0, p0, Lcom/android/mms/ui/ImageAttachmentView;->mImageView:Landroid/widget/ImageView;
+
+    # FEAT(imessage): preserve aspect ratio in compose photo preview instead of stock fitXY squash.
+    sget-object v1, Landroid/widget/ImageView$ScaleType;->CENTER_CROP:Landroid/widget/ImageView$ScaleType;
+
+    invoke-virtual {v0, v1}, Landroid/widget/ImageView;->setScaleType(Landroid/widget/ImageView$ScaleType;)V
 
     .line 54
     return-void

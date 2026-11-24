@@ -492,6 +492,18 @@
     .locals 2
 
     .prologue
+    # FEAT(imessage): D-pad zoom/pan, play/pause, seek & slide switching in WaveAttachmentViewer.
+    invoke-static {p0, p1}, Lcom/android/mms/ui/WaveAttachmentViewer;->dispatchKeyEvent(Landroid/app/Activity;Landroid/view/KeyEvent;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_attach_stock_key
+
+    const/4 v0, 0x1
+
+    return v0
+
+    :wave_attach_stock_key
     .line 381
     invoke-virtual {p0}, Lcom/android/mms/ui/AttachmentViewActivity;->getFragmentManager()Landroid/app/FragmentManager;
 
@@ -531,6 +543,27 @@
     .locals 2
 
     .prologue
+    # FEAT(imessage): exit photo zoom before closing WaveAttachmentViewer.
+    invoke-static {p0}, Lcom/android/mms/ui/WaveAttachmentViewer;->onBackPressed(Landroid/app/Activity;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_attach_stock_back
+
+    return-void
+
+    :wave_attach_stock_back
+    invoke-static {p0}, Lcom/android/mms/ui/WaveAttachmentViewer;->isActive(Landroid/app/Activity;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_attach_stock_back2
+
+    invoke-super {p0}, Lcom/android/mms/ui/BaseAttachmentViewActivity;->onBackPressed()V
+
+    return-void
+
+    :wave_attach_stock_back2
     const/4 v1, 0x0
 
     .line 171
@@ -578,6 +611,16 @@
     .line 74
     invoke-super {p0, p1}, Lcom/android/mms/ui/BaseAttachmentViewActivity;->onCreate(Landroid/os/Bundle;)V
 
+    # FEAT(imessage): modern full-screen attachment viewer (photos/zoom, video, voice waveform, vCard).
+    invoke-static {p0}, Lcom/android/mms/ui/WaveAttachmentViewer;->onCreate(Landroid/app/Activity;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_attach_stock_oncreate
+
+    return-void
+
+    :wave_attach_stock_oncreate
     .line 75
     invoke-static {p0}, Lcom/android/mms/ui/MessageUtils;->checkPermissionsIfNeeded(Landroid/app/Activity;)Z
 
@@ -1061,4 +1104,67 @@
 
     .line 276
     return-void
+.end method
+
+# FEAT(imessage): lifecycle & menu hooks for WaveAttachmentViewer.
+.method protected onPause()V
+    .locals 0
+
+    invoke-static {p0}, Lcom/android/mms/ui/WaveAttachmentViewer;->onPause(Landroid/app/Activity;)V
+
+    invoke-super {p0}, Lcom/android/mms/ui/BaseAttachmentViewActivity;->onPause()V
+
+    return-void
+.end method
+
+.method protected onDestroy()V
+    .locals 0
+
+    invoke-static {p0}, Lcom/android/mms/ui/WaveAttachmentViewer;->onDestroy(Landroid/app/Activity;)V
+
+    invoke-super {p0}, Lcom/android/mms/ui/BaseAttachmentViewActivity;->onDestroy()V
+
+    return-void
+.end method
+
+.method public onPrepareOptionsMenu(Landroid/view/Menu;)Z
+    .locals 1
+
+    invoke-static {p0, p1}, Lcom/android/mms/ui/WaveAttachmentViewer;->onPrepareOptionsMenu(Landroid/app/Activity;Landroid/view/Menu;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_attach_stock_menu
+
+    const/4 v0, 0x1
+
+    return v0
+
+    :wave_attach_stock_menu
+    invoke-super {p0, p1}, Lcom/android/mms/ui/BaseAttachmentViewActivity;->onPrepareOptionsMenu(Landroid/view/Menu;)Z
+
+    move-result v0
+
+    return v0
+.end method
+
+.method public onOptionsItemSelected(Landroid/view/MenuItem;)Z
+    .locals 1
+
+    invoke-static {p0, p1}, Lcom/android/mms/ui/WaveAttachmentViewer;->onOptionsItemSelected(Landroid/app/Activity;Landroid/view/MenuItem;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_attach_stock_item
+
+    const/4 v0, 0x1
+
+    return v0
+
+    :wave_attach_stock_item
+    invoke-super {p0, p1}, Lcom/android/mms/ui/BaseAttachmentViewActivity;->onOptionsItemSelected(Landroid/view/MenuItem;)Z
+
+    move-result v0
+
+    return v0
 .end method

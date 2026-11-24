@@ -15,6 +15,8 @@ public class MessageItem {
     Uri mMessageUri;
     SlideshowModel mSlideshow;
     public boolean isOutgoingMessage() { return false; }
+    public boolean isFailedMessage() { return false; }
     public boolean isSms() { return false; }
+    public boolean isMms() { return false; }
     public boolean isMe() { return false; }
 }
