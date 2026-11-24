@@ -124,6 +124,7 @@ public final class WaveAttachmentViewer {
     private TextView videoPosTv;
     private TextView videoDurTv;
     private boolean videoFullscreen = false;
+    private boolean singleVideoDirect = false;
 
     private final Runnable hideVideoScrubber = new Runnable() {
         @Override
@@ -576,9 +577,15 @@ public final class WaveAttachmentViewer {
         });
     }
 
-    // --- Video viewer (Sonim preview on open, no auto-play; OK plays full-screen) ---
+    // --- Video viewer (single video opens straight into full-screen paused; multi-item previews first) ---
 
     private void showVideo(final PartItem item) {
+        if (parts.size() == 1) {
+            singleVideoDirect = true;
+            startVideoFullscreen(item, false);
+            return;
+        }
+        singleVideoDirect = false;
         FrameLayout preview = new FrameLayout(act);
         preview.setBackgroundColor(COLOR_BG);
         videoPreviewBox = preview;
@@ -593,7 +600,7 @@ public final class WaveAttachmentViewer {
 
         SonimPlayRingView playRing = new SonimPlayRingView(act);
         preview.addView(playRing, new FrameLayout.LayoutParams(dp(44), dp(44), Gravity.CENTER));
-        preview.setOnClickListener(v -> startVideoFullscreen(item));
+        preview.setOnClickListener(v -> startVideoFullscreen(item, true));
 
         contentHost.addView(preview, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -623,7 +630,7 @@ public final class WaveAttachmentViewer {
         });
     }
 
-    private void startVideoFullscreen(PartItem item) {
+    private void startVideoFullscreen(PartItem item, final boolean autoPlay) {
         if (item == null || destroyed) return;
         videoFullscreen = true;
         setStatusBar(Color.BLACK);
@@ -696,11 +703,19 @@ public final class WaveAttachmentViewer {
         vv.setOnPreparedListener(mp -> {
             if (destroyed || !videoFullscreen || videoView != vv) return;
             if (videoDurTv != null) videoDurTv.setText(formatMovieTime(vv.getDuration()));
-            vv.start();
-            if (videoControls != null) videoControls.setPlaying(true);
-            main.removeCallbacks(progressTick);
-            main.post(progressTick);
-            scheduleScrubberHide();
+            if (autoPlay) {
+                vv.start();
+                if (videoControls != null) videoControls.setPlaying(true);
+                main.removeCallbacks(progressTick);
+                main.post(progressTick);
+                scheduleScrubberHide();
+            } else {
+                // Show first frame paused with MovieView controls (no auto-play)
+                vv.seekTo(1);
+                if (videoControls != null) videoControls.setPlaying(false);
+                if (videoPosTv != null) videoPosTv.setText("00:00");
+                setVideoHudVisible(true);
+            }
         });
         vv.setOnCompletionListener(mp -> {
             int dur = vv.getDuration();
@@ -732,6 +747,7 @@ public final class WaveAttachmentViewer {
         main.removeCallbacks(progressTick);
         main.removeCallbacks(hideVideoScrubber);
         videoFullscreen = false;
+        singleVideoDirect = false;
         setVideoHudVisible(true);
         if (videoView != null) {
             try { videoView.stopPlayback(); } catch (Throwable ignored) {}
@@ -762,7 +778,7 @@ public final class WaveAttachmentViewer {
 
     private void toggleVideoPlayPause(PartItem item) {
         if (!videoFullscreen || videoView == null) {
-            startVideoFullscreen(item);
+            startVideoFullscreen(item, true);
             return;
         }
         if (videoView.isPlaying()) {
@@ -1104,7 +1120,7 @@ public final class WaveAttachmentViewer {
     }
 
     private boolean handleBack() {
-        if (videoFullscreen) {
+        if (videoFullscreen && !singleVideoDirect) {
             exitVideoFullscreen();
             return true;
         }
@@ -1237,6 +1253,7 @@ public final class WaveAttachmentViewer {
         main.removeCallbacks(progressTick);
         main.removeCallbacks(hideVideoScrubber);
         videoFullscreen = false;
+        singleVideoDirect = false;
         if (videoView != null) {
             try { videoView.stopPlayback(); } catch (Throwable ignored) {}
             videoView = null;
