@@ -7893,35 +7893,24 @@
 
     .prologue
     .line 300
-    if-eqz p1, :cond_1
-
-    .line 301
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mChecked:Landroid/widget/CheckBox;
 
     if-eqz v0, :cond_0
 
-    .line 302
+    # PERF: skip redundant CompoundButton.setChecked() when checkbox state already matches.
+    invoke-virtual {v0}, Landroid/widget/CheckBox;->isChecked()Z
+
+    move-result v0
+
+    if-eq v0, p1, :cond_0
+
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mChecked:Landroid/widget/CheckBox;
 
     invoke-virtual {v0, p1}, Landroid/widget/CheckBox;->setChecked(Z)V
 
     .line 309
     :cond_0
-    :goto_0
     return-void
-
-    .line 305
-    :cond_1
-    iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mChecked:Landroid/widget/CheckBox;
-
-    if-eqz v0, :cond_0
-
-    .line 306
-    iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mChecked:Landroid/widget/CheckBox;
-
-    invoke-virtual {v0, p1}, Landroid/widget/CheckBox;->setChecked(Z)V
-
-    goto :goto_0
 .end method
 
 .method public onClick(Landroid/view/View;)V

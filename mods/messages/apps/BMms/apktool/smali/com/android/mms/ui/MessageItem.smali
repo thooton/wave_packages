@@ -554,27 +554,11 @@
 
     .line 321
     :goto_5
-    invoke-interface {p3}, Landroid/database/Cursor;->isFirst()Z
-
-    move-result v0
-
-    if-nez v0, :cond_19
-
-    invoke-interface {p3}, Landroid/database/Cursor;->moveToPrevious()Z
-
-    move-result v0
-
-    if-eqz v0, :cond_19
-
-    .line 322
-    invoke-direct {p0, p3}, Lcom/android/mms/ui/MessageItem;->canClusterWithMessage(Landroid/database/Cursor;)Z
-
-    move-result v0
+    # PERF: mCanClusterWithPreviousMessage is only read by hidden mAvatar (View.GONE);
+    # skip 2 cursor seeks + full canClusterWithMessage() comparison per row.
+    const/4 v0, 0x0
 
     iput-boolean v0, p0, Lcom/android/mms/ui/MessageItem;->mCanClusterWithPreviousMessage:Z
-
-    .line 323
-    invoke-interface {p3}, Landroid/database/Cursor;->moveToNext()Z
 
     .line 327
     :goto_6
@@ -666,15 +650,7 @@
 
     .line 230
     :cond_9
-    invoke-virtual {p1}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v0
-
-    .line 231
-    const v3, 0x7f090019
-
-    .line 230
-    invoke-virtual {v0, v3}, Landroid/content/res/Resources;->getBoolean(I)Z
+    invoke-static {p1}, Lcom/android/mms/ui/WaveMessageUi;->showDateSent(Landroid/content/Context;)Z
 
     move-result v0
 

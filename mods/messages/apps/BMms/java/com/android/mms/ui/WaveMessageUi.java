@@ -404,6 +404,18 @@ public final class WaveMessageUi {
 
     // --- Row binding ---
 
+    private static volatile int sShowDateSent = -1;
+
+    /** Cached boolean resource 0x7f090019 (avoid JNI AssetManager lookup per incoming SMS row). */
+    public static boolean showDateSent(Context ctx) {
+        int v = sShowDateSent;
+        if (v < 0) {
+            v = ctx.getResources().getBoolean(0x7f090019) ? 1 : 0;
+            sShowDateSent = v;
+        }
+        return v == 1;
+    }
+
     /** Called at the end of MessageListItem.bindCommonMessage (covers initial + async PDU rebinds). */
     public static void onBindRow(MessageListItem row) {
         try {
@@ -452,7 +464,10 @@ public final class WaveMessageUi {
             //    - 1.6.0+ rows (FLAG_UNSENT) -> keep original message text, media & tapbacks inside
             //      a softened dashed-outline bubble with an "Unsent" footer tag.
             boolean isUnsent = (info != null && info.unsent());
-            boolean isLegacyUnsent = UNSENT_TEXT.equals(rawBody.trim());
+            boolean isLegacyUnsent = rawBody.length() >= UNSENT_TEXT.length()
+                    && (rawBody.length() == UNSENT_TEXT.length()
+                            ? UNSENT_TEXT.equals(rawBody)
+                            : UNSENT_TEXT.equals(rawBody.trim()));
             if (isLegacyUnsent && !isUnsent) {
                 saveOriginalMetrics(h);
                 applyLegacyUnsentStyle(ctx, h, bodyTv, dateTv, isMe);

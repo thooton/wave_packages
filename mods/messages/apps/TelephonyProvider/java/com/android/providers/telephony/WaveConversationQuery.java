@@ -157,6 +157,12 @@ public final class WaveConversationQuery {
         } catch (SQLiteException ignored) {
             // Minimal test schemas omit threads; real mmssms.db gets the inbox sort/filter index.
         }
+        try {
+            db.execSQL("PRAGMA temp_store = MEMORY");
+            db.execSQL("PRAGMA cache_size = -4096");
+        } catch (SQLiteException ignored) {
+            // Best-effort tuning; ignore on restricted or read-only DB handles.
+        }
         READY.put(db, true);
     }
 
