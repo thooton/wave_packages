@@ -870,24 +870,28 @@
     .locals 5
 
     .prologue
+    if-nez p1, :wave_nonnull
+
     const/4 v0, 0x0
 
-    .line 569
-    if-eqz p1, :cond_0
+    return-object v0
 
-    .line 570
-    new-instance v0, Landroid/text/SpannableStringBuilder;
-
-    invoke-direct {v0, p1}, Landroid/text/SpannableStringBuilder;-><init>(Ljava/lang/CharSequence;)V
-
-    .line 571
+    :wave_nonnull
+    # PERF: skip allocating SpannableStringBuilder on every read inbox row.
     iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mConversation:Lcom/android/mms/data/Conversation;
 
     invoke-virtual {v1}, Lcom/android/mms/data/Conversation;->hasUnreadMessages()Z
 
     move-result v1
 
-    if-eqz v1, :cond_0
+    if-nez v1, :wave_bold
+
+    return-object p1
+
+    :wave_bold
+    new-instance v0, Landroid/text/SpannableStringBuilder;
+
+    invoke-direct {v0, p1}, Landroid/text/SpannableStringBuilder;-><init>(Ljava/lang/CharSequence;)V
 
     .line 572
     sget-object v1, Lcom/android/mms/ui/ConversationListItem;->STYLE_BOLD:Landroid/text/style/StyleSpan;
@@ -905,7 +909,6 @@
     invoke-virtual {v0, v1, v3, v2, v4}, Landroid/text/SpannableStringBuilder;->setSpan(Ljava/lang/Object;III)V
 
     .line 576
-    :cond_0
     return-object v0
 .end method
 

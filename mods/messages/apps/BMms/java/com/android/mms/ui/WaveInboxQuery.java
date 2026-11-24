@@ -72,6 +72,11 @@ public final class WaveInboxQuery {
 
         final Pending p = new Pending();
         PENDING.put(act, p);
+        // Resolve Conversation static fields on the main thread so Conversation.<clinit>
+        // (which constructs a Handler) always runs on a Looper thread.
+        final android.net.Uri queryUri = Conversation.sAllThreadsUri;
+        final String[] projection = Conversation.ALL_THREADS_PROJECTION;
+        final String sortOrder = Conversation.DEFAULT_SORT_ORDER;
         p.future = EXEC.submit(new Callable<Cursor>() {
             @Override
             public Cursor call() {
@@ -79,11 +84,11 @@ public final class WaveInboxQuery {
                 Cursor c = null;
                 try {
                     c = app.getContentResolver().query(
-                            Conversation.sAllThreadsUri,
-                            Conversation.ALL_THREADS_PROJECTION,
+                            queryUri,
+                            projection,
                             selection,
                             null,
-                            Conversation.DEFAULT_SORT_ORDER);
+                            sortOrder);
                     if (c != null) c.getCount(); // force CursorWindow fill off-main
                 } catch (Throwable t) {
                     Log.w(TAG, "early inbox query failed", t);

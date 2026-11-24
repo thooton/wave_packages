@@ -20,28 +20,45 @@ public final class WaveInit {
     public static synchronized void onAppCreate(Application app) {
         if (sDone) return;
         sDone = true;
+        final Context c = app.getApplicationContext();
+        final Handler main = new Handler(Looper.getMainLooper());
+        // PERF: run SharedPreferences receipt-policy check off the main thread.
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    applyReceiptPolicy(c);
+                } catch (Throwable ex) {
+                    Log.w(TAG, "receipt policy", ex);
+                }
+            }
+        }, "wave-receipt-policy");
+        t.setDaemon(true);
+        t.start();
         try {
-            applyReceiptPolicy(app);
-        } catch (Throwable t) {
-            Log.w(TAG, "receipt policy", t);
-        }
-        try {
-            // Held MMS notifications whose download never reported back (killed/rebooted).
-            WaveMmsReceive.sweepAsync(app, false);
-            final Context c = app.getApplicationContext();
-            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            // PERF: defer held-MMS TelephonyProvider sweep 2s past initial frame #1 so it never
+            // contends with cold inbox/conversation SQLite queries.
+            main.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        WaveMmsReceive.sweepAsync(c, false);
+                    } catch (Throwable ignored) {}
+                }
+            }, 2000L);
+            main.postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     WaveMmsReceive.sweepAsync(c, false);
                 }
             }, 200 * 1000L);
-        } catch (Throwable t) {
-            Log.w(TAG, "mms sweep", t);
+        } catch (Throwable ex) {
+            Log.w(TAG, "mms sweep", ex);
         }
         try {
             WaveIMessageHost.onAppCreate(app);
-        } catch (Throwable t) {
-            Log.w(TAG, "imessage init", t);
+        } catch (Throwable ex) {
+            Log.w(TAG, "imessage init", ex);
         }
     }
 
@@ -112,6 +129,50 @@ public final class WaveInit {
         }, "wave-pm-state");
         t.setDaemon(true);
         t.start();
+    }
+
+    /** Defer Conversation.init() cacheAllThreads past frame #1 to avoid TelephonyProvider SQLite contention. */
+    public static void deferConversationInit(final Context c) {
+        final Context app = c.getApplicationContext();
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Class<?> cls = Class.forName("com.android.mms.data.Conversation");
+                    cls.getMethod("init", Context.class).invoke(null, app);
+                } catch (Throwable ignored) {}
+            }
+        }, 600L);
+    }
+
+    /** Defer MmsApp.registerMobileDataObserver() ContentService IPC past initial launch. */
+    public static void deferMobileDataObserver(final Context c) {
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    java.lang.reflect.Method m = c.getClass().getDeclaredMethod("registerMobileDataObserver");
+                    m.setAccessible(true);
+                    m.invoke(c);
+                } catch (Throwable ignored) {}
+            }
+        }, 400L);
+    }
+
+    /** Defer CountryDetector.addCountryListener() Binder IPC off the critical cold-start path. */
+    public static void deferCountryListener(final Object detector, final Object listener, final Looper looper) {
+        if (detector == null || listener == null) return;
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Class<?> listenerCls = Class.forName("android.location.CountryListener");
+                    detector.getClass()
+                            .getMethod("addCountryListener", listenerCls, Looper.class)
+                            .invoke(detector, listener, looper);
+                } catch (Throwable ignored) {}
+            }
+        }, 500L);
     }
 
     /** Defer cold-start pending-message broadcast/service wakeup past the initial UI launch. */

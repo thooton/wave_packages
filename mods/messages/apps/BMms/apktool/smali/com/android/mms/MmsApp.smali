@@ -348,9 +348,9 @@
     # PERF(phone map): start compact phone snapshot asynchronously so it overlaps MmsApp/Activity init.
     invoke-static {v0}, Lcom/android/mms/data/WavePhoneSnapshot;->primeAsync(Landroid/content/Context;)V
 
-    # PERF(inbox warmup): resolve all conversation recipients on the stock background
-    # worker so scrolling does not have to discover every name on demand.
-    invoke-static {v0}, Lcom/android/mms/data/Conversation;->init(Landroid/content/Context;)V
+    # PERF(inbox warmup): defer cacheAllThreads 600ms past frame #1 so it never contends
+    # with the critical cold inbox or conversation history query in TelephonyProvider.
+    invoke-static {v0}, Lcom/android/mms/wave/WaveInit;->deferConversationInit(Landroid/content/Context;)V
 
     .line 133
     invoke-static {}, Lcom/android/mms/MmsApp;->getApplication()Lcom/android/mms/MmsApp;
@@ -360,7 +360,7 @@
     invoke-static {v0}, Lcom/android/mms/wave/WaveInit;->deferActivePending(Landroid/content/Context;)V
 
     .line 134
-    invoke-direct {p0}, Lcom/android/mms/MmsApp;->registerMobileDataObserver()V
+    invoke-static {p0}, Lcom/android/mms/wave/WaveInit;->deferMobileDataObserver(Landroid/content/Context;)V
 
     .line 135
     const/4 v0, 0x1
@@ -501,7 +501,7 @@
 
     move-result-object v4
 
-    invoke-virtual {v0, v3, v4}, Landroid/location/CountryDetector;->addCountryListener(Landroid/location/CountryListener;Landroid/os/Looper;)V
+    invoke-static {v0, v3, v4}, Lcom/android/mms/wave/WaveInit;->deferCountryListener(Ljava/lang/Object;Ljava/lang/Object;Landroid/os/Looper;)V
 
     .line 106
     invoke-virtual {p0}, Lcom/android/mms/MmsApp;->getApplicationContext()Landroid/content/Context;
@@ -599,7 +599,7 @@
     :cond_2
     const v0, 0x7f050006
 
-    invoke-static {p0, v0, v2}, Landroid/preference/PreferenceManager;->setDefaultValues(Landroid/content/Context;IZ)V
+    invoke-static {p0, v0}, Lcom/android/mms/wave/WaveInit;->setDefaultValuesAsync(Landroid/content/Context;I)V
 
     goto :goto_0
 
