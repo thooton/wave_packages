@@ -19427,7 +19427,8 @@
     const v3, 0x7f0200fe
 
     .line 7314
-    const/4 v0, 0x1
+    # PERF: canBlock=false avoids blocking ComposeMessageActivity.onResume() on ContactsContract.Profile IPC.
+    const/4 v0, 0x0
 
     invoke-static {v0}, Lcom/android/mms/data/Contact;->getMe(Z)Lcom/android/mms/data/Contact;
 

@@ -1961,6 +1961,10 @@
     return-void
 
     :cond_0
+    # PERF(inbox startup): launch the primary inbox cursor query before setContentView()
+    # so it runs in parallel with layout inflation and harvests before WindowManager.addView().
+    invoke-static {p0}, Lcom/android/mms/ui/WaveInboxQuery;->startEarly(Lcom/android/mms/ui/ConversationList;)V
+
     # PERF(inbox startup): checkPermissionsIfNeeded already initializes the
     # process-wide recipient cache via MmsApp and Contact. Keep that warm cache.
 
@@ -3497,6 +3501,9 @@
 
     .line 517
     :cond_2
+    # PERF(inbox startup): deliver the completed early inbox cursor synchronously before first frame.
+    invoke-static {p0}, Lcom/android/mms/ui/WaveInboxQuery;->harvest(Lcom/android/mms/ui/ConversationList;)V
+
     return-void
 
     .line 510
@@ -3680,6 +3687,19 @@
     return-void
 .end method
 
+.method waveDeliverInboxQuery(ILjava/lang/Object;Landroid/database/Cursor;)V
+    .locals 1
+
+    iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mQueryHandler:Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;
+
+    if-eqz v0, :wave_inbox_deliver_done
+
+    invoke-virtual {v0, p1, p2, p3}, Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;->onQueryComplete(ILjava/lang/Object;Landroid/database/Cursor;)V
+
+    :wave_inbox_deliver_done
+    return-void
+.end method
+
 .method public startAsyncQuery()V
     .locals 3
 
@@ -3735,6 +3755,12 @@
     if-eqz v0, :cond_2
 
     .line 772
+    invoke-static {p0}, Lcom/android/mms/ui/WaveInboxQuery;->consumeEarly(Lcom/android/mms/ui/ConversationList;)Z
+
+    move-result v0
+
+    if-nez v0, :wave_skip_split_main
+
     iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mQueryHandler:Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;
 
     .line 773
@@ -3746,6 +3772,7 @@
 
     invoke-static {v0, v2, v1}, Lcom/android/mms/data/Conversation;->startQuery(Landroid/content/AsyncQueryHandler;ILjava/lang/String;)V
 
+    :wave_skip_split_main
     .line 774
     iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mQueryHandler:Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;
 
@@ -3775,6 +3802,12 @@
 
     .line 777
     :cond_2
+    invoke-static {p0}, Lcom/android/mms/ui/WaveInboxQuery;->consumeEarly(Lcom/android/mms/ui/ConversationList;)Z
+
+    move-result v0
+
+    if-nez v0, :wave_skip_all_main
+
     iget-object v0, p0, Lcom/android/mms/ui/ConversationList;->mQueryHandler:Lcom/android/mms/ui/ConversationList$ThreadListQueryHandler;
 
     # PERF(inbox filter): seek the SMS index; scan MMS at most once on stock providers.
@@ -3784,6 +3817,7 @@
 
     invoke-static {v0, v2, v1}, Lcom/android/mms/data/Conversation;->startQuery(Landroid/content/AsyncQueryHandler;ILjava/lang/String;)V
 
+    :wave_skip_all_main
     .line 778
     const/4 v0, 0x0
 

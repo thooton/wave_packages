@@ -6483,12 +6483,9 @@
     .locals 13
 
     .prologue
-    # PERF(hidden avatar): ordinary Sonim message rows hide the avatar. For inline text MMS,
-    # keep the stock bubble tint without fetching a contact, decoding its photo or building a tile.
-    iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
-    iget-boolean v0, v0, Lcom/android/mms/ui/MessageItem;->mWaveTextReady:Z
-    if-eqz v0, :wave_avatar_stock
-
+    # PERF(hidden avatar): ordinary Sonim message rows hide the avatar. For ALL messages
+    # (SMS, text MMS, and media MMS), keep the stock bubble tint without fetching a contact,
+    # decoding its photo, or building a LetterTileDrawable for a View.GONE avatar.
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mAvatar:Lcom/android/mms/ui/QuickContactDivot;
     invoke-virtual {v0}, Landroid/view/View;->getVisibility()I
     move-result v0
@@ -6500,12 +6497,7 @@
     if-nez v0, :wave_avatar_stock
 
     if-eqz p2, :wave_avatar_received
-    iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mContext:Landroid/content/Context;
-    invoke-virtual {v0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-    move-result-object v0
-    const v1, 0x7f080018    # R.color.white
-    invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getColor(I)I
-    move-result v0
+    const/4 v0, -0x1    # Color.WHITE (0xffffffff == R.color.white)
     goto :wave_avatar_tint
 
     :wave_avatar_received
@@ -6519,11 +6511,14 @@
     move-result v0
 
     :wave_avatar_tint
+    iget v1, p0, Lcom/android/mms/ui/MessageListItem;->mBackgroundColor:I
+    if-eq v1, v0, :wave_avatar_done
     iput v0, p0, Lcom/android/mms/ui/MessageListItem;->mBackgroundColor:I
     iget-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mMessageBlock:Landroid/view/View;
     invoke-virtual {v1}, Landroid/view/View;->getBackground()Landroid/graphics/drawable/Drawable;
     move-result-object v1
     invoke-virtual {v1, v0}, Landroid/graphics/drawable/Drawable;->setTint(I)V
+    :wave_avatar_done
     return-void
 
     :wave_avatar_stock
