@@ -406,6 +406,13 @@ public final class WaveMessageUi {
 
     private static volatile int sShowDateSent = -1;
 
+    /** Set view visibility only when changed to avoid redundant View.setFlags() per row bind. */
+    public static void setVisibilityIfChanged(View v, int visibility) {
+        if (v != null && v.getVisibility() != visibility) {
+            v.setVisibility(visibility);
+        }
+    }
+
     /** Cached boolean resource 0x7f090019 (avoid JNI AssetManager lookup per incoming SMS row). */
     public static boolean showDateSent(Context ctx) {
         int v = sShowDateSent;

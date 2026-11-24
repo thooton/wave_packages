@@ -26583,26 +26583,18 @@
     iput-boolean v1, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mIsRcsEnabled:Z
 
     .line 3037
-    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v1
-
     const v2, 0x7f090014
 
-    invoke-virtual {v1, v2}, Landroid/content/res/Resources;->getBoolean(I)Z
+    invoke-static {p0, v2}, Lcom/android/mms/wave/WaveInit;->getBoolResCached(Landroid/content/Context;I)Z
 
     move-result v1
 
     iput-boolean v1, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mShowAttachIcon:Z
 
     .line 3039
-    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v1
-
     const v2, 0x7f090009
 
-    invoke-virtual {v1, v2}, Landroid/content/res/Resources;->getBoolean(I)Z
+    invoke-static {p0, v2}, Lcom/android/mms/wave/WaveInit;->getBoolResCached(Landroid/content/Context;I)Z
 
     move-result v1
 
@@ -26623,30 +26615,18 @@
     invoke-static {v0}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
 
     .line 3043
-    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v0
-
-    .line 3044
     const v1, 0x7f09001f
 
-    .line 3043
-    invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getBoolean(I)Z
+    invoke-static {p0, v1}, Lcom/android/mms/wave/WaveInit;->getBoolResCached(Landroid/content/Context;I)Z
 
     move-result v0
 
     iput-boolean v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mIsFilterContactsByEmail:Z
 
     .line 3046
-    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v0
-
-    .line 3047
     const v1, 0x7f090020
 
-    .line 3046
-    invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getBoolean(I)Z
+    invoke-static {p0, v1}, Lcom/android/mms/wave/WaveInit;->getBoolResCached(Landroid/content/Context;I)Z
 
     move-result v0
 
@@ -26674,15 +26654,9 @@
     invoke-virtual {p0, p1, v0, v1}, Lcom/android/mms/ui/ComposeMessageActivity;->initialize(Landroid/os/Bundle;J)V
 
     .line 3054
-    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v0
-
-    .line 3055
     const v1, 0x7f09001c
 
-    .line 3054
-    invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getBoolean(I)Z
+    invoke-static {p0, v1}, Lcom/android/mms/wave/WaveInit;->getBoolResCached(Landroid/content/Context;I)Z
 
     move-result v0
 
@@ -30643,13 +30617,9 @@
     iput-boolean v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mIsAirplaneModeOn:Z
 
     .line 3622
-    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v0
-
     const v1, 0x7f09003b
 
-    invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getBoolean(I)Z
+    invoke-static {p0, v1}, Lcom/android/mms/wave/WaveInit;->getBoolResCached(Landroid/content/Context;I)Z
 
     move-result v0
 

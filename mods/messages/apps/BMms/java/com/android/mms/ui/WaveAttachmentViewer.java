@@ -487,8 +487,42 @@ public final class WaveAttachmentViewer {
         });
     }
 
+    private static final int SMALL_IMAGE_READ_LIMIT = 512 * 1024;
+
     static Bitmap decodeCrispBitmap(Context ctx, Uri uri, int maxEdge) {
         try {
+            // PERF: single ContentResolver open (1 Binder IPC instead of 3!) for <= 512 KB images
+            // (covers 100% of 640px server previews and nearly all MMS photos).
+            byte[] small = readSmallBytes(ctx, uri, SMALL_IMAGE_READ_LIMIT);
+            if (small != null && small.length > 0) {
+                int orient = ExifInterface.ORIENTATION_NORMAL;
+                try {
+                    ExifInterface exif = new ExifInterface(new java.io.ByteArrayInputStream(small));
+                    orient = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION,
+                            ExifInterface.ORIENTATION_NORMAL);
+                } catch (Throwable ignored) {}
+
+                BitmapFactory.Options bounds = new BitmapFactory.Options();
+                bounds.inJustDecodeBounds = true;
+                BitmapFactory.decodeByteArray(small, 0, small.length, bounds);
+                if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+
+                int sample = 1;
+                int maxDim = Math.max(bounds.outWidth, bounds.outHeight);
+                while (maxDim / (sample * 2) >= maxEdge) {
+                    sample *= 2;
+                }
+                BitmapFactory.Options opts = new BitmapFactory.Options();
+                opts.inSampleSize = sample;
+                if (maxEdge <= 400 && "image/jpeg".equalsIgnoreCase(bounds.outMimeType)) {
+                    opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                }
+                Bitmap raw = BitmapFactory.decodeByteArray(small, 0, small.length, opts);
+                if (raw == null) return null;
+                return applyExifOrientation(raw, orient);
+            }
+
+            // Streaming fallback for > 512 KB full-resolution images.
             int orient = ExifInterface.ORIENTATION_NORMAL;
             try (InputStream ein = ctx.getContentResolver().openInputStream(uri)) {
                 if (ein != null) {
@@ -513,6 +547,9 @@ public final class WaveAttachmentViewer {
             }
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inSampleSize = sample;
+            if (maxEdge <= 400 && "image/jpeg".equalsIgnoreCase(bounds.outMimeType)) {
+                opts.inPreferredConfig = Bitmap.Config.RGB_565;
+            }
             Bitmap raw;
             try (InputStream in = ctx.getContentResolver().openInputStream(uri)) {
                 if (in == null) return null;
@@ -522,6 +559,24 @@ public final class WaveAttachmentViewer {
             return applyExifOrientation(raw, orient);
         } catch (Throwable t) {
             Log.w(TAG, "decodeCrispBitmap failed for " + uri, t);
+            return null;
+        }
+    }
+
+    private static byte[] readSmallBytes(Context ctx, Uri uri, int maxBytes) {
+        try (InputStream in = ctx.getContentResolver().openInputStream(uri)) {
+            if (in == null) return null;
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(16384);
+            byte[] buf = new byte[16384];
+            int total = 0;
+            int n;
+            while ((n = in.read(buf)) >= 0) {
+                total += n;
+                if (total > maxBytes) return null;
+                out.write(buf, 0, n);
+            }
+            return out.toByteArray();
+        } catch (Throwable ignored) {
             return null;
         }
     }

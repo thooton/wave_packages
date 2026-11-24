@@ -96,6 +96,21 @@ public final class WaveInit {
     private static volatile long sAirplaneCheckedAt;
     private static volatile boolean sAirplaneCached;
 
+    private static final android.util.SparseIntArray BOOL_RES_CACHE = new android.util.SparseIntArray(16);
+
+    /** Cached Resources.getBoolean(resId) for immutable XML config flags read on every Activity open. */
+    public static boolean getBoolResCached(Context c, int resId) {
+        synchronized (BOOL_RES_CACHE) {
+            int v = BOOL_RES_CACHE.get(resId, -1);
+            if (v >= 0) return v == 1;
+        }
+        boolean b = c.getResources().getBoolean(resId);
+        synchronized (BOOL_RES_CACHE) {
+            BOOL_RES_CACHE.put(resId, b ? 1 : 0);
+        }
+        return b;
+    }
+
     /** Cached Settings.Global.AIRPLANE_MODE_ON (2s TTL) to avoid SettingsProvider IPC on every onResume/keystroke. */
     public static boolean isAirplaneModeCached(Context c) {
         long now = android.os.SystemClock.uptimeMillis();

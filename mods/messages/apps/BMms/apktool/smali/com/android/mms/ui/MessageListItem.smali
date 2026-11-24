@@ -3916,7 +3916,7 @@
     :cond_4
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mLockedIndicator:Landroid/widget/ImageView;
 
-    invoke-virtual {v0, v2}, Landroid/widget/ImageView;->setVisibility(I)V
+    invoke-static {v0, v2}, Lcom/android/mms/ui/WaveMessageUi;->setVisibilityIfChanged(Landroid/view/View;I)V
 
     goto :goto_0
 
@@ -3943,17 +3943,12 @@
     .line 1741
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mDeliveredIndicator:Landroid/widget/ImageView;
 
-    invoke-virtual {v0, v3}, Landroid/widget/ImageView;->setVisibility(I)V
+    invoke-static {v0, v3}, Lcom/android/mms/ui/WaveMessageUi;->setVisibilityIfChanged(Landroid/view/View;I)V
 
     .line 1742
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mSendFailView:Landroid/widget/TextView;
 
-    if-eqz v0, :cond_3
-
-    .line 1743
-    iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mSendFailView:Landroid/widget/TextView;
-
-    invoke-virtual {v0, v2}, Landroid/widget/TextView;->setVisibility(I)V
+    invoke-static {v0, v2}, Lcom/android/mms/ui/WaveMessageUi;->setVisibilityIfChanged(Landroid/view/View;I)V
 
     goto :goto_1
 
@@ -3961,17 +3956,12 @@
     :cond_6
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mDeliveredIndicator:Landroid/widget/ImageView;
 
-    invoke-virtual {v0, v2}, Landroid/widget/ImageView;->setVisibility(I)V
+    invoke-static {v0, v2}, Lcom/android/mms/ui/WaveMessageUi;->setVisibilityIfChanged(Landroid/view/View;I)V
 
     .line 1747
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mSendFailView:Landroid/widget/TextView;
 
-    if-eqz v0, :cond_3
-
-    .line 1748
-    iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mSendFailView:Landroid/widget/TextView;
-
-    invoke-virtual {v0, v2}, Landroid/widget/TextView;->setVisibility(I)V
+    invoke-static {v0, v2}, Lcom/android/mms/ui/WaveMessageUi;->setVisibilityIfChanged(Landroid/view/View;I)V
 
     goto :goto_1
 
@@ -3979,7 +3969,7 @@
     :cond_7
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mDetailsIndicator:Landroid/widget/ImageView;
 
-    invoke-virtual {v0, v2}, Landroid/widget/ImageView;->setVisibility(I)V
+    invoke-static {v0, v2}, Lcom/android/mms/ui/WaveMessageUi;->setVisibilityIfChanged(Landroid/view/View;I)V
 
     goto :goto_2
 .end method
