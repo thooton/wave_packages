@@ -455,7 +455,8 @@ public final class PushClient {
                 OutputStream out = socket.getOutputStream();
 
                 socket.setSoTimeout(15_000);
-                Frame hello = Frame.hello(Frame.ROLE_MAIN, config.tokenHex, state.getLastRxSeq(), connectInterval);
+                Frame hello = Frame.helloMain(config.tokenHex, state.getLastRxSeq(), connectInterval,
+                        state.getEpoch(), state.getServerEpoch());
                 synchronized (writeLock) {
                     hello.writeTo(out);
                 }
@@ -478,9 +479,16 @@ public final class PushClient {
                 socket.setSoTimeout(0);
 
                 long serverLastRxSeq = first.seq;
-                if (state.ackUpTo(serverLastRxSeq) > 0) {
-                    state.save(config.stateFile);
+                boolean stateChanged = false;
+                if (first.hasEpochs && first.epoch != state.getServerEpoch()) {
+                    if (state.adoptServerEpoch(first.epoch)) {
+                        log("Server state is new (epoch " + Long.toHexString(first.epoch)
+                                + "): its messages count from 1 again");
+                    }
+                    stateChanged = true;
                 }
+                if (state.ackUpTo(serverLastRxSeq) > 0) stateChanged = true;
+                if (stateChanged) state.save(config.stateFile);
 
                 long nowElapsed = clock.elapsedRealtimeMs();
                 sessionStartElapsedMs = nowElapsed;

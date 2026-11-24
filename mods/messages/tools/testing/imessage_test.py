@@ -159,6 +159,28 @@ public class IMessageHostTest {
         check(!reloaded.isPending(1L) && reloaded.isPending(2L), "isPending after ack");
         check(reloaded.remove(2L) && !reloaded.remove(2L) && reloaded.outboxSize() == 0
                 && reloaded.pendingAfter(0L).isEmpty(), "remove takes a send back (not resent)");
+        check(st.getEpoch() != 0L && reloaded.getEpoch() == st.getEpoch(), "epoch made once and kept");
+        check(!reloaded.adoptServerEpoch(0xF00DL) && reloaded.getLastRxSeq() == 5L, "first server epoch: no reset");
+        check(!reloaded.adoptServerEpoch(0xF00DL), "same server epoch again: no reset");
+        reloaded.save(stFile);
+        ClientState again = ClientState.loadOrDefault(stFile);
+        check(again.getServerEpoch() == 0xF00DL && again.getEpoch() == st.getEpoch(), "server epoch kept");
+        check(again.adoptServerEpoch(0x8000000000000001L) && again.getLastRxSeq() == 0L,
+                "new server epoch (unsigned) forgets lastRxSeq");
+        again.save(stFile);
+        check(ClientState.loadOrDefault(stFile).getServerEpoch() == 0x8000000000000001L, "high-bit epoch round-trips");
+        check(ClientState.loadOrDefault(new File(tmpDir, "none.state")).getEpoch() != st.getEpoch(),
+                "a new state gets a new epoch");
+        Frame hm = Frame.decode(Frame.TYPE_HELLO, Arrays.copyOfRange(
+                Frame.helloMain("ab", 7L, 60, -2L, 9L).encode(), 5, 5 + 3 + 2 + 8 + 2 + 16));
+        check(hm.hasEpochs && hm.epoch == -2L && hm.peerEpoch == 9L && hm.seq == 7L, "HELLO epochs round-trip");
+        Frame hp = Frame.decode(Frame.TYPE_HELLO, Arrays.copyOfRange(
+                Frame.hello(Frame.ROLE_MEDIA, "ab", 0L, 0).encode(), 5, 5 + 3 + 2 + 8 + 2));
+        check(!hp.hasEpochs, "HELLO without epochs still decodes");
+        Frame we = Frame.decode(Frame.TYPE_WELCOME, Arrays.copyOfRange(Frame.welcome(3L, 0x1234L).encode(), 5, 21));
+        Frame wp = Frame.decode(Frame.TYPE_WELCOME, Arrays.copyOfRange(Frame.welcome(3L).encode(), 5, 13));
+        check(we.hasEpochs && we.epoch == 0x1234L && we.seq == 3L && !wp.hasEpochs && wp.seq == 3L,
+                "WELCOME with and without epoch");
 
         // 4. Hex helpers
         byte[] sample = new byte[] {0x00, (byte) 0xab, (byte) 0xff};

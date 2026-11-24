@@ -161,6 +161,7 @@ public class PushClientInteropTest {
         int port = Integer.parseInt(args[0]);
         String token = args[1];
         File work = new File(args[2]);
+        String mode = args.length > 3 ? args[3] : "main";
         HttpsURLConnection.setDefaultHostnameVerifier((h, s) -> HOST.equals(h));
         Relay relay = new Relay(port);
         List<String> peer = Collections.singletonList("tel:+15557654321");
@@ -171,6 +172,26 @@ public class PushClientInteropTest {
         cfg.tokenHex = token;
         cfg.stateFile = new File(work, "pushclient.state");
         cfg.autoProbe = false;
+
+        if ("server-reset".equals(mode)) {
+            // The server lost its state for us (new VPS, wiped state_dir) and numbers its messages
+            // from 1 again; ours still says we have up to N. They must not be dropped as duplicates.
+            ClientState before = ClientState.loadOrDefault(cfg.stateFile);
+            check(before.getLastRxSeq() > 2 && before.getServerEpoch() != 0,
+                    "kept client state: lastRxSeq " + before.getLastRxSeq());
+            PushClient pc = new PushClient(cfg, listener());
+            pc.start();
+            check(waitFor(pc::isConnected, 15_000), "connected to the wiped server");
+            check(waitFor(() -> logged("Server state is new"), 5_000), "client noticed the server's new epoch");
+            String id = pc.sendMessage(peer, "pc after server reset", "guid-pc", null);
+            Body r = await(Body.KIND_SEND_RESULT, id, 15_000);
+            check(r != null && r.ok, "send result from the wiped server arrives (seq 1 not dropped)");
+            check(awaitEcho("pc after server reset", 10_000) != null, "its echo arrives too");
+            pc.stop();
+            System.out.println("PASS: PushClient after a server state reset");
+            return;
+        }
+
         PushClient pc = new PushClient(cfg, listener());
         pc.start();
         check(waitFor(pc::isConnected, 15_000), "PushClient connected through the relay");
@@ -216,8 +237,22 @@ public class PushClientInteropTest {
         }
         check(!leaked && countEchoes("pc taken back") == 0, "the taken-back send never reached the server");
         check(countEchoes("pc through a dead link") == 1, "the resent message went out exactly once");
-
         pc.stop();
-        System.out.println("PASS: PushClient ACK deadline, resend and take-back against imsg-server");
+
+        // The phone loses its state (app data cleared, unreadable file): its seqs start at 1 again,
+        // which the server has seen. They must be taken as new, not dropped as duplicates (and
+        // the WELCOME must not ACK them away).
+        check(cfg.stateFile.delete(), "client state deleted");
+        bodies.clear();
+        PushClient fresh = new PushClient(cfg, listener());
+        fresh.start();
+        check(waitFor(fresh::isConnected, 15_000), "fresh client state connected");
+        String id5 = fresh.sendMessage(peer, "pc fresh state", "guid-pc", null);
+        Body r5 = await(Body.KIND_SEND_RESULT, id5, 15_000);
+        check(r5 != null && r5.ok, "send from a fresh client state goes out (seq 1 not dropped)");
+        check(awaitEcho("pc fresh state", 10_000) != null, "its echo arrives");
+        check(waitFor(() -> fresh.getOutboxSize() == 0, 5_000), "and is ACKed");
+        fresh.stop();
+        System.out.println("PASS: PushClient ACK deadline, resend, take-back and a client state reset against imsg-server");
     }
 }

@@ -98,15 +98,20 @@ def main():
         cfg.write_text(CONFIG.format(port=port, tmp=tmp, token_hash=hashlib.sha256(token.encode()).hexdigest(),
                                      token2_hash=hashlib.sha256(token2.encode()).hexdigest()))
         log = open(tmp / "server.log", "w")
-        proc = subprocess.Popen([str(server), "-c", str(cfg), "run", "--no-apple"], stdout=log, stderr=log,
-                                env=dict(os.environ, RUST_LOG="info"))
-        try:
+
+        def start_server():
+            p = subprocess.Popen([str(server), "-c", str(cfg), "run", "--no-apple"], stdout=log, stderr=log,
+                                 env=dict(os.environ, RUST_LOG="info"))
             for _ in range(100):
                 try:
                     socket.create_connection(("127.0.0.1", port), 0.2).close()
                     break
                 except OSError:
                     time.sleep(0.1)
+            return p
+
+        proc = start_server()
+        try:
             classes = tmp / "classes"
             classes.mkdir()
             run(["javac", "-nowarn", "-d", str(classes)]
@@ -117,6 +122,14 @@ def main():
             if res.returncode == 0:
                 # Runs after the first one: that one sets up the echo backend's registration.
                 res = subprocess.run(java + ["PushClientInteropTest", str(port), token2, str(work)], timeout=300)
+            if res.returncode == 0:
+                # The server loses its state for that client (a new VPS); the client keeps its own.
+                proc.terminate()
+                proc.wait(10)
+                (tmp / "state" / "pushclient.json").unlink()
+                proc = start_server()
+                res = subprocess.run(java + ["PushClientInteropTest", str(port), token2, str(work), "server-reset"],
+                                     timeout=120)
             if res.returncode != 0:
                 print("---- server log ----")
                 print((tmp / "server.log").read_text()[-6000:])

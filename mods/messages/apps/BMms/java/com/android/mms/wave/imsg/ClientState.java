@@ -23,6 +23,38 @@ public final class ClientState {
     private final TreeMap<Long, byte[]> outbox = new TreeMap<Long, byte[]>();
     private final LinkedHashMap<String, Integer> learnedIntervals = new LinkedHashMap<String, Integer>();
     private final LinkedHashMap<String, Long> lastProbeMs = new LinkedHashMap<String, Long>();
+    /** Random id of this state's seq numbering (see Frame.hasEpochs); new when the state is. */
+    private long epoch = newEpoch();
+    /** The server epoch {@code lastRxSeq} counts in; 0 until the first WELCOME that has one. */
+    private long serverEpoch = 0L;
+
+    static long newEpoch() {
+        long e = 0L;
+        java.security.SecureRandom r = new java.security.SecureRandom();
+        while (e == 0L) e = r.nextLong();
+        return e;
+    }
+
+    public synchronized long getEpoch() {
+        return epoch;
+    }
+
+    public synchronized long getServerEpoch() {
+        return serverEpoch;
+    }
+
+    /**
+     * Takes the epoch from a WELCOME. A different one than before means the server's state is new
+     * (its seqs start at 1 again): forget {@code lastRxSeq} so they aren't dropped as duplicates.
+     * Returns true if it was a different one (the caller saves either way when this changed state).
+     */
+    public synchronized boolean adoptServerEpoch(long e) {
+        if (e == 0L || e == serverEpoch) return false;
+        boolean reset = serverEpoch != 0L;
+        if (reset) lastRxSeq = 0L;
+        serverEpoch = e;
+        return reset;
+    }
 
     public synchronized long getTxSeq() {
         return txSeq;
@@ -97,7 +129,8 @@ public final class ClientState {
     }
 
     public synchronized String summary() {
-        return "txSeq=" + txSeq + ", lastRxSeq=" + lastRxSeq + ", outbox=" + outbox.size()
+        return "txSeq=" + txSeq + ", lastRxSeq=" + lastRxSeq + ", epoch=" + Long.toHexString(epoch)
+                + ", serverEpoch=" + Long.toHexString(serverEpoch) + ", outbox=" + outbox.size()
                 + ", learned=" + learnedIntervals;
     }
 
@@ -125,6 +158,11 @@ public final class ClientState {
                         st.txSeq = Long.parseLong(val);
                     } else if ("last_rx_seq".equals(key)) {
                         st.lastRxSeq = Long.parseLong(val);
+                    } else if ("epoch".equals(key)) {
+                        long e = new java.math.BigInteger(val, 16).longValue();
+                        if (e != 0L) st.epoch = e;
+                    } else if ("server_epoch".equals(key)) {
+                        st.serverEpoch = new java.math.BigInteger(val, 16).longValue();
                     } else if (key.startsWith("outbox.")) {
                         long seq = Long.parseLong(key.substring("outbox.".length()));
                         st.outbox.put(seq, fromHex(val));
@@ -161,6 +199,8 @@ public final class ClientState {
             bw.write("# imsg-client state v1\n");
             bw.write("tx_seq=" + txSeq + "\n");
             bw.write("last_rx_seq=" + lastRxSeq + "\n");
+            bw.write("epoch=" + Long.toHexString(epoch) + "\n");
+            bw.write("server_epoch=" + Long.toHexString(serverEpoch) + "\n");
             for (Map.Entry<Long, byte[]> e : outbox.entrySet()) {
                 bw.write("outbox." + e.getKey() + "=" + toHex(e.getValue()) + "\n");
             }

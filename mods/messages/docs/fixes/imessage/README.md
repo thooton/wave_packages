@@ -79,6 +79,13 @@ resources, or conversation UI.
      its SMS fallback was queued (no service) or failed, the fallback is dropped and the message
      becomes the sent iMessage. Covered by `PushClientInteropTest` (the real client through a relay
      that goes silent).
+   - **A wiped state on either side doesn't lose messages** (1.6.2, needs the matching
+     imsg-server). Both sides number their messages; the main HELLO/WELCOME now carry a random
+     epoch per side's state. Before, a phone whose `imsg.state` was gone (app data cleared, an
+     unreadable file) started again at seq 1, which the server dropped as duplicates (and the
+     WELCOME ACKed away from the outbox), and a new server (new VPS, lost `state/`) started at 1
+     too, which the phone dropped. Now a new epoch makes the other side start over. Covered by
+     `PushClientInteropTest` (client state deleted; server state deleted with the client's kept).
    - Tracks network changes via `ConnectivityManager.registerDefaultNetworkCallback` +
      `TelephonyManager`, learning and persisting per-network optimal keepalive intervals via
      parallel `ROLE_PROBE` NAT probing.

@@ -77,6 +77,16 @@ public final class Frame {
     public long offset;
     public long total;
     public boolean full;
+    /**
+     * Main HELLO/WELCOME: which state each side's sequence numbers belong to. A side whose state is
+     * new (wiped, restored, a new server) has a new random epoch, so the other side starts over
+     * instead of dropping its fresh seq 1, 2, ... as duplicates of the old ones. HELLO carries the
+     * client's epoch and the server epoch its last_rx_seq refers to; WELCOME the server's. Optional
+     * on the wire (absent: 0), and the server only sends one when the HELLO had them.
+     */
+    public boolean hasEpochs;
+    public long epoch;
+    public long peerEpoch;
 
     private Frame(
             int type,
@@ -105,8 +115,24 @@ public final class Frame {
         return new Frame(TYPE_HELLO, PROTOCOL_VERSION, role, tokenBytes, lastRxSeq, intervalS, null, 0, 0);
     }
 
+    /** Main HELLO with the client's epoch and the server epoch its {@code lastRxSeq} refers to (0: none yet). */
+    public static Frame helloMain(String tokenHex, long lastRxSeq, int intervalS, long epoch, long serverEpoch) {
+        Frame f = hello(ROLE_MAIN, tokenHex, lastRxSeq, intervalS);
+        f.hasEpochs = true;
+        f.epoch = epoch;
+        f.peerEpoch = serverEpoch;
+        return f;
+    }
+
     public static Frame welcome(long lastRxSeq) {
         return new Frame(TYPE_WELCOME, 0, 0, null, lastRxSeq, 0, null, 0, 0);
+    }
+
+    public static Frame welcome(long lastRxSeq, long epoch) {
+        Frame f = welcome(lastRxSeq);
+        f.hasEpochs = true;
+        f.epoch = epoch;
+        return f;
     }
 
     public static Frame msg(long seq, byte[] body) {
@@ -227,9 +253,14 @@ public final class Frame {
                 pdos.write(token);
                 pdos.writeLong(seq);
                 pdos.writeShort(intervalS & 0xFFFF);
+                if (hasEpochs) {
+                    pdos.writeLong(epoch);
+                    pdos.writeLong(peerEpoch);
+                }
                 break;
             case TYPE_WELCOME:
                 pdos.writeLong(seq);
+                if (hasEpochs) pdos.writeLong(epoch);
                 break;
             case TYPE_MSG:
                 if (body == null || body.length > MAX_MSG_BODY_LEN) {
@@ -335,18 +366,29 @@ public final class Frame {
                 int version = dis.readUnsignedByte();
                 int role = dis.readUnsignedByte();
                 int tokenLen = dis.readUnsignedByte();
-                if (payload.length != 3 + tokenLen + 8 + 2) {
+                int base = 3 + tokenLen + 8 + 2;
+                if (payload.length != base && payload.length != base + 16) {
                     throw new IOException("HELLO payload length mismatch: " + payload.length);
                 }
                 byte[] token = new byte[tokenLen];
                 dis.readFully(token);
                 long lastRxSeq = dis.readLong();
                 int intervalS = dis.readUnsignedShort();
-                return new Frame(TYPE_HELLO, version, role, token, lastRxSeq, intervalS, null, 0, 0);
+                Frame h = new Frame(TYPE_HELLO, version, role, token, lastRxSeq, intervalS, null, 0, 0);
+                if (payload.length == base + 16) {
+                    h.hasEpochs = true;
+                    h.epoch = dis.readLong();
+                    h.peerEpoch = dis.readLong();
+                }
+                return h;
             }
             case TYPE_WELCOME: {
+                if (payload.length == 16) {
+                    long lastRx = dis.readLong();
+                    return welcome(lastRx, dis.readLong());
+                }
                 if (payload.length != 8) {
-                    throw new IOException("WELCOME payload length != 8: " + payload.length);
+                    throw new IOException("WELCOME payload length not 8 or 16: " + payload.length);
                 }
                 return welcome(dis.readLong());
             }
@@ -438,9 +480,11 @@ public final class Frame {
     public String toString() {
         switch (type) {
             case TYPE_HELLO:
-                return "HELLO(v=" + version + ", role=" + role + ", lastRx=" + seq + ", iv=" + intervalS + ")";
+                return "HELLO(v=" + version + ", role=" + role + ", lastRx=" + seq + ", iv=" + intervalS
+                        + (hasEpochs ? ", epoch=" + Long.toHexString(epoch) + ", serverEpoch=" + Long.toHexString(peerEpoch) : "")
+                        + ")";
             case TYPE_WELCOME:
-                return "WELCOME(lastRx=" + seq + ")";
+                return "WELCOME(lastRx=" + seq + (hasEpochs ? ", epoch=" + Long.toHexString(epoch) : "") + ")";
             case TYPE_MSG:
                 return "MSG(seq=" + seq + ", len=" + (body == null ? 0 : body.length) + ")";
             case TYPE_ACK:
