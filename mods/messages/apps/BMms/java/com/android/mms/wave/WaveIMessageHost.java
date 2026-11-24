@@ -185,6 +185,8 @@ public final class WaveIMessageHost implements PushClient.Listener {
         new Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
             @Override
             public void run() {
+                if (WaveColdOpen.hold(this)) return;
+                com.android.mms.util.WaveLaunch.mark("defer_imessage_host");
                 Thread t = new Thread(new Runnable() {
                     @Override
                     public void run() {

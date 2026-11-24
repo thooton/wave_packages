@@ -49,8 +49,8 @@ public final class WaveComposePerf {
     }
 
     private static final WeakHashMap<Object, Pending> PENDING = new WeakHashMap<>();
-    /** A refresh not run after this long is presumed dropped: post a new one. */
-    private static final long STALE_MS = 2000;
+    /** A refresh not run after this long is presumed dropped: post a new one (> reveal MAX_WAIT_MS). */
+    private static final long STALE_MS = 4000;
 
     /** onUpdate (any thread): true = post the stock refresh, false = an earlier one will cover it. */
     public static boolean queue(Object activity, Contact c) {

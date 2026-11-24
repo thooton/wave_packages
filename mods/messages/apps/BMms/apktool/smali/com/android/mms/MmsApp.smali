@@ -449,6 +449,9 @@
     # PERF(prefs): kick off non-blocking SharedPreferences XML disk loads in parallel with MmsApp init.
     invoke-static {p0}, Lcom/android/mms/wave/WaveInit;->primePrefsAsync(Landroid/content/Context;)V
 
+    # PERF(cold open): fill the isSmsEnabled cache off-main so ComposeMessageActivity.onCreate skips its binder calls.
+    invoke-static {p0}, Lcom/android/mms/wave/WaveColdOpen;->primeSmsEnabledAsync(Landroid/content/Context;)V
+
     # PERF(phone map): start reading the compact phone map immediately in parallel with MmsApp init.
     invoke-static {p0}, Lcom/android/mms/data/WavePhoneSnapshot;->primeAsync(Landroid/content/Context;)V
 

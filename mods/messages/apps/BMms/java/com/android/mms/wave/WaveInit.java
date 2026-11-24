@@ -26,6 +26,8 @@ public final class WaveInit {
         MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
+                if (WaveColdOpen.hold(this)) return;
+                com.android.mms.util.WaveLaunch.mark("defer_receipt_policy");
                 Thread t = new Thread(new Runnable() {
                     @Override
                     public void run() {
@@ -103,6 +105,8 @@ public final class WaveInit {
         MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
+                if (WaveColdOpen.hold(this)) return;
+                com.android.mms.util.WaveLaunch.mark("defer_default_prefs");
                 Thread t = new Thread(new Runnable() {
                     @Override
                     public void run() {
@@ -262,6 +266,8 @@ public final class WaveInit {
         MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
+                if (WaveColdOpen.hold(this)) return;
+                com.android.mms.util.WaveLaunch.mark("defer_component_state");
                 Thread t = new Thread(new Runnable() {
                     @Override
                     public void run() {
@@ -288,6 +294,7 @@ public final class WaveInit {
         MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
+                com.android.mms.util.WaveLaunch.mark("defer_download_init");
                 try {
                     Class.forName("com.android.mms.util.DownloadManager")
                             .getMethod("init", Context.class).invoke(null, app);
@@ -312,6 +319,8 @@ public final class WaveInit {
         MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
+                if (WaveColdOpen.hold(this)) return;
+                com.android.mms.util.WaveLaunch.mark("defer_contact_observer");
                 try {
                     app.getContentResolver().registerContentObserver(uri, notifyForDescendents, observer);
                 } catch (Throwable ignored) {}
@@ -326,6 +335,7 @@ public final class WaveInit {
         MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
+                com.android.mms.util.WaveLaunch.mark("defer_notif_receiver");
                 try {
                     app.registerReceiver(r, filter);
                 } catch (Throwable ignored) {}
@@ -339,6 +349,7 @@ public final class WaveInit {
         MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
+                com.android.mms.util.WaveLaunch.mark("defer_draft_refresh");
                 try {
                     draftCache.getClass().getMethod("refresh").invoke(draftCache);
                 } catch (Throwable ignored) {}
@@ -352,6 +363,8 @@ public final class WaveInit {
         MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
+                if (WaveColdOpen.hold(this)) return;
+                com.android.mms.util.WaveLaunch.mark("defer_conversation_init");
                 try {
                     Class<?> cls = Class.forName("com.android.mms.data.Conversation");
                     cls.getMethod("init", Context.class).invoke(null, app);
@@ -365,6 +378,8 @@ public final class WaveInit {
         MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
+                if (WaveColdOpen.hold(this)) return;
+                com.android.mms.util.WaveLaunch.mark("defer_mobile_data_observer");
                 try {
                     java.lang.reflect.Method m = c.getClass().getDeclaredMethod("registerMobileDataObserver");
                     m.setAccessible(true);
@@ -380,6 +395,8 @@ public final class WaveInit {
         MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
+                if (WaveColdOpen.hold(this)) return;
+                com.android.mms.util.WaveLaunch.mark("defer_country_detector");
                 try {
                     Object detector = app.getSystemService("country_detector");
                     if (detector == null) return;
@@ -401,6 +418,7 @@ public final class WaveInit {
         MAIN_HANDLER.postDelayed(new Runnable() {
             @Override
             public void run() {
+                if (WaveColdOpen.hold(this)) return;
                 try {
                     Class<?> listenerCls = Class.forName("android.location.CountryListener");
                     detector.getClass()

@@ -68,6 +68,12 @@ public final class WaveRowPool {
     private static Future<Entry> sComposeRootFuture;
     private static Future<Entry> sInboxRootFuture;
     private static volatile boolean sComposeActive;
+    /** Set only while obtainComposeRoot() is actively waiting on a compose-root future. */
+    private static volatile Future<Entry> sComposeRootClaimed;
+    /** Thread inflating the inbox root (0 = none), so a cold conversation open can demote it. */
+    private static final Object TID_LOCK = new Object();
+    private static int sInboxRootTid;
+    private static boolean sInboxRootDemoted;
 
     private static final AtomicBoolean REFILL_MSG_SCHEDULED = new AtomicBoolean(false);
     private static final AtomicBoolean REFILL_INBOX_ROWS_SCHEDULED = new AtomicBoolean(false);
@@ -127,6 +133,33 @@ public final class WaveRowPool {
         }
     }
 
+    /**
+     * PERF(cold conversation open): the inbox root started in MmsApp.onCreate is not needed when
+     * the process was started for a conversation, but it competes with the compose root for the
+     * 4 cores and the AssetManager lock. Slightly lower its priority while it finishes (avoiding
+     * BACKGROUND nice 10 lock priority inversion); the result is still pooled for a later inbox open.
+     */
+    public static void composeOpening() {
+        synchronized (TID_LOCK) {
+            if (sInboxRootTid <= 0 || sInboxRootDemoted) return;
+            try {
+                Process.setThreadPriority(sInboxRootTid, Process.THREAD_PRIORITY_LESS_FAVORABLE);
+                sInboxRootDemoted = true;
+                com.android.mms.util.WaveLaunch.mark("inbox_root_demoted");
+            } catch (Throwable ignored) {}
+        }
+    }
+
+    private static void promoteInboxRoot() {
+        synchronized (TID_LOCK) {
+            if (sInboxRootTid <= 0 || !sInboxRootDemoted) return;
+            try {
+                Process.setThreadPriority(sInboxRootTid, Process.THREAD_PRIORITY_MORE_FAVORABLE);
+            } catch (Throwable ignored) {}
+            sInboxRootDemoted = false;
+        }
+    }
+
     private static void scheduleInboxRootIfNeeded(final Context app) {
         synchronized (ROOT_LOCK) {
             if (!INBOX_ROOT_POOL.isEmpty() || sInboxRootFuture != null) return;
@@ -183,6 +216,14 @@ public final class WaveRowPool {
             @Override
             public void run() {
                 try {
+                    // Only wait on a compose-root future the main thread is actively blocked on,
+                    // never on a speculative refill root (so scroll/warm refills stay parallel).
+                    Future<Entry> root = sComposeRootClaimed;
+                    if (root != null && !root.isDone()) {
+                        try {
+                            root.get(ROOT_HARVEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                        } catch (Throwable ignored) {}
+                    }
                     while (RECV_POOL.size() < TARGET_RECV || SEND_POOL.size() < TARGET_SEND) {
                         if (RECV_POOL.size() < TARGET_RECV) {
                             Entry e = inflateMessageEntry(app, LAYOUT_MSG_RECV);
@@ -221,6 +262,7 @@ public final class WaveRowPool {
     /** Obtain a pre-inflated conversation_list_screen.xml root layout for ConversationList. */
     public static View obtainInboxRoot(LayoutInflater fallbackInflater, int layoutRes) {
         sComposeActive = false;
+        promoteInboxRoot();
         if (layoutRes == LAYOUT_INBOX_ROOT) {
             Entry e = INBOX_ROOT_POOL.poll();
             if (e == null) {
@@ -257,12 +299,21 @@ public final class WaveRowPool {
                     if (f != null) sComposeRootFuture = null;
                 }
                 if (f != null) {
+                    com.android.mms.util.WaveLaunch.mark("compose_root_future");
+                    sComposeRootClaimed = f;
                     try {
                         e = f.get(ROOT_HARVEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                    } catch (Throwable ignored) {}
+                    } catch (Throwable ignored) {
+                    } finally {
+                        if (sComposeRootClaimed == f) sComposeRootClaimed = null;
+                    }
+                    com.android.mms.util.WaveLaunch.mark("compose_root_waited");
                 }
+            } else {
+                com.android.mms.util.WaveLaunch.mark("compose_root_pool");
             }
             Context liveCtx = fallbackInflater.getContext();
+            if (e == null) com.android.mms.util.WaveLaunch.mark("compose_root_fallback");
             if (e != null) {
                 e.mutableCtx.setBaseContext(liveCtx);
                 prewarmMessagesDelayed(liveCtx);
@@ -289,6 +340,7 @@ public final class WaveRowPool {
                 }
                 return e.view;
             }
+            com.android.mms.util.WaveLaunch.mark("row_pool_miss");
             prewarmMessagesDelayed(fallbackInflater.getContext());
         }
         return fallbackInflater.inflate(layoutRes, parent, false);
@@ -337,6 +389,10 @@ public final class WaveRowPool {
     }
 
     private static Entry inflateInboxRootEntry(Context app) {
+        synchronized (TID_LOCK) {
+            sInboxRootTid = Process.myTid();
+            sInboxRootDemoted = false;
+        }
         try {
             MutableContextWrapper mutable = new MutableContextWrapper(app);
             ContextThemeWrapper themed = new ContextThemeWrapper(mutable, THEME_INBOX);
@@ -346,6 +402,18 @@ public final class WaveRowPool {
         } catch (Throwable t) {
             Log.w(TAG, "inflateInboxRootEntry failed", t);
             return null;
+        } finally {
+            synchronized (TID_LOCK) {
+                boolean demoted = sInboxRootDemoted;
+                sInboxRootTid = 0;
+                sInboxRootDemoted = false;
+                // This pool thread runs later tasks: give it back its normal priority.
+                if (demoted) {
+                    try {
+                        Process.setThreadPriority(Process.THREAD_PRIORITY_MORE_FAVORABLE);
+                    } catch (Throwable ignored) {}
+                }
+            }
         }
     }
 

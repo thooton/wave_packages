@@ -46,6 +46,18 @@
     .locals 3
 
     .prologue
+    # PERF(cold open): hold the refresh while the conversation window is still hidden for the reveal.
+    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$81;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
+
+    invoke-static {v0, p0}, Lcom/android/mms/ui/WaveHistory;->deferWhileRevealing(Lcom/android/mms/ui/ComposeMessageActivity;Ljava/lang/Runnable;)Z
+
+    move-result v0
+
+    if-eqz v0, :wave_run_now
+
+    return-void
+
+    :wave_run_now
     .line 7835
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$81;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 
@@ -138,10 +150,23 @@
     return-void
 
     :wave_refresh
+    const-string v1, "contact_refresh"
+
+    invoke-static {v1}, Lcom/android/mms/util/WaveLaunch;->mark(Ljava/lang/String;)V
+
     iget-object v1, p0, Lcom/android/mms/ui/ComposeMessageActivity$81;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 
     invoke-static {v1, v0}, Lcom/android/mms/ui/ComposeMessageActivity;->-wrap90(Lcom/android/mms/ui/ComposeMessageActivity;Lcom/android/mms/data/ContactList;)V
 
+    invoke-static {v1, v0}, Lcom/android/mms/ui/WaveHistory;->skipAdapterNotifyForHeld1to1(Lcom/android/mms/ui/ComposeMessageActivity;Lcom/android/mms/data/ContactList;)Z
+
+    move-result v1
+
+    if-eqz v1, :wave_notify_adapter
+
+    return-void
+
+    :wave_notify_adapter
     .line 7845
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity$81;->this$0:Lcom/android/mms/ui/ComposeMessageActivity;
 

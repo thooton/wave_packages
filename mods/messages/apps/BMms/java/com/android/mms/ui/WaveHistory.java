@@ -65,7 +65,7 @@ public final class WaveHistory {
 
     private static final java.util.WeakHashMap<ComposeMessageActivity, DeferredReceivers> RECEIVERS =
             new java.util.WeakHashMap<>();
-    private boolean keepFocus, firstRowsMeasured, opened;
+    private boolean keepFocus, firstRowsMeasured, opened, heldContactRefresh;
     private BottomAlignment bottomAlignment;
     private WaveConversationReveal reveal;
     private Intent selectedIntent;
@@ -84,16 +84,52 @@ public final class WaveHistory {
     public static void beginReveal(ComposeMessageActivity activity, long threadId) {
         WaveHistory h = (WaveHistory) activity.mWaveHistory;
         if (h == null) return;
-        endReveal(activity);
+        closeReveal(h);
         if (threadId > 0) h.reveal = new WaveConversationReveal(h.list);
+        else com.android.mms.wave.WaveColdOpen.launchSettled();
     }
 
     public static void endReveal(ComposeMessageActivity activity) {
         WaveHistory h = (WaveHistory) activity.mWaveHistory;
-        if (h != null && h.reveal != null) {
+        if (h != null) closeReveal(h);
+        // No reveal (new message, reply modes) or the activity stopped: release held startup work.
+        com.android.mms.wave.WaveColdOpen.launchSettled();
+    }
+
+    private static void closeReveal(WaveHistory h) {
+        if (h.reveal != null) {
             h.reveal.close();
             h.reveal = null;
         }
+    }
+
+    /**
+     * PERF(cold open): ComposeMessageActivity$81 (contact-update refresh, main thread). While the
+     * window is still hidden for the reveal, a refresh would drop every MessageItem (cancelling
+     * their PDU loads) and push the reveal back. Hold it until the reveal ends; WaveComposePerf's
+     * pending contacts are kept (drain() has not run), so the held refresh does exactly what it
+     * would have done, just after the first conversation frame.
+     */
+    public static boolean deferWhileRevealing(ComposeMessageActivity activity, Runnable r) {
+        WaveHistory h = activity == null ? null : (WaveHistory) activity.mWaveHistory;
+        if (h == null || h.reveal == null || !h.reveal.isWaiting() || r == null) return false;
+        h.heldContactRefresh = true;
+        h.reveal.runAfterClose(r);
+        WaveLaunch.mark("contact_refresh_deferred");
+        return true;
+    }
+
+    /**
+     * After a held cold-open contact refresh updates the header title, 1:1 threads do not show
+     * per-row sender names, so skipping notifyDataSetChanged() avoids evicting all MessageItems
+     * and flashing MMS placeholders right after the reveal.
+     */
+    public static boolean skipAdapterNotifyForHeld1to1(
+            ComposeMessageActivity activity, com.android.mms.data.ContactList recipients) {
+        WaveHistory h = activity == null ? null : (WaveHistory) activity.mWaveHistory;
+        if (h == null || !h.heldContactRefresh) return false;
+        h.heldContactRefresh = false;
+        return recipients != null && recipients.size() <= 1;
     }
 
     private static final Object PREFETCH_LOCK = new Object();
@@ -202,6 +238,10 @@ public final class WaveHistory {
         if (threadId <= 0L) return;
 
         final Context app = activity.getApplicationContext();
+        // A conversation is opening: hold fixed-delay startup work until it is revealed and
+        // let the compose root have the inflation threads.
+        com.android.mms.wave.WaveColdOpen.launchBegan();
+        WaveRowPool.composeOpening();
         // Touch Conversation static field on main thread so Conversation.<clinit> runs on a Looper thread.
         @SuppressWarnings("unused")
         Uri initCheck = com.android.mms.data.Conversation.sAllThreadsUri;
@@ -211,6 +251,15 @@ public final class WaveHistory {
                 try {
                     com.android.mms.data.Conversation.get(app, threadId, false);
                 } catch (Throwable ignored) {}
+                // Build the PDU loader (PduCache, PduPersister, DRM client) here instead of on the
+                // main thread at history_received. The getter is synchronized and the loader's
+                // Handler uses the main Looper.
+                try {
+                    com.android.mms.MmsApp mms = com.android.mms.MmsApp.getApplication();
+                    if (mms != null) mms.getPduLoaderManager();
+                } catch (Throwable ignored) {}
+                com.android.mms.wave.WaveColdOpen.warmTimeFormats(app);
+                WaveLaunch.mark("conv_warm_done");
             }
         });
 
@@ -435,7 +484,16 @@ public final class WaveHistory {
             }
         };
         state.pending = task;
-        MAIN.post(task);
+        WaveHistory h = (WaveHistory) activity.mWaveHistory;
+        if (h != null && h.reveal != null && h.reveal.isWaiting()) {
+            // MAIN.post here still runs before the first frame (it is queued ahead of the
+            // traversal). Register right after the conversation is revealed instead; the
+            // fallback only matters if the reveal never ends. The task runs once either way.
+            h.reveal.runAfterClose(task);
+            MAIN.postDelayed(task, 1500L);
+        } else {
+            MAIN.post(task);
+        }
     }
 
     /** Cancel deferred registration or unregister any receivers registered by registerReceiversDeferred(). */
