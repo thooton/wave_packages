@@ -1787,7 +1787,7 @@
 
     move-result-object v5
 
-    invoke-virtual {v0, v5}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+    invoke-static {v0, v5}, Lcom/android/mms/ui/WaveInboxUi;->setTextIfChanged(Landroid/widget/TextView;Ljava/lang/CharSequence;)V
 
     .line 447
     :cond_1

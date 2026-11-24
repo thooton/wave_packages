@@ -405,6 +405,43 @@ public final class WaveMessageUi {
     // --- Row binding ---
 
     private static volatile int sShowDateSent = -1;
+    private static volatile android.text.style.ForegroundColorSpan sHighlightColorSpan;
+    private static volatile android.graphics.drawable.Drawable sSendBtnBg;
+    private static volatile android.graphics.drawable.Drawable sSendBtnIcon;
+    private static final int TAG_SEND_DEFAULT_APPLIED = 0x57440006;
+
+    /** Cached immutable ForegroundColorSpan for MessageListItem.<init>() (avoids per-row JNI getColor + alloc). */
+    public static android.text.style.ForegroundColorSpan getHighlightColorSpan(Context ctx) {
+        android.text.style.ForegroundColorSpan span = sHighlightColorSpan;
+        if (span == null && ctx != null) {
+            span = new android.text.style.ForegroundColorSpan(ctx.getResources().getColor(0x7f080002));
+            sHighlightColorSpan = span;
+        }
+        return span;
+    }
+
+    /** Cached default send button drawables avoiding repeated getDrawable()/setBackground()/setImageDrawable() on onResume(). */
+    public static void applyDefaultSendButton(Context ctx, android.widget.ImageButton btn) {
+        if (ctx == null || btn == null) return;
+        if (Boolean.TRUE.equals(btn.getTag(TAG_SEND_DEFAULT_APPLIED))) return;
+        android.graphics.drawable.Drawable bg = sSendBtnBg;
+        android.graphics.drawable.Drawable icon = sSendBtnIcon;
+        if (bg == null || icon == null) {
+            android.content.res.Resources res = ctx.getResources();
+            if (bg == null) {
+                bg = res.getDrawable(0x7f0200fe);
+                sSendBtnBg = bg;
+            }
+            if (icon == null) {
+                icon = res.getDrawable(0x7f0200ff);
+                sSendBtnIcon = icon;
+            }
+        }
+        if (bg != null) btn.setBackground(bg.getConstantState() != null ? bg.getConstantState().newDrawable(ctx.getResources()) : bg);
+        if (icon != null) btn.setImageDrawable(icon);
+        btn.setScaleType(android.widget.ImageView.ScaleType.CENTER);
+        btn.setTag(TAG_SEND_DEFAULT_APPLIED, Boolean.TRUE);
+    }
 
     /** Set view visibility only when changed to avoid redundant View.setFlags() per row bind. */
     public static void setVisibilityIfChanged(View v, int visibility) {

@@ -448,30 +448,13 @@
     .line 2288
     iput-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mUpdateProgressBar:Lcom/android/mms/ui/ComposeMessageActivity$IMMSUpdateProgressBar;
 
-    .line 250
-    const-string/jumbo v0, "Mms"
-
-    const-string/jumbo v1, "MessageListItem with two param"
-
-    invoke-static {v0, v1}, Landroid/util/Log;->v(Ljava/lang/String;Ljava/lang/String;)I
-
     .line 251
+    # PERF: share cached immutable ForegroundColorSpan and skip per-row Log.v JNI write.
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mContext:Landroid/content/Context;
 
-    invoke-virtual {v0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+    invoke-static {v0}, Lcom/android/mms/ui/WaveMessageUi;->getHighlightColorSpan(Landroid/content/Context;)Landroid/text/style/ForegroundColorSpan;
 
-    move-result-object v0
-
-    const v1, 0x7f080002
-
-    invoke-virtual {v0, v1}, Landroid/content/res/Resources;->getColor(I)I
-
-    move-result v0
-
-    .line 252
-    new-instance v1, Landroid/text/style/ForegroundColorSpan;
-
-    invoke-direct {v1, v0}, Landroid/text/style/ForegroundColorSpan;-><init>(I)V
+    move-result-object v1
 
     iput-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mColorSpan:Landroid/text/style/ForegroundColorSpan;
 

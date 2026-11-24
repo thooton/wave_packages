@@ -19485,35 +19485,7 @@
     .line 7321
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mSendButtonMms:Landroid/widget/ImageButton;
 
-    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v1
-
-    invoke-virtual {v1, v3}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
-
-    move-result-object v1
-
-    invoke-virtual {v0, v1}, Landroid/widget/ImageButton;->setBackground(Landroid/graphics/drawable/Drawable;)V
-
-    .line 7323
-    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mSendButtonMms:Landroid/widget/ImageButton;
-
-    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v1
-
-    invoke-virtual {v1, v6}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
-
-    move-result-object v1
-
-    invoke-virtual {v0, v1}, Landroid/widget/ImageButton;->setImageDrawable(Landroid/graphics/drawable/Drawable;)V
-
-    .line 7325
-    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mSendButtonMms:Landroid/widget/ImageButton;
-
-    sget-object v1, Landroid/widget/ImageView$ScaleType;->CENTER:Landroid/widget/ImageView$ScaleType;
-
-    invoke-virtual {v0, v1}, Landroid/widget/ImageButton;->setScaleType(Landroid/widget/ImageView$ScaleType;)V
+    invoke-static {p0, v0}, Lcom/android/mms/ui/WaveMessageUi;->applyDefaultSendButton(Landroid/content/Context;Landroid/widget/ImageButton;)V
 
     .line 7358
     :goto_0
@@ -19523,35 +19495,7 @@
     :cond_1
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mSendButtonSms:Landroid/widget/ImageButton;
 
-    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v1
-
-    invoke-virtual {v1, v6}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
-
-    move-result-object v1
-
-    invoke-virtual {v0, v1}, Landroid/widget/ImageButton;->setImageDrawable(Landroid/graphics/drawable/Drawable;)V
-
-    .line 7329
-    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mSendButtonSms:Landroid/widget/ImageButton;
-
-    invoke-virtual {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v1
-
-    invoke-virtual {v1, v3}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
-
-    move-result-object v1
-
-    invoke-virtual {v0, v1}, Landroid/widget/ImageButton;->setBackground(Landroid/graphics/drawable/Drawable;)V
-
-    .line 7331
-    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mSendButtonSms:Landroid/widget/ImageButton;
-
-    sget-object v1, Landroid/widget/ImageView$ScaleType;->CENTER:Landroid/widget/ImageView$ScaleType;
-
-    invoke-virtual {v0, v1}, Landroid/widget/ImageButton;->setScaleType(Landroid/widget/ImageView$ScaleType;)V
+    invoke-static {p0, v0}, Lcom/android/mms/ui/WaveMessageUi;->applyDefaultSendButton(Landroid/content/Context;Landroid/widget/ImageButton;)V
 
     goto :goto_0
 
