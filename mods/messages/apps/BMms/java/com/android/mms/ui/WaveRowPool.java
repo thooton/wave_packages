@@ -29,6 +29,7 @@ public final class WaveRowPool {
     static final int LAYOUT_MSG_RECV = 0x7f04002c;
     static final int LAYOUT_MSG_SEND = 0x7f04002d;
     static final int LAYOUT_INBOX_ROW = 0x7f04000e;
+    static final int LAYOUT_INBOX_ROOT = 0x7f040012;
     static final int LAYOUT_COMPOSE_ROOT = 0x7f040009;
 
     private static final int THEME_COMPOSE = 0x7f0c0019;
@@ -52,14 +53,16 @@ public final class WaveRowPool {
     private static final ConcurrentLinkedQueue<Entry> RECV_POOL = new ConcurrentLinkedQueue<>();
     private static final ConcurrentLinkedQueue<Entry> SEND_POOL = new ConcurrentLinkedQueue<>();
     private static final ConcurrentLinkedQueue<Entry> INBOX_POOL = new ConcurrentLinkedQueue<>();
+    private static final ConcurrentLinkedQueue<Entry> INBOX_ROOT_POOL = new ConcurrentLinkedQueue<>();
     private static final ConcurrentLinkedQueue<Entry> COMPOSE_ROOT_POOL = new ConcurrentLinkedQueue<>();
 
     private static final AtomicBoolean REFILL_MSG_SCHEDULED = new AtomicBoolean(false);
     private static final AtomicBoolean REFILL_INBOX_SCHEDULED = new AtomicBoolean(false);
+    private static final AtomicBoolean COLD_ROOT_SCHEDULED = new AtomicBoolean(false);
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
-    private static final ExecutorService EXEC = Executors.newSingleThreadExecutor(
+    private static final ExecutorService EXEC = Executors.newFixedThreadPool(2,
             new ThreadFactory() {
                 @Override
                 public Thread newThread(Runnable r) {
@@ -72,15 +75,37 @@ public final class WaveRowPool {
 
     private WaveRowPool() {}
 
-    /** Kick off background inbox-row inflation during MmsApp.onCreate(). */
+    /** Kick off background inbox-root, inbox-row, and compose-root inflation during MmsApp.onCreate(). */
     public static void prewarmInbox(Context ctx) {
-        if (ctx == null || INBOX_POOL.size() >= TARGET_INBOX) return;
-        if (!REFILL_INBOX_SCHEDULED.compareAndSet(false, true)) return;
+        if (ctx == null) return;
         final Context app = ctx.getApplicationContext();
+        if (COMPOSE_ROOT_POOL.isEmpty() && COLD_ROOT_SCHEDULED.compareAndSet(false, true)) {
+            EXEC.execute(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        if (COMPOSE_ROOT_POOL.isEmpty()) {
+                            Entry root = inflateComposeRootEntry(app);
+                            if (root != null) COMPOSE_ROOT_POOL.offer(root);
+                        }
+                    } catch (Throwable t) {
+                        Log.w(TAG, "prewarmComposeRoot failed", t);
+                    } finally {
+                        COLD_ROOT_SCHEDULED.set(false);
+                    }
+                }
+            });
+        }
+        if (INBOX_POOL.size() >= TARGET_INBOX && !INBOX_ROOT_POOL.isEmpty()) return;
+        if (!REFILL_INBOX_SCHEDULED.compareAndSet(false, true)) return;
         EXEC.execute(new Runnable() {
             @Override
             public void run() {
                 try {
+                    if (INBOX_ROOT_POOL.isEmpty()) {
+                        Entry root = inflateInboxRootEntry(app);
+                        if (root != null) INBOX_ROOT_POOL.offer(root);
+                    }
                     int rowHeight = app.getResources().getDimensionPixelSize(DIMEN_INBOX_ROW_HEIGHT);
                     while (INBOX_POOL.size() < TARGET_INBOX) {
                         Entry e = inflateInboxEntry(app, rowHeight);
@@ -145,6 +170,18 @@ public final class WaveRowPool {
                 prewarmMessages(app);
             }
         }, 250L);
+    }
+
+    /** Obtain a pre-inflated conversation_list_screen.xml root layout for ConversationList. */
+    public static View obtainInboxRoot(LayoutInflater fallbackInflater, int layoutRes) {
+        if (layoutRes == LAYOUT_INBOX_ROOT) {
+            Entry e = INBOX_ROOT_POOL.poll();
+            if (e != null) {
+                e.mutableCtx.setBaseContext(fallbackInflater.getContext());
+                return e.view;
+            }
+        }
+        return fallbackInflater.inflate(layoutRes, null);
     }
 
     /** Obtain a pre-inflated 70-view compose_message_activity.xml root layout for ComposeMessageActivity. */
@@ -221,6 +258,19 @@ public final class WaveRowPool {
             return new Entry(v, mutable);
         } catch (Throwable t) {
             Log.w(TAG, "inflateComposeRootEntry failed", t);
+            return null;
+        }
+    }
+
+    private static Entry inflateInboxRootEntry(Context app) {
+        try {
+            MutableContextWrapper mutable = new MutableContextWrapper(app);
+            ContextThemeWrapper themed = new ContextThemeWrapper(mutable, THEME_INBOX);
+            LayoutInflater inflater = LayoutInflater.from(app).cloneInContext(themed);
+            View v = inflater.inflate(LAYOUT_INBOX_ROOT, null);
+            return new Entry(v, mutable);
+        } catch (Throwable t) {
+            Log.w(TAG, "inflateInboxRootEntry failed", t);
             return null;
         }
     }

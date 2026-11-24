@@ -55,6 +55,7 @@ public final class WaveHistory {
     private final ListView list;
     private long thread;
     private long earlyQueryThread = -1;
+    private boolean skipFirstStartTitle;
     private PendingQuery pendingQuery;
     private boolean keepFocus, firstRowsMeasured, opened;
     private BottomAlignment bottomAlignment;
@@ -102,6 +103,7 @@ public final class WaveHistory {
         final PendingQuery p = new PendingQuery(threadId);
         h.pendingQuery = p;
         h.earlyQueryThread = threadId;
+        h.skipFirstStartTitle = true;
         p.future = QUERY_EXEC.submit(new Callable<Cursor>() {
             @Override
             public Cursor call() {
@@ -185,6 +187,16 @@ public final class WaveHistory {
                 } catch (Throwable ignored) {}
             }
         }
+    }
+
+    /** Skip duplicate updateTitle() in onStart() right after initialize() already set the title. */
+    public static boolean consumeFirstStartTitle(ComposeMessageActivity activity) {
+        WaveHistory h = (WaveHistory) activity.mWaveHistory;
+        if (h != null && h.skipFirstStartTitle) {
+            h.skipFirstStartTitle = false;
+            return true;
+        }
+        return false;
     }
 
     /** Consume the early-query marker in loadMessageContent() so onStart() does not query twice. */

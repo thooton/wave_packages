@@ -2010,9 +2010,17 @@
 
     .line 301
     :cond_1
-    const v0, 0x7f040012
+    invoke-virtual {p0}, Lcom/android/mms/ui/ConversationList;->getLayoutInflater()Landroid/view/LayoutInflater;
 
-    invoke-virtual {p0, v0}, Lcom/android/mms/ui/ConversationList;->setContentView(I)V
+    move-result-object v0
+
+    const v1, 0x7f040012
+
+    invoke-static {v0, v1}, Lcom/android/mms/ui/WaveRowPool;->obtainInboxRoot(Landroid/view/LayoutInflater;I)Landroid/view/View;
+
+    move-result-object v0
+
+    invoke-virtual {p0, v0}, Lcom/android/mms/ui/ConversationList;->setContentView(Landroid/view/View;)V
 
     .line 304
     const-string/jumbo v0, "layout_inflater"
@@ -3617,6 +3625,12 @@
 
     .line 693
     invoke-static {}, Lcom/android/mms/data/Conversation;->loadingThreads()Z
+
+    move-result v0
+
+    if-nez v0, :cond_0
+
+    invoke-static {p0}, Lcom/android/mms/ui/WaveInboxQuery;->consumeFirstStartSkipInvalidate(Lcom/android/mms/ui/ConversationList;)Z
 
     move-result v0
 

@@ -30977,6 +30977,13 @@
 
     .line 3482
     :cond_5
+    # PERF: initialize() already called updateTitle() milliseconds earlier on initial open.
+    invoke-static {p0}, Lcom/android/mms/ui/WaveHistory;->consumeFirstStartTitle(Lcom/android/mms/ui/ComposeMessageActivity;)Z
+
+    move-result v0
+
+    if-nez v0, :wave_skip_dup_title
+
     iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mConversation:Lcom/android/mms/data/Conversation;
 
     invoke-virtual {v0}, Lcom/android/mms/data/Conversation;->getRecipients()Lcom/android/mms/data/ContactList;
@@ -30984,6 +30991,8 @@
     move-result-object v0
 
     invoke-direct {p0, v0}, Lcom/android/mms/ui/ComposeMessageActivity;->updateTitle(Lcom/android/mms/data/ContactList;)V
+
+    :wave_skip_dup_title
 
     .line 3486
     sget-boolean v0, Lcom/android/mms/ui/ComposeMessageActivity;->mRcsShareVcardAddNumber:Z

@@ -50,6 +50,7 @@ public final class WaveInboxQuery {
     private static final class Pending {
         Future<Cursor> future;
         boolean consumedByStartAsync;
+        boolean skipFirstInvalidate = true;
         boolean delivered;
         volatile boolean cancelled;
     }
@@ -109,6 +110,17 @@ public final class WaveInboxQuery {
                 return ready;
             }
         });
+    }
+
+    /** On initial cold ConversationList.onStart(), keep the fresh Contact cache just warmed. */
+    public static boolean consumeFirstStartSkipInvalidate(ConversationList act) {
+        if (act == null) return false;
+        Pending p = PENDING.get(act);
+        if (p != null && p.skipFirstInvalidate) {
+            p.skipFirstInvalidate = false;
+            return true;
+        }
+        return false;
     }
 
     /** Called in startAsyncQuery(): returns true once so onStart() skips duplicating the 0x6a5 query. */
