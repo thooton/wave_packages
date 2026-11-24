@@ -108,12 +108,13 @@ public final class WaveTapbacks {
 
     private static List<WaveIMessageDb.Reaction> reactions(Context c, Uri uri) {
         if (uri == null) return Collections.emptyList();
-        String key = WaveIMessageDb.key(uri);
         java.util.Set<String> reacted = sReacted;
         if (reacted == null) {
             reacted = WaveIMessageDb.get(c).reactedKeys();
             sReacted = reacted;
         }
+        if (reacted.isEmpty()) return Collections.emptyList();
+        String key = WaveIMessageDb.key(uri);
         if (!reacted.contains(key)) return Collections.emptyList();
         List<WaveIMessageDb.Reaction> r = CACHE.get(key);
         if (r == null) {

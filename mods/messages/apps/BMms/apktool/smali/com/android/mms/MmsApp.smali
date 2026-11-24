@@ -200,7 +200,7 @@
 
 # virtual methods
 .method public getCurrentCountryIso()Ljava/lang/String;
-    .locals 1
+    .locals 2
 
     .prologue
     .line 243
@@ -208,27 +208,18 @@
 
     if-nez v0, :cond_0
 
-    .line 244
-    iget-object v0, p0, Lcom/android/mms/MmsApp;->mCountryDetector:Landroid/location/CountryDetector;
+    iget-object v1, p0, Lcom/android/mms/MmsApp;->mCountryDetector:Landroid/location/CountryDetector;
 
-    invoke-virtual {v0}, Landroid/location/CountryDetector;->detectCountry()Landroid/location/Country;
+    invoke-static {v1, v0}, Lcom/android/mms/wave/WaveInit;->getCountryIsoCached(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 
-    .line 245
     if-eqz v0, :cond_0
-
-    .line 246
-    invoke-virtual {v0}, Landroid/location/Country;->getCountryIso()Ljava/lang/String;
-
-    move-result-object v0
 
     iput-object v0, p0, Lcom/android/mms/MmsApp;->mCountryIso:Ljava/lang/String;
 
     .line 249
     :cond_0
-    iget-object v0, p0, Lcom/android/mms/MmsApp;->mCountryIso:Ljava/lang/String;
-
     return-object v0
 .end method
 

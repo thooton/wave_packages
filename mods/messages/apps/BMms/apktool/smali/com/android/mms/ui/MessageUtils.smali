@@ -7362,12 +7362,8 @@
     .locals 1
 
     .prologue
-    .line 2303
-    invoke-static {}, Landroid/telephony/TelephonyManager;->getDefault()Landroid/telephony/TelephonyManager;
-
-    move-result-object v0
-
-    invoke-virtual {v0}, Landroid/telephony/TelephonyManager;->isMultiSimEnabled()Z
+    # PERF: hardware multi-SIM config never changes at runtime; cache once per process.
+    invoke-static {}, Lcom/android/mms/wave/WaveInit;->isMultiSimEnabledCached()Z
 
     move-result v0
 

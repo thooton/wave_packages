@@ -96,37 +96,44 @@ public final class WavePhoneSnapshot {
     public static String formatNames(ContactList contacts, String separator) {
         Snapshot current = snapshot;
         if (current == null || current.version != generation.get()) return contacts.formatNames(separator);
+        int n = contacts.size();
+        if (n == 0) return "";
+        if (n == 1) {
+            return resolveSingleName(current, contacts.get(0));
+        }
         StringBuilder result = new StringBuilder();
-        boolean first = true;
-        for (Contact contact : contacts) {
-            if (!first) result.append(separator);
-            first = false;
-            String number = contact.getNumber();
-            String name = null;
-            if (number != null && number.length() != 0 && !contact.isMe()
-                    && number.indexOf('@') < 0 && number.indexOf(':') < 0 && number.indexOf(';') < 0) {
-                name = current.names.get(number);
-                if (name == null) {
-                    String normalized = PhoneNumberUtils.normalizeNumber(number);
-                    String key = PhoneNumberUtils.toCallerIDMinMatch(normalized);
-                    if (key != null && !key.isEmpty()) {
-                        List<Entry> bucket = current.rows.get(key);
-                        MmsApp app = MmsApp.getApplication();
-                        String e164 = bucket == null || app == null ? null : PhoneNumberUtils.formatNumberToE164(
-                                number, app.getCurrentCountryIso());
-                        Entry hit = match(bucket, normalized, e164);
-                        if (hit != COLLISION) {
-                            name = hit == null ? number : (String) hit.fields[3];
-                            if (name == null || name.isEmpty()) name = number;
-                            // Bound memoization of unknown numbers, independent of address book size.
-                            if (current.names.size() < 2048) current.names.putIfAbsent(number, name);
-                        }
+        for (int i = 0; i < n; i++) {
+            if (i > 0) result.append(separator);
+            result.append(resolveSingleName(current, contacts.get(i)));
+        }
+        return result.toString();
+    }
+
+    private static String resolveSingleName(Snapshot current, Contact contact) {
+        String number = contact.getNumber();
+        String name = null;
+        if (number != null && number.length() != 0 && !contact.isMe()
+                && number.indexOf('@') < 0 && number.indexOf(':') < 0 && number.indexOf(';') < 0) {
+            name = current.names.get(number);
+            if (name == null) {
+                String normalized = PhoneNumberUtils.normalizeNumber(number);
+                String key = PhoneNumberUtils.toCallerIDMinMatch(normalized);
+                if (key != null && !key.isEmpty()) {
+                    List<Entry> bucket = current.rows.get(key);
+                    MmsApp app = MmsApp.getApplication();
+                    String e164 = bucket == null || app == null ? null : PhoneNumberUtils.formatNumberToE164(
+                            number, app.getCurrentCountryIso());
+                    Entry hit = match(bucket, normalized, e164);
+                    if (hit != COLLISION) {
+                        name = hit == null ? number : (String) hit.fields[3];
+                        if (name == null || name.isEmpty()) name = number;
+                        // Bound memoization of unknown numbers, independent of address book size.
+                        if (current.names.size() < 2048) current.names.putIfAbsent(number, name);
                     }
                 }
             }
-            result.append(name == null ? contact.getName() : name);
         }
-        return result.toString();
+        return name == null ? contact.getName() : name;
     }
 
     private static final Entry COLLISION = new Entry(null, null);

@@ -98,6 +98,59 @@ public final class WaveInit {
 
     private static final android.util.SparseIntArray BOOL_RES_CACHE = new android.util.SparseIntArray(16);
 
+    private static volatile int sMultiSimCached = -1;
+    private static volatile String sCountryIsoCached;
+    private static volatile long sCountryIsoCheckedAt;
+
+    /** Immutable hardware multi-SIM config cached once per process (avoids TelephonyManager/SystemProperties per bind). */
+    public static boolean isMultiSimEnabledCached() {
+        int v = sMultiSimCached;
+        if (v < 0) {
+            try {
+                Object tm = Class.forName("android.telephony.TelephonyManager")
+                        .getMethod("getDefault").invoke(null);
+                Boolean b = (Boolean) tm.getClass().getMethod("isMultiSimEnabled").invoke(tm);
+                v = (b != null && b) ? 1 : 0;
+            } catch (Throwable ignored) {
+                v = 0;
+            }
+            sMultiSimCached = v;
+        }
+        return v == 1;
+    }
+
+    /** Cached CountryIso lookup avoiding repeated CountryDetector.detectCountry() Binder IPCs on cold launch or SIM-less devices. */
+    public static String getCountryIsoCached(Object detector, String existing) {
+        if (existing != null) {
+            sCountryIsoCached = existing;
+            return existing;
+        }
+        String cached = sCountryIsoCached;
+        long now = android.os.SystemClock.uptimeMillis();
+        if (cached != null && (now - sCountryIsoCheckedAt) < 30_000L) {
+            return cached;
+        }
+        if (sCountryIsoCheckedAt != 0L && (now - sCountryIsoCheckedAt) < 30_000L) {
+            return java.util.Locale.getDefault().getCountry();
+        }
+        sCountryIsoCheckedAt = now;
+        if (detector != null) {
+            try {
+                Object country = detector.getClass().getMethod("detectCountry").invoke(detector);
+                if (country != null) {
+                    String iso = (String) country.getClass().getMethod("getCountryIso").invoke(country);
+                    if (iso != null && !iso.isEmpty()) {
+                        sCountryIsoCached = iso;
+                        return iso;
+                    }
+                }
+            } catch (Throwable ignored) {}
+        }
+        String fallback = java.util.Locale.getDefault().getCountry();
+        sCountryIsoCached = fallback;
+        return fallback;
+    }
+
     /** Cached Resources.getBoolean(resId) for immutable XML config flags read on every Activity open. */
     public static boolean getBoolResCached(Context c, int resId) {
         synchronized (BOOL_RES_CACHE) {
