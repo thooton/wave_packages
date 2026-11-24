@@ -45,6 +45,39 @@ public final class WaveInit {
         }
     }
 
+    /** Run PackageManager.setComponentEnabledSetting off the main thread, only if state differs. */
+    public static void applyComponentStateAsync(final Context c, final Class<?> cls, final int state) {
+        final Context app = c.getApplicationContext();
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    android.content.pm.PackageManager pm = app.getPackageManager();
+                    android.content.ComponentName cn = new android.content.ComponentName(app, cls);
+                    if (pm.getComponentEnabledSetting(cn) != state) {
+                        pm.setComponentEnabledSetting(cn, state, android.content.pm.PackageManager.DONT_KILL_APP);
+                    }
+                } catch (Throwable ignored) {}
+            }
+        }, "wave-pm-state");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /** Defer cold-start pending-message broadcast/service wakeup past the initial UI launch. */
+    public static void deferActivePending(final Context c) {
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    java.lang.reflect.Method m = c.getClass().getDeclaredMethod("activePendingMessages");
+                    m.setAccessible(true);
+                    m.invoke(c);
+                } catch (Throwable ignored) {}
+            }
+        }, 1500L);
+    }
+
     /**
      * The user's receipt policy, enforced in code (see docs/fixes/receipts) and mirrored into
      * the settings so the switches tell the truth:

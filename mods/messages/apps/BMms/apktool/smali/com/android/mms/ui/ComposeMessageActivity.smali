@@ -24756,6 +24756,10 @@
     invoke-virtual {v2}, Lcom/android/mms/data/Conversation;->getThreadId()J
     move-result-wide v2
     invoke-static {p0, v2, v3}, Lcom/android/mms/ui/WaveHistory;->beginReveal(Lcom/android/mms/ui/ComposeMessageActivity;J)V
+    invoke-static {p0, v2, v3}, Lcom/android/mms/ui/WaveHistory;->markEarlyQuery(Lcom/android/mms/ui/ComposeMessageActivity;J)Z
+    move-result v2
+    if-eqz v2, :wave_reveal_armed
+    invoke-direct {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->startMsgListQuery()V
     goto :wave_reveal_armed
 
     :wave_no_reveal
@@ -25104,7 +25108,21 @@
     invoke-virtual {v0}, Lcom/android/mms/data/Conversation;->markAsRead()V
 
     .line 3497
+    iget-object v0, p0, Lcom/android/mms/ui/ComposeMessageActivity;->mConversation:Lcom/android/mms/data/Conversation;
+
+    invoke-virtual {v0}, Lcom/android/mms/data/Conversation;->getThreadId()J
+
+    move-result-wide v0
+
+    invoke-static {p0, v0, v1}, Lcom/android/mms/ui/WaveHistory;->consumeEarlyQuery(Lcom/android/mms/ui/ComposeMessageActivity;J)Z
+
+    move-result v0
+
+    if-nez v0, :wave_skip_early_query
+
     invoke-direct {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->startMsgListQuery()V
+
+    :wave_skip_early_query
 
     .line 3498
     invoke-direct {p0}, Lcom/android/mms/ui/ComposeMessageActivity;->updateSendFailedNotification()V

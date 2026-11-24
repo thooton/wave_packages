@@ -1504,9 +1504,6 @@
 
     check-cast v0, Landroid/view/ViewGroup;
 
-    .line 291
-    invoke-virtual {v0}, Landroid/view/ViewGroup;->removeAllViews()V
-
     .line 292
     iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mConversation:Lcom/android/mms/data/Conversation;
 
@@ -1524,7 +1521,7 @@
     .line 294
     iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mAvatarView:Landroid/widget/QuickContactBadge;
 
-    invoke-virtual {v0, v1}, Landroid/view/ViewGroup;->addView(Landroid/view/View;)V
+    invoke-static {v0, v1}, Lcom/android/mms/ui/WaveInboxUi;->ensureSingleAvatarChild(Landroid/view/ViewGroup;Landroid/view/View;)V
 
     .line 304
     :goto_0
@@ -1567,12 +1564,14 @@
     .line 299
     iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mAvatarView:Landroid/widget/QuickContactBadge;
 
-    invoke-virtual {v0, v1}, Landroid/view/ViewGroup;->addView(Landroid/view/View;)V
+    invoke-static {v0, v1}, Lcom/android/mms/ui/WaveInboxUi;->ensureSingleAvatarChild(Landroid/view/ViewGroup;Landroid/view/View;)V
 
     goto :goto_0
 
     .line 301
     :cond_3
+    invoke-virtual {v0}, Landroid/view/ViewGroup;->removeAllViews()V
+
     invoke-direct {p0, v0}, Lcom/android/mms/ui/ConversationListItem;->setGroupAvatar(Landroid/view/ViewGroup;)V
 
     goto :goto_0
@@ -1600,18 +1599,7 @@
 
     .line 588
     :goto_0
-    iget-object v1, p0, Lcom/android/mms/ui/ConversationListItem;->mContext:Landroid/content/Context;
-
-    invoke-virtual {v1}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-
-    move-result-object v1
-
-    invoke-virtual {v1, v0}, Landroid/content/res/Resources;->getDrawable(I)Landroid/graphics/drawable/Drawable;
-
-    move-result-object v0
-
-    .line 589
-    invoke-virtual {p0, v0}, Lcom/android/mms/ui/ConversationListItem;->setBackground(Landroid/graphics/drawable/Drawable;)V
+    invoke-static {p0, v0}, Lcom/android/mms/ui/WaveInboxUi;->updateBackground(Lcom/android/mms/ui/ConversationListItem;I)V
 
     .line 590
     return-void

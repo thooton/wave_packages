@@ -46,6 +46,7 @@ public final class WaveInboxUi {
         final TextView attachInfoTv;
         final TextView attachStatusTv;
         long threadId = -1;
+        int bgResId;
         boolean styledItalic;
 
         Holder(ConversationListItem row) {
@@ -53,6 +54,27 @@ public final class WaveInboxUi {
             attachInfoTv = (TextView) row.findViewById(ID_ATTACH_INFO);
             attachStatusTv = (TextView) row.findViewById(ID_ATTACH_STATUS);
         }
+    }
+
+    /** Skip Resources.getDrawable() + setBackground() when the row's background state is unchanged. */
+    public static void updateBackground(ConversationListItem row, int resId) {
+        if (row == null) return;
+        Holder h = (Holder) row.getTag(TAG_HOLDER);
+        if (h == null) {
+            h = new Holder(row);
+            row.setTag(TAG_HOLDER, h);
+        }
+        if (h.bgResId == resId) return;
+        h.bgResId = resId;
+        row.setBackground(row.getContext().getResources().getDrawable(resId));
+    }
+
+    /** Ensure avatar is the sole child of container without detaching/reattaching on every bind. */
+    public static void ensureSingleAvatarChild(android.view.ViewGroup container, android.view.View avatar) {
+        if (container == null || avatar == null) return;
+        if (container.getChildCount() == 1 && container.getChildAt(0) == avatar) return;
+        container.removeAllViews();
+        container.addView(avatar);
     }
 
     private WaveInboxUi() {}

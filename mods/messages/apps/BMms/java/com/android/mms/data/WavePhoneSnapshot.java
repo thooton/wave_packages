@@ -34,6 +34,23 @@ public final class WavePhoneSnapshot {
         generation.incrementAndGet();
     }
 
+    /** Background startup prefetch so ContactsProvider I/O overlaps MmsApp and Activity setup. */
+    public static void primeAsync(Context context) {
+        if (attempted == generation.get()) return;
+        final Context app = context.getApplicationContext();
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    prime(app);
+                } catch (Throwable ignored) {}
+            }
+        }, "wave-phone-snap");
+        t.setDaemon(true);
+        t.setPriority(Thread.MAX_PRIORITY - 1);
+        t.start();
+    }
+
     /** Start-up reads one cursor before stock conversation resolution begins. */
     public static synchronized void prime(Context context) {
         int version = generation.get();
@@ -60,6 +77,10 @@ public final class WavePhoneSnapshot {
                 bucket.add(new Entry(number, fields));
                 rows++;
             }
+        } catch (SecurityException e) {
+            // Permissions not granted yet; allow retry once granted.
+            attempted = -1;
+            return;
         } catch (RuntimeException e) {
             // A stock provider rejects our projection. Preserve the normal lookup path.
             if (Log.isLoggable(TAG, Log.DEBUG)) Log.d(TAG, "snapshot unavailable");

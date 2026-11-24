@@ -112,7 +112,18 @@ public final class WaveMessageUi {
     // (MmsConfig.mZoomMessage is a constant true on this build).
     private static final String PREF_ZOOM_MESSAGE = "pref_key_zoom_message";
     private static final float STOCK_BODY_SP = 14f;
-    private static SharedPreferences sPrefs;
+    private static volatile SharedPreferences sPrefs;
+    private static volatile int sCachedBodySp = -1;
+    private static final SharedPreferences.OnSharedPreferenceChangeListener sZoomListener =
+            new SharedPreferences.OnSharedPreferenceChangeListener() {
+                @Override
+                public void onSharedPreferenceChanged(SharedPreferences sp, String key) {
+                    if (PREF_ZOOM_MESSAGE.equals(key)) {
+                        int spVal = (int) sp.getFloat(PREF_ZOOM_MESSAGE, STOCK_BODY_SP);
+                        sCachedBodySp = spVal > 0 ? spVal : (int) STOCK_BODY_SP;
+                    }
+                }
+            };
 
     private static final String UNSENT_TEXT = "This message was unsent";
     private static final String EDITED_SUFFIX = " (edited)";
@@ -601,17 +612,32 @@ public final class WaveMessageUi {
      * bind() (async media / PDU callbacks) end up identical.
      */
     private static int bodyTextSp(Context ctx) {
+        int cached = sCachedBodySp;
+        if (cached > 0) return cached;
         try {
             SharedPreferences p = sPrefs;
             if (p == null) {
                 p = PreferenceManager.getDefaultSharedPreferences(ctx.getApplicationContext());
+                p.registerOnSharedPreferenceChangeListener(sZoomListener);
                 sPrefs = p;
             }
             int sp = (int) p.getFloat(PREF_ZOOM_MESSAGE, STOCK_BODY_SP);
-            return sp > 0 ? sp : (int) STOCK_BODY_SP;
+            int val = sp > 0 ? sp : (int) STOCK_BODY_SP;
+            sCachedBodySp = val;
+            return val;
         } catch (Throwable t) {
             return (int) STOCK_BODY_SP;
         }
+    }
+
+    /** Fast cached replacement for stock MessageListItem.bind() zoom text size update. */
+    public static void applyZoomTextSize(Context ctx, TextView bodyTv, TextView subjectTv) {
+        if (ctx == null) return;
+        int bodySp = bodyTextSp(ctx);
+        float expectedPx = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP, bodySp, ctx.getResources().getDisplayMetrics());
+        ensureBodyTextSize(bodyTv, bodySp, expectedPx);
+        ensureBodyTextSize(subjectTv, bodySp, expectedPx);
     }
 
     /**

@@ -18,6 +18,7 @@ public final class WaveHistory {
     private final ComposeMessageActivity activity;
     private final ListView list;
     private long thread;
+    private long earlyQueryThread = -1;
     private boolean keepFocus, firstRowsMeasured, opened;
     private BottomAlignment bottomAlignment;
     private WaveConversationReveal reveal;
@@ -47,6 +48,23 @@ public final class WaveHistory {
             h.reveal.close();
             h.reveal = null;
         }
+    }
+
+    /** Record that ComposeMessageActivity.initialize() already started the history query. */
+    public static boolean markEarlyQuery(ComposeMessageActivity activity, long threadId) {
+        WaveHistory h = (WaveHistory) activity.mWaveHistory;
+        if (h == null || threadId <= 0) return false;
+        h.earlyQueryThread = threadId;
+        return true;
+    }
+
+    /** Consume the early-query marker in loadMessageContent() so onStart() does not query twice. */
+    public static boolean consumeEarlyQuery(ComposeMessageActivity activity, long threadId) {
+        WaveHistory h = (WaveHistory) activity.mWaveHistory;
+        if (h == null) return false;
+        boolean matched = h.earlyQueryThread > 0 && h.earlyQueryThread == threadId;
+        h.earlyQueryThread = -1;
+        return matched;
     }
 
     public static Uri queryUri(ComposeMessageActivity activity, int token, Uri uri) {

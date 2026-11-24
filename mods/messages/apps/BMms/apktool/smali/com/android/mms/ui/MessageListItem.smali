@@ -931,11 +931,9 @@
     :cond_6
     if-eqz v0, :cond_8
 
-    # PERF(inline text): a nonempty inline body is immediately set again by the stock
-    # non-RCS branch. Let that final TextView bind linkify the body once.
-    iget-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mMessageItem:Lcom/android/mms/ui/MessageItem;
-    iget-boolean v1, v1, Lcom/android/mms/ui/MessageItem;->mWaveTextReady:Z
-    if-eqz v1, :wave_stock_body
+    # PERF(inline text): a nonempty non-RCS body is immediately set again by :cond_1a below.
+    # Skip building mBodyTextSpannable + double Linkify (including MAP_ADDRESSES) + double setText
+    # for ALL non-RCS messages (SMS and MMS), letting RowTextView linkify once.
     invoke-static {}, Lcom/android/mms/MmsConfig;->isRcsVersion()Z
     move-result v1
     if-nez v1, :wave_stock_body
@@ -7419,40 +7417,15 @@
     if-eqz v0, :cond_1
 
     .line 367
+    # PERF: cached pref_key_zoom_message + pixel-delta check avoids SharedPreferences lock
+    # and redundant TextView.setTextSize() layout invalidation on every row bind.
     iget-object v0, p0, Lcom/android/mms/ui/MessageListItem;->mContext:Landroid/content/Context;
 
-    invoke-static {v0}, Landroid/preference/PreferenceManager;->getDefaultSharedPreferences(Landroid/content/Context;)Landroid/content/SharedPreferences;
-
-    move-result-object v0
-
-    .line 368
-    const-string/jumbo v1, "pref_key_zoom_message"
-
-    .line 369
-    const/high16 v2, 0x41600000    # 14.0f
-
-    .line 368
-    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getFloat(Ljava/lang/String;F)F
-
-    move-result v0
-
-    .line 370
     iget-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mBodyTextView:Landroid/widget/TextView;
 
-    float-to-int v2, v0
+    iget-object v2, p0, Lcom/android/mms/ui/MessageListItem;->mSubjectTextView:Landroid/widget/TextView;
 
-    int-to-float v2, v2
-
-    invoke-virtual {v1, v2}, Landroid/widget/TextView;->setTextSize(F)V
-
-    .line 371
-    iget-object v1, p0, Lcom/android/mms/ui/MessageListItem;->mSubjectTextView:Landroid/widget/TextView;
-
-    float-to-int v0, v0
-
-    int-to-float v0, v0
-
-    invoke-virtual {v1, v0}, Landroid/widget/TextView;->setTextSize(F)V
+    invoke-static {v0, v1, v2}, Lcom/android/mms/ui/WaveMessageUi;->applyZoomTextSize(Landroid/content/Context;Landroid/widget/TextView;Landroid/widget/TextView;)V
 
     .line 374
     :cond_1

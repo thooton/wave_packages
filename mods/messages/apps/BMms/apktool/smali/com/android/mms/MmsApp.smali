@@ -345,8 +345,8 @@
 
     invoke-static {v0}, Lcom/android/mms/util/DraftCache;->init(Landroid/content/Context;)V
 
-    # PERF(phone map): synchronously load the compact phone index before any inbox rows.
-    invoke-static {v0}, Lcom/android/mms/data/WavePhoneSnapshot;->prime(Landroid/content/Context;)V
+    # PERF(phone map): start compact phone snapshot asynchronously so it overlaps MmsApp/Activity init.
+    invoke-static {v0}, Lcom/android/mms/data/WavePhoneSnapshot;->primeAsync(Landroid/content/Context;)V
 
     # PERF(inbox warmup): resolve all conversation recipients on the stock background
     # worker so scrolling does not have to discover every name on demand.
@@ -357,7 +357,7 @@
 
     move-result-object v0
 
-    invoke-direct {v0}, Lcom/android/mms/MmsApp;->activePendingMessages()V
+    invoke-static {v0}, Lcom/android/mms/wave/WaveInit;->deferActivePending(Landroid/content/Context;)V
 
     .line 134
     invoke-direct {p0}, Lcom/android/mms/MmsApp;->registerMobileDataObserver()V
@@ -400,6 +400,9 @@
 
     .line 75
     invoke-super {p0}, Landroid/app/Application;->onCreate()V
+
+    # PERF(phone map): start reading the compact phone map immediately in parallel with MmsApp init.
+    invoke-static {p0}, Lcom/android/mms/data/WavePhoneSnapshot;->primeAsync(Landroid/content/Context;)V
 
     .line 77
     const-string/jumbo v0, "Mms"
@@ -565,20 +568,10 @@
 
     .line 122
     :goto_1
-    invoke-virtual {p0}, Lcom/android/mms/MmsApp;->getPackageManager()Landroid/content/pm/PackageManager;
-
-    move-result-object v2
-
-    .line 123
-    new-instance v3, Landroid/content/ComponentName;
-
-    .line 124
+    # PERF: avoid synchronous PackageManager Binder IPC / XML rewrite on every cold start.
     const-class v4, Lcom/android/mms/transaction/MmsNoConfirmationSendActivity;
 
-    .line 123
-    invoke-direct {v3, p0, v4}, Landroid/content/ComponentName;-><init>(Landroid/content/Context;Ljava/lang/Class;)V
-
-    invoke-virtual {v2, v3, v0, v1}, Landroid/content/pm/PackageManager;->setComponentEnabledSetting(Landroid/content/ComponentName;II)V
+    invoke-static {p0, v4, v0}, Lcom/android/mms/wave/WaveInit;->applyComponentStateAsync(Landroid/content/Context;Ljava/lang/Class;I)V
 
     # FEAT(wave): Messages Improved startup (pref migration, held-MMS sweep, RCS)
     invoke-static {p0}, Lcom/android/mms/wave/WaveInit;->onAppCreate(Landroid/app/Application;)V
