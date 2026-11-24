@@ -13077,7 +13077,7 @@
 
     const v1, 0x7f040009
 
-    invoke-virtual {v0, v1, v2}, Landroid/view/LayoutInflater;->inflate(ILandroid/view/ViewGroup;)Landroid/view/View;
+    invoke-static {v0, v1}, Lcom/android/mms/ui/WaveRowPool;->obtainComposeRoot(Landroid/view/LayoutInflater;I)Landroid/view/View;
 
     move-result-object v0
 

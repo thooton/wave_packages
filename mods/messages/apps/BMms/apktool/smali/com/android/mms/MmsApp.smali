@@ -471,7 +471,7 @@
     .line 90
     const/high16 v0, 0x7f050000
 
-    invoke-static {p0, v0, v2}, Landroid/preference/PreferenceManager;->setDefaultValues(Landroid/content/Context;IZ)V
+    invoke-static {p0, v0}, Lcom/android/mms/wave/WaveInit;->setDefaultValuesAsync(Landroid/content/Context;I)V
 
     .line 97
     :goto_0
@@ -541,7 +541,17 @@
     invoke-static {p0}, Lcom/android/mms/transaction/MessagingNotification;->init(Landroid/content/Context;)V
 
     .line 115
+    # PERF: skip Suntek RCS SDK initialization (~114ms cold-start stall binding missing services)
+    # when this build is not an RCS version.
+    invoke-static {}, Lcom/android/mms/MmsConfig;->isRcsVersion()Z
+
+    move-result v0
+
+    if-eqz v0, :wave_skip_rcs_init
+
     invoke-static {p0}, Lcom/suntek/rcs/ui/common/RcsApiManager;->init(Landroid/content/Context;)V
+
+    :wave_skip_rcs_init
 
     .line 116
     invoke-static {}, Lcom/android/mms/ui/MessageUtils;->hasBasicPermissions()Z

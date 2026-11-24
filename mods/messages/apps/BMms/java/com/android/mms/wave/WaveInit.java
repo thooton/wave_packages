@@ -61,6 +61,21 @@ public final class WaveInit {
         return enabled;
     }
 
+    /** Run PreferenceManager.setDefaultValues off the main thread during cold startup. */
+    public static void setDefaultValuesAsync(final Context c, final int xmlResId) {
+        final Context app = c.getApplicationContext();
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    PreferenceManager.setDefaultValues(app, xmlResId, false);
+                } catch (Throwable ignored) {}
+            }
+        }, "wave-def-prefs");
+        t.setDaemon(true);
+        t.start();
+    }
+
     /** Run PackageManager.setComponentEnabledSetting off the main thread, only if state differs. */
     public static void applyComponentStateAsync(final Context c, final Class<?> cls, final int state) {
         final Context app = c.getApplicationContext();

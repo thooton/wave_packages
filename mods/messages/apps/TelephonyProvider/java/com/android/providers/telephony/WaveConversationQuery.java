@@ -152,6 +152,11 @@ public final class WaveConversationQuery {
                 db.endTransaction();
             }
         }
+        try {
+            db.execSQL("CREATE INDEX IF NOT EXISTS wave_threads_notif_date ON threads(notification,date DESC)");
+        } catch (SQLiteException ignored) {
+            // Minimal test schemas omit threads; real mmssms.db gets the inbox sort/filter index.
+        }
         READY.put(db, true);
     }
 
