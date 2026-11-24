@@ -38,6 +38,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
@@ -113,9 +114,22 @@ public final class WaveAttachmentViewer {
     // Active media views/players
     private ZoomPhotoView photoView;
     private GifView gifView;
+    private FrameLayout videoPreviewBox;
+    private Bitmap videoThumbBmp;
+    private FrameLayout videoPlayerBox;
     private VideoView videoView;
     private View videoPauseOverlay;
     private SonimProgressView videoProgress;
+    private boolean videoFullscreen = false;
+
+    private final Runnable hideVideoScrubber = new Runnable() {
+        @Override
+        public void run() {
+            if (videoFullscreen && videoView != null && videoView.isPlaying() && videoProgress != null) {
+                videoProgress.setVisibility(View.GONE);
+            }
+        }
+    };
 
     private MediaPlayer audioPlayer;
     private SonimProgressView audioProgress;
@@ -559,29 +573,82 @@ public final class WaveAttachmentViewer {
         });
     }
 
-    // --- Video viewer (Sonim white backdrop + white-ring Play icon + red progress bar) ---
+    // --- Video viewer (Sonim preview on open, no auto-play; OK plays full-screen) ---
 
-    private void showVideo(PartItem item) {
+    private void showVideo(final PartItem item) {
+        FrameLayout preview = new FrameLayout(act);
+        preview.setBackgroundColor(COLOR_BG);
+        videoPreviewBox = preview;
+
+        final ImageView thumbIv = new ImageView(act);
+        thumbIv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        FrameLayout.LayoutParams tlp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
+                Gravity.CENTER);
+        tlp.setMargins(dp(12), dp(8), dp(12), dp(8));
+        preview.addView(thumbIv, tlp);
+
+        SonimPlayRingView playRing = new SonimPlayRingView(act);
+        preview.addView(playRing, new FrameLayout.LayoutParams(dp(44), dp(44), Gravity.CENTER));
+        preview.setOnClickListener(v -> startVideoFullscreen(item));
+
+        contentHost.addView(preview, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        final int expectedIdx = currentIndex;
+        IO_EXEC.execute(() -> {
+            Bitmap frame = null;
+            MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+            try {
+                mmr.setDataSource(act, item.uri);
+                frame = mmr.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+            } catch (Throwable ignored) {
+            } finally {
+                try { mmr.release(); } catch (Throwable ignored) {}
+            }
+            final Bitmap loaded = frame;
+            main.post(() -> {
+                if (destroyed || currentIndex != expectedIdx || videoPreviewBox != preview) {
+                    if (loaded != null && !loaded.isRecycled()) loaded.recycle();
+                    return;
+                }
+                if (loaded != null && !loaded.isRecycled()) {
+                    videoThumbBmp = loaded;
+                    thumbIv.setImageBitmap(loaded);
+                }
+            });
+        });
+    }
+
+    private void startVideoFullscreen(PartItem item) {
+        if (item == null || destroyed) return;
+        videoFullscreen = true;
+        setStatusBar(Color.BLACK);
+        root.setBackgroundColor(Color.BLACK);
+        contentHost.setBackgroundColor(Color.BLACK);
+        bottomSection.setVisibility(View.GONE);
+        captionTv.setVisibility(View.GONE);
+        if (videoPreviewBox != null) videoPreviewBox.setVisibility(View.GONE);
+
         FrameLayout box = new FrameLayout(act);
-        box.setBackgroundColor(COLOR_BG);
+        box.setBackgroundColor(Color.BLACK);
+        videoPlayerBox = box;
 
         VideoView vv = new VideoView(act);
         videoView = vv;
-        FrameLayout.LayoutParams vlp = new FrameLayout.LayoutParams(
+        box.addView(vv, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
-                Gravity.CENTER);
-        vlp.setMargins(dp(12), dp(8), dp(12), dp(14));
-        box.addView(vv, vlp);
+                Gravity.CENTER));
 
-        SonimPlayRingView playRing = new SonimPlayRingView(act);
-        playRing.setVisibility(View.VISIBLE);
-        videoPauseOverlay = playRing;
-        box.addView(playRing, new FrameLayout.LayoutParams(dp(44), dp(44), Gravity.CENTER));
+        SonimPlayRingView pauseRing = new SonimPlayRingView(act);
+        pauseRing.setVisibility(View.GONE);
+        videoPauseOverlay = pauseRing;
+        box.addView(pauseRing, new FrameLayout.LayoutParams(dp(46), dp(46), Gravity.CENTER));
 
         videoProgress = new SonimProgressView(act);
         FrameLayout.LayoutParams plp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(6), Gravity.BOTTOM);
-        plp.setMargins(dp(12), 0, dp(12), dp(4));
+        plp.setMargins(dp(10), 0, dp(10), dp(8));
         box.addView(videoProgress, plp);
 
         contentHost.addView(box, new FrameLayout.LayoutParams(
@@ -589,33 +656,72 @@ public final class WaveAttachmentViewer {
 
         vv.setVideoURI(item.uri);
         vv.setOnPreparedListener(mp -> {
-            if (destroyed) return;
-            // Show first frame cleanly and auto-play on open
+            if (destroyed || !videoFullscreen || videoView != vv) return;
             vv.start();
             if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.GONE);
             main.removeCallbacks(progressTick);
             main.post(progressTick);
+            scheduleScrubberHide();
         });
         vv.setOnCompletionListener(mp -> {
-            if (videoProgress != null) videoProgress.setProgress(1f);
+            if (videoProgress != null) {
+                videoProgress.setProgress(1f);
+                videoProgress.setVisibility(View.VISIBLE);
+            }
+            main.removeCallbacks(hideVideoScrubber);
             if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.VISIBLE);
         });
         vv.setOnErrorListener((mp, what, extra) -> {
-            showErrorLabel("Couldn't play video");
+            exitVideoFullscreen();
+            Toast.makeText(act, "Couldn't play video", Toast.LENGTH_SHORT).show();
             return true;
         });
     }
 
-    private void toggleVideoPlayPause() {
-        if (videoView == null) return;
+    private void exitVideoFullscreen() {
+        main.removeCallbacks(progressTick);
+        main.removeCallbacks(hideVideoScrubber);
+        videoFullscreen = false;
+        if (videoView != null) {
+            try { videoView.stopPlayback(); } catch (Throwable ignored) {}
+            videoView = null;
+        }
+        if (videoPlayerBox != null) {
+            contentHost.removeView(videoPlayerBox);
+            videoPlayerBox = null;
+        }
+        videoPauseOverlay = null;
+        videoProgress = null;
+        setStatusBar(COLOR_STATUS_BAR);
+        root.setBackgroundColor(COLOR_BG);
+        contentHost.setBackgroundColor(COLOR_BG);
+        if (videoPreviewBox != null) videoPreviewBox.setVisibility(View.VISIBLE);
+        bottomSection.setVisibility(View.VISIBLE);
+        captionTv.setVisibility(captionText.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    private void scheduleScrubberHide() {
+        main.removeCallbacks(hideVideoScrubber);
+        if (videoProgress != null) videoProgress.setVisibility(View.VISIBLE);
+        main.postDelayed(hideVideoScrubber, 2200);
+    }
+
+    private void toggleVideoPlayPause(PartItem item) {
+        if (!videoFullscreen || videoView == null) {
+            startVideoFullscreen(item);
+            return;
+        }
         if (videoView.isPlaying()) {
             videoView.pause();
+            main.removeCallbacks(hideVideoScrubber);
+            if (videoProgress != null) videoProgress.setVisibility(View.VISIBLE);
             if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.VISIBLE);
         } else {
             videoView.start();
             if (videoPauseOverlay != null) videoPauseOverlay.setVisibility(View.GONE);
             main.removeCallbacks(progressTick);
             main.post(progressTick);
+            scheduleScrubberHide();
         }
     }
 
@@ -888,18 +994,20 @@ public final class WaveAttachmentViewer {
             }
         }
 
-        if (cur.kind == PartItem.Kind.VIDEO && videoView != null) {
+        if (cur.kind == PartItem.Kind.VIDEO) {
             if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER) {
-                toggleVideoPlayPause();
+                toggleVideoPlayPause(cur);
                 return true;
             }
-            if (parts.size() == 1 && (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT)) {
+            if (videoFullscreen && videoView != null
+                    && (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT)) {
                 int dur = videoView.getDuration();
                 if (dur > 0) {
                     int pos = videoView.getCurrentPosition()
                             + (key == KeyEvent.KEYCODE_DPAD_RIGHT ? 5000 : -5000);
                     videoView.seekTo(Math.max(0, Math.min(dur, pos)));
                     updateMediaProgress();
+                    scheduleScrubberHide();
                 }
                 return true;
             }
@@ -932,6 +1040,10 @@ public final class WaveAttachmentViewer {
     }
 
     private boolean handleBack() {
+        if (videoFullscreen) {
+            exitVideoFullscreen();
+            return true;
+        }
         if (photoView != null && photoView.isZoomed()) {
             setZoomed(false);
             return true;
@@ -960,8 +1072,9 @@ public final class WaveAttachmentViewer {
 
         if (cur.kind == PartItem.Kind.IMAGE && photoView != null) {
             menu.add(0, MENU_ZOOM, 0, photoView.isZoomed() ? "Fit to screen" : "Zoom in");
-        } else if (cur.kind == PartItem.Kind.VIDEO && videoView != null) {
-            menu.add(0, MENU_PLAY_PAUSE, 0, videoView.isPlaying() ? "Pause" : "Play");
+        } else if (cur.kind == PartItem.Kind.VIDEO) {
+            boolean playing = videoFullscreen && videoView != null && videoView.isPlaying();
+            menu.add(0, MENU_PLAY_PAUSE, 0, playing ? "Pause" : "Play");
         } else if (cur.kind == PartItem.Kind.AUDIO && audioPlayer != null && audioPrepared) {
             menu.add(0, MENU_PLAY_PAUSE, 0, audioPlayer.isPlaying() ? "Pause" : "Play");
         }
@@ -983,7 +1096,7 @@ public final class WaveAttachmentViewer {
                 togglePhotoZoom();
                 return true;
             case MENU_PLAY_PAUSE:
-                if (cur.kind == PartItem.Kind.VIDEO) toggleVideoPlayPause();
+                if (cur.kind == PartItem.Kind.VIDEO) toggleVideoPlayPause(cur);
                 else if (cur.kind == PartItem.Kind.AUDIO) toggleAudioPlayPause();
                 return true;
             case MENU_SAVE:
@@ -1055,12 +1168,23 @@ public final class WaveAttachmentViewer {
 
     private void stopActiveMedia() {
         main.removeCallbacks(progressTick);
+        main.removeCallbacks(hideVideoScrubber);
+        videoFullscreen = false;
         if (videoView != null) {
             try { videoView.stopPlayback(); } catch (Throwable ignored) {}
             videoView = null;
         }
+        videoPlayerBox = null;
+        videoPreviewBox = null;
+        if (videoThumbBmp != null && !videoThumbBmp.isRecycled()) {
+            videoThumbBmp.recycle();
+        }
+        videoThumbBmp = null;
         videoPauseOverlay = null;
         videoProgress = null;
+        if (root != null) root.setBackgroundColor(COLOR_BG);
+        if (contentHost != null) contentHost.setBackgroundColor(COLOR_BG);
+        setStatusBar(COLOR_STATUS_BAR);
         if (audioPlayer != null) {
             try { audioPlayer.stop(); } catch (Throwable ignored) {}
             try { audioPlayer.release(); } catch (Throwable ignored) {}
