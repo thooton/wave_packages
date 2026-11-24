@@ -378,6 +378,28 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
      * (not an iMessage, or a plain one). Cheap enough for every bind: rows without flags or a
      * reply cost a set lookup.
      */
+    private static final java.util.concurrent.atomic.AtomicBoolean WARM_STARTED =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    /** Warm wave_imessage.db infoKeys & tapback reactedKeys off the main thread during cold launch. */
+    public static void warmUiCachesAsync(Context c) {
+        if (c == null || !WARM_STARTED.compareAndSet(false, true)) return;
+        final Context app = c.getApplicationContext();
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    WaveIMessageDb db = get(app);
+                    db.ensureInfoKeys();
+                    com.android.mms.ui.WaveTapbacks.warmCache(app);
+                } catch (Throwable ignored) {}
+            }
+        }, "wave-imsg-warm");
+        t.setDaemon(true);
+        t.setPriority(Thread.NORM_PRIORITY);
+        t.start();
+    }
+
     public Info infoForUri(Uri uri) {
         if (uri == null) return null;
         String k = key(uri);

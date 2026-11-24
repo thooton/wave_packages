@@ -26527,6 +26527,9 @@
     # PERF(row pool): pre-inflate message rows off-main in parallel with onCreate/onStart/onResume.
     invoke-static {p0}, Lcom/android/mms/ui/WaveRowPool;->prewarmMessages(Landroid/content/Context;)V
 
+    # PERF(imessage): warm wave_imessage.db UI caches off-main before first row binds.
+    invoke-static {p0}, Lcom/android/mms/wave/WaveIMessageDb;->warmUiCachesAsync(Landroid/content/Context;)V
+
     .line 3026
     invoke-static {p0}, Lcom/android/mms/MmsConfig;->isSmsEnabled(Landroid/content/Context;)Z
 

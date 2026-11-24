@@ -161,8 +161,9 @@ public final class WaveComposePerf {
         }
     }
 
-    /** Replaces the framework's WebView-backed street detection for conversation rows only. */
+    /** Replaces the framework's WebView-backed street detection and skips Linkify on plain text. */
     public static class RowTextView extends TextView {
+        private int baseLinkMask = -1;
         private boolean linkStreets;
 
         public RowTextView(Context c, AttributeSet a) {
@@ -171,12 +172,56 @@ public final class WaveComposePerf {
 
         @Override
         public void setText(CharSequence text, BufferType type) {
-            int mask = getAutoLinkMask(); // Also called by the TextView constructor.
-            if ((mask & Linkify.MAP_ADDRESSES) != 0) {
-                linkStreets = true;
-                setAutoLinkMask(mask & ~Linkify.MAP_ADDRESSES);
+            if (baseLinkMask < 0) {
+                int mask = getAutoLinkMask(); // Also called by the TextView constructor.
+                if ((mask & Linkify.MAP_ADDRESSES) != 0) {
+                    linkStreets = true;
+                    mask &= ~Linkify.MAP_ADDRESSES;
+                }
+                baseLinkMask = mask;
             }
-            Matcher addresses = linkStreets && !TextUtils.isEmpty(text)
+            if ((baseLinkMask == 0 && !linkStreets) || TextUtils.isEmpty(text)) {
+                if (getAutoLinkMask() != 0) setAutoLinkMask(0);
+                super.setText(text, type);
+                return;
+            }
+
+            // Single-pass ASCII character scan: ~85-95% of normal chat messages cannot contain
+            // URLs, emails, phone numbers, or street addresses, so skip Linkify & PhoneNumberUtil.
+            boolean hasDotOrColon = false;
+            boolean hasAt = false;
+            boolean hasNonAscii = false;
+            int digits = 0;
+            for (int i = 0, len = text.length(); i < len; i++) {
+                char ch = text.charAt(i);
+                if (ch >= 0x80) {
+                    hasNonAscii = true;
+                    break;
+                }
+                if (ch >= '0' && ch <= '9') {
+                    digits++;
+                } else if (ch == '.' || ch == ':') {
+                    hasDotOrColon = true;
+                } else if (ch == '@') {
+                    hasAt = true;
+                }
+            }
+
+            int effectiveMask = 0;
+            if ((baseLinkMask & Linkify.WEB_URLS) != 0 && (hasDotOrColon || hasNonAscii)) {
+                effectiveMask |= Linkify.WEB_URLS;
+            }
+            if ((baseLinkMask & Linkify.EMAIL_ADDRESSES) != 0 && hasAt && (hasDotOrColon || hasNonAscii)) {
+                effectiveMask |= Linkify.EMAIL_ADDRESSES;
+            }
+            if ((baseLinkMask & Linkify.PHONE_NUMBERS) != 0 && (digits >= 5 || hasNonAscii)) {
+                effectiveMask |= Linkify.PHONE_NUMBERS;
+            }
+            if (getAutoLinkMask() != effectiveMask) {
+                setAutoLinkMask(effectiveMask);
+            }
+
+            Matcher addresses = (linkStreets && (digits > 0 || hasNonAscii))
                     ? WaveStreetAddress.matches(text) : null;
             if (addresses == null || !addresses.find()) {
                 super.setText(text, type);

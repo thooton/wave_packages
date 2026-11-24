@@ -1183,8 +1183,13 @@
     invoke-static {p0}, Lcom/android/mms/ui/WaveTapbacks;->onBind(Lcom/android/mms/ui/MessageListItem;)V
 
     .line 869
+    # PERF: during ListView.obtainView() (sameItem == false), ListView measures & lays out
+    # the row immediately anyway; only requestLayout() on in-place async rebinds (sameItem == true).
+    if-eqz p1, :wave_skip_req_layout
+
     invoke-virtual {p0}, Lcom/android/mms/ui/MessageListItem;->requestLayout()V
 
+    :wave_skip_req_layout
     .line 870
     return-void
 
@@ -4030,17 +4035,18 @@
     .locals 6
 
     .prologue
-    # PERF(inline text): the body is already plain text, unless search needs style spans.
+    # PERF(inline text): ALL plain-text SMS and MMS bodies can return directly without
+    # allocating a SpannableStringBuilder unless search highlighting, dual-SIM, or text/html is used.
     if-nez p5, :wave_stock_format
     if-eqz p2, :wave_stock_format
     iget-boolean v0, p0, Lcom/android/mms/ui/MessageListItem;->mIsMsimIccCardActived:Z
     if-nez v0, :wave_stock_format
-    iget-boolean v0, p1, Lcom/android/mms/ui/MessageItem;->mWaveTextReady:Z
-    if-eqz v0, :wave_stock_format
-    const-string v0, "text/plain"
+    if-eqz p6, :wave_return_plain
+    const-string v0, "text/html"
     invoke-virtual {v0, p6}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
     move-result v0
-    if-eqz v0, :wave_stock_format
+    if-nez v0, :wave_stock_format
+    :wave_return_plain
     return-object p2
 
     :wave_stock_format
