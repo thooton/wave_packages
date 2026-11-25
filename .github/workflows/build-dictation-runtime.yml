@@ -202,7 +202,8 @@ jobs:
             --bench out_armv7/asr4all_bench \
             --bench-unstripped /tmp/build_armv7/asr4all_bench \
             --so out_armv7/libasr4all.so \
-            --so-unstripped /tmp/build_armv7/libasr4all.so
+            --so-unstripped /tmp/build_armv7/libasr4all.so \
+            --obj /tmp/build_armv7/CMakeFiles/asr4all_core.dir/asr4all_runtime.cpp.o
 
       - name: Compute armeabi-v7a sha256sums
         run: |
