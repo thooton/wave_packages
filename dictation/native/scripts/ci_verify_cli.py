@@ -24,14 +24,25 @@ def main() -> None:
         default="off",
         help="Comma-separated asr4all_bench --feedback modes to check (off,copy,resident)",
     )
+    ap.add_argument(
+        "--expect-resident-pairs",
+        default="",
+        help="tier=N,... exact feedback_resident_pairs for every tier in resident mode",
+    )
     args = ap.parse_args()
     modes = [m for m in args.feedback_modes.split(",") if m]
+    expect_resident = {
+        k: int(v) for k, v in (item.split("=", 1) for item in args.expect_resident_pairs.split(",") if item)
+    }
 
     golden = json.loads(Path(args.golden).read_text())
     wav_dir = Path(args.wav_dir)
     tiers: list[str] = golden["tiers"]
     clips: list[dict] = golden["clips"]
     wav_paths = [str(wav_dir / c["filename"]) for c in clips]
+    if expect_resident and sorted(expect_resident) != sorted(tiers):
+        sys.exit(f"--expect-resident-pairs must list every tier: {sorted(tiers)}")
+    texts: dict[tuple[str, str], list[tuple[str, str]]] = {}
 
     total_checks = 0
     mismatches: list[str] = []
@@ -72,6 +83,11 @@ def main() -> None:
                     assert resident == 2, f"stream_c16r4 resident pairs {resident}, expected 2"
                 if mode != "resident":
                     assert resident == 0, f"[{tier}] feedback {mode} reported {resident} resident pairs"
+                elif expect_resident:
+                    assert resident == expect_resident[tier], (
+                        f"[{tier}] resident pairs {resident}, expected {expect_resident[tier]}"
+                    )
+                texts[(mode, tier)] = [(rc["acoustic_text"], rc["pcec_text"]) for rc in report["clips"]]
 
                 for gc, rc in zip(clips, report["clips"]):
                     exp = gc["transcripts"][tier]
@@ -128,6 +144,25 @@ def main() -> None:
 
     for mode, (checks, bad) in per_mode.items():
         print(f"feedback={mode}: {checks} checks, {bad} mismatches")
+
+    # The modes must also agree with each other exactly, independently of the golden.
+    mode_checks = 0
+    mode_bad = len(mismatches)
+    for mode in modes[1:]:
+        for tier in tiers:
+            for gc, base, other in zip(clips, texts[(modes[0], tier)], texts[(mode, tier)]):
+                for kind, b, o in zip(("ACOUSTIC", "PCEC"), base, other):
+                    mode_checks += 1
+                    if b != o:
+                        mismatches.append(
+                            f"[{tier}] {gc['filename']} {kind} feedback={modes[0]} vs feedback={mode}:\n"
+                            f"  {modes[0]}: {b!r}\n  {mode}: {o!r}"
+                        )
+    if len(modes) > 1:
+        print(
+            f"feedback modes {'=='.join(modes)}: {mode_checks} checks, "
+            f"{len(mismatches) - mode_bad} differences"
+        )
 
     if mismatches:
         print(f"\nFAILED: {len(mismatches)}/{total_checks} transcript mismatches:", file=sys.stderr)

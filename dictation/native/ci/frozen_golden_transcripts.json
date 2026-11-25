@@ -1,0 +1,573 @@
+{
+  "hf_commit": "87a6b5d093723fe37e9f69ad26307a3b95a31af0",
+  "executorch_version": "1.6.0",
+  "pte_sha256": "7d5679688ca57a7e42d4b42e093b7a29b85d595f454d41cf0aa5f95e7c8c27ec",
+  "tiers": [
+    "stream_c16r4",
+    "stream_c32r8",
+    "stream_c64r16",
+    "stream_c512r8"
+  ],
+  "clips": [
+    {
+      "id": "01_ls_clean",
+      "dataset_id": "6930-75918-0000",
+      "source": "ls_clean",
+      "filename": "01_ls_clean_6930-75918-0000.wav",
+      "reference_text": "CONCORD RETURNED TO ITS PLACE AMIDST THE TENTS",
+      "num_samples": 56080,
+      "duration_s": 3.505,
+      "wav_sha256": "fb7da50c0e839fc3b53e4ed0af92bff775ca00602a45ae4cbe3551eb4cca1f5f",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "concord returned to its place amidst the tents",
+          "pcec": "Concord returned to its place amidst the tents."
+        },
+        "stream_c32r8": {
+          "acoustic": "concord returned to its place amidst the tents",
+          "pcec": "Concord returned to its place amidst the tents."
+        },
+        "stream_c64r16": {
+          "acoustic": "concord returned to its place amidst the tents",
+          "pcec": "Concord returned to its place amidst the tents."
+        },
+        "stream_c512r8": {
+          "acoustic": "concord returned to its place amidst the tents",
+          "pcec": "Concord returned to its place amidst the tents."
+        }
+      }
+    },
+    {
+      "id": "02_ls_clean",
+      "dataset_id": "6930-75918-0002",
+      "source": "ls_clean",
+      "filename": "02_ls_clean_6930-75918-0002.wav",
+      "reference_text": "CONGRATULATIONS WERE POURED IN UPON THE PRINCESS EVERYWHERE DURING HER JOURNEY",
+      "num_samples": 80400,
+      "duration_s": 5.025,
+      "wav_sha256": "416168e61e05f77fa9f5fc07d6a1cdc9b2e8acdd69a149c5b2b2db98c7c004ac",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "congratulations were poured in upon the princess everywhere during her journey",
+          "pcec": "Congratulations were poured in upon the princess everywhere during her journey."
+        },
+        "stream_c32r8": {
+          "acoustic": "congratulations were poured in upon the princess everywhere during her journey",
+          "pcec": "Congratulations were poured in upon the princess everywhere during her journey."
+        },
+        "stream_c64r16": {
+          "acoustic": "congratulations were poured in upon the princess everywhere during her journey",
+          "pcec": "Congratulations were poured in upon the princess everywhere during her journey."
+        },
+        "stream_c512r8": {
+          "acoustic": "congratulations were poured in upon the princess everywhere during her journey",
+          "pcec": "Congratulations were poured in upon the princess everywhere during her journey."
+        }
+      }
+    },
+    {
+      "id": "03_ls_clean",
+      "dataset_id": "6930-75918-0006",
+      "source": "ls_clean",
+      "filename": "03_ls_clean_6930-75918-0006.wav",
+      "reference_text": "THIS HAS INDEED BEEN A HARASSING DAY CONTINUED THE YOUNG MAN HIS EYES FIXED UPON HIS FRIEND",
+      "num_samples": 93600,
+      "duration_s": 5.85,
+      "wav_sha256": "30550154b4ef542a9e6858e22c275ca5a8e2e73a1194e4412fcca0c506fd6a2b",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "this has indeed been a harassing day continued the young man his eyes fixed upon his friend",
+          "pcec": "This has indeed been a harassing day, continued the young man, his eyes fixed upon his friend."
+        },
+        "stream_c32r8": {
+          "acoustic": "this has indeed been a harassing day continued the young man his eyes fixed upon his friend",
+          "pcec": "This has indeed been a harassing day, continued the young man, his eyes fixed upon his friend."
+        },
+        "stream_c64r16": {
+          "acoustic": "this has indeed been a harassing day continued the young man his eyes fixed upon his friend",
+          "pcec": "This has indeed been a harassing day, continued the young man, his eyes fixed upon his friend."
+        },
+        "stream_c512r8": {
+          "acoustic": "this has indeed been a harassing day continued the young man his eyes fixed upon his friend",
+          "pcec": "This has indeed been a harassing day, continued the young man, his eyes fixed upon his friend."
+        }
+      }
+    },
+    {
+      "id": "04_ls_clean",
+      "dataset_id": "6930-75918-0007",
+      "source": "ls_clean",
+      "filename": "04_ls_clean_6930-75918-0007.wav",
+      "reference_text": "YOU WILL BE FRANK WITH ME I ALWAYS AM",
+      "num_samples": 53040,
+      "duration_s": 3.315,
+      "wav_sha256": "b0761a3a762f55f22724ec1d4c2963004da7eeb002279fe4c9d53c1fb4d124ae",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "you will be frank with me i always am",
+          "pcec": "You will be frank with me. I always am."
+        },
+        "stream_c32r8": {
+          "acoustic": "you will be frank with me i always am",
+          "pcec": "You will be frank with me. I always am."
+        },
+        "stream_c64r16": {
+          "acoustic": "you will be frank with me i always am",
+          "pcec": "You will be frank with me. I always am."
+        },
+        "stream_c512r8": {
+          "acoustic": "you will be frank with me i always am",
+          "pcec": "You will be frank with me. I always am."
+        }
+      }
+    },
+    {
+      "id": "05_ls_clean",
+      "dataset_id": "6930-75918-0008",
+      "source": "ls_clean",
+      "filename": "05_ls_clean_6930-75918-0008.wav",
+      "reference_text": "CAN YOU IMAGINE WHY BUCKINGHAM HAS BEEN SO VIOLENT I SUSPECT",
+      "num_samples": 76560,
+      "duration_s": 4.785,
+      "wav_sha256": "da32f4dea6e37c86da903574dc1266eaa1467fa0229b5df72dd341de54a4fdd0",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "can you imagine why buckingham has been so violent i suspect",
+          "pcec": "Can you imagine why Buckingham has been so violent? I suspect."
+        },
+        "stream_c32r8": {
+          "acoustic": "can you imagine myy buckingham has been so violent i suspect",
+          "pcec": "Can you imagine why Buckingham has been so violent? I suspect."
+        },
+        "stream_c64r16": {
+          "acoustic": "can you imagine myy buckingham has been so violent i suspect",
+          "pcec": "Can you imagine why Buckingham has been so violent? I suspect."
+        },
+        "stream_c512r8": {
+          "acoustic": "can you imagine why buckingham has been so violent i suspect",
+          "pcec": "Can you imagine why Buckingham has been so violent? I suspect."
+        }
+      }
+    },
+    {
+      "id": "06_ls_clean",
+      "dataset_id": "6930-75918-0009",
+      "source": "ls_clean",
+      "filename": "06_ls_clean_6930-75918-0009.wav",
+      "reference_text": "IT IS YOU WHO ARE MISTAKEN RAOUL I HAVE READ HIS DISTRESS IN HIS EYES IN HIS EVERY GESTURE AND ACTION THE WHOLE DAY",
+      "num_samples": 116480,
+      "duration_s": 7.28,
+      "wav_sha256": "5a639758a85d1f5d08da8ac9405022c839d3d8496ce98ee7b75614ae17a9295c",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "it is youo are mistaken raoul i have read his distress in his eyes in his every gesture and action the whole day",
+          "pcec": "It is you who are mistaken, Raoul. I have read his distress in his eyes, in his every gesture and action the whole day."
+        },
+        "stream_c32r8": {
+          "acoustic": "it is you who are are mistaken raoul i have read his distress in his eyes in his every gesture and action the whole day",
+          "pcec": "It is you who are mistaken, Raoul. I have read his distress in his eyes, in his every gesture and action the whole day."
+        },
+        "stream_c64r16": {
+          "acoustic": "it is you who are are mistaken raoul i have read his distress in his eyes in his every gesture and action the whole day",
+          "pcec": "It is you who are mistaken, Raoul. I have read his distress in his eyes, in his every gesture and action the whole day."
+        },
+        "stream_c512r8": {
+          "acoustic": "it is you who are are mistaken raoul i have read his distress in his eyes in his every gesture and action the whole day",
+          "pcec": "It is you who are mistaken, Raoul. I have read his distress in his eyes, in his every gesture and action the whole day."
+        }
+      }
+    },
+    {
+      "id": "07_ls_clean",
+      "dataset_id": "6930-75918-0010",
+      "source": "ls_clean",
+      "filename": "07_ls_clean_6930-75918-0010.wav",
+      "reference_text": "I CAN PERCEIVE LOVE CLEARLY ENOUGH",
+      "num_samples": 48560,
+      "duration_s": 3.035,
+      "wav_sha256": "756b9ef39bf901465c0395631adbae73155afef9236a39f1da026c7355dcc271",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "i can perceive love clearly enough",
+          "pcec": "I can perceive love clearly enough."
+        },
+        "stream_c32r8": {
+          "acoustic": "i can perceive love clearly enough",
+          "pcec": "I can perceive love clearly enough."
+        },
+        "stream_c64r16": {
+          "acoustic": "i can perceive love clearly enough",
+          "pcec": "I can perceive love clearly enough."
+        },
+        "stream_c512r8": {
+          "acoustic": "i can perceive love clearly enough",
+          "pcec": "I can perceive love clearly enough."
+        }
+      }
+    },
+    {
+      "id": "08_ls_clean",
+      "dataset_id": "6930-75918-0011",
+      "source": "ls_clean",
+      "filename": "08_ls_clean_6930-75918-0011.wav",
+      "reference_text": "I AM CONVINCED OF WHAT I SAY SAID THE COUNT",
+      "num_samples": 51120,
+      "duration_s": 3.195,
+      "wav_sha256": "f8aae22b0a5c797532f4e91ea296ca68c6ac52a6fab9d52d464e566e8959b040",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "i am convinced of what i say said the count",
+          "pcec": "I am convinced of what I say, said the count."
+        },
+        "stream_c32r8": {
+          "acoustic": "i am convinced of what i say said the count",
+          "pcec": "I am convinced of what I say, said the count."
+        },
+        "stream_c64r16": {
+          "acoustic": "i am convinced of what i say said the count",
+          "pcec": "I am convinced of what I say, said the count."
+        },
+        "stream_c512r8": {
+          "acoustic": "i am convinced of what i say said the count",
+          "pcec": "I am convinced of what I say, said the count."
+        }
+      }
+    },
+    {
+      "id": "09_ls_other",
+      "dataset_id": "7902-96591-0000",
+      "source": "ls_other",
+      "filename": "09_ls_other_7902-96591-0000.wav",
+      "reference_text": "I AM FROM THE CUTTER LYING OFF THE COAST",
+      "num_samples": 33520,
+      "duration_s": 2.095,
+      "wav_sha256": "f61bbab3c7e7445dd2437ff31dad160baa67cb8c80d72f7096a4fa956c6a209b",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "i'm from the cutter lying off the coast",
+          "pcec": "I'm from the cutter lying off the coast."
+        },
+        "stream_c32r8": {
+          "acoustic": "im from the cutter lying off the coast",
+          "pcec": "I'm from the cutter lying off the coast."
+        },
+        "stream_c64r16": {
+          "acoustic": "i'm from the cutter lying off the coast",
+          "pcec": "I'm from the cutter lying off the coast."
+        },
+        "stream_c512r8": {
+          "acoustic": "im from the cutter lying off the coast",
+          "pcec": "I'm from the cutter lying off the coast."
+        }
+      }
+    },
+    {
+      "id": "10_ls_other",
+      "dataset_id": "7902-96591-0001",
+      "source": "ls_other",
+      "filename": "10_ls_other_7902-96591-0001.wav",
+      "reference_text": "DON'T CRY HE SAID I WAS OBLIGED TO COME",
+      "num_samples": 40160,
+      "duration_s": 2.51,
+      "wav_sha256": "f5be23fb6f16986ecbd2c3f4abc65a69f2e3566a36b121ea183919f57eaa9254",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "don't cry he said i was obliged to come",
+          "pcec": "Don't cry, he said I was obliged to come."
+        },
+        "stream_c32r8": {
+          "acoustic": "don't cry he said i was obliged to come",
+          "pcec": "Don't cry, he said I was obliged to come."
+        },
+        "stream_c64r16": {
+          "acoustic": "don't cry he said i was obliged to come",
+          "pcec": "Don't cry, he said I was obliged to come."
+        },
+        "stream_c512r8": {
+          "acoustic": "don't cry he said i was obliged to come",
+          "pcec": "Don't cry, he said I was obliged to come."
+        }
+      }
+    },
+    {
+      "id": "11_ls_other",
+      "dataset_id": "7902-96591-0002",
+      "source": "ls_other",
+      "filename": "11_ls_other_7902-96591-0002.wav",
+      "reference_text": "AND AND YOU HAVE NOT FOUND OUT ANYTHING CAME IN QUICK FRIGHTENED TONES",
+      "num_samples": 80320,
+      "duration_s": 5.02,
+      "wav_sha256": "a05c19bd1d752383e482b9348d6c7dd6394a833719c6e58060980f27c40f80a8",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "and and you have not found out anything cim and quick frightened tones",
+          "pcec": "And and you have not found out anything, c and quick frightened tones."
+        },
+        "stream_c32r8": {
+          "acoustic": "and and you have not found out anything cim and quick frightened tones",
+          "pcec": "And and you have not found out anything, c and quick frightened tones."
+        },
+        "stream_c64r16": {
+          "acoustic": "and and you have not found out anything cim in quick frightened tones",
+          "pcec": "And and you have not found out anything coming in quick frightened tones."
+        },
+        "stream_c512r8": {
+          "acoustic": "and and you have not found out anything cim and quick frightened tones",
+          "pcec": "And and you have not found out anything, c and quick frightened tones."
+        }
+      }
+    },
+    {
+      "id": "12_ls_other",
+      "dataset_id": "7902-96591-0003",
+      "source": "ls_other",
+      "filename": "12_ls_other_7902-96591-0003.wav",
+      "reference_text": "I WISH YOU WOULD BELIEVE ME THAT I AM IN AS GREAT TROUBLE ABOUT IT AS YOU ARE",
+      "num_samples": 61280,
+      "duration_s": 3.83,
+      "wav_sha256": "d689769f9eb5c467ab39fbc6631f31023c78a75b743e10e437584aaca4c30d6b",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "i wish you would believe me that i am in as great trouble about it as you are",
+          "pcec": "I wish you would believe me that I am in as great trouble about it as you are."
+        },
+        "stream_c32r8": {
+          "acoustic": "i wish you would believe me that i am in as great trouble about it as you are",
+          "pcec": "I wish you would believe me that I am in as great trouble about it as you are."
+        },
+        "stream_c64r16": {
+          "acoustic": "i wish you would believe me that i am in as great trouble about it as you are",
+          "pcec": "I wish you would believe me that I am in as great trouble about it as you are."
+        },
+        "stream_c512r8": {
+          "acoustic": "i wish you would believe me that i am in as great trouble about it as you are",
+          "pcec": "I wish you would believe me that I am in as great trouble about it as you are."
+        }
+      }
+    },
+    {
+      "id": "13_ls_other",
+      "dataset_id": "7902-96591-0004",
+      "source": "ls_other",
+      "filename": "13_ls_other_7902-96591-0004.wav",
+      "reference_text": "THAT MY FATHER SIR RISDON GRAEME HAS SMUGGLED GOODS HERE",
+      "num_samples": 57680,
+      "duration_s": 3.605,
+      "wav_sha256": "14e9671ec262a629c11109a51f8180d7a8f2d8994f07b9e3a37e005a8fde630c",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "that my father sir risden graham had smuggled goods here",
+          "pcec": "That my father, Sir Risden Graham, had smuggled goods here."
+        },
+        "stream_c32r8": {
+          "acoustic": "that my father sir risden graham has smuggled goods here",
+          "pcec": "That my father, Sir Risden Graham, has smuggled goods here."
+        },
+        "stream_c64r16": {
+          "acoustic": "that my father sir risden graham had smuggled goods here",
+          "pcec": "That my father, Sir Risden Graham, had smuggled goods here."
+        },
+        "stream_c512r8": {
+          "acoustic": "that my father sir risden graham had smuggled goods here",
+          "pcec": "That my father, Sir Risden Graham, had smuggled goods here."
+        }
+      }
+    },
+    {
+      "id": "14_ls_other",
+      "dataset_id": "7902-96591-0005",
+      "source": "ls_other",
+      "filename": "14_ls_other_7902-96591-0005.wav",
+      "reference_text": "HE COULD NOT HELP IT HE HATES THE SMUGGLERS YOU SHALL NOT TELL",
+      "num_samples": 54800,
+      "duration_s": 3.425,
+      "wav_sha256": "d7f48078599a06665bb9848f077b2e248f2ebba594236ebd8a2c9989cde108fc",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "he could not help it he hated the smugglers you shall not tell",
+          "pcec": "He could not help it. He hated the smugglers. You shall not tell."
+        },
+        "stream_c32r8": {
+          "acoustic": "he could not help it he hates the smugglers you shall not tell",
+          "pcec": "He could not help it. He hates the smugglers. You shall not tell."
+        },
+        "stream_c64r16": {
+          "acoustic": "he could not help it he hates the smugglers you shall not tell",
+          "pcec": "He could not help it. He hates the smugglers. You shall not tell."
+        },
+        "stream_c512r8": {
+          "acoustic": "he could not help it he hated the smugglers you shall not tell",
+          "pcec": "He could not help it. He hated the smugglers. You shall not tell."
+        }
+      }
+    },
+    {
+      "id": "15_ami_ihm",
+      "dataset_id": "AMI_EN2002a_H03_MEE071_0085470_0085653",
+      "source": "ami_ihm",
+      "filename": "15_ami_ihm_AMI_EN2002a_H03_MEE071_0085470_0085653.wav",
+      "reference_text": "YEAH THAT'S WHAT WE NEED YEAH",
+      "num_samples": 29280,
+      "duration_s": 1.83,
+      "wav_sha256": "6e49237875e6ba2701c351938a85291150a18197cafe298c07df8e79fcaa2a25",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "yeah that's what we need the",
+          "pcec": "Yeah, that's what we need the."
+        },
+        "stream_c32r8": {
+          "acoustic": "yeah that's what we need the",
+          "pcec": "Yeah, that's what we need the."
+        },
+        "stream_c64r16": {
+          "acoustic": "yeah that's what we need the",
+          "pcec": "Yeah, that's what we need the."
+        },
+        "stream_c512r8": {
+          "acoustic": "yeah that's what we need the",
+          "pcec": "Yeah, that's what we need the."
+        }
+      }
+    },
+    {
+      "id": "16_ami_ihm",
+      "dataset_id": "AMI_EN2002a_H02_FEO072_0159403_0159664",
+      "source": "ami_ihm",
+      "filename": "16_ami_ihm_AMI_EN2002a_H02_FEO072_0159403_0159664.wav",
+      "reference_text": "WE CAN ALWAYS DECIDE THEN I MEAN YEAH",
+      "num_samples": 41760,
+      "duration_s": 2.61,
+      "wav_sha256": "291cc163fc9ea008f78d1d777a834726f7f81723ae9d09a9feac7c069ca2baf4",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "we can always decide then i mean you know",
+          "pcec": "We can always decide then. I mean, you know"
+        },
+        "stream_c32r8": {
+          "acoustic": "we can always decide then i mean you know",
+          "pcec": "We can always decide then. I mean, you know"
+        },
+        "stream_c64r16": {
+          "acoustic": "we can always decide then i mean you know",
+          "pcec": "We can always decide then. I mean, you know."
+        },
+        "stream_c512r8": {
+          "acoustic": "we can always decide then i mean you know",
+          "pcec": "We can always decide then. I mean, you know"
+        }
+      }
+    },
+    {
+      "id": "17_ami_ihm",
+      "dataset_id": "AMI_EN2002a_H03_MEE071_0150042_0150192",
+      "source": "ami_ihm",
+      "filename": "17_ami_ihm_AMI_EN2002a_H03_MEE071_0150042_0150192.wav",
+      "reference_text": "YOU SAW IT YEAH",
+      "num_samples": 24000,
+      "duration_s": 1.5,
+      "wav_sha256": "d6daa4532c55f04ed5e573ddec83de27355aca457f2244a3945c494ed8cd5f69",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "he yeah",
+          "pcec": "Yeah."
+        },
+        "stream_c32r8": {
+          "acoustic": "he yeah",
+          "pcec": "Yeah."
+        },
+        "stream_c64r16": {
+          "acoustic": "he yeah",
+          "pcec": "Yeah."
+        },
+        "stream_c512r8": {
+          "acoustic": "he yeah",
+          "pcec": "Yeah."
+        }
+      }
+    },
+    {
+      "id": "18_ami_ihm",
+      "dataset_id": "AMI_EN2002a_H03_MEE071_0104146_0104463",
+      "source": "ami_ihm",
+      "filename": "18_ami_ihm_AMI_EN2002a_H03_MEE071_0104146_0104463.wav",
+      "reference_text": "SO EVEN IF IT DOESN'T WORK YOU CAN JIGGERY POKERY AROUND AND MAKE IT WORK",
+      "num_samples": 50720,
+      "duration_s": 3.17,
+      "wav_sha256": "9104672e9fb652bc956c44079c190e662c9b70f1e853fd3c12a9a881a5873699",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "so even if it doesn't work you can jiggary p gate around and make it work",
+          "pcec": "So even if it doesn't work, you can jiggary put gate around and make it work."
+        },
+        "stream_c32r8": {
+          "acoustic": "so even if it doesn't work you can jiggary p gate around and make it work",
+          "pcec": "So even if it doesn't work, you can jiggary put gate around and make it work."
+        },
+        "stream_c64r16": {
+          "acoustic": "so even if it doesn't work you can jiggary pu gate around and make it work",
+          "pcec": "So even if it doesn't work, you can jiggary put g around and make it work."
+        },
+        "stream_c512r8": {
+          "acoustic": "so even if it doesn't work you can jiggary p gate around and make it work",
+          "pcec": "So even if it doesn't work, you can jiggary put gate around and make it work."
+        }
+      }
+    },
+    {
+      "id": "19_ami_ihm",
+      "dataset_id": "AMI_EN2002a_H00_MEE073_0208960_0209241",
+      "source": "ami_ihm",
+      "filename": "19_ami_ihm_AMI_EN2002a_H00_MEE073_0208960_0209241.wav",
+      "reference_text": "BUT MOST WILL PROBABLY WANT TO GO WITH DEFAULTS",
+      "num_samples": 44959,
+      "duration_s": 2.8099,
+      "wav_sha256": "0f1c6cced23cac46c239a5898ce930d3807197dfeff292ca10dac49cf2444647",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "but most will probably want to go with the faults",
+          "pcec": "But most will probably want to go with the faults."
+        },
+        "stream_c32r8": {
+          "acoustic": "but most will probably want to go with the faults",
+          "pcec": "But most will probably want to go with the faults."
+        },
+        "stream_c64r16": {
+          "acoustic": "but most will probably want to go with the faults",
+          "pcec": "But most will probably want to go with the faults."
+        },
+        "stream_c512r8": {
+          "acoustic": "but most will probably want to go with de faults",
+          "pcec": "But most will probably want to go with the faults."
+        }
+      }
+    },
+    {
+      "id": "20_ami_ihm",
+      "dataset_id": "AMI_EN2002a_H02_FEO072_0064139_0064653",
+      "source": "ami_ihm",
+      "filename": "20_ami_ihm_AMI_EN2002a_H02_FEO072_0064139_0064653.wav",
+      "reference_text": "YOU OPEN THE WINDOW YOU READ THROUGH IT YOU MIGHT CLICK ON YOU KNOW CLOSE IT AGAIN STRAIGHT AWAY",
+      "num_samples": 82240,
+      "duration_s": 5.14,
+      "wav_sha256": "b1b91bd31a34526102aa5f70e7602a2b5c5d2b822df24dc20b23922ea0503397",
+      "transcripts": {
+        "stream_c16r4": {
+          "acoustic": "you open the window you re throw it you might click up you know close it again straight away",
+          "pcec": "You open the window, you re throw it, you might click up, you know, close it again straight away."
+        },
+        "stream_c32r8": {
+          "acoustic": "you open the window you re throw it you might click up you know close it again straight away",
+          "pcec": "You open the window, you re throw it, you might click up, you know, close it again straight away."
+        },
+        "stream_c64r16": {
+          "acoustic": "you open the window you re throw it you might click up you know close it again straight away",
+          "pcec": "You open the window, you re throw it, you might click up, you know, close it again straight away."
+        },
+        "stream_c512r8": {
+          "acoustic": "you open the window you re throw it you might click up you know close it again straight away",
+          "pcec": "You open the window, you re throw it, you might click up, you know, close it again straight away."
+        }
+      }
+    }
+  ]
+}

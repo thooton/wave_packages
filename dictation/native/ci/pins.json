@@ -1,0 +1,124 @@
+{
+  "about": "Pinned x86 parity references for build-dictation-runtime.yml. See README.md.",
+  "source": {
+    "workflow_run": 45519383992,
+    "commit": "0239ff655a686db0289cee72a524571d09630178",
+    "artifact": "dictation-phase1-bundle",
+    "hf_commit": "87a6b5d093723fe37e9f69ad26307a3b95a31af0",
+    "executorch_version": "1.6.0",
+    "pte_sha256": "7d5679688ca57a7e42d4b42e093b7a29b85d595f454d41cf0aa5f95e7c8c27ec"
+  },
+  "golden_transcripts_sha256": "63f177563651a6bb04f804aa34a0dae373667cf59c7e7a763e2d719ff9a1b9c5",
+  "core_fixtures_sha256": "54651e1406bf945e99faaa9d20a5172477062eb06d672d1248d45357a45c33bb",
+  "qemu_reference": {
+    "cpu": "Haswell",
+    "golden_transcripts_sha256": "63f177563651a6bb04f804aa34a0dae373667cf59c7e7a763e2d719ff9a1b9c5",
+    "core_fixtures_sha256": "800a0c4797f3acfd11ee3bacd3f63ef403c3c3308263f6b7bce556d17e5019d5",
+    "observed_on": [
+      "run 45565470320: AMD EPYC 7763",
+      "run 45571048447: Intel Xeon 6975P-C (x2), AMD EPYC 9V74"
+    ]
+  },
+  "wavs": {
+    "01_ls_clean_6930-75918-0000.wav": {
+      "file_sha256": "fb7da50c0e839fc3b53e4ed0af92bff775ca00602a45ae4cbe3551eb4cca1f5f",
+      "pcm_sha256": "9afaada0c1b445dae8a3baae5bbaffdcedbd2c09eb66b86720b8045c854feefc",
+      "num_samples": 56080
+    },
+    "02_ls_clean_6930-75918-0002.wav": {
+      "file_sha256": "416168e61e05f77fa9f5fc07d6a1cdc9b2e8acdd69a149c5b2b2db98c7c004ac",
+      "pcm_sha256": "c1dc485dadd09765e336fc5d29a99f97a81aa2de6678ae86bc191b873cf05828",
+      "num_samples": 80400
+    },
+    "03_ls_clean_6930-75918-0006.wav": {
+      "file_sha256": "30550154b4ef542a9e6858e22c275ca5a8e2e73a1194e4412fcca0c506fd6a2b",
+      "pcm_sha256": "b42c73c3425642f28f09d347a8bba3456efcb228bb374670cdd9411ce1c26e3f",
+      "num_samples": 93600
+    },
+    "04_ls_clean_6930-75918-0007.wav": {
+      "file_sha256": "b0761a3a762f55f22724ec1d4c2963004da7eeb002279fe4c9d53c1fb4d124ae",
+      "pcm_sha256": "7bd074f5b394e14b88c7dacf3c5abdaa2269f1efbd42d35573de5f5c89d5597f",
+      "num_samples": 53040
+    },
+    "05_ls_clean_6930-75918-0008.wav": {
+      "file_sha256": "da32f4dea6e37c86da903574dc1266eaa1467fa0229b5df72dd341de54a4fdd0",
+      "pcm_sha256": "b3bb3fe5803a20f875c8f0dd16111ccef181559873b28f9c732d2282db674fdc",
+      "num_samples": 76560
+    },
+    "06_ls_clean_6930-75918-0009.wav": {
+      "file_sha256": "5a639758a85d1f5d08da8ac9405022c839d3d8496ce98ee7b75614ae17a9295c",
+      "pcm_sha256": "a65b5ac1f213507be65cd28fab68ba62e80df0fbc9e0bfdddcad12de4139ff6e",
+      "num_samples": 116480
+    },
+    "07_ls_clean_6930-75918-0010.wav": {
+      "file_sha256": "756b9ef39bf901465c0395631adbae73155afef9236a39f1da026c7355dcc271",
+      "pcm_sha256": "d1e345fe5a59f0473dc2d2756d08f36b21bb521c8fc3e4426ce0bab26661d99e",
+      "num_samples": 48560
+    },
+    "08_ls_clean_6930-75918-0011.wav": {
+      "file_sha256": "f8aae22b0a5c797532f4e91ea296ca68c6ac52a6fab9d52d464e566e8959b040",
+      "pcm_sha256": "caded890c7f34459729f8597df2d9fe575f199b465894b3dae852e9262b41a62",
+      "num_samples": 51120
+    },
+    "09_ls_other_7902-96591-0000.wav": {
+      "file_sha256": "f61bbab3c7e7445dd2437ff31dad160baa67cb8c80d72f7096a4fa956c6a209b",
+      "pcm_sha256": "3bfa84c3ec0373b499e6a080dcc36d90a17bda600ab01bc06fae2b607e33e424",
+      "num_samples": 33520
+    },
+    "10_ls_other_7902-96591-0001.wav": {
+      "file_sha256": "f5be23fb6f16986ecbd2c3f4abc65a69f2e3566a36b121ea183919f57eaa9254",
+      "pcm_sha256": "2cfd6a869d15da189aac2094c0d671627cf7a7575f304e4212a0cc79b41d2b72",
+      "num_samples": 40160
+    },
+    "11_ls_other_7902-96591-0002.wav": {
+      "file_sha256": "a05c19bd1d752383e482b9348d6c7dd6394a833719c6e58060980f27c40f80a8",
+      "pcm_sha256": "8800e23de3b6e30e979b856c994bb971f898b04004b81a103363aed61ad03fb1",
+      "num_samples": 80320
+    },
+    "12_ls_other_7902-96591-0003.wav": {
+      "file_sha256": "d689769f9eb5c467ab39fbc6631f31023c78a75b743e10e437584aaca4c30d6b",
+      "pcm_sha256": "bf002bf5318cfef9dea699da6bc2fc22fdf32e80a20813f0ece128e4b66513c5",
+      "num_samples": 61280
+    },
+    "13_ls_other_7902-96591-0004.wav": {
+      "file_sha256": "14e9671ec262a629c11109a51f8180d7a8f2d8994f07b9e3a37e005a8fde630c",
+      "pcm_sha256": "0bf66dd81913db2dab748a2bdb625d377b2075f2d3c43d51d92624aa4fae10de",
+      "num_samples": 57680
+    },
+    "14_ls_other_7902-96591-0005.wav": {
+      "file_sha256": "d7f48078599a06665bb9848f077b2e248f2ebba594236ebd8a2c9989cde108fc",
+      "pcm_sha256": "bd7371195feeb64b6ce55ecf96edfaa12d6138ec4e853ec3023839ed06d36846",
+      "num_samples": 54800
+    },
+    "15_ami_ihm_AMI_EN2002a_H03_MEE071_0085470_0085653.wav": {
+      "file_sha256": "6e49237875e6ba2701c351938a85291150a18197cafe298c07df8e79fcaa2a25",
+      "pcm_sha256": "40cda5f897ebcfbd0115e3eb33a699e52b1bb2755d4766e788e4ddd4d9ba5854",
+      "num_samples": 29280
+    },
+    "16_ami_ihm_AMI_EN2002a_H02_FEO072_0159403_0159664.wav": {
+      "file_sha256": "291cc163fc9ea008f78d1d777a834726f7f81723ae9d09a9feac7c069ca2baf4",
+      "pcm_sha256": "a75540c63e82523f10d7e24f40702d3ca323d96926ba181abf49ec188b620f3a",
+      "num_samples": 41760
+    },
+    "17_ami_ihm_AMI_EN2002a_H03_MEE071_0150042_0150192.wav": {
+      "file_sha256": "d6daa4532c55f04ed5e573ddec83de27355aca457f2244a3945c494ed8cd5f69",
+      "pcm_sha256": "3f675c39727ef6a27d68f61a1142faf28dd817af7e7d576e1cc8a589587209d7",
+      "num_samples": 24000
+    },
+    "18_ami_ihm_AMI_EN2002a_H03_MEE071_0104146_0104463.wav": {
+      "file_sha256": "9104672e9fb652bc956c44079c190e662c9b70f1e853fd3c12a9a881a5873699",
+      "pcm_sha256": "7386e0490aa5782ccf58f27c8b5069308c20edb6990b4c4a916e303191cac988",
+      "num_samples": 50720
+    },
+    "19_ami_ihm_AMI_EN2002a_H00_MEE073_0208960_0209241.wav": {
+      "file_sha256": "0f1c6cced23cac46c239a5898ce930d3807197dfeff292ca10dac49cf2444647",
+      "pcm_sha256": "d4ee7db4d12e2ccd3a8e4a1bb45c42cdb93f3fbdaaeee3700014aa4d6c009779",
+      "num_samples": 44959
+    },
+    "20_ami_ihm_AMI_EN2002a_H02_FEO072_0064139_0064653.wav": {
+      "file_sha256": "b1b91bd31a34526102aa5f70e7602a2b5c5d2b822df24dc20b23922ea0503397",
+      "pcm_sha256": "7b3f1c4278c2df3829de90499f814d590f1e2d1b581d6bf6cf60d8c910d70898",
+      "num_samples": 82240
+    }
+  }
+}

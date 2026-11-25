@@ -26,6 +26,18 @@ env:
   EXECUTORCH_PYPI: '1.6.0'
   TORCH_PYPI: '2.15.0'
   ANDROID_NDK_VERSION: '28.2.13676358'
+  # x86 parity gate (see dictation/native/ci/README.md). Pinned references from green run 45519383992.
+  FROZEN_GOLDEN_SHA256: 63f177563651a6bb04f804aa34a0dae373667cf59c7e7a763e2d719ff9a1b9c5
+  FROZEN_FIXTURES_SHA256: 54651e1406bf945e99faaa9d20a5172477062eb06d672d1248d45357a45c33bb
+  QEMU_CPU_MODEL: Haswell
+  # x86 verify build only (never the armeabi-v7a library): XNNPACK kernels above AVX2/FMA3 make
+  # results depend on the runner's CPU, so leave them out of the x86 bench.
+  X86_AVX2_CAP: >-
+    -DXNNPACK_ENABLE_AVX512F=OFF -DXNNPACK_ENABLE_AVX512SKX=OFF -DXNNPACK_ENABLE_AVX512VBMI=OFF
+    -DXNNPACK_ENABLE_AVX512VNNI=OFF -DXNNPACK_ENABLE_AVX512VNNIGFNI=OFF -DXNNPACK_ENABLE_AVX512AMX=OFF
+    -DXNNPACK_ENABLE_AVX512FP16=OFF -DXNNPACK_ENABLE_AVX512BF16=OFF -DXNNPACK_ENABLE_AVX256SKX=OFF
+    -DXNNPACK_ENABLE_AVX256VNNI=OFF -DXNNPACK_ENABLE_AVX256VNNIGFNI=OFF -DXNNPACK_ENABLE_AVXVNNI=OFF
+    -DXNNPACK_ENABLE_AVXVNNIINT8=OFF
 
 jobs:
   x86-golden-and-verify:
@@ -37,6 +49,12 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Log host CPU
+        run: |
+          lscpu
+          gcc -O1 -o /tmp/ci_cpuid_probe dictation/native/scripts/ci_cpuid_probe.c
+          /tmp/ci_cpuid_probe
+
       - name: Install build tools and Python reference runtime
         run: |
           sudo apt-get update -qq
@@ -45,7 +63,7 @@ jobs:
           python3 -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==${TORCH_PYPI}" || true
           python3 -m pip install "executorch==${EXECUTORCH_PYPI}" pyyaml numpy
 
-      - name: Download and verify pinned futo-org/asr4all-s bundle
+      - name: Download and verify pinned futo-org/asr4all-s bundle and parity references
         run: |
           mkdir -p /tmp/hf_bundle
           base="https://huggingface.co/${HF_REPO}/resolve/${HF_COMMIT}"
@@ -56,20 +74,26 @@ jobs:
 
           printf "%s  /tmp/hf_bundle/asr_encoder.pte\n%s  /tmp/hf_bundle/metadata.json\n%s  /tmp/hf_bundle/ops.txt\n%s  /tmp/hf_bundle/asr4all_executorch.py\n%s  dictation/native/ops.txt\n" \
             "$PTE_SHA256" "$META_SHA256" "$OPS_SHA256" "$REF_PY_SHA256" "$OPS_SHA256" | sha256sum -c -
+          printf "%s  dictation/native/ci/frozen_golden_transcripts.json\n%s  dictation/native/ci/frozen_core_fixtures.json\n" \
+            "$FROZEN_GOLDEN_SHA256" "$FROZEN_FIXTURES_SHA256" | sha256sum -c -
+          python3 dictation/native/scripts/ci_pinned.py files --pins dictation/native/ci/pins.json \
+            --golden dictation/native/ci/frozen_golden_transcripts.json \
+            --fixtures dictation/native/ci/frozen_core_fixtures.json
 
       - name: Fetch 20 public-domain 16 kHz mono WAV test clips
         run: |
           mkdir -p out_x86/wavs
           python3 dictation/native/scripts/ci_fetch_wavs.py --out-dir out_x86/wavs
+          python3 dictation/native/scripts/ci_pinned.py wavs --pins dictation/native/ci/pins.json --wav-dir out_x86/wavs
 
-      - name: Run Python reference for golden_transcripts.json and core_fixtures.json
+      # The Python reference is recomputed under a validated AVX2 CPU mask in x86-reference-qemu, which
+      # must equal these pinned files byte for byte; package-artifacts checks that again before bundling.
+      - name: Stage pinned golden_transcripts.json and core_fixtures.json
         run: |
-          python3 dictation/native/scripts/ci_golden.py \
-            --bundle-dir /tmp/hf_bundle \
-            --ref-py /tmp/hf_bundle/asr4all_executorch.py \
-            --wav-dir out_x86/wavs \
-            --golden-out out_x86/golden_transcripts.json \
-            --fixtures-out out_x86/core_fixtures.json
+          cp dictation/native/ci/frozen_golden_transcripts.json out_x86/golden_transcripts.json
+          cp dictation/native/ci/frozen_core_fixtures.json out_x86/core_fixtures.json
+          printf "%s  out_x86/golden_transcripts.json\n%s  out_x86/core_fixtures.json\n" \
+            "$FROZEN_GOLDEN_SHA256" "$FROZEN_FIXTURES_SHA256" | sha256sum -c -
 
       - name: Checkout ExecuTorch v1.6.0 with required submodules
         run: |
@@ -91,12 +115,20 @@ jobs:
           git -C /tmp/et/executorch submodule update --init --recursive --depth 1 "${SUBS[@]}" || \
             git -C /tmp/et/executorch submodule update --init --recursive "${SUBS[@]}"
 
-      - name: Build x86_64 asr4all_bench (Release, selective ops + XNNPACK)
+      - name: Build x86_64 asr4all_bench (Release, selective ops + XNNPACK, AVX2-capped)
         run: |
+          # shellcheck disable=SC2086
           cmake -S dictation/native -B /tmp/build_x86 -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DEXECUTORCH_DIR=/tmp/et/executorch \
-            -DPYTHON_EXECUTABLE="$(which python3)"
+            -DPYTHON_EXECUTABLE="$(which python3)" \
+            $X86_AVX2_CAP
+          grep -E '^XNNPACK_ENABLE_(SSE|AVX|FMA|F16C)[A-Z0-9]*:BOOL' /tmp/build_x86/CMakeCache.txt | sort
+          if grep -E '^XNNPACK_ENABLE_(AVX512|AVX256|AVXVNNI)[A-Z0-9]*:BOOL=ON' /tmp/build_x86/CMakeCache.txt; then
+            echo "x86 bench would include kernels above AVX2" >&2
+            exit 1
+          fi
+          grep -q '^XNNPACK_ENABLE_AVX2:BOOL=ON' /tmp/build_x86/CMakeCache.txt
           cmake --build /tmp/build_x86 --target asr4all_bench -j"$(nproc)"
           cp /tmp/build_x86/asr4all_bench out_x86/asr4all_bench_x86_64
 
@@ -109,7 +141,8 @@ jobs:
             --wav-dir out_x86/wavs \
             --golden out_x86/golden_transcripts.json \
             --threads "$(nproc)" \
-            --feedback-modes off,copy,resident
+            --feedback-modes off,copy,resident \
+            --expect-resident-pairs stream_c16r4=2,stream_c32r8=2,stream_c64r16=2,stream_c512r8=0
 
       - name: Compute x86 artifact sha256sums
         run: |
@@ -120,6 +153,87 @@ jobs:
         with:
           name: dictation-golden-and-x86
           path: out_x86/
+          if-no-files-found: error
+
+  # Recomputes the unmodified Python reference with the host CPU masked to an AVX2/FMA-only Haswell
+  # (qemu-user), so the result doesn't depend on the runner's CPU, and requires it to equal the pinned
+  # references exactly. Runs in parallel with the builds.
+  x86-reference-qemu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install qemu-user and Python reference runtime
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg qemu-user
+          qemu-x86_64 --version
+          python3 -m pip install --upgrade pip
+          python3 -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==${TORCH_PYPI}" || true
+          python3 -m pip install "executorch==${EXECUTORCH_PYPI}" pyyaml numpy
+
+      - name: Log host CPU and validate the qemu CPU mask
+        run: |
+          mkdir -p out_ref
+          lscpu
+          qemu-x86_64 --version | head -1 | tee out_ref/qemu_version.txt
+          gcc -O1 -o /tmp/ci_cpuid_probe dictation/native/scripts/ci_cpuid_probe.c
+          /tmp/ci_cpuid_probe | tee out_ref/cpuid_native.txt
+          qemu-x86_64 -cpu "$QEMU_CPU_MODEL" /tmp/ci_cpuid_probe | tee out_ref/cpuid_masked.txt
+          python3 dictation/native/scripts/ci_pinned.py mask \
+            --native out_ref/cpuid_native.txt --masked out_ref/cpuid_masked.txt
+          cap="$(qemu-x86_64 -cpu "$QEMU_CPU_MODEL" "$(which python3)" -c 'import torch; print(torch.backends.cpu.get_cpu_capability())')"
+          echo "torch CPU capability under the mask: $cap"
+          test "$cap" = AVX2
+
+      - name: Download and verify pinned futo-org/asr4all-s bundle and parity references
+        run: |
+          mkdir -p /tmp/hf_bundle
+          base="https://huggingface.co/${HF_REPO}/resolve/${HF_COMMIT}"
+          curl -fsSL "$base/executorch/xnnpack_int8/asr_encoder.pte" -o /tmp/hf_bundle/asr_encoder.pte
+          curl -fsSL "$base/executorch/xnnpack_int8/metadata.json" -o /tmp/hf_bundle/metadata.json
+          curl -fsSL "$base/executorch/xnnpack_int8/ops.txt" -o /tmp/hf_bundle/ops.txt
+          curl -fsSL "$base/executorch/asr4all_executorch.py" -o /tmp/hf_bundle/asr4all_executorch.py
+
+          printf "%s  /tmp/hf_bundle/asr_encoder.pte\n%s  /tmp/hf_bundle/metadata.json\n%s  /tmp/hf_bundle/ops.txt\n%s  /tmp/hf_bundle/asr4all_executorch.py\n%s  dictation/native/ops.txt\n%s  dictation/native/ci/frozen_golden_transcripts.json\n%s  dictation/native/ci/frozen_core_fixtures.json\n" \
+            "$PTE_SHA256" "$META_SHA256" "$OPS_SHA256" "$REF_PY_SHA256" "$OPS_SHA256" "$FROZEN_GOLDEN_SHA256" "$FROZEN_FIXTURES_SHA256" | sha256sum -c -
+          python3 dictation/native/scripts/ci_pinned.py files --pins dictation/native/ci/pins.json \
+            --golden dictation/native/ci/frozen_golden_transcripts.json \
+            --fixtures dictation/native/ci/frozen_core_fixtures.json
+
+      - name: Fetch 20 public-domain 16 kHz mono WAV test clips
+        run: |
+          mkdir -p /tmp/wavs
+          python3 dictation/native/scripts/ci_fetch_wavs.py --out-dir /tmp/wavs
+          python3 dictation/native/scripts/ci_pinned.py wavs --pins dictation/native/ci/pins.json --wav-dir /tmp/wavs
+
+      - name: Run Python reference under the AVX2 CPU mask
+        run: |
+          qemu-x86_64 -cpu "$QEMU_CPU_MODEL" "$(which python3)" dictation/native/scripts/ci_golden.py \
+            --bundle-dir /tmp/hf_bundle \
+            --ref-py /tmp/hf_bundle/asr4all_executorch.py \
+            --wav-dir /tmp/wavs \
+            --golden-out out_ref/golden_transcripts.json \
+            --fixtures-out out_ref/core_fixtures.json
+
+      - name: Verify the recomputed reference equals the pinned references exactly
+        run: |
+          python3 dictation/native/scripts/ci_pinned.py reference --pins dictation/native/ci/pins.json \
+            --frozen-golden dictation/native/ci/frozen_golden_transcripts.json \
+            --frozen-fixtures dictation/native/ci/frozen_core_fixtures.json \
+            --fresh-golden out_ref/golden_transcripts.json \
+            --fresh-fixtures out_ref/core_fixtures.json
+          (cd out_ref && sha256sum ./* > sha256sums.txt && cat sha256sums.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dictation-x86-reference
+          path: out_ref/
           if-no-files-found: error
 
   android-armv7:
@@ -218,9 +332,13 @@ jobs:
           if-no-files-found: error
 
   package-artifacts:
-    needs: [x86-golden-and-verify, android-armv7]
+    needs: [x86-golden-and-verify, x86-reference-qemu, android-armv7]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dictation-x86-reference
+          path: /tmp/x86_reference
       - uses: actions/download-artifact@v4
         with:
           name: dictation-golden-and-x86
@@ -235,6 +353,10 @@ jobs:
           mv bundle/armeabi-v7a/asr4all_bench bundle/asr4all_bench
           mv bundle/armeabi-v7a/libasr4all.so bundle/libasr4all.so
           rmdir bundle/armeabi-v7a
+          # The bundled golden is the one the C++ bench matched; it must equal the masked recomputation.
+          cmp bundle/golden_transcripts.json /tmp/x86_reference/golden_transcripts.json
+          printf "%s  bundle/golden_transcripts.json\n%s  bundle/core_fixtures.json\n" \
+            "$FROZEN_GOLDEN_SHA256" "$FROZEN_FIXTURES_SHA256" | sha256sum -c -
           (cd bundle && find . -type f ! -name sha256sums.txt | sort | sed 's|^\./||' | xargs sha256sum > sha256sums.txt)
           ls -lh bundle/
           cat bundle/sha256sums.txt
