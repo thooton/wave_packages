@@ -61,6 +61,7 @@ public final class AsrEngine {
 
     private final AsrMetadata meta;
     private final AsrModel model;
+    private final boolean useFeedback;
     private final int spf;
     private final List<TierInfo> tiers;
     private final VadInfo vad;
@@ -69,6 +70,7 @@ public final class AsrEngine {
     private int tierIdx;
     private PcecDecoder pcec;
 
+    // Kept in Java only for runtimes without feedback; otherwise these stay null.
     private Tensor filterCache;
     private Tensor attnCache;
 
@@ -89,6 +91,7 @@ public final class AsrEngine {
     public AsrEngine(AsrMetadata meta, AsrModel model, String preferredVadMethod) {
         this.meta = meta;
         this.model = model;
+        this.useFeedback = model.supportsFeedback();
         this.spf = meta.samplesPerFrame;
         this.vad = discoverVad(preferredVadMethod);
 
@@ -261,6 +264,10 @@ public final class AsrEngine {
     private void ensureLoaded(String methodName, String arenaGroup) {
         if (!loadedMethods.contains(methodName)) {
             model.loadMethod(methodName, arenaGroup);
+            if (useFeedback && currentTier().name.equals(methodName)) {
+                model.setFeedback(methodName, new int[] {T_FILTER, T_ATTN}, new int[] {T_FILTER, T_ATTN});
+                model.resetFeedback(methodName);
+            }
             loadedMethods.add(methodName);
         }
     }
@@ -268,9 +275,16 @@ public final class AsrEngine {
     /** Resets streaming state for a new utterance. */
     public void reset() {
         TierInfo t = tiers.get(tierIdx);
-        MethodMeta mm = model.methodMeta(t.name);
-        filterCache = Tensor.zeros(mm.input(T_FILTER).shape(), mm.input(T_FILTER).dtype);
-        attnCache = Tensor.zeros(mm.input(T_ATTN).shape(), mm.input(T_ATTN).dtype);
+        if (useFeedback) {
+            // Unloaded tiers will register and reset their buffers the next time they load.
+            if (loadedMethods.contains(t.name)) {
+                model.resetFeedback(t.name);
+            }
+        } else {
+            MethodMeta mm = model.methodMeta(t.name);
+            filterCache = Tensor.zeros(mm.input(T_FILTER).shape(), mm.input(T_FILTER).dtype);
+            attnCache = Tensor.zeros(mm.input(T_ATTN).shape(), mm.input(T_ATTN).dtype);
+        }
         pcmLen = 0;
         pcmBaseSample = 0;
         nextFrame = 0;
@@ -368,10 +382,12 @@ public final class AsrEngine {
             filterCache,
             attnCache
         });
-        // Outputs are fresh arrays owned by us (the runtime deep-copies them out of the
-        // arena) and the caches are never mutated, so keep them without another 5.3 MB copy.
-        filterCache = outs[T_FILTER];
-        attnCache = outs[T_ATTN];
+        if (!useFeedback) {
+            // Outputs are fresh arrays owned by us (the runtime deep-copies them out of the
+            // arena) and the caches are never mutated, so keep them without another 5.3 MB copy.
+            filterCache = outs[T_FILTER];
+            attnCache = outs[T_ATTN];
+        }
 
         int valid = (int) Math.min(t.commit, totalSamples / spf - nextFrame);
         if (valid < 0) valid = 0;

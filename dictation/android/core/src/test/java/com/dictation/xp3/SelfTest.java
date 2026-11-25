@@ -28,6 +28,7 @@ public final class SelfTest {
         check.run("pcecPauseAndRender", () -> testPcecPauseAndRender(check));
         check.run("pcecPoolingAndArena", () -> testPcecPoolingAndArena(check));
         check.run("engineTiersAndCompaction", () -> testEngineTiersAndCompaction(check));
+        check.run("engineFeedback", () -> testEngineFeedback(check));
         check.run("streamDisplay", () -> testStreamDisplay(check));
         check.run("silenceTracker", () -> testSilenceTracker(check));
         check.run("wavUtil", () -> testWavUtil(check));
@@ -272,6 +273,92 @@ public final class SelfTest {
 
         engine.unloadAll();
         check.ok("unloaded methods", unloaded.contains("stream_c4r2") && unloaded.contains("vad_dft"));
+    }
+
+    private static void testEngineFeedback(Check check) {
+        AsrMetadata base = makeSyntheticMetadata();
+        String first = base.defaultTier;
+        String second = "stream_c4r3";
+        AsrMetadata meta = new AsrMetadata(base.sampleRate, base.samplesPerFrame, base.vocab, base.blankId,
+            first, base.encoderFile, Arrays.asList(new AsrMetadata.TierEntry(first, null),
+                new AsrMetadata.TierEntry(second, null)), null, Collections.emptyList());
+        Map<String, MethodMeta> metas = syntheticMetas(4, 2, 16, 2, 2, 2);
+        MethodMeta firstMeta = metas.get(first);
+        int secondWindow = 7 * meta.samplesPerFrame;
+        metas.put(second, new MethodMeta(second, Arrays.asList(
+            new MethodMeta.TensorSpec(Tensor.DTYPE_FP32, new int[] {1, secondWindow}),
+            firstMeta.input(1), firstMeta.input(2)),
+            Arrays.asList(firstMeta.output(0), firstMeta.output(1), firstMeta.output(2), firstMeta.output(3))));
+        List<String> events = new ArrayList<String>();
+        Map<String, Integer> feedback = new HashMap<String, Integer>();
+        AsrModel fake = new AsrModel() {
+            @Override public MethodMeta methodMeta(String name) { return metas.get(name); }
+            @Override public boolean supportsFeedback() { return true; }
+            @Override public void close() {}
+
+            @Override
+            public void loadMethod(String name, String arenaGroup) {
+                events.add("load " + name);
+            }
+
+            @Override
+            public void unloadMethod(String name) {
+                events.add("unload " + name);
+                feedback.remove(name);
+            }
+
+            @Override
+            public void setFeedback(String name, int[] outIdx, int[] inIdx) {
+                check.ok("register cache outputs", Arrays.equals(new int[] {1, 2}, outIdx));
+                check.ok("register cache inputs", Arrays.equals(new int[] {1, 2}, inIdx));
+                events.add("register " + name);
+                feedback.put(name, 0);
+            }
+
+            @Override
+            public void resetFeedback(String name) {
+                if (!feedback.containsKey(name)) throw new IllegalStateException("Unregistered feedback: " + name);
+                events.add("reset " + name);
+                feedback.put(name, 0);
+            }
+
+            @Override
+            public Tensor[] execute(String name, Tensor[] inputs) {
+                MethodMeta mm = methodMeta(name);
+                check.ok("feedback step receives PCM and null caches", inputs.length == 3 && inputs[0] != null
+                    && Arrays.equals(mm.input(0).shape(), inputs[0].shape()) && inputs[1] == null && inputs[2] == null);
+                int step = feedback.get(name);
+                feedback.put(name, step + 1);
+                float[] logits = new float[4 * 16];
+                logits[step == 0 ? 0 : 1] = 10.0f; // hello on a clean cache, world otherwise
+                for (int f = 1; f < 4; f++) logits[f * 16 + 15] = 10.0f;
+                return new Tensor[] {Tensor.ofFloats(mm.output(0).shape(), logits), null, null,
+                    Tensor.zeros(mm.output(3).shape(), Tensor.DTYPE_FP32)};
+            }
+        };
+
+        AsrEngine engine = new AsrEngine(meta, fake);
+        int firstWindow = engine.currentTier().window;
+        check.same("feedback across steps", "hello world",
+            engine.decodeStream(new float[firstWindow + 4 * meta.samplesPerFrame]));
+        check.same("feedback registration follows load", Arrays.asList("load " + first, "register " + first,
+            "reset " + first), events);
+        events.clear();
+        engine.reset();
+        check.same("feedback reset without reload", Collections.singletonList("reset " + first), events);
+        check.same("feedback zero after reset", "hello", engine.decodeStream(new float[firstWindow]));
+        events.clear();
+        engine.unloadAll();
+        engine.preloadActiveMethods();
+        check.same("feedback re-registered after unload", Arrays.asList("unload " + first, "load " + first,
+            "register " + first, "reset " + first), events);
+        check.same("feedback zero after reload", "hello hello",
+            engine.decodeStream(new float[4 * meta.samplesPerFrame]));
+        events.clear();
+        engine.setTier(second);
+        check.same("feedback zero after tier change", "hello", engine.decodeStream(new float[secondWindow]));
+        check.same("feedback registered for new tier", Arrays.asList("unload " + first, "load " + second,
+            "register " + second, "reset " + second), events);
     }
 
     private static void testStreamDisplay(Check check) {

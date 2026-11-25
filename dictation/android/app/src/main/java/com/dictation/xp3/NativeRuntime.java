@@ -40,6 +40,10 @@ public final class NativeRuntime {
 
     public static native void nativeUnloadMethod(long handle, String methodName);
 
+    public static native int nativeSetFeedback(long handle, String methodName, int[] outIdx, int[] inIdx);
+
+    public static native void nativeResetFeedback(long handle, String methodName);
+
     public static native String nativeMethodMeta(long handle, String methodName);
 
     public static native Object[] nativeExecute(

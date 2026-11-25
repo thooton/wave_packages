@@ -17,6 +17,22 @@ public final class NativeModel implements AsrModel {
     private long handle;
     private final Map<String, MethodMeta> metaCache = new HashMap<String, MethodMeta>();
 
+    private static final class FeedbackSupport {
+        static final boolean AVAILABLE = probe();
+
+        private static boolean probe() {
+            if (!NativeRuntime.isAvailable()) return false;
+            try {
+                // The invalid handle prevents any changes to a model; only symbol lookup matters.
+                NativeRuntime.nativeResetFeedback(0L, "");
+                NativeRuntime.nativeSetFeedback(0L, "", new int[0], new int[0]);
+                return true;
+            } catch (UnsatisfiedLinkError e) {
+                return false;
+            }
+        }
+    }
+
     private NativeModel(AssetFileDescriptor afd, long handle) {
         this.afd = afd;
         this.handle = handle;
@@ -82,6 +98,32 @@ public final class NativeModel implements AsrModel {
     }
 
     @Override
+    public boolean supportsFeedback() {
+        return FeedbackSupport.AVAILABLE;
+    }
+
+    @Override
+    public synchronized void setFeedback(String methodName, int[] outIdx, int[] inIdx) {
+        ensureOpen();
+        if (!supportsFeedback()) {
+            throw new UnsupportedOperationException("Feedback is not supported");
+        }
+        int rc = NativeRuntime.nativeSetFeedback(handle, methodName, outIdx, inIdx);
+        if (rc != 0) {
+            throw new IllegalStateException(
+                "nativeSetFeedback(" + methodName + ") failed (" + rc + "): " + NativeRuntime.nativeLastError(handle));
+        }
+    }
+
+    @Override
+    public synchronized void resetFeedback(String methodName) {
+        ensureOpen();
+        if (supportsFeedback()) {
+            NativeRuntime.nativeResetFeedback(handle, methodName);
+        }
+    }
+
+    @Override
     public synchronized Tensor[] execute(String methodName, Tensor[] inputs) {
         ensureOpen();
         MethodMeta meta = methodMeta(methodName);
@@ -96,6 +138,10 @@ public final class NativeModel implements AsrModel {
         long[][] longs = new long[n][];
         for (int i = 0; i < n; i++) {
             Tensor t = inputs[i];
+            if (t == null) {
+                dtypes[i] = Tensor.DTYPE_FP32; // A registered feedback slot has no shape or data.
+                continue;
+            }
             dtypes[i] = t.dtype;
             shapes[i] = t.shape();
             if (t.dtype == Tensor.DTYPE_FP32) {
@@ -115,8 +161,9 @@ public final class NativeModel implements AsrModel {
 
         Tensor[] out = new Tensor[raw.length];
         for (int i = 0; i < raw.length; i++) {
-            MethodMeta.TensorSpec spec = meta.output(i);
             Object elem = raw[i];
+            if (elem == null) continue;
+            MethodMeta.TensorSpec spec = meta.output(i);
             if (spec.dtype == Tensor.DTYPE_FP32) {
                 out[i] = Tensor.ofFloats(spec.shape(), (float[]) elem);
             } else if (spec.dtype == Tensor.DTYPE_INT64) {
