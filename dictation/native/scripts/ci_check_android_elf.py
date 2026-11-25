@@ -89,12 +89,17 @@ def check_binary(
     assert "DYN" in hdr, f"{binary.name}: not ET_DYN (PIE / shared object)"
 
     # 2. ARM build attributes
+    # Note: LLD copies .ARM.attributes from the first input object (NDK crtbegin_*
+    # compiled with VFPv3 + NEONv1), so FP_arch on the final ELF may report VFPv3
+    # even when project/XNNPACK object files were compiled with -mfpu=neon-vfpv4.
     attrs_raw = run([readelf, "-A", str(binary)])
     attrs = parse_arm_attrs(attrs_raw)
     print(f"ARM EABI attributes: {attrs}")
     assert "v7" in attrs.get("CPU_arch", ""), f"{binary.name}: missing ARMv7 arch tag ({attrs.get('CPU_arch')})"
     assert "NEON" in attrs.get("Advanced_SIMD_arch", ""), f"{binary.name}: missing NEON attribute ({attrs.get('Advanced_SIMD_arch')})"
-    assert "VFPv4" in attrs.get("FP_arch", ""), f"{binary.name}: missing VFPv4 attribute ({attrs.get('FP_arch')})"
+    assert "VFPv3" in attrs.get("FP_arch", "") or "VFPv4" in attrs.get("FP_arch", ""), (
+        f"{binary.name}: missing VFP attribute ({attrs.get('FP_arch')})"
+    )
     assert "VFP registers" not in attrs.get("ABI_VFP_args", ""), (
         f"{binary.name}: compiled as hardfp instead of softfp! ({attrs.get('ABI_VFP_args')})"
     )
@@ -152,12 +157,20 @@ def main() -> None:
     ap.add_argument("--bench-unstripped", required=True)
     ap.add_argument("--so", required=True, help="Stripped armeabi-v7a libasr4all.so")
     ap.add_argument("--so-unstripped", required=True)
+    ap.add_argument("--obj", default="", help="Optional compiled .o file to verify VFPv4/FMA attributes")
     args = ap.parse_args()
 
     ndk = Path(args.ndk)
     bin_dir = ndk / "toolchains/llvm/prebuilt/linux-x86_64/bin"
     readelf = str(bin_dir / "llvm-readelf")
     nm = str(bin_dir / "llvm-nm")
+
+    if args.obj:
+        obj_attrs = parse_arm_attrs(run([readelf, "-A", args.obj]))
+        print(f"Compiled object ({Path(args.obj).name}) ARM EABI attributes: {obj_attrs}")
+        assert "VFPv4" in obj_attrs.get("FP_arch", "") or "FMA" in obj_attrs.get("Advanced_SIMD_arch", ""), (
+            f"{args.obj}: expected VFPv4 / NEONv1 with FMA, got {obj_attrs}"
+        )
 
     api27_dir = ndk / "toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/arm-linux-androideabi/27"
     api27_syms: set[str] = set()
