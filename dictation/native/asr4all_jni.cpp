@@ -145,6 +145,49 @@ Java_com_dictation_xp3_NativeRuntime_nativeMethodMeta(
   return env->NewStringUTF(json.c_str());
 }
 
+JNIEXPORT jint JNICALL
+Java_com_dictation_xp3_NativeRuntime_nativeSetFeedback(
+    JNIEnv* env,
+    jclass /*clazz*/,
+    jlong handle,
+    jstring jmethod,
+    jintArray joutputs,
+    jintArray jinputs) {
+  AsrRuntime* rt = from_handle(handle);
+  if (rt == nullptr || jmethod == nullptr || joutputs == nullptr ||
+      jinputs == nullptr) {
+    asr4all::set_thread_last_error("nativeSetFeedback: invalid null argument");
+    return -1;
+  }
+  const std::string method = jstring_to_utf8(env, jmethod);
+  const auto read_indices = [env](jintArray array) {
+    const jsize len = env->GetArrayLength(array);
+    std::vector<jint> indices(static_cast<size_t>(len));
+    if (len > 0) {
+      env->GetIntArrayRegion(array, 0, len, indices.data());
+    }
+    return indices;
+  };
+  const auto outputs = read_indices(joutputs);
+  const auto inputs = read_indices(jinputs);
+  if (env->ExceptionCheck()) {
+    return -1;
+  }
+  return static_cast<jint>(rt->set_feedback(method, outputs, inputs));
+}
+
+JNIEXPORT void JNICALL
+Java_com_dictation_xp3_NativeRuntime_nativeResetFeedback(
+    JNIEnv* env,
+    jclass /*clazz*/,
+    jlong handle,
+    jstring jmethod) {
+  AsrRuntime* rt = from_handle(handle);
+  if (rt != nullptr && jmethod != nullptr) {
+    rt->reset_feedback(jstring_to_utf8(env, jmethod));
+  }
+}
+
 JNIEXPORT jobjectArray JNICALL
 Java_com_dictation_xp3_NativeRuntime_nativeExecute(
     JNIEnv* env,
@@ -202,8 +245,11 @@ Java_com_dictation_xp3_NativeRuntime_nativeExecute(
       }
       auto jf = static_cast<jfloatArray>(env->GetObjectArrayElement(jfloats, i));
       if (jf == nullptr) {
-        asr4all::set_thread_last_error("nativeExecute: missing float[] input");
-        return nullptr;
+        if (env->ExceptionCheck()) {
+          return nullptr;
+        }
+        in.use_feedback = true;
+        continue;
       }
       const jsize len = env->GetArrayLength(jf);
       f32_bufs[idx].resize(static_cast<size_t>(len));
@@ -258,6 +304,9 @@ Java_com_dictation_xp3_NativeRuntime_nativeExecute(
 
   for (size_t j = 0; j < outputs.size(); ++j) {
     const OutputTensor& out = outputs[j];
+    if (out.retained) {
+      continue;  // Leave feedback outputs as null entries.
+    }
     if (out.dtype == kDtypeFloat32) {
       const jsize len = static_cast<jsize>(out.f32.size());
       jfloatArray arr = env->NewFloatArray(len);

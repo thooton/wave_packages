@@ -1,6 +1,16 @@
 {
   global:
-    Java_com_dictation_xp3_NativeRuntime_*;
+    Java_com_dictation_xp3_NativeRuntime_nativeSetNumThreads;
+    Java_com_dictation_xp3_NativeRuntime_nativeOpenFile;
+    Java_com_dictation_xp3_NativeRuntime_nativeOpenFd;
+    Java_com_dictation_xp3_NativeRuntime_nativeClose;
+    Java_com_dictation_xp3_NativeRuntime_nativeLoadMethod;
+    Java_com_dictation_xp3_NativeRuntime_nativeUnloadMethod;
+    Java_com_dictation_xp3_NativeRuntime_nativeMethodMeta;
+    Java_com_dictation_xp3_NativeRuntime_nativeSetFeedback;
+    Java_com_dictation_xp3_NativeRuntime_nativeResetFeedback;
+    Java_com_dictation_xp3_NativeRuntime_nativeExecute;
+    Java_com_dictation_xp3_NativeRuntime_nativeLastError;
     JNI_OnLoad;
   local:
     *;

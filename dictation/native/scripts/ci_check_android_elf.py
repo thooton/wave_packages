@@ -19,6 +19,8 @@ REQUIRED_JNI_EXPORTS = {
     "Java_com_dictation_xp3_NativeRuntime_nativeLoadMethod",
     "Java_com_dictation_xp3_NativeRuntime_nativeUnloadMethod",
     "Java_com_dictation_xp3_NativeRuntime_nativeMethodMeta",
+    "Java_com_dictation_xp3_NativeRuntime_nativeSetFeedback",
+    "Java_com_dictation_xp3_NativeRuntime_nativeResetFeedback",
     "Java_com_dictation_xp3_NativeRuntime_nativeExecute",
     "Java_com_dictation_xp3_NativeRuntime_nativeLastError",
 }
@@ -126,15 +128,18 @@ def check_binary(
     # 5. JNI exports check (for libasr4all.so)
     if is_shared:
         exports = collect_defined_dyn_syms(nm, binary)
-        missing_jni = REQUIRED_JNI_EXPORTS - exports
+        jni_exports = {s for s in exports if s.startswith("Java_com_dictation_xp3_NativeRuntime_")}
+        missing_jni = REQUIRED_JNI_EXPORTS - jni_exports
+        unexpected_jni = jni_exports - REQUIRED_JNI_EXPORTS
         assert not missing_jni, f"{binary.name}: missing JNI exports: {missing_jni}"
+        assert not unexpected_jni, f"{binary.name}: unexpected JNI exports: {unexpected_jni}"
         leaked = [
             s
             for s in exports
             if not s.startswith("Java_com_dictation_xp3_NativeRuntime_")
             and s not in {"JNI_OnLoad", "__bss_start", "_edata", "_end", "_init", "_fini"}
         ]
-        print(f"JNI exports verified ({len(REQUIRED_JNI_EXPORTS)}/9). Non-JNI dynamic symbols: {len(leaked)}")
+        print(f"JNI exports verified ({len(jni_exports)}/{len(REQUIRED_JNI_EXPORTS)}). Non-JNI dynamic symbols: {len(leaked)}")
         if leaked:
             print(f"  Note: other dynamic symbols: {leaked[:20]}")
 
