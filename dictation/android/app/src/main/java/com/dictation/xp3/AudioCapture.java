@@ -33,6 +33,7 @@ final class AudioCapture {
     private volatile boolean running;
     private boolean eof;
     private boolean stopImmediate;
+    private volatile long eofAtMs;
 
     synchronized void startMic() throws IOException {
         stop();
@@ -100,6 +101,8 @@ final class AudioCapture {
         producerThread = new Thread(new Runnable() {
             @Override
             public void run() {
+                // Same priority as dictation-mic, so raised decode configs are compared fairly.
+                Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO);
                 long startMs = SystemClock.elapsedRealtime();
                 int pos = 0;
                 try {
@@ -200,6 +203,16 @@ final class AudioCapture {
         return running;
     }
 
+    /** Samples still buffered for the reader (0 when drained). */
+    synchronized int availableSamples() {
+        return count;
+    }
+
+    /** elapsedRealtime of the last producer EOF, or 0 when none has happened. Bench only. */
+    long eofAtMs() {
+        return eofAtMs;
+    }
+
     synchronized long droppedSamples() {
         return droppedSamples;
     }
@@ -210,6 +223,7 @@ final class AudioCapture {
         droppedSamples = 0;
         eof = false;
         stopImmediate = false;
+        eofAtMs = 0;
     }
 
     private synchronized void pushSamples(short[] src, int offset, int length) {
@@ -233,6 +247,7 @@ final class AudioCapture {
     private synchronized void markEof() {
         running = false;
         eof = true;
+        eofAtMs = SystemClock.elapsedRealtime();
         notifyAll();
     }
 }

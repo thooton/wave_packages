@@ -30,6 +30,10 @@ speak.
 - **Offline operation**: the `futo-org/asr4all-s` model is bundled inside the
   APK (`asr_encoder.pte` stored uncompressed and memory-mapped directly from the
   APK). Zero runtime network calls and no `INTERNET` permission.
+- **Session priority**: while dictation is running, the decode thread and its
+  XNNPACK worker threads in the dictation process use a raised (more urgent) CPU
+  nice; the exact prior values are restored when the session ends, so typing and
+  scrolling outside a session are unchanged.
 
 ## Privacy (Hard Rules)
 

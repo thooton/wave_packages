@@ -31,6 +31,7 @@ public final class SelfTest {
         check.run("engineFeedback", () -> testEngineFeedback(check));
         check.run("streamDisplay", () -> testStreamDisplay(check));
         check.run("silenceTracker", () -> testSilenceTracker(check));
+        check.run("decodeScheduling", () -> DecodeSchedulingTest.run(check));
         check.run("wavUtil", () -> testWavUtil(check));
         check.run("syntheticFixtureReplay", () -> testSyntheticFixtureReplay(check));
         check.run("externalGoldenFixtures", () -> testExternalGoldenFixtures(check));

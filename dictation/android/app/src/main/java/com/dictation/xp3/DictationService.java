@@ -25,6 +25,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -50,6 +51,8 @@ public final class DictationService extends Service {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final PerfLock perfLock = new PerfLock();
     private final AudioCapture capture = new AudioCapture();
+    private final DecodeScheduling decodeSched =
+        new DecodeScheduling(new AndroidDecodeSchedulingOs());
     private final Object sessionLock = new Object();
 
     private CaretOverlay caretOverlay;
@@ -57,6 +60,7 @@ public final class DictationService extends Service {
     private AudioFocusRequest focusRequest;
     private boolean hasAudioFocus;
     private boolean screenReceiverRegistered;
+    private volatile long stopRequestAtMs;
 
     private ExecutorService decodeExecutor;
     private AsrMetadata metadata;
@@ -303,6 +307,7 @@ public final class DictationService extends Service {
             ? tierOrNull
             : DictationPrefs.getTier(this);
         final int threads = explicitThreads > 0 ? explicitThreads : DictationPrefs.getThreads(this);
+        final int nice = DictationPrefs.getDecodeNice(this);
 
         if (!benchMode) {
             if (!DictationPrefs.isEnabled(this)) {
@@ -367,12 +372,18 @@ public final class DictationService extends Service {
             registerScreenOff();
         }
         perfLock.start();
+        stopRequestAtMs = 0;
         notifyState(callback, DictationContract.STATE_LISTENING, null);
 
         decodeExecutor.execute(new Runnable() {
             @Override
             public void run() {
-                runDecodeLoop(gen, callback, tier, threads, benchMode, wavPath, realtime);
+                decodeSched.enter(nice, threads);
+                try {
+                    runDecodeLoop(gen, callback, tier, threads, benchMode, wavPath, realtime);
+                } finally {
+                    decodeSched.exit();
+                }
             }
         });
         return true;
@@ -385,6 +396,7 @@ public final class DictationService extends Service {
             if (reason != 0 && autoStopReason == 0) {
                 autoStopReason = reason;
             }
+            if (commit || reason != 0) stopRequestAtMs = SystemClock.elapsedRealtime();
         }
         // Release microphone and hide caret overlay IMMEDIATELY.
         capture.stop(!commit);
@@ -409,6 +421,7 @@ public final class DictationService extends Service {
         AsrEngine eng;
         try {
             eng = ensureEngineOnWorker(tier, threads);
+            decodeSched.refresh();
             eng.preloadActiveMethods();
             eng.reset();
         } catch (Throwable t) {
@@ -432,6 +445,14 @@ public final class DictationService extends Service {
         float[] readBuf = new float[STREAM_READ_CHUNK];
         long totalSamples = 0;
         long decodeAccumMs = 0;
+        long vadAccumMs = 0;
+        long maxBacklogMs = 0;
+        int[] stepMs = new int[512];
+        int stepCount = 0;
+        long eofAt = 0;
+        long finalStart = 0;
+        long tFinal = 0;
+        long firstTextAt = 0;
 
         try {
             while (true) {
@@ -443,14 +464,19 @@ public final class DictationService extends Service {
                     continue;
                 }
                 totalSamples += n;
+                long backlogMs = capture.availableSamples() / 16L;
+                if (backlogMs > maxBacklogMs) maxBacklogMs = backlogMs;
 
                 long stepStart = SystemClock.elapsedRealtime();
                 eng.decodeStream(readBuf, 0, n);
                 StreamDisplay.Update u = display.update(eng);
-                decodeAccumMs += (SystemClock.elapsedRealtime() - stepStart);
+                int stepElapsed = (int) (SystemClock.elapsedRealtime() - stepStart);
+                decodeAccumMs += stepElapsed;
+                if (stepCount < stepMs.length) stepMs[stepCount++] = stepElapsed;
 
                 if (u.commitDelta.length() > 0 || !u.tentative.equals(lastTentative)) {
                     lastTentative = u.tentative;
+                    if (firstTextAt == 0) firstTextAt = SystemClock.elapsedRealtime();
                     notifyText(callback, u.commitDelta, u.tentative);
                 }
 
@@ -467,7 +493,9 @@ public final class DictationService extends Service {
                             if (vadFill == vadBuf.length) {
                                 long vStart = SystemClock.elapsedRealtime();
                                 float[] scores = eng.detectSpeech(vadBuf);
-                                decodeAccumMs += (SystemClock.elapsedRealtime() - vStart);
+                                long vadElapsed = SystemClock.elapsedRealtime() - vStart;
+                                decodeAccumMs += vadElapsed;
+                                vadAccumMs += vadElapsed;
                                 vadFill = 0;
                                 if (scores != null && scores.length > 0) {
                                     double windowMs = (vadBuf.length * 1000.0) / AudioCapture.SAMPLE_RATE;
@@ -494,15 +522,33 @@ public final class DictationService extends Service {
                 reason = (sessionGen == gen) ? autoStopReason : 0;
             }
 
+            eofAt = capture.eofAtMs();
             String finalText = "";
             if (shouldCommit) {
                 notifyState(callback, DictationContract.STATE_FINALIZING, null);
-                long finStart = SystemClock.elapsedRealtime();
+                finalStart = SystemClock.elapsedRealtime();
                 eng.finish();
                 StreamDisplay.Update end = display.finish(eng);
-                decodeAccumMs += (SystemClock.elapsedRealtime() - finStart);
+                decodeAccumMs += (SystemClock.elapsedRealtime() - finalStart);
                 finalText = end.settled;
                 notifyFinal(callback, end.commitDelta);
+            }
+            tFinal = SystemClock.elapsedRealtime();
+
+            if (benchMode) {
+                int[] sorted = Arrays.copyOf(stepMs, stepCount);
+                Arrays.sort(sorted);
+                int stepP95 = stepCount == 0 ? 0
+                    : sorted[Math.max(0, (int) Math.ceil(stepCount * 0.95) - 1)];
+                long finalMs = eofAt > 0 ? tFinal - eofAt
+                    : (finalStart > 0 ? tFinal - finalStart : 0);
+                Log.i(BENCH_TAG, String.format(Locale.US,
+                    "sched threads=%d %s step_p95=%d final_ms=%d first_ms=%d stop_ms=%d"
+                        + " backlog_max_ms=%d vad_ms=%d",
+                    threads, decodeSched.describe(), stepP95, finalMs,
+                    firstTextAt > 0 ? firstTextAt - tLoadStart : 0,
+                    stopRequestAtMs > 0 ? tFinal - stopRequestAtMs : 0,
+                    maxBacklogMs, vadAccumMs));
             }
 
             if (benchMode) {
