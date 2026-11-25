@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 #include <mutex>
 #include <sstream>
 #include <utility>
@@ -208,6 +209,14 @@ struct AsrRuntime::ArenaGroup {
 };
 
 struct AsrRuntime::LoadedMethod {
+  struct Feedback {
+    size_t input;
+    size_t output;
+    std::vector<int32_t> sizes;
+    AlignedBuffer current;
+    AlignedBuffer next;
+  };
+  std::vector<Feedback> feedback;
   std::string name;
   std::string arena_group;
   std::unique_ptr<ArenaStorage> dedicated_arena;
@@ -448,7 +457,9 @@ int AsrRuntime::load_method_locked(
         group_members.push_back(kv.first);
       }
     }
+    std::unordered_map<std::string, std::vector<LoadedMethod::Feedback>> feedback;
     for (const std::string& m : group_members) {
+      feedback.emplace(m, std::move(methods_.at(m)->feedback));
       methods_.erase(m);
     }
     std::vector<size_t> new_sizes = git->second->storage.merged_sizes(required_sizes);
@@ -464,6 +475,7 @@ int AsrRuntime::load_method_locked(
       if (rc != 0) {
         return rc;
       }
+      reloaded->feedback = std::move(feedback.at(m));
       methods_.emplace(m, std::move(reloaded));
     }
   }
@@ -593,6 +605,86 @@ std::string AsrRuntime::method_meta_json(const std::string& method_name) {
   return os.str();
 }
 
+int AsrRuntime::set_feedback(
+    const std::string& method_name,
+    const std::vector<int>& output_indices,
+    const std::vector<int>& input_indices) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto it = methods_.find(method_name);
+  if (it == methods_.end()) {
+    set_error_locked("Feedback requires a loaded method: " + method_name);
+    return static_cast<int>(Error::InvalidState);
+  }
+  if (input_indices.size() != output_indices.size()) {
+    set_error_locked("Feedback input/output index counts differ for " + method_name);
+    return static_cast<int>(Error::InvalidArgument);
+  }
+  auto meta_res = program_->method_meta(method_name.c_str());
+  if (!meta_res.ok()) {
+    set_error_locked("Failed to query feedback tensor metadata for " + method_name);
+    return static_cast<int>(meta_res.error());
+  }
+  const MethodMeta& meta = meta_res.get();
+  std::vector<LoadedMethod::Feedback> pairs;
+  pairs.reserve(input_indices.size());
+  for (size_t j = 0; j < input_indices.size(); ++j) {
+    const size_t input = static_cast<size_t>(input_indices[j]);
+    const size_t output = static_cast<size_t>(output_indices[j]);
+    if (input >= meta.num_inputs() || output >= meta.num_outputs()) {
+      set_error_locked("Feedback index out of range for " + method_name);
+      return static_cast<int>(Error::InvalidArgument);
+    }
+    for (const auto& pair : pairs) {
+      if (pair.input == input || pair.output == output) {
+        set_error_locked("Duplicate feedback index for " + method_name);
+        return static_cast<int>(Error::InvalidArgument);
+      }
+    }
+    auto in = meta.input_tensor_meta(input);
+    auto out = meta.output_tensor_meta(output);
+    if (!in.ok() || !out.ok() || in.get().scalar_type() != ScalarType::Float ||
+        out.get().scalar_type() != ScalarType::Float) {
+      set_error_locked("Feedback requires float32 tensors for " + method_name);
+      return static_cast<int>(Error::InvalidArgument);
+    }
+    auto in_sizes = in.get().sizes();
+    auto out_sizes = out.get().sizes();
+    if (!std::equal(in_sizes.begin(), in_sizes.end(), out_sizes.begin(), out_sizes.end())) {
+      set_error_locked("Feedback input/output shapes differ for " + method_name);
+      return static_cast<int>(Error::InvalidArgument);
+    }
+    size_t bytes = sizeof(float);
+    for (const int32_t dim : in_sizes) {
+      if (dim <= 0 || static_cast<size_t>(dim) > std::numeric_limits<size_t>::max() / bytes) {
+        set_error_locked("Invalid feedback tensor size for " + method_name);
+        return static_cast<int>(Error::InvalidArgument);
+      }
+      bytes *= static_cast<size_t>(dim);
+    }
+    auto& pair = pairs.emplace_back();
+    pair.input = input;
+    pair.output = output;
+    pair.sizes.assign(in_sizes.begin(), in_sizes.end());
+    if (!pair.current.allocate(bytes) || !pair.next.allocate(bytes)) {
+      set_error_locked("Failed to allocate feedback buffers for " + method_name);
+      return static_cast<int>(Error::MemoryAllocationFailed);
+    }
+    std::memset(pair.current.ptr, 0, bytes);
+  }
+  it->second->feedback = std::move(pairs);
+  return static_cast<int>(Error::Ok);
+}
+
+void AsrRuntime::reset_feedback(const std::string& method_name) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto it = methods_.find(method_name);
+  if (it != methods_.end()) {
+    for (auto& pair : it->second->feedback) {
+      std::memset(pair.current.ptr, 0, pair.current.size);
+    }
+  }
+}
+
 bool AsrRuntime::execute(
     const std::string& method_name,
     const std::vector<InputTensor>& inputs,
@@ -607,7 +699,8 @@ bool AsrRuntime::execute(
     }
     it = methods_.find(method_name);
   }
-  Method& method = *it->second->method;
+  LoadedMethod& loaded = *it->second;
+  Method& method = *loaded.method;
 
   if (inputs.size() != method.inputs_size()) {
     set_error_locked(
@@ -630,8 +723,23 @@ bool AsrRuntime::execute(
     const InputTensor& in = inputs[i];
     BoundInput& b = bound[i];
 
+    const auto* sizes = &in.sizes;
+    const float* f32 = in.f32;
+    size_t count = in.count;
+    if (in.use_feedback) {
+      auto pair = std::find_if(loaded.feedback.begin(), loaded.feedback.end(),
+                               [i](const auto& item) { return item.input == i; });
+      if (in.dtype != kDtypeFloat32 || pair == loaded.feedback.end()) {
+        set_error_locked("Missing data for non-feedback input " + std::to_string(i) +
+                         " of " + method_name);
+        return false;
+      }
+      sizes = &pair->sizes;
+      f32 = reinterpret_cast<const float*>(pair->current.ptr);
+      count = pair->current.size / sizeof(float);
+    }
     size_t expected_numel = 1;
-    b.sizes.assign(in.sizes.begin(), in.sizes.end());
+    b.sizes.assign(sizes->begin(), sizes->end());
     const size_t rank = b.sizes.size();
     b.dim_order.resize(rank);
     b.strides.resize(rank);
@@ -651,10 +759,10 @@ bool AsrRuntime::execute(
       }
     }
 
-    if (in.count < expected_numel) {
+    if (count < expected_numel) {
       set_error_locked(
           "Input " + std::to_string(i) + " for " + method_name + " has " +
-          std::to_string(in.count) + " elements, expected at least " +
+          std::to_string(count) + " elements, expected at least " +
           std::to_string(expected_numel));
       return false;
     }
@@ -663,7 +771,7 @@ bool AsrRuntime::execute(
     void* data_ptr = nullptr;
     if (in.dtype == kDtypeFloat32) {
       st = ScalarType::Float;
-      data_ptr = const_cast<float*>(in.f32);
+      data_ptr = const_cast<float*>(f32);
     } else if (in.dtype == kDtypeInt64) {
       st = ScalarType::Long;
       data_ptr = const_cast<int64_t*>(in.i64);
@@ -725,7 +833,21 @@ bool AsrRuntime::execute(
       out.sizes[static_cast<size_t>(d)] = static_cast<int32_t>(t.size(d));
     }
     const size_t n = static_cast<size_t>(t.numel());
-    if (out.dtype == kDtypeFloat32) {
+    auto pair = std::find_if(loaded.feedback.begin(), loaded.feedback.end(),
+                             [j, &inputs](const auto& item) {
+                               return item.output == j && inputs[item.input].use_feedback;
+                             });
+    if (pair != loaded.feedback.end()) {
+      if (out.dtype != kDtypeFloat32 || out.sizes != pair->sizes ||
+          n != pair->next.size / sizeof(float)) {
+        set_error_locked("Feedback output changed dtype or shape for " + method_name);
+        return false;
+      }
+      // The output may alias a current input. Keep all current inputs intact
+      // until every output has been read, and never keep an arena pointer.
+      std::memcpy(pair->next.ptr, t.const_data_ptr<float>(), pair->next.size);
+      out.retained = true;
+    } else if (out.dtype == kDtypeFloat32) {
       out.f32.resize(n);
       if (n > 0) {
         std::memcpy(out.f32.data(), t.const_data_ptr<float>(), n * sizeof(float));
@@ -744,6 +866,11 @@ bool AsrRuntime::execute(
     }
   }
 
+  for (auto& pair : loaded.feedback) {
+    if (inputs[pair.input].use_feedback) {
+      std::swap(pair.current, pair.next);
+    }
+  }
   return true;
 }
 

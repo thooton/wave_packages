@@ -43,6 +43,7 @@ struct InputTensor {
   const float* f32 = nullptr;
   const int64_t* i64 = nullptr;
   size_t count = 0;
+  bool use_feedback = false;  // Use the registered cache instead of caller data.
 };
 
 struct OutputTensor {
@@ -50,6 +51,7 @@ struct OutputTensor {
   std::vector<int32_t> sizes;
   std::vector<float> f32;
   std::vector<int64_t> i64;
+  bool retained = false;  // Output was retained for the next feedback input.
 };
 
 // Configure the process-wide ExecuTorch / XNNPACK pthreadpool thread count.
@@ -91,8 +93,19 @@ class AsrRuntime {
   // Empty string on error (details in last_error()).
   std::string method_meta_json(const std::string& method_name);
 
+  // Registers matching float32 output/input pairs on a loaded method,
+  // replacing any previous pairs with zero-filled caches.
+  int set_feedback(
+      const std::string& method_name,
+      const std::vector<int>& output_indices,
+      const std::vector<int>& input_indices);
+
+  // Zeroes the registered caches; a missing method is a no-op.
+  void reset_feedback(const std::string& method_name);
+
   // Executes a loaded method (auto-loads with dedicated arena if not loaded)
-  // and deep-copies outputs out of the method arena into `outputs`.
+  // and deep-copies outputs out of the method arena. If an input requests
+  // feedback, its paired output updates the cache instead.
   bool execute(
       const std::string& method_name,
       const std::vector<InputTensor>& inputs,
