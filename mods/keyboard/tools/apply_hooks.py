@@ -18,6 +18,11 @@ Hooks (all logic lives in Java, see apps/XT9IME/java):
   * KeyboardViewEx.showPopupKeyboard: WaveEarly.beforePopup before the stock body.
   * CandidatesListView.onDraw: Canvas.drawText -> WaveFrame.drawText (skips off-screen words),
     Paint.measureText -> WaveFrame.measure (widths remembered across keys).
+  * Dictation (WaveDictation): IME.onKeyDown / onKeyUp ask WaveDictation.keyDown / keyUp first
+    (true: consumed, stock not run); IME.onUpdateSelection is skipped while a session runs;
+    IME.onStartInput calls WaveDictation.startInput first; IME.onFinishInput,
+    onFinishInputView and onWindowHidden call WaveDictation before the stock body;
+    IME.onUpdateCursorAnchorInfo (added) sends the caret to WaveDictation.
 """
 import os, re, sys
 
@@ -175,6 +180,30 @@ STATUS = '''
 ''' % {'P': P}
 
 
+CURSOR = '''
+# Wave: the caret position for dictation (WaveDictation); stock doesn't override this.
+.method public onUpdateCursorAnchorInfo(Landroid/view/inputmethod/CursorAnchorInfo;)V
+    .registers 2
+    invoke-static {p0, p1}, L%(P)s/WaveDictation;->cursorAnchor(Ljava/lang/Object;Landroid/view/inputmethod/CursorAnchorInfo;)V
+    invoke-super {p0, p1}, Landroid/inputmethodservice/InputMethodService;->onUpdateCursorAnchorInfo(Landroid/view/inputmethod/CursorAnchorInfo;)V
+    return-void
+.end method
+''' % {'P': P}
+
+
+def dictation_key(name):
+    """In the onKeyDown / onKeyUp wrapper: WaveDictation first; true consumes the key."""
+    sig = '(ILandroid/view/KeyEvent;)Z'
+    first = '    invoke-static/range {p0 .. p2}, L%s/WaveSpec;->keyStart(Ljava/lang/Object;ILandroid/view/KeyEvent;)V\n' % P
+    patch_in_method(root, P + '/IME', '.method public %s%s' % (name, sig), first,
+                    '    invoke-static/range {p0 .. p2}, L%s/WaveDictation;->%s(Ljava/lang/Object;ILandroid/view/KeyEvent;)Z\n'
+                    '    move-result v0\n'
+                    '    if-eqz v0, :wave_dictation_pass\n'
+                    '    return v0\n'
+                    '    :wave_dictation_pass\n' % (P, 'keyDown' if name == 'onKeyDown' else 'keyUp') + first,
+                    'WaveDictation;->')
+
+
 if __name__ == '__main__':
     root = sys.argv[1]
     retarget(root, P + '/AlphaInput', 'L%s/NativeAlphaInput;->xt9input_alpha_' % P, 'L%s/WaveAlpha;->xt9input_alpha_' % P)
@@ -200,3 +229,21 @@ if __name__ == '__main__':
     retarget(root, P + '/CandidatesListView',
              'invoke-virtual {v7, v9, v10, v2}, Landroid/graphics/Paint;->measureText(Ljava/lang/CharSequence;II)F',
              'invoke-static {v7, v9, v10, v2}, L%s/WaveFrame;->measure(Landroid/graphics/Paint;Ljava/lang/CharSequence;II)F' % P)
+    # Dictation (WaveDictation).
+    dictation_key('onKeyDown')
+    dictation_key('onKeyUp')
+    sel = '    invoke-static/range {p0 .. p6}, L%s/WaveSpec;->selectionChanging(Ljava/lang/Object;IIIIII)V\n' % P
+    patch_in_method(root, P + '/IME', '.method public onUpdateSelection(IIIIII)V', sel,
+                    '    invoke-static {}, L%s/WaveDictation;->active()Z\n'
+                    '    move-result v0\n'
+                    '    if-eqz v0, :wave_dictation_sel\n'
+                    '    return-void\n'
+                    '    :wave_dictation_sel\n' % P + sel, 'WaveDictation;->')
+    start = '    invoke-static/range {p0 .. p2}, L%s/WaveSpec;->startInput(Ljava/lang/Object;Landroid/view/inputmethod/EditorInfo;Z)V\n' % P
+    patch_in_method(root, P + '/IME', '.method public onStartInput(Landroid/view/inputmethod/EditorInfo;Z)V', start,
+                    '    invoke-static/range {p0 .. p2}, L%s/WaveDictation;->startInput(Ljava/lang/Object;Landroid/view/inputmethod/EditorInfo;Z)V\n' % P
+                    + start, 'WaveDictation;->')
+    wrap(root, P + '/IME', 'onFinishInput', '()V', ('WaveDictation', 'finishInput'), None)
+    wrap(root, P + '/IME', 'onFinishInputView', '(Z)V', ('WaveDictation', 'finishInputView'), None)
+    wrap(root, P + '/IME', 'onWindowHidden', '()V', ('WaveDictation', 'windowHidden'), None)
+    add_methods(root, P + '/IME', 'WaveDictation;->cursorAnchor', CURSOR)

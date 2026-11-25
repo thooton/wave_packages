@@ -3,7 +3,7 @@
   "type": "module",
   "name": "Keyboard Improved",
   "summary": "Word suggestions as you press each key",
-  "description": "The stock XT9 keyboard, with the same words, suggestions and keys, but responsive: a letter shows its suggestions when the key goes down instead of when it is released, usually within two screen refreshes. Space and the other keys respond about four times faster too.",
+  "description": "The stock XT9 keyboard, with the same words, suggestions and keys, but responsive: a letter shows its suggestions when the key goes down instead of when it is released, usually within two screen refreshes. Space and the other keys respond about four times faster too. With the Dictation app installed and switched on, * starts voice dictation in text fields.",
   "author": "thooton",
   "homepage": "https://github.com/thooton/wave_packages/tree/master/mods/keyboard",
   "requires": {

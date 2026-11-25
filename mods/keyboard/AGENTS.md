@@ -61,6 +61,11 @@ every engine call goes through `WaveSpec.enter/exit` or one of its answering met
   each key confirms the copy against that text instead of asking the app: a session's app
   round trips drop from ~190 to a handful. Each text is checked against the field once; a
   field the copy can't follow goes back to asking the app.
+- `WaveDictation`: `*` dictation through the Dictation app's service (raw Binder codes copied
+  from its `DictationContract`; see SPEC.md). Off, or without the app, it returns at once and
+  every key is stock. While a session runs the stock code gets no keys it stops on and no
+  selection updates, and `WaveSpec.dictating` keeps the look-ahead off; at the end the
+  composing text is finished and `WaveConnection.reset` drops the text copy.
 - `WaveBoost`: CPU minimum frequency at the top while typing (BoostFramework perf lock), and
   the main thread and RenderThread(s) at audio priority from a key event until 120 ms after
   the last one (threads started meanwhile get the main thread's priority back). The

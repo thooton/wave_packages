@@ -1157,7 +1157,7 @@ public final class WaveSpec {
     private static final boolean OFF = prop("debug.wave.keyboard.off");
 
     static void schedule(Object ime, int delayMs) {
-        if (OFF || sDisabled || ime == null || !onMain()) return;
+        if (OFF || sDisabled || sDictating || ime == null || !onMain()) return;
         Trace.beginSection("wave.schedule");
         try {
             if (sEngine == null) init(ime);
@@ -1241,6 +1241,19 @@ public final class WaveSpec {
     /** IME.onUpdateSelection, after the stock body (the shift state may have changed). */
     public static void selectionUpdated(Object ime, int a, int b, int c, int d, int e, int f) {
         schedule(ime);
+    }
+
+    /** WaveDictation: a session is running (the stock code sees no keys or selection updates). */
+    private static boolean sDictating;
+
+    /** WaveDictation: suspend look-ahead and drop key predictions made before dictation. */
+    static void dictating(boolean on) {
+        sDictating = on;
+        synchronized (LOCK) {
+            sGen++;
+            clearKeys();
+            sDoneVer = -1;
+        }
     }
 
     private static Handler sStartHandler;

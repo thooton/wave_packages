@@ -8778,7 +8778,7 @@
     return-void
 .end method
 
-.method public onFinishInput()V
+.method private onFinishInput$wave()V
     .locals 8
 
     .prologue
@@ -9030,7 +9030,7 @@
     return-void
 .end method
 
-.method public onFinishInputView(Z)V
+.method private onFinishInputView$wave(Z)V
     .locals 2
 
     .prologue
@@ -11351,7 +11351,7 @@
     return-void
 .end method
 
-.method public onWindowHidden()V
+.method private onWindowHidden$wave()V
     .locals 1
 
     .prologue
@@ -13102,6 +13102,11 @@
 # Wave: hook around the stock onKeyDown (now onKeyDown$wave).
 .method public onKeyDown(ILandroid/view/KeyEvent;)Z
     .registers 5
+    invoke-static/range {p0 .. p2}, Lcom/nuance/flext9_OEM/input/WaveDictation;->keyDown(Ljava/lang/Object;ILandroid/view/KeyEvent;)Z
+    move-result v0
+    if-eqz v0, :wave_dictation_pass
+    return v0
+    :wave_dictation_pass
     invoke-static/range {p0 .. p2}, Lcom/nuance/flext9_OEM/input/WaveSpec;->keyStart(Ljava/lang/Object;ILandroid/view/KeyEvent;)V
     invoke-direct/range {p0 .. p2}, Lcom/nuance/flext9_OEM/input/IME;->onKeyDown$wave(ILandroid/view/KeyEvent;)Z
     move-result v0
@@ -13112,6 +13117,11 @@
 # Wave: hook around the stock onKeyUp (now onKeyUp$wave).
 .method public onKeyUp(ILandroid/view/KeyEvent;)Z
     .registers 5
+    invoke-static/range {p0 .. p2}, Lcom/nuance/flext9_OEM/input/WaveDictation;->keyUp(Ljava/lang/Object;ILandroid/view/KeyEvent;)Z
+    move-result v0
+    if-eqz v0, :wave_dictation_pass
+    return v0
+    :wave_dictation_pass
     invoke-static/range {p0 .. p2}, Lcom/nuance/flext9_OEM/input/WaveSpec;->keyStart(Ljava/lang/Object;ILandroid/view/KeyEvent;)V
     invoke-direct/range {p0 .. p2}, Lcom/nuance/flext9_OEM/input/IME;->onKeyUp$wave(ILandroid/view/KeyEvent;)Z
     move-result v0
@@ -13136,6 +13146,11 @@
 # Wave: hook around the stock onUpdateSelection (now onUpdateSelection$wave).
 .method public onUpdateSelection(IIIIII)V
     .registers 9
+    invoke-static {}, Lcom/nuance/flext9_OEM/input/WaveDictation;->active()Z
+    move-result v0
+    if-eqz v0, :wave_dictation_sel
+    return-void
+    :wave_dictation_sel
     invoke-static/range {p0 .. p6}, Lcom/nuance/flext9_OEM/input/WaveSpec;->selectionChanging(Ljava/lang/Object;IIIIII)V
     invoke-direct/range {p0 .. p6}, Lcom/nuance/flext9_OEM/input/IME;->onUpdateSelection$wave(IIIIII)V
     invoke-static/range {p0 .. p6}, Lcom/nuance/flext9_OEM/input/WaveSpec;->selectionUpdated(Ljava/lang/Object;IIIIII)V
@@ -13145,6 +13160,7 @@
 # Wave: hook around the stock onStartInput (now onStartInput$wave).
 .method public onStartInput(Landroid/view/inputmethod/EditorInfo;Z)V
     .registers 5
+    invoke-static/range {p0 .. p2}, Lcom/nuance/flext9_OEM/input/WaveDictation;->startInput(Ljava/lang/Object;Landroid/view/inputmethod/EditorInfo;Z)V
     invoke-static/range {p0 .. p2}, Lcom/nuance/flext9_OEM/input/WaveSpec;->startInput(Ljava/lang/Object;Landroid/view/inputmethod/EditorInfo;Z)V
     invoke-direct/range {p0 .. p2}, Lcom/nuance/flext9_OEM/input/IME;->onStartInput$wave(Landroid/view/inputmethod/EditorInfo;Z)V
     return-void
@@ -13158,4 +13174,36 @@
     invoke-static {v0}, Lcom/nuance/flext9_OEM/input/WaveConnection;->wrap(Landroid/view/inputmethod/InputConnection;)Landroid/view/inputmethod/InputConnection;
     move-result-object v0
     return-object v0
+.end method
+
+# Wave: hook around the stock onFinishInput (now onFinishInput$wave).
+.method public onFinishInput()V
+    .registers 3
+    invoke-static/range {p0 .. p0}, Lcom/nuance/flext9_OEM/input/WaveDictation;->finishInput(Ljava/lang/Object;)V
+    invoke-direct/range {p0 .. p0}, Lcom/nuance/flext9_OEM/input/IME;->onFinishInput$wave()V
+    return-void
+.end method
+
+# Wave: hook around the stock onFinishInputView (now onFinishInputView$wave).
+.method public onFinishInputView(Z)V
+    .registers 4
+    invoke-static/range {p0 .. p1}, Lcom/nuance/flext9_OEM/input/WaveDictation;->finishInputView(Ljava/lang/Object;Z)V
+    invoke-direct/range {p0 .. p1}, Lcom/nuance/flext9_OEM/input/IME;->onFinishInputView$wave(Z)V
+    return-void
+.end method
+
+# Wave: hook around the stock onWindowHidden (now onWindowHidden$wave).
+.method public onWindowHidden()V
+    .registers 3
+    invoke-static/range {p0 .. p0}, Lcom/nuance/flext9_OEM/input/WaveDictation;->windowHidden(Ljava/lang/Object;)V
+    invoke-direct/range {p0 .. p0}, Lcom/nuance/flext9_OEM/input/IME;->onWindowHidden$wave()V
+    return-void
+.end method
+
+# Wave: the caret position for dictation (WaveDictation); stock doesn't override this.
+.method public onUpdateCursorAnchorInfo(Landroid/view/inputmethod/CursorAnchorInfo;)V
+    .registers 2
+    invoke-static {p0, p1}, Lcom/nuance/flext9_OEM/input/WaveDictation;->cursorAnchor(Ljava/lang/Object;Landroid/view/inputmethod/CursorAnchorInfo;)V
+    invoke-super {p0, p1}, Landroid/inputmethodservice/InputMethodService;->onUpdateCursorAnchorInfo(Landroid/view/inputmethod/CursorAnchorInfo;)V
+    return-void
 .end method

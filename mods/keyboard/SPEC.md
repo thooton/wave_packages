@@ -37,6 +37,24 @@ changes.
   module is installed (float arithmetic in hardware, direct calls), with every engine result
   bit-identical to stock. On any other library the module installs without this.
 
+## Dictation
+
+With the Dictation app (`com.dictation.xp3`) installed and switched on, `*` dictates. When it
+is off or not installed, `*` and every other key are exactly as on stock (the switch is read
+from the app at each field start).
+
+- `*` in a text field starts listening, after accepting the word being typed. Never in
+  password, number, phone or date/time fields (there `*` is stock). Holding `*` doesn't open
+  the language menu while dictation is on; holding 1 still opens symbols.
+- While listening, settled words are committed and the words still being recognized show as
+  composing text. The app draws its caret overlay at the field's cursor.
+- An empty field hides its hint as soon as dictation starts, without leaving any placeholder text.
+- The first dictated word is separated from preceding non-whitespace by one space, unless dictation starts with punctuation.
+- `*` or OK stops and commits the final text. Back stops and keeps the text as shown (the key
+  goes no further). Any other key stops, keeps the text as shown, and then works as usual.
+  Leaving the field stops too, as does about 8 s of silence (the app's auto-stop).
+- Afterwards typing goes on from the new text with the usual suggestions.
+
 ## Phone checks
 
 In Messages, type a sentence with predictive text: check that each letter and its
@@ -45,4 +63,6 @@ for the same words. Hold 2 for the popup and pick a character; hold 0 for the di
 with Clear, pick a suggestion with the D-pad and OK, cycle punctuation with 1, change case and
 mode with `#`, open symbols with `*`, and type in ABC (multitap) mode. Type in a password
 field. Open the keyboard settings from the status bar or Settings. Uninstalling the module
-restores the stock keyboard.
+restores the stock keyboard. Dictation: with it off, check `*` and holding `*` as on stock;
+with it on, dictate in Messages, stop with `*`, OK, Back and a letter key, and check that `*`
+types itself in a phone number field.
