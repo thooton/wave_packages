@@ -92,8 +92,7 @@ public final class TrayPreview {
                 if (icons.size() < 4) icons.add(a.getIcon());
                 text.append("    ").append(label(byComp.get(c), pm)).append("  (").append(c).append(")\n");
             }
-            boolean stock = n.folder.equalsIgnoreCase("Applications") || n.folder.equalsIgnoreCase("Tools");
-            f.setIcon(stock ? stockFolderIcon(lc, n.folder, theme) : WaveIcons.folder(lc.getResources(), n.folder, icons, theme));
+            f.setIcon(WaveIcons.folder(lc.getResources(), n.folder, icons, theme));
             list.add(f);
         }
         text.append("missing: ").append(r.missing).append("\nhidden: ").append(r.hidden).append('\n');
@@ -142,13 +141,6 @@ public final class TrayPreview {
         a.setIcon(ri.loadIcon(pm));
         a.setName(String.valueOf(ri.loadLabel(pm)));
         return a;
-    }
-
-    private static Drawable stockFolderIcon(Context lc, String name, int theme) {
-        String res = (theme == 1 ? "ic_red_folder_" : "ic_colorful_folder_") + (name.equalsIgnoreCase("Tools") ? "tools" : "apps");
-        int id = lc.getResources().getIdentifier(res, "drawable", "com.sonim.borqs.launcher");
-        if (id == 0) id = lc.getResources().getIdentifier("ic_folder", "drawable", "com.sonim.borqs.launcher");
-        return lc.getDrawable(id);
     }
 
     private static List<String[]> stockRows(String db) {

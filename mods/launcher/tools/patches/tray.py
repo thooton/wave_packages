@@ -120,7 +120,7 @@ patch(LA, ".method private getFolderIcon(Ljava/lang/String;)Landroid/graphics/dr
     .locals 4
 
     .prologue
-    # FEAT(tray): WaveTray's icon for the user's folders (null = stock folder: stock icon)
+    # FEAT(tray): WaveTray's drawn icon for every folder (null = fallback: stock icon)
     invoke-static {{p0, p1}}, {T}->folderIconHook({L}Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0

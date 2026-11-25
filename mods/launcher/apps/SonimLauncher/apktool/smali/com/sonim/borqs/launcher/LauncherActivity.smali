@@ -1294,7 +1294,7 @@
     .locals 4
 
     .prologue
-    # FEAT(tray): WaveTray's icon for the user's folders (null = stock folder: stock icon)
+    # FEAT(tray): WaveTray's drawn icon for every folder (null = fallback: stock icon)
     invoke-static {p0, p1}, Lcom/sonim/borqs/launcher/WaveTray;->folderIconHook(Lcom/sonim/borqs/launcher/LauncherActivity;Ljava/lang/String;)Landroid/graphics/drawable/Drawable;
 
     move-result-object v0

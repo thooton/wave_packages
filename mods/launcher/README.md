@@ -4,8 +4,8 @@ The Sonim XP3800's own launcher, with an apps tray you arrange yourself. Shipped
 systemless Magisk module that replaces `/system/priv-app/SonimLauncher`.
 
 * **Folders.** The default tray starts with common apps, then Media, Reading, Tools, Files,
-  System and Applications. Each of your
-  folders gets an icon showing its first four apps.
+  System and Applications. Every
+  folder, Tools and Applications included, gets an icon showing its first four apps.
 * **Add apps.** Open Menu in the tray or inside a folder and choose **Add apps**. The picker
   includes hidden and unlisted launchable apps. Choosing an app shown elsewhere moves it here
   instead of making a copy.

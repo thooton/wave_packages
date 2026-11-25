@@ -231,17 +231,8 @@ final class WaveTray {
         }
     }
 
-    /** Stock folders keep their stock icons; the user's get a drawn one with a preview. */
-    private static boolean isStockFolder(Context ctx, String name) {
-        for (String s : new String[] {"Applications", "Aplicaciones", "Tools", "Outils", "Music", "Música",
-                "Verizon", ctx.getString(WaveR.STRING_FOLDER_APPS), ctx.getString(WaveR.STRING_FOLDER_TOOLS)}) {
-            if (s.equalsIgnoreCase(name)) return true;
-        }
-        return false;
-    }
-
+    /** Every folder, Sonim's Tools and Applications included, gets a drawn icon previewing its apps. */
     private static Drawable folderIcon(LauncherActivity l, LauncherActivity.Folder f, int theme) {
-        if (isStockFolder(l, f.getName())) return LauncherActivity.waveStockFolderIcon(l, f.getName());
         List<Drawable> icons = new ArrayList<>();
         ArrayList apps = f.getAppListInsideFolder();
         if (apps != null) {
@@ -255,7 +246,7 @@ final class WaveTray {
 
     /** Hook at the start of LauncherActivity.getFolderIcon(name): null means "stock icon". */
     static Drawable folderIconHook(LauncherActivity l, String name) {
-        if (sFallback || name == null || isStockFolder(l, name)) return null;
+        if (sFallback || name == null) return null;
         int theme = LauncherActivity.wavePrefs(l).getInt("current_theme", 0);
         LauncherActivity.Folder f = findFolder(LauncherActivity.waveList(l), name);
         if (f != null) return folderIcon(l, f, theme);

@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Launcher Improved: icons for the user's folders, drawn in the stock tray's folder style (a
+ * Launcher Improved: icons for every folder in the tray, drawn in the stock tray's folder style (a
  * rounded folder with a tab, like ic_colorful_folder_apps / ic_red_folder_apps) with the first
  * four apps inside shown as a 2x2 preview.
  */
@@ -37,6 +37,11 @@ final class WaveIcons {
             case "system": return 0xFF546E7A;
             case "school": return 0xFF3949AB;
             case "games": return 0xFF43A047;
+            case "tools": return 0xFF43A047;         // the stock Tools folder's green
+            case "applications": return 0xFFF57C00; // the stock Applications folder's orange
+            case "talk": return 0xFF1E88E5;
+            case "planner": return 0xFF8E24AA;
+            case "travel": return 0xFFF4511E;
             default:
                 int[] palette = {0xFF00897B, 0xFFC2185B, 0xFF1E88E5, 0xFF6D4C41, 0xFF546E7A, 0xFF3949AB,
                         0xFF8E24AA, 0xFF43A047, 0xFFE53935, 0xFFF4511E};

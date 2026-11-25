@@ -18,7 +18,7 @@ install/uninstall. A folder opens `FolderLaunchActivity` (a dialog, 2 columns) w
 | `dispatchKeyEvent` | `WaveTray.dispatchKey`: a move in progress takes the d-pad, Center/Enter/Menu/Back |
 | `onPrepareOptionsMenu` | clears and fills the current screen's menu with `WaveMenu`; uses the stock builder only in fallback |
 | `onPause` | a move in progress is put down |
-| `getFolderIcon(name)` | `WaveTray.folderIconHook`: drawn icon for the user's folders, stock icon for stock ones |
+| `getFolderIcon(name)` | `WaveTray.folderIconHook`: drawn icon previewing the first four apps, for every folder (stock icon only in fallback) |
 | `updateAppTrayList()` | disabled PTT moves Calculator to the main tray only in stock fallback |
 | `LauncherActivity$2`, `onNewIntent` | opening the tray selects entry 0 (stock: 4) without also queuing a smooth scroll |
 | `QuickSettingFragment.onResume` / `onPause` | `WaveQuickSettings` starts receiver registration and preference refresh on the first draw of the selected, visible page; pause cancels pending work or runs the stock teardown |
@@ -32,7 +32,7 @@ Java (`apps/SonimLauncher/java/com/sonim/borqs/launcher/`):
 * `WaveTray`: builds the list, handles package events, edits and saves the layout, and builds the Add apps picker.
 * `WaveMenu`: home, tray, and folder menus, prepared from the current selection.
 * `WaveMover`: carrying an entry through a grid (tray or folder).
-* `WaveIcons`: folder icons (colourful theme: coloured folder, red theme: white with red outline;
+* `WaveIcons`: folder icons for every folder (colourful theme: coloured folder, red theme: white with red outline;
   2x2 preview of the first apps).
 
 After every build, `WaveTray` writes prefs `sonim_postion`/`stk_postion` (Applications/Tools
