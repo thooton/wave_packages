@@ -14,7 +14,7 @@ import android.view.View;
 import android.view.WindowManager;
 
 /**
- * Draws the iOS-blue ({@code #007AFF}) dictation caret and microphone badge right beside the
+ * Draws the iOS-blue ({@code #007AFF}) dictation caret and microphone glyph right beside the
  * active text field's insertion cursor via {@link WindowManager.LayoutParams#TYPE_APPLICATION_OVERLAY}.
  *
  * Gracefully degrades to a no-op if overlay permission is not granted. Immediately hides when
@@ -23,7 +23,6 @@ import android.view.WindowManager;
 final class CaretOverlay {
 
     private static final int CARET_BLUE = 0xFF007AFF;
-    private static final int WHITE = 0xFFFFFFFF;
 
     private final Context appContext;
     private final WindowManager windowManager;
@@ -161,8 +160,6 @@ final class CaretOverlay {
 
     private final class CaretView extends View {
         private final Paint caretPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint haloPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint badgePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint micFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint micStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF rect = new RectF();
@@ -179,18 +176,13 @@ final class CaretOverlay {
             caretPaint.setStyle(Paint.Style.STROKE);
             caretPaint.setStrokeCap(Paint.Cap.ROUND);
 
-            haloPaint.setColor(WHITE);
-            haloPaint.setStyle(Paint.Style.FILL);
-
-            badgePaint.setColor(CARET_BLUE);
-            badgePaint.setStyle(Paint.Style.FILL);
-
-            micFillPaint.setColor(WHITE);
+            micFillPaint.setColor(CARET_BLUE);
             micFillPaint.setStyle(Paint.Style.FILL);
 
-            micStrokePaint.setColor(WHITE);
+            micStrokePaint.setColor(CARET_BLUE);
             micStrokePaint.setStyle(Paint.Style.STROKE);
             micStrokePaint.setStrokeCap(Paint.Cap.ROUND);
+            micStrokePaint.setStrokeWidth(dp(1.5f));
         }
 
         void configure(float caretCx, float caretW, float caretH, float badgeCx, float badgeD) {
@@ -200,7 +192,6 @@ final class CaretOverlay {
             this.badgeCx = badgeCx;
             this.badgeD = badgeD;
             caretPaint.setStrokeWidth(caretW);
-            micStrokePaint.setStrokeWidth(Math.max(1.0f, badgeD * 0.085f));
         }
 
         @Override
@@ -211,12 +202,7 @@ final class CaretOverlay {
             float halfCaret = Math.max(0f, (caretH - caretW) * 0.5f);
             canvas.drawLine(caretCx, cy - halfCaret, caretCx, cy + halfCaret, caretPaint);
 
-            // Crisp blue badge with thin white rim.
-            float r = badgeD * 0.5f;
-            canvas.drawCircle(badgeCx, cy, r, haloPaint);
-            canvas.drawCircle(badgeCx, cy, r - dp(0.9f), badgePaint);
-
-            // White vector microphone glyph centered inside badge.
+            // Blue microphone glyph on the transparent overlay.
             float capW = badgeD * 0.25f;
             float capH = badgeD * 0.42f;
             float capTop = cy - badgeD * 0.29f;

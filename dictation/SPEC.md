@@ -24,8 +24,8 @@ speak.
   - `onFinishInput`, focus loss, keyboard hide, screen off, incoming call, or
     loss of audio focus: stop listening and commit.
 - **Cursor look**: an iOS-blue (`#007AFF`) vertical caret slightly wider than
-  the app's own caret, paired with a compact blue-and-white microphone badge
-  drawn right beside it (flipping left near the 240px right screen edge). Hidden
+  the app's own caret, paired with a compact iOS-blue microphone glyph drawn
+  right beside it (flipping left near the 240px right screen edge). Hidden
   immediately when dictation stops or the field loses focus.
 - **Offline operation**: the `futo-org/asr4all-s` model is bundled inside the
   APK (`asr_encoder.pte` stored uncompressed and memory-mapped directly from the
