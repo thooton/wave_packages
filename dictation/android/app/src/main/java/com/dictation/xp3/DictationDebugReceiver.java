@@ -30,6 +30,13 @@ public final class DictationDebugReceiver extends BroadcastReceiver {
             svc.putExtra(DictationContract.EXTRA_THREADS,
                 intent.getIntExtra(DictationContract.EXTRA_THREADS, DictationPrefs.DEFAULT_THREADS));
         }
-        context.startService(svc);
+        try {
+            context.startService(svc);
+        } catch (IllegalStateException e) {
+            // API 26+ refuses background service starts; whitelist first:
+            // adb shell cmd deviceidle tempwhitelist com.dictation.xp3
+            android.util.Log.e("DictationBench", "Background start refused; run "
+                + "'cmd deviceidle tempwhitelist com.dictation.xp3' first", e);
+        }
     }
 }

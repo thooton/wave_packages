@@ -368,8 +368,10 @@ public final class AsrEngine {
             filterCache,
             attnCache
         });
-        filterCache = outs[T_FILTER].copy();
-        attnCache = outs[T_ATTN].copy();
+        // Outputs are fresh arrays owned by us (the runtime deep-copies them out of the
+        // arena) and the caches are never mutated, so keep them without another 5.3 MB copy.
+        filterCache = outs[T_FILTER];
+        attnCache = outs[T_ATTN];
 
         int valid = (int) Math.min(t.commit, totalSamples / spf - nextFrame);
         if (valid < 0) valid = 0;

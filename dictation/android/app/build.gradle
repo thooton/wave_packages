@@ -31,10 +31,12 @@ def MODEL_ASSETS = [
     ]
 ]
 
-// TODO(Phase 3b): Populate with immutable GitHub release URL and SHA-256 of armeabi-v7a/libasr4all.so
-// once Phase 1/2 publishes the verified runtime artifact.
+// armeabi-v7a/libasr4all.so from build-dictation-runtime.yml run 45514613740
+// (feat/dictation-runtime a66a084e60262629ec320278144b309cc306c16d), 1,753,904 bytes.
+// NATIVE_LIB_URL stays empty until the runtime is attached to an immutable release;
+// until then stage it with -PdictationJniDir=... (still SHA-256 verified).
 def NATIVE_LIB_URL = ""
-def NATIVE_LIB_SHA256 = ""
+def NATIVE_LIB_SHA256 = "8308dafa77b073caf1d03ba9df75c8dad5b3dd778478c6b99079c0102201c4f0"
 
 def generatedAssetsDir = layout.buildDirectory.dir("generated/dictationAssets")
 def generatedJniDir = layout.buildDirectory.dir("generated/dictationJni")
@@ -211,8 +213,8 @@ android {
 
     defaultConfig {
         applicationId "com.dictation.xp3"
-        versionCode 1
-        versionName "1.0.0"
+        versionCode 2
+        versionName "1.0.1"
     }
 
     sourceSets {
