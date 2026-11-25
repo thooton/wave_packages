@@ -157,6 +157,79 @@ bool collect_planned_sizes(
   return true;
 }
 
+// Method::mutable_input is deprecated because it marks an input as set without
+// copying caller data. Resident feedback wants exactly that: the data is
+// already in the input's planned bytes.
+EValue& method_input(Method& method, size_t i) {
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+  return method.mutable_input(i);
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+}
+
+bool ranges_overlap(const uint8_t* a, size_t an, const uint8_t* b, size_t bn) {
+  return a != nullptr && b != nullptr && an > 0 && bn > 0 && a < b + bn &&
+         b < a + an;
+}
+
+// Returns the arena bytes shared by input `in` and output `out` when the memory
+// plan made the output overwrite its input in place, else null. Other planned
+// inputs must not touch those bytes (set_input writes them before the next run
+// reads the cache), and neither may other outputs.
+uint8_t* find_resident_bytes(
+    Method& method,
+    const MethodMeta& meta,
+    size_t in,
+    size_t out,
+    size_t bytes) {
+  auto in_meta = meta.input_tensor_meta(in);
+  auto out_meta = meta.output_tensor_meta(out);
+  if (!in_meta.ok() || !out_meta.ok() || !in_meta.get().is_memory_planned() ||
+      !out_meta.get().is_memory_planned()) {
+    return nullptr;
+  }
+  const EValue& in_ev = method_input(method, in);
+  const EValue& out_ev = method.get_output(out);
+  if (!in_ev.isTensor() || !out_ev.isTensor()) {
+    return nullptr;
+  }
+  auto* base = static_cast<uint8_t*>(in_ev.toTensor().mutable_data_ptr());
+  if (base == nullptr || out_ev.toTensor().const_data_ptr() != base ||
+      in_ev.toTensor().nbytes() != bytes || out_ev.toTensor().nbytes() != bytes) {
+    return nullptr;
+  }
+  for (size_t k = 0; k < method.inputs_size(); ++k) {
+    if (k == in) {
+      continue;
+    }
+    auto k_meta = meta.input_tensor_meta(k);
+    const EValue& ev = method_input(method, k);
+    if (k_meta.ok() && k_meta.get().is_memory_planned() && ev.isTensor() &&
+        ranges_overlap(base, bytes,
+                       static_cast<const uint8_t*>(ev.toTensor().const_data_ptr()),
+                       ev.toTensor().nbytes())) {
+      return nullptr;
+    }
+  }
+  for (size_t k = 0; k < method.outputs_size(); ++k) {
+    if (k == out) {
+      continue;
+    }
+    const EValue& ev = method.get_output(k);
+    if (ev.isTensor() &&
+        ranges_overlap(base, bytes,
+                       static_cast<const uint8_t*>(ev.toTensor().const_data_ptr()),
+                       ev.toTensor().nbytes())) {
+      return nullptr;
+    }
+  }
+  return base;
+}
+
 }  // namespace
 
 struct AsrRuntime::ArenaStorage {
@@ -213,8 +286,16 @@ struct AsrRuntime::LoadedMethod {
     size_t input;
     size_t output;
     std::vector<int32_t> sizes;
+    size_t bytes = 0;
+    // Copy mode: the cache lives outside the arena, double-buffered.
     AlignedBuffer current;
     AlignedBuffer next;
+    // Resident mode: the cache lives in the input's planned bytes, which the
+    // paired output overwrites in place. Points into this method's own arena.
+    uint8_t* resident = nullptr;
+    // Cleared before anything can overwrite the resident bytes, set again
+    // only after a successful feedback run or a reset.
+    bool resident_valid = false;
   };
   std::vector<Feedback> feedback;
   std::string name;
@@ -608,7 +689,8 @@ std::string AsrRuntime::method_meta_json(const std::string& method_name) {
 int AsrRuntime::set_feedback(
     const std::string& method_name,
     const std::vector<int>& output_indices,
-    const std::vector<int>& input_indices) {
+    const std::vector<int>& input_indices,
+    bool allow_resident) {
   std::lock_guard<std::mutex> lock(mutex_);
   auto it = methods_.find(method_name);
   if (it == methods_.end()) {
@@ -665,14 +747,43 @@ int AsrRuntime::set_feedback(
     pair.input = input;
     pair.output = output;
     pair.sizes.assign(in_sizes.begin(), in_sizes.end());
-    if (!pair.current.allocate(bytes) || !pair.next.allocate(bytes)) {
+    pair.bytes = bytes;
+    // Only a method's own arena: methods sharing a group overwrite each other.
+    if (allow_resident && it->second->dedicated_arena != nullptr) {
+      pair.resident =
+          find_resident_bytes(*it->second->method, meta, input, output, bytes);
+    }
+    if (pair.resident == nullptr &&
+        (!pair.current.allocate(bytes) || !pair.next.allocate(bytes))) {
       set_error_locked("Failed to allocate feedback buffers for " + method_name);
       return static_cast<int>(Error::MemoryAllocationFailed);
     }
-    std::memset(pair.current.ptr, 0, bytes);
+  }
+  // Zero only once every pair is valid, so a failed call leaves the old
+  // pairs and their caches untouched.
+  for (auto& pair : pairs) {
+    if (pair.resident != nullptr) {
+      std::memset(pair.resident, 0, pair.bytes);
+      pair.resident_valid = true;
+    } else {
+      std::memset(pair.current.ptr, 0, pair.bytes);
+    }
   }
   it->second->feedback = std::move(pairs);
   return static_cast<int>(Error::Ok);
+}
+
+int AsrRuntime::feedback_resident_count(const std::string& method_name) const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto it = methods_.find(method_name);
+  if (it == methods_.end()) {
+    return -1;
+  }
+  int n = 0;
+  for (const auto& pair : it->second->feedback) {
+    n += pair.resident != nullptr ? 1 : 0;
+  }
+  return n;
 }
 
 void AsrRuntime::reset_feedback(const std::string& method_name) {
@@ -680,7 +791,12 @@ void AsrRuntime::reset_feedback(const std::string& method_name) {
   auto it = methods_.find(method_name);
   if (it != methods_.end()) {
     for (auto& pair : it->second->feedback) {
-      std::memset(pair.current.ptr, 0, pair.current.size);
+      if (pair.resident != nullptr) {
+        std::memset(pair.resident, 0, pair.bytes);
+        pair.resident_valid = true;
+      } else {
+        std::memset(pair.current.ptr, 0, pair.current.size);
+      }
     }
   }
 }
@@ -726,13 +842,24 @@ bool AsrRuntime::execute(
     const auto* sizes = &in.sizes;
     const float* f32 = in.f32;
     size_t count = in.count;
+    auto pair = std::find_if(loaded.feedback.begin(), loaded.feedback.end(),
+                             [i](const auto& item) { return item.input == i; });
     if (in.use_feedback) {
-      auto pair = std::find_if(loaded.feedback.begin(), loaded.feedback.end(),
-                               [i](const auto& item) { return item.input == i; });
       if (in.dtype != kDtypeFloat32 || pair == loaded.feedback.end()) {
         set_error_locked("Missing data for non-feedback input " + std::to_string(i) +
                          " of " + method_name);
         return false;
+      }
+      if (pair->resident != nullptr) {
+        if (!pair->resident_valid) {
+          set_error_locked("Feedback cache for input " + std::to_string(i) + " of " +
+                           method_name + " was lost by an earlier run; reset it first");
+          return false;
+        }
+        // The cache already sits in this input's planned bytes: mark the
+        // input set without copying it onto itself.
+        method_input(method, i);
+        continue;
       }
       sizes = &pair->sizes;
       f32 = reinterpret_cast<const float*>(pair->current.ptr);
@@ -797,6 +924,10 @@ bool AsrRuntime::execute(
         rank > 0 ? b.dim_order.data() : nullptr,
         rank > 0 ? b.strides.data() : nullptr);
 
+    if (pair != loaded.feedback.end() && pair->resident != nullptr) {
+      // Caller data replaces the resident cache, which this run won't keep.
+      pair->resident_valid = false;
+    }
     Tensor tensor(b.impl.get());
     Error set_err = method.set_input(EValue(tensor), i);
     if (set_err != Error::Ok) {
@@ -807,6 +938,10 @@ bool AsrRuntime::execute(
     }
   }
 
+  // A failed or partial run may leave the resident bytes torn.
+  for (auto& pair : loaded.feedback) {
+    pair.resident_valid = false;
+  }
   Error exec_err = method.execute();
   if (exec_err != Error::Ok) {
     set_error_locked(
@@ -839,13 +974,22 @@ bool AsrRuntime::execute(
                              });
     if (pair != loaded.feedback.end()) {
       if (out.dtype != kDtypeFloat32 || out.sizes != pair->sizes ||
-          n != pair->next.size / sizeof(float)) {
+          n != pair->bytes / sizeof(float)) {
         set_error_locked("Feedback output changed dtype or shape for " + method_name);
         return false;
       }
-      // The output may alias a current input. Keep all current inputs intact
-      // until every output has been read, and never keep an arena pointer.
-      std::memcpy(pair->next.ptr, t.const_data_ptr<float>(), pair->next.size);
+      if (pair->resident != nullptr) {
+        // Already in place for the next run. The plan is fixed at load, so a
+        // moved output means the runtime broke its own contract.
+        if (t.const_data_ptr() != pair->resident) {
+          set_error_locked("Resident feedback output moved for " + method_name);
+          return false;
+        }
+      } else {
+        // The output may alias a current input. Keep all current inputs intact
+        // until every output has been read, and never keep an arena pointer.
+        std::memcpy(pair->next.ptr, t.const_data_ptr<float>(), pair->next.size);
+      }
       out.retained = true;
     } else if (out.dtype == kDtypeFloat32) {
       out.f32.resize(n);
@@ -867,7 +1011,12 @@ bool AsrRuntime::execute(
   }
 
   for (auto& pair : loaded.feedback) {
-    if (inputs[pair.input].use_feedback) {
+    if (!inputs[pair.input].use_feedback) {
+      continue;
+    }
+    if (pair.resident != nullptr) {
+      pair.resident_valid = true;
+    } else {
       std::swap(pair.current, pair.next);
     }
   }

@@ -95,13 +95,24 @@ class AsrRuntime {
 
   // Registers matching float32 output/input pairs on a loaded method,
   // replacing any previous pairs with zero-filled caches.
+  //
+  // A pair is kept resident (no per-run copies) when the method has its own
+  // arena and the memory plan wrote the output onto exactly the bytes of its
+  // input, with no other planned input or output on them. Other pairs, and all
+  // pairs when `allow_resident` is false, use two buffers outside the arena.
+  // A resident cache is lost if a run fails or supplies that input's data
+  // explicitly; feedback runs then fail until reset_feedback.
   int set_feedback(
       const std::string& method_name,
       const std::vector<int>& output_indices,
-      const std::vector<int>& input_indices);
+      const std::vector<int>& input_indices,
+      bool allow_resident = true);
 
   // Zeroes the registered caches; a missing method is a no-op.
   void reset_feedback(const std::string& method_name);
+
+  // Number of resident feedback pairs, or -1 if the method is not loaded.
+  int feedback_resident_count(const std::string& method_name) const;
 
   // Executes a loaded method (auto-loads with dedicated arena if not loaded)
   // and deep-copies outputs out of the method arena. If an input requests

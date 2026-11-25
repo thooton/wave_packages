@@ -722,6 +722,7 @@ void print_usage(const char* argv0) {
       << " --model <asr_encoder.pte> --meta <metadata.json>"
       << " [--tier stream_c16r4] [--threads 4] [--no-pcec]"
       << " [--vad none|vad|vad_dft] [--repeat-seconds N]"
+      << " [--feedback off|copy|resident]"
       << " [--json-out report.json] <clip1.wav> [clip2.wav ...]\n";
 }
 
@@ -735,6 +736,9 @@ int main(int argc, char** argv) {
   bool no_pcec = false;
   std::string vad_mode = "none";
   double repeat_seconds = 0.0;
+  // off: caches pass through the caller as before. copy / resident: the runtime
+  // keeps them (the app's path); copy forces the double-buffered banks.
+  std::string feedback_mode = "off";
   std::string json_out;
   std::vector<std::string> wav_paths;
 
@@ -754,6 +758,13 @@ int main(int argc, char** argv) {
       vad_mode = argv[++i];
     } else if (a == "--repeat-seconds" && i + 1 < argc) {
       repeat_seconds = std::atof(argv[++i]);
+    } else if (a == "--feedback" && i + 1 < argc) {
+      feedback_mode = argv[++i];
+      if (feedback_mode != "off" && feedback_mode != "copy" &&
+          feedback_mode != "resident") {
+        std::cerr << "Invalid --feedback mode: " << feedback_mode << "\n";
+        return 2;
+      }
     } else if (a == "--json-out" && i + 1 < argc) {
       json_out = argv[++i];
     } else if (a == "-h" || a == "--help") {
@@ -867,6 +878,19 @@ int main(int argc, char** argv) {
   }
   const double warmup_ms = elapsed_ms(t_warm0, Clock::now());
 
+  // Registered after warmup: its explicit zero caches would drop a resident one.
+  const bool use_feedback = feedback_mode != "off";
+  int feedback_resident_pairs = 0;
+  if (use_feedback) {
+    if (rt->set_feedback(tier_cfg->name, {1, 2}, {1, 2}, feedback_mode == "resident") != 0) {
+      std::cerr << "Failed to set feedback: " << rt->last_error() << "\n";
+      return 1;
+    }
+    feedback_resident_pairs = rt->feedback_resident_count(tier_cfg->name);
+    std::cout << "feedback=" << feedback_mode << " resident_pairs=" << feedback_resident_pairs
+              << "\n";
+  }
+
   auto run_clip = [&](const std::string& wav_path,
                       const std::vector<float>& pcm,
                       ClipResult& res) -> bool {
@@ -875,8 +899,19 @@ int main(int argc, char** argv) {
     res.audio_s = static_cast<double>(pcm.size()) / static_cast<double>(kSampleRate);
 
     TensorBuf filter_cache, attn_cache;
-    filter_cache.init_zero(stream_meta.inputs[1]);
-    attn_cache.init_zero(stream_meta.inputs[2]);
+    if (use_feedback) {
+      rt->reset_feedback(tier_cfg->name);
+    } else {
+      filter_cache.init_zero(stream_meta.inputs[1]);
+      attn_cache.init_zero(stream_meta.inputs[2]);
+    }
+    const auto cache_input = [&](const TensorBuf& buf) {
+      if (!use_feedback) return buf.as_input();
+      InputTensor in;
+      in.dtype = kDtypeFloat32;
+      in.use_feedback = true;
+      return in;
+    };
     if (use_pcec) pcec.reset();
 
     std::vector<int> all_frame_ids;
@@ -899,8 +934,8 @@ int main(int argc, char** argv) {
 
       std::vector<InputTensor> ins = {
           {kDtypeFloat32, {1, window}, win.data(), nullptr, win.size()},
-          filter_cache.as_input(),
-          attn_cache.as_input(),
+          cache_input(filter_cache),
+          cache_input(attn_cache),
       };
       std::vector<OutputTensor> outs;
       auto ts0 = Clock::now();
@@ -910,8 +945,10 @@ int main(int argc, char** argv) {
       }
       step_times.push_back(elapsed_ms(ts0, Clock::now()));
 
-      filter_cache.copy_from(outs[1]);
-      attn_cache.copy_from(outs[2]);
+      if (!use_feedback) {
+        filter_cache.copy_from(outs[1]);
+        attn_cache.copy_from(outs[2]);
+      }
 
       const int64_t valid =
           std::max<int64_t>(0, std::min<int64_t>(commit, total_frames - next_frame));
@@ -1081,6 +1118,8 @@ int main(int argc, char** argv) {
     jf << "{\n";
     jf << "  \"tier\": " << json_escape(tier_cfg->name) << ",\n";
     jf << "  \"threads\": " << threads << ",\n";
+    jf << "  \"feedback\": " << json_escape(feedback_mode) << ",\n";
+    jf << "  \"feedback_resident_pairs\": " << feedback_resident_pairs << ",\n";
     jf << "  \"pcec_enabled\": " << (use_pcec ? "true" : "false") << ",\n";
     jf << "  \"vad\": " << json_escape(vad_mode) << ",\n";
     jf << "  \"load_ms\": " << std::setprecision(3) << load_ms << ",\n";

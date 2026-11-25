@@ -108,7 +108,8 @@ jobs:
             --meta /tmp/hf_bundle/metadata.json \
             --wav-dir out_x86/wavs \
             --golden out_x86/golden_transcripts.json \
-            --threads "$(nproc)"
+            --threads "$(nproc)" \
+            --feedback-modes off,copy,resident
 
       - name: Compute x86 artifact sha256sums
         run: |
