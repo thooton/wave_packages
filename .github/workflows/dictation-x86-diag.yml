@@ -42,6 +42,11 @@ jobs:
   x86-diag:
     runs-on: ubuntu-latest
     timeout-minutes: 170
+    strategy:
+      fail-fast: false
+      matrix:
+        # Independent samples of the hosted x86 fleet: results depend on the host CPU class.
+        sample: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
 
@@ -94,7 +99,7 @@ jobs:
             echo "torch native:  $(python3 -c 'import torch; print(torch.backends.cpu.get_cpu_capability())')"
             echo "torch ATEN=avx2: $(ATEN_CPU_CAPABILITY=avx2 python3 -c 'import torch; print(torch.backends.cpu.get_cpu_capability())')"
             echo "torch qemu:    $(qemu-x86_64 -cpu "$QEMU_CPU_MODEL" "$(which python3)" -c 'import torch; print(torch.backends.cpu.get_cpu_capability())' 2>&1 | tail -3)"
-            echo "executorch qemu import: $(qemu-x86_64 -cpu "$QEMU_CPU_MODEL" "$(which python3)" -c 'from executorch.runtime import Runtime; print(\"ok\")' 2>&1 | tail -3)"
+            echo "executorch qemu import: $(qemu-x86_64 -cpu "$QEMU_CPU_MODEL" "$(which python3)" -c 'from executorch.runtime import Runtime; print(Runtime.__name__)' 2>&1 | tail -3)"
           } | tee out_diag/cpu_masking.txt
 
       - name: Python reference, native (unmodified)
@@ -228,6 +233,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: dictation-x86-diag
+          name: dictation-x86-diag-${{ matrix.sample }}
           path: out_diag/
           if-no-files-found: error
