@@ -203,8 +203,10 @@ host tests and builds on PRs without publishing. On master it builds APKs
 without local credentials, verifies signatures and generated login constants,
 creates an immutable `<name>-<version>` release for each new version, and uses
 `thooton/wave/publish@v1` to mirror its manifest and icon into
-`thooton/wave_repository`. The optional CI mirror needs `WAVE_PUBLISH_ENABLED=true` and the
-`WAVE_REPOSITORY_TOKEN` Actions secret. Otherwise update the catalog locally. A released asset is never overwritten. A source change without a
+`thooton/wave_repository`. The CI mirror is on: it needs the `WAVE_PUBLISH_ENABLED=true`
+Actions variable and the `WAVE_REPOSITORY_TOKEN` secret (a token that can write to
+`wave_repository`; publishing stops if it expires). If either is missing, CI warns
+and you update the catalog locally. A released asset is never overwritten. A source change without a
 version bump fails CI. After a successful immutable upload but failed mirror,
 use the `retry-publish` dispatch input to publish the original asset bytes.
 
@@ -215,7 +217,10 @@ from this repo, but old source and immutable releases remain in history.
 Give up Installer's device-owner role from its status screen before uninstalling it.
 
 The mod matrix builds each mod's stock-signed APKs and packages
-`{launcher,messages,music}-improved-<version>.zip`. The build splices the new
+`{launcher,messages,music}-improved-<version>.zip`. On master, mods release and
+publish like apps: a pushed version bump creates the immutable release and
+mirrors it into the catalog, and a mod change without a bump (including a change
+to `mods/firmware` or `mods/tools`, which every mod builds from) fails CI. The build splices the new
 dex into the pinned stock APKs and keeps their stock certificate; see
 `mods/AGENTS.md`.
 
