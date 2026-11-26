@@ -68,6 +68,7 @@ legacy ID replacements.
 
 `mods/tools/build-module.sh messages` builds every APK and packages the module
 zip that the [package workflow](../.github/workflows/build-apks.yml) tests.
-The Wave-side publishing Action is [`thooton/wave/publish@v1`](https://github.com/thooton/wave/tree/master/publish).
+Its `release` job releases a bumped mod and mirrors it into the catalog with
+Wave's `wavesrc publish`, the tool behind [`thooton/wave/publish@v1`](https://github.com/thooton/wave/tree/master/publish).
 
 [SQLite Improved](sqlite/README.md) has its own NDK build and packaging command.

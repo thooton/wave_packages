@@ -198,12 +198,16 @@ Edit shared code here first and sync Wave separately.
 Push a version bump to master, rather than uploading an APK by hand. Follow
 all app `SPEC.md` behavior and version rules above. Each published package
 has fixed `wave/package.json` metadata and a 96×96 launcher icon.
-[Build and publish XP3800 packages](.github/workflows/build-apks.yml) runs
-host tests and builds on PRs without publishing. On master it builds APKs
-without local credentials, verifies signatures and generated login constants,
-creates an immutable `<name>-<version>` release for each new version, and uses
-`thooton/wave/publish@v1` to mirror its manifest and icon into
-`thooton/wave_repository`. The CI mirror is on: it needs the `WAVE_PUBLISH_ENABLED=true`
+[Build and publish XP3800 packages](.github/workflows/build-apks.yml) has
+three jobs. `build-apks` and `build-mods` run host tests and build on PRs and
+master; APKs build without local credentials, with signatures and generated
+login constants verified. On master, `release` (`.github/release_all.py`) creates an
+immutable `<name>-<version>` release for each new app or mod version, keeps going
+past a failing package and lists failures in the job summary, then
+`.github/publish_all.sh` mirrors every new manifest and icon into
+`thooton/wave_repository` in one commit with Wave's `wavesrc publish` (the same
+tool as `thooton/wave/publish@v1`, at `v1`). A failed mod build holds back the
+mods but not the apps. The CI mirror is on: it needs the `WAVE_PUBLISH_ENABLED=true`
 Actions variable and the `WAVE_REPOSITORY_TOKEN` secret (a token that can write to
 `wave_repository`; publishing stops if it expires). If either is missing, CI warns
 and you update the catalog locally. A released asset is never overwritten. A source change without a
@@ -216,7 +220,7 @@ live in the private package repository. Removed apps do not build or ship
 from this repo, but old source and immutable releases remain in history.
 Give up Installer's device-owner role from its status screen before uninstalling it.
 
-The mod matrix builds each mod's stock-signed APKs and packages
+`build-mods` builds each mod's stock-signed APKs and packages
 `{launcher,messages,music}-improved-<version>.zip`. On master, mods release and
 publish like apps: a pushed version bump creates the immutable release and
 mirrors it into the catalog, and a mod change without a bump (including a change

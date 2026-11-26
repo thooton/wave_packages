@@ -22,19 +22,6 @@ env:
   ANDROID_BUILD_TOOLS: '35.0.1'
 
 jobs:
-  inventory:
-    runs-on: ubuntu-latest
-    outputs:
-      apks: ${{ steps.inventory.outputs.apks }}
-      mods: ${{ steps.inventory.outputs.mods }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: inventory
-        run: |
-          python3 -m unittest discover -s .github -p 'test_release.py'
-          echo "apks=$(python3 .github/packages.py matrix apk)" >> "$GITHUB_OUTPUT"
-          echo "mods=$(python3 .github/packages.py matrix mod)" >> "$GITHUB_OUTPUT"
-
   build-apks:
     runs-on: ubuntu-latest
     steps:
@@ -49,6 +36,8 @@ jobs:
         with:
           packages: platforms;android-35 build-tools;35.0.1
       - uses: gradle/actions/setup-gradle@v4
+      - name: Release tooling tests
+        run: python3 -m unittest discover -s .github -p 'test_release.py'
       - name: Build APKs and legacy manifest with the checked-in keys
         run: .github/build-apks.sh
       - uses: actions/upload-artifact@v4
@@ -57,66 +46,8 @@ jobs:
           path: apks/
           if-no-files-found: error
 
-  release-apks:
-    needs: [inventory, build-apks]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+  build-mods:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJSON(needs.inventory.outputs.apks) }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/download-artifact@v4
-        with:
-          name: all-apks
-          path: apks
-      - uses: android-actions/setup-android@v3
-        with:
-          packages: build-tools;35.0.1
-      - id: release
-        name: Create immutable release or verify existing release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PACKAGE_PATH: ${{ matrix.package.path }}
-          RETRY_PUBLISH: ${{ inputs.retry-publish }}
-        run: |
-          asset="$PACKAGE_PATH.apk"
-          retry=(); [[ "$RETRY_PUBLISH" != true ]] || retry+=(--retry-publish)
-          python3 .github/release_package.py "$PACKAGE_PATH" "apks/$asset" \
-            --aapt2 "$ANDROID_SDK_ROOT/build-tools/$ANDROID_BUILD_TOOLS/aapt2" "${retry[@]}"
-      - uses: thooton/wave/publish@v1
-        if: steps.release.outputs.binary != '' && vars.WAVE_PUBLISH_ENABLED == 'true'
-        with:
-          source-repository: thooton/wave_repository
-          source-token: ${{ secrets.WAVE_REPOSITORY_TOKEN }}
-          section: ${{ matrix.package.section }}
-          folder: ${{ matrix.package.name }}
-          meta: ${{ matrix.package.path }}/wave/package.json
-          icon: ${{ matrix.package.path }}/wave/icon.png
-          binary: ${{ steps.release.outputs.binary }}
-          url: ${{ steps.release.outputs.url }}
-          changes-path: ${{ matrix.package.path }}
-      - name: Flag a release that is not yet in the catalog
-        if: steps.release.outputs.binary != '' && vars.WAVE_PUBLISH_ENABLED != 'true'
-        env:
-          BINARY: ${{ steps.release.outputs.binary }}
-        run: |
-          msg="Released ${BINARY##*/}, but CI did not publish it: WAVE_PUBLISH_ENABLED is off. Mirror it into thooton/wave_repository with Wave's wavesrc publish, then run Wave's tools/ship/ship check."
-          echo "::warning title=Not published to the catalog::$msg"
-          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
-
-  mods:
-    needs: inventory
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJSON(needs.inventory.outputs.mods) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -126,85 +57,56 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: platforms;android-35 build-tools;35.0.1
-      - name: Host tests and module package
-        env:
-          PACKAGE_PATH: ${{ matrix.package.path }}
+      - name: Host tests and module packages
         run: |
           mods/tools/setup.sh
           mods/tools/test.sh
-          "$PACKAGE_PATH/tools/test.sh"
-          # What mods/tools/build-module.sh does, for every mod.
-          "$PACKAGE_PATH/tools/build.sh"
-          "$PACKAGE_PATH/tools/package.sh"
+          mkdir modules
+          for path in $(python3 -c 'import sys; sys.path.insert(0, ".github"); from packages import MODULES; print(*MODULES)'); do
+            echo "::group::$path"
+            rm -rf "$path/out"
+            # What mods/tools/build-module.sh does, for every mod.
+            "$path/tools/test.sh"
+            "$path/tools/build.sh"
+            "$path/tools/package.sh"
+            cp "$path"/out/*.zip modules/
+            echo "::endgroup::"
+          done
+          ls -l modules
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.package.name }}-module
-          path: ${{ matrix.package.path }}/out/*.zip
+          name: mod-zips
+          path: modules/*.zip
           if-no-files-found: error
 
-  release-mods:
-    needs: [inventory, mods]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+  # One job for every app and mod: an immutable release per new version, the
+  # legacy rolling release, then one catalog commit for everything new. A
+  # broken mod build holds back the mods, not the apps.
+  release:
+    needs: [build-apks, build-mods]
+    if: >-
+      !cancelled() && needs.build-apks.result == 'success'
+      && github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJSON(needs.inventory.outputs.mods) }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.package.name }}-module
-          path: module
-      - id: release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PACKAGE_PATH: ${{ matrix.package.path }}
-          RETRY_PUBLISH: ${{ inputs.retry-publish }}
-        run: |
-          zip=$(find module -maxdepth 1 -name '*.zip' -print -quit)
-          retry=(); [[ "$RETRY_PUBLISH" != true ]] || retry+=(--retry-publish)
-          python3 .github/release_package.py "$PACKAGE_PATH" "$zip" "${retry[@]}"
-      - uses: thooton/wave/publish@v1
-        if: steps.release.outputs.binary != '' && vars.WAVE_PUBLISH_ENABLED == 'true'
-        with:
-          source-repository: thooton/wave_repository
-          source-token: ${{ secrets.WAVE_REPOSITORY_TOKEN }}
-          section: ${{ matrix.package.section }}
-          folder: ${{ matrix.package.name }}
-          meta: ${{ matrix.package.path }}/wave/package.json
-          icon: ${{ matrix.package.path }}/wave/icon.png
-          binary: ${{ steps.release.outputs.binary }}
-          url: ${{ steps.release.outputs.url }}
-          changes-path: ${{ matrix.package.path }}
-      - name: Flag a release that is not yet in the catalog
-        if: steps.release.outputs.binary != '' && vars.WAVE_PUBLISH_ENABLED != 'true'
-        env:
-          BINARY: ${{ steps.release.outputs.binary }}
-        run: |
-          msg="Released ${BINARY##*/}, but CI did not publish it: WAVE_PUBLISH_ENABLED is off. Mirror it into thooton/wave_repository with Wave's wavesrc publish, then run Wave's tools/ship/ship check."
-          echo "::warning title=Not published to the catalog::$msg"
-          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
-
-  legacy-latest:
-    needs: build-apks
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
           name: all-apks
           path: apks
+      - uses: actions/download-artifact@v4
+        if: needs.build-mods.result == 'success'
+        with:
+          name: mod-zips
+          path: modules
       - uses: android-actions/setup-android@v3
         with:
           packages: build-tools;35.0.1
+
       - name: Publish legacy rolling release (do not retire before task 17)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -218,3 +120,53 @@ jobs:
           gh release view latest --json assets -q '.assets[].name' | while read -r name; do
             [ -f "apks/$name" ] || gh release delete-asset latest "$name" -y
           done
+
+      - name: Create immutable releases or verify existing ones
+        id: release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RETRY_PUBLISH: ${{ inputs.retry-publish }}
+          SKIP_MODS: ${{ needs.build-mods.result != 'success' }}
+        run: |
+          opts=()
+          [[ "$RETRY_PUBLISH" != true ]] || opts+=(--retry-publish)
+          [[ "$SKIP_MODS" != true ]] || opts+=(--skip-mods)
+          python3 .github/release_all.py --publish-list publish.jsonl \
+            --aapt2 "$ANDROID_SDK_ROOT/build-tools/$ANDROID_BUILD_TOOLS/aapt2" "${opts[@]}"
+
+      - name: Check out the catalog
+        if: vars.WAVE_PUBLISH_ENABLED == 'true' && hashFiles('publish.jsonl') != ''
+        uses: actions/checkout@v4
+        with:
+          repository: thooton/wave_repository
+          token: ${{ secrets.WAVE_REPOSITORY_TOKEN }}
+          path: .wavesrc-target
+      - name: Check out Wave's publishing tool
+        if: vars.WAVE_PUBLISH_ENABLED == 'true' && hashFiles('publish.jsonl') != ''
+        uses: actions/checkout@v4
+        with:
+          repository: thooton/wave
+          ref: v1
+          path: .wave-tools
+          sparse-checkout: |
+            tools/wavesrc
+            spec
+      - name: Mirror new releases into the catalog
+        if: vars.WAVE_PUBLISH_ENABLED == 'true' && hashFiles('publish.jsonl') != ''
+        run: |
+          .github/publish_all.sh .wavesrc-target .wave-tools/tools/wavesrc/wavesrc publish.jsonl \
+            "$ANDROID_SDK_ROOT/build-tools/$ANDROID_BUILD_TOOLS/aapt2"
+      - name: Flag releases that are not yet in the catalog
+        if: vars.WAVE_PUBLISH_ENABLED != 'true' && hashFiles('publish.jsonl') != ''
+        run: |
+          [[ -s publish.jsonl ]] || exit 0
+          names=$(python3 -c 'import json; print(", ".join(json.loads(l)["name"] for l in open("publish.jsonl")))')
+          msg="Released $names, but CI did not publish them: WAVE_PUBLISH_ENABLED is off. Mirror them into thooton/wave_repository with Wave's wavesrc publish, then run Wave's tools/ship/ship check."
+          echo "::warning title=Not published to the catalog::$msg"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+      - name: Fail if any package failed to release
+        if: steps.release.outcome != 'success'
+        run: |
+          echo "::error::Some packages were not released; see the job summary and the release step's log."
+          exit 1
