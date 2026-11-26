@@ -129,7 +129,9 @@ resources, or conversation UI.
      `ComposeMessageActivity.saveAttachment` and the attachment viewer's Save attachment / Save all in
      `BaseAttachmentViewActivity`); without a configured server it saves the preview as before. **Files** with no preview (PDFs,
      zips, documents; needs imsg-server with file registration) aren't stored on the phone: the
-     message shows `[File: name, size]`, `WaveIMessageDb.recordFile` keeps its attachment id, and
+     message stores `[File: name, size]` (drawn as a card: a document icon in the file type's
+     color with its extension, the name and the size, `WaveMessageUi.FileCard`),
+     `WaveIMessageDb.recordFile` keeps its attachment id, and
      pressing the message (a confirm dialog) or **Download file** in its menu fetches the original
      (`MEDIA_GET` full) into Download (`WaveIMessageSave.downloadFiles`); Save attachment / Save all
      on a message that also has photos downloads its files too. Older servers only sent the

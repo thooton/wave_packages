@@ -86,6 +86,7 @@ public final class WaveMessageUi {
     // Synthetic IDs for views we add inside message_block (vertical LinearLayout)
     private static final int ID_WAVE_MEDIA = 0x57420001;
     private static final int ID_WAVE_QUOTE = 0x57420002;
+    private static final int ID_WAVE_FILE = 0x57420003;
 
     // Tag keys for saving original stock metrics/drawables on recycled rows
     private static final int TAG_ORIG_BLOCK_MARGINS = 0x57420101;
@@ -107,6 +108,10 @@ public final class WaveMessageUi {
     private static final int STYLE_MEDIA = 1 << 4;
     private static final int STYLE_QUOTE = 1 << 5;
     private static final int STYLE_CUSTOM_BG = 1 << 6;
+    private static final int STYLE_FILE = 1 << 7;
+    /** "[File: name, 2.5 MB]" (size optional), the line iMessage files with no preview are stored as. */
+    private static final Pattern FILE_LINE = Pattern.compile(
+            "^\\[File: (.+?)(?:, ([0-9][0-9.]* (?:bytes|KB|MB|GB)))?\\]$");
 
     // Stock MessageListItem.bind() text size: (int) pref_key_zoom_message, default 14sp
     // (MmsConfig.mZoomMessage is a constant true on this build).
@@ -168,6 +173,8 @@ public final class WaveMessageUi {
         View attachFooter;
         LinearLayout mediaHost;
         QuoteView quoteView;
+        FileCardsView fileView;
+        TextView fileHiddenTv;
         boolean metricsSaved;
         int styledFlags;
 
@@ -593,7 +600,19 @@ public final class WaveMessageUi {
                 if (!displayBody.equals(rawBody)) {
                     bodyTv.setText(displayBody);
                 }
-                if (isAttachmentPlaceholder(displayBody)) {
+                // 3b. Files with no preview (PDFs, zips, ...): a card with an icon, the name and size.
+                List<String[]> files = new ArrayList<>();
+                String rest = splitFileLines(displayBody, files);
+                if (!files.isEmpty()) {
+                    bindFileCards(ctx, h, bodyTv, files, isMe);
+                    displayBody = rest;
+                    if (rest.trim().isEmpty()) {
+                        bodyTv.setVisibility(View.GONE);
+                        h.fileHiddenTv = bodyTv;
+                    } else {
+                        bodyTv.setText(rest);
+                    }
+                } else if (isAttachmentPlaceholder(displayBody)) {
                     saveOriginalMetrics(h);
                     bodyTv.setTypeface(Typeface.SANS_SERIF, Typeface.ITALIC);
                     bodyTv.setText(sized(displayBody, 13.5f));
@@ -871,6 +890,15 @@ public final class WaveMessageUi {
         if ((flags & STYLE_QUOTE) != 0 && h.quoteView != null
                 && h.quoteView.getVisibility() != View.GONE) {
             h.quoteView.setVisibility(View.GONE);
+        }
+        if ((flags & STYLE_FILE) != 0) {
+            if (h.fileView != null && h.fileView.getVisibility() != View.GONE) {
+                h.fileView.setVisibility(View.GONE);
+            }
+            if (h.fileHiddenTv != null) {
+                h.fileHiddenTv.setVisibility(View.VISIBLE);
+                h.fileHiddenTv = null;
+            }
         }
     }
 
@@ -1295,6 +1323,195 @@ public final class WaveMessageUi {
     }
 
     // --- Custom View: Quoted Reply Block ---
+
+    // --- Files with no preview: one card per file (icon, name, size) ---
+
+    /** Moves each "[File: name, size]" line of {@code body} into {@code out} ({name, size}); returns the rest. */
+    static String splitFileLines(String body, List<String[]> out) {
+        if (body == null || body.indexOf("[File: ") < 0) return body == null ? "" : body;
+        StringBuilder rest = new StringBuilder();
+        for (String line : body.split("\n", -1)) {
+            Matcher m = FILE_LINE.matcher(line.trim());
+            if (m.matches()) {
+                out.add(new String[]{m.group(1), m.group(2)});
+            } else {
+                if (rest.length() > 0) rest.append('\n');
+                rest.append(line);
+            }
+        }
+        return rest.toString();
+    }
+
+    private static void bindFileCards(Context ctx, RowHolder h, TextView bodyTv, List<String[]> files,
+                                      boolean isMe) {
+        LinearLayout block = h.block;
+        FileCardsView v = h.fileView;
+        if (v == null) {
+            v = new FileCardsView(ctx);
+            v.setId(ID_WAVE_FILE);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.leftMargin = dp(ctx, 6);
+            lp.rightMargin = dp(ctx, 6);
+            lp.topMargin = dp(ctx, 5);
+            lp.bottomMargin = dp(ctx, 2);
+            int at = block.indexOfChild(bodyTv);
+            block.addView(v, at >= 0 ? at : Math.min(1, block.getChildCount()), lp);
+            h.fileView = v;
+        }
+        v.bind(files, isMe);
+        if (v.getVisibility() != View.VISIBLE) v.setVisibility(View.VISIBLE);
+        h.styledFlags |= STYLE_FILE;
+    }
+
+    /** "PDF", "ZIP", ... from a file name (at most 4 letters), or "" without one. */
+    static String fileExtension(String name) {
+        int dot = name == null ? -1 : name.lastIndexOf('.');
+        if (dot < 0 || dot == name.length() - 1) return "";
+        String ext = name.substring(dot + 1).toUpperCase(Locale.ROOT);
+        return ext.length() > 4 || !ext.matches("[A-Z0-9]+") ? "" : ext;
+    }
+
+    /** The document icon's color for a file type, like other messaging apps use. */
+    static int fileColor(String ext) {
+        switch (ext) {
+            case "PDF": return 0xFFE5484D;
+            case "DOC": case "DOCX": case "RTF": case "TXT": case "PAGES": return 0xFF2F6FDE;
+            case "XLS": case "XLSX": case "CSV": case "NUMB": return 0xFF1F9D55;
+            case "PPT": case "PPTX": case "KEY": return 0xFFE8772E;
+            case "ZIP": case "RAR": case "7Z": case "GZ": case "TAR": return 0xFF8E6E53;
+            case "APK": return 0xFF3DDC84;
+            default: return 0xFF8E8E93;
+        }
+    }
+
+    private static final class FileCardsView extends LinearLayout {
+        FileCardsView(Context ctx) {
+            super(ctx);
+            setOrientation(VERTICAL);
+        }
+
+        void bind(List<String[]> files, boolean isMe) {
+            Context ctx = getContext();
+            while (getChildCount() > files.size()) removeViewAt(getChildCount() - 1);
+            for (int i = 0; i < files.size(); i++) {
+                FileCard card;
+                if (i < getChildCount()) {
+                    card = (FileCard) getChildAt(i);
+                } else {
+                    card = new FileCard(ctx);
+                    LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT);
+                    if (i > 0) lp.topMargin = dp(ctx, 4);
+                    addView(card, lp);
+                }
+                card.bind(files.get(i)[0], files.get(i)[1], isMe);
+            }
+        }
+    }
+
+    private static final class FileCard extends LinearLayout {
+        private final FileIconView icon;
+        private final TextView name;
+        private final TextView meta;
+
+        FileCard(Context ctx) {
+            super(ctx);
+            setOrientation(HORIZONTAL);
+            setGravity(Gravity.CENTER_VERTICAL);
+            setPadding(dp(ctx, 6), dp(ctx, 6), dp(ctx, 10), dp(ctx, 6));
+
+            icon = new FileIconView(ctx);
+            LayoutParams ilp = new LayoutParams(dp(ctx, 26), dp(ctx, 32));
+            ilp.rightMargin = dp(ctx, 8);
+            addView(icon, ilp);
+
+            LinearLayout col = new LinearLayout(ctx);
+            col.setOrientation(VERTICAL);
+            name = new TextView(ctx);
+            name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+            name.setTypeface(mediumTypeface());
+            name.setMaxLines(2);
+            name.setEllipsize(TextUtils.TruncateAt.END);
+            name.setMaxWidth(dp(ctx, 136));
+            col.addView(name, new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+            meta = new TextView(ctx);
+            meta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f);
+            meta.setSingleLine(true);
+            col.addView(meta, new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+            addView(col, new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
+
+        void bind(String fileName, String size, boolean isMe) {
+            GradientDrawable bg = new GradientDrawable();
+            bg.setCornerRadius(dp(getContext(), 8));
+            bg.setColor(isMe ? 0xFFF2F2F7 : 0x26FFFFFF);
+            setBackground(bg);
+            String ext = fileExtension(fileName);
+            icon.bind(ext);
+            name.setTextColor(isMe ? 0xFF1C1C1E : 0xFFFFFFFF);
+            name.setText(fileName);
+            meta.setTextColor(isMe ? 0xFF636366 : 0xCCFFFFFF);
+            String kind = ext.isEmpty() ? "File" : ext + " file";
+            meta.setText(TextUtils.isEmpty(size) ? kind : size + ", " + kind);
+        }
+    }
+
+    /** A page with a folded corner in the file type's color, its extension at the bottom. */
+    private static final class FileIconView extends View {
+        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint fold = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint label = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path page = new Path();
+        private final Path corner = new Path();
+        private String ext = "";
+
+        FileIconView(Context ctx) {
+            super(ctx);
+            fold.setColor(0x59FFFFFF);
+            label.setColor(0xFFFFFFFF);
+            label.setTypeface(Typeface.DEFAULT_BOLD);
+            label.setTextAlign(Paint.Align.CENTER);
+        }
+
+        void bind(String ext) {
+            this.ext = ext;
+            fill.setColor(fileColor(ext));
+            invalidate();
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            float w = getWidth(), h = getHeight();
+            float f = w * 0.34f, r = w * 0.12f;
+            page.reset();
+            page.moveTo(r, 0);
+            page.lineTo(w - f, 0);
+            page.lineTo(w, f);
+            page.lineTo(w, h - r);
+            page.quadTo(w, h, w - r, h);
+            page.lineTo(r, h);
+            page.quadTo(0, h, 0, h - r);
+            page.lineTo(0, r);
+            page.quadTo(0, 0, r, 0);
+            page.close();
+            c.drawPath(page, fill);
+            corner.reset();
+            corner.moveTo(w - f, 0);
+            corner.lineTo(w - f, f - r * 0.5f);
+            corner.quadTo(w - f, f, w - f + r * 0.5f, f);
+            corner.lineTo(w, f);
+            corner.close();
+            c.drawPath(corner, fold);
+            if (!ext.isEmpty()) {
+                label.setTextSize(ext.length() <= 3 ? w * 0.30f : w * 0.25f);
+                c.drawText(ext, w / 2f, h - h * 0.16f, label);
+            }
+        }
+    }
 
     private static final class QuoteView extends LinearLayout {
         private final View bar;
