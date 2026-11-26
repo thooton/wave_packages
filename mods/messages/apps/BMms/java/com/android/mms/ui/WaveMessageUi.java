@@ -1351,10 +1351,12 @@ public final class WaveMessageUi {
             v.setId(ID_WAVE_FILE);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.leftMargin = dp(ctx, 6);
-            lp.rightMargin = dp(ctx, 6);
-            lp.topMargin = dp(ctx, 5);
-            lp.bottomMargin = dp(ctx, 2);
+            // The bubble has ~9dp of top padding and none at the sides: pull the card up so it
+            // sits 5dp from the top, left and right edges alike.
+            lp.leftMargin = dp(ctx, 5);
+            lp.rightMargin = dp(ctx, 5);
+            lp.topMargin = -dp(ctx, 4);
+            lp.bottomMargin = dp(ctx, 1);
             int at = block.indexOfChild(bodyTv);
             block.addView(v, at >= 0 ? at : Math.min(1, block.getChildCount()), lp);
             h.fileView = v;
@@ -1419,28 +1421,35 @@ public final class WaveMessageUi {
             super(ctx);
             setOrientation(HORIZONTAL);
             setGravity(Gravity.CENTER_VERTICAL);
-            setPadding(dp(ctx, 6), dp(ctx, 6), dp(ctx, 10), dp(ctx, 6));
+            setPadding(dp(ctx, 7), dp(ctx, 7), dp(ctx, 9), dp(ctx, 7));
 
             icon = new FileIconView(ctx);
-            LayoutParams ilp = new LayoutParams(dp(ctx, 26), dp(ctx, 32));
-            ilp.rightMargin = dp(ctx, 8);
+            LayoutParams ilp = new LayoutParams(dp(ctx, 24), dp(ctx, 30));
+            ilp.rightMargin = dp(ctx, 7);
             addView(icon, ilp);
 
             LinearLayout col = new LinearLayout(ctx);
             col.setOrientation(VERTICAL);
+            // Like iMessage: the name in the regular face, the size small and quiet under it.
             name = new TextView(ctx);
-            name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
-            name.setTypeface(mediumTypeface());
+            name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+            name.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
+            name.setIncludeFontPadding(false);
+            name.setLineSpacing(dp(ctx, 1), 1f);
             name.setMaxLines(2);
             name.setEllipsize(TextUtils.TruncateAt.END);
             name.setMaxWidth(dp(ctx, 136));
             col.addView(name, new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT));
             meta = new TextView(ctx);
-            meta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f);
+            meta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
+            meta.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
+            meta.setIncludeFontPadding(false);
             meta.setSingleLine(true);
-            col.addView(meta, new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT));
+            LayoutParams mlp = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            mlp.topMargin = dp(ctx, 3);
+            col.addView(meta, mlp);
             addView(col, new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT));
         }
@@ -1455,8 +1464,8 @@ public final class WaveMessageUi {
             name.setTextColor(isMe ? 0xFF1C1C1E : 0xFFFFFFFF);
             name.setText(fileName);
             meta.setTextColor(isMe ? 0xFF636366 : 0xCCFFFFFF);
-            String kind = ext.isEmpty() ? "File" : ext + " file";
-            meta.setText(TextUtils.isEmpty(size) ? kind : size + ", " + kind);
+            meta.setText(size == null ? "" : size);
+            meta.setVisibility(TextUtils.isEmpty(size) ? GONE : VISIBLE);
         }
     }
 
