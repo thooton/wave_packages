@@ -15,7 +15,7 @@ What it changes (the UI stays as it is):
   pair with a one-time code in Settings > Advanced settings > Apple (iMessage) settings, after
   which the phone registers its own number. Low-power dynamic keepalive and a compose box hint
   (`Type SMS message` / `Type MMS message` / `Type iMessage`). Photos, videos and voice messages
-  both ways (full size on Save attachment), tapback badges and sending tapbacks, edits, unsends,
+  both ways (full size on Save attachment), downloading other files (PDFs, zips, ...) on demand, tapback badges and sending tapbacks, edits, unsends,
   inline-reply quotes and group change notices:
   [imessage](docs/fixes/imessage/README.md)
 * **Group MMS appears once, in the right conversation** (no 1:1 "Downloading..." first):

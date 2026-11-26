@@ -567,6 +567,28 @@ public final class WaveIMessageDb extends SQLiteOpenHelper {
         }
     }
 
+    /** A file with no preview (PDF, zip, ...) that came with message {@code msgUri}; nothing is stored. */
+    public void recordFile(Uri msgUri, String mediaId, String name) {
+        recordMedia(Uri.parse(key(msgUri) + FILE_PART + mediaId), msgUri, mediaId, name);
+    }
+
+    /** {mediaId, name} of each file of {@code msgUri} that is downloaded on demand. */
+    public List<String[]> filesFor(Uri msgUri) {
+        List<String[]> out = new ArrayList<String[]>();
+        if (msgUri == null) return out;
+        String k = key(msgUri);
+        Cursor c = getReadableDatabase().query("media", new String[]{"media_id", "name"},
+                "msg_uri=? AND part_uri LIKE ?", new String[]{k, k + FILE_PART + "%"}, null, null, "rowid");
+        try {
+            while (c.moveToNext()) out.add(new String[]{c.getString(0), c.getString(1)});
+        } finally {
+            c.close();
+        }
+        return out;
+    }
+
+    private static final String FILE_PART = "/file/";
+
     public boolean hasMedia(Uri msgUri) {
         if (msgUri == null) return false;
         Cursor c = getReadableDatabase().query("media", new String[]{"media_id"}, "msg_uri=?",

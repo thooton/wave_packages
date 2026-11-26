@@ -127,7 +127,13 @@ resources, or conversation UI.
      never over the push connection. **Save attachment** on such a message downloads the full-size
      file from the server into Download (`WaveIMessageSave`; hooks in
      `ComposeMessageActivity.saveAttachment` and the attachment viewer's Save attachment / Save all in
-     `BaseAttachmentViewActivity`); without a configured server it saves the preview as before. Outgoing MMS with photos,
+     `BaseAttachmentViewActivity`); without a configured server it saves the preview as before. **Files** with no preview (PDFs,
+     zips, documents; needs imsg-server with file registration) aren't stored on the phone: the
+     message shows `[File: name, size]`, `WaveIMessageDb.recordFile` keeps its attachment id, and
+     pressing the message (a confirm dialog) or **Download file** in its menu fetches the original
+     (`MEDIA_GET` full) into Download (`WaveIMessageSave.downloadFiles`); Save attachment / Save all
+     on a message that also has photos downloads its files too. Older servers only sent the
+     placeholder text, so their files can't be downloaded. Outgoing MMS with photos,
      video, audio or a contact go over iMessage (`MEDIA_PUT` uploads, then `SEND_MESSAGE`); the
      server converts them for iPhones. Anything else, or a failed upload, still goes as carrier MMS.
    - **Ordered, durable inbox** (`WaveIMessageInbox`): the push client hands every message-changing

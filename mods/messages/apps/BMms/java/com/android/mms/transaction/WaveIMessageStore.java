@@ -155,6 +155,12 @@ public final class WaveIMessageStore {
         }
         db.recordMessage(body.appleMsgId, uri, text, selfSent ? WaveIMessageDb.ME : senderRaw, conv.targets,
                 body.senderGuid);
+        // Files (PDFs, zips, ...) aren't stored on the phone: "Download file" fetches the original.
+        for (Body.InAttachment a : body.attachments) {
+            if (a.kind == Body.ATTACH_FILE && !TextUtils.isEmpty(a.mediaId)) {
+                db.recordFile(uri, a.mediaId, a.name);
+            }
+        }
         db.setReplyTo(body.appleMsgId, body.replyTo);
         cfg.markAppleMsgIdSeen(body.appleMsgId);
     }
@@ -247,9 +253,17 @@ public final class WaveIMessageStore {
             case Body.ATTACH_VOICE: what = "Voice message"; break;
             case Body.ATTACH_AUDIO: what = "Audio: " + a.name; break;
             case Body.ATTACH_VCARD: what = "Contact: " + a.name; break;
-            default: what = "File: " + a.name; break;
+            default: what = "File: " + a.name + (a.size > 0 ? ", " + humanSize(a.size) : ""); break;
         }
         return "[" + what + (failed ? " (couldn't download)" : "") + "]";
+    }
+
+    /** "850 bytes", "150 KB", "3.4 MB", "1.2 GB", like the server's placeholders. */
+    static String humanSize(long n) {
+        if (n < 1000) return n + " bytes";
+        if (n < 1000000) return (n / 1000) + " KB";
+        if (n < 1000000000L) return String.format(java.util.Locale.ROOT, "%.1f MB", n / 1e6);
+        return String.format(java.util.Locale.ROOT, "%.1f GB", n / 1e9);
     }
 
     private static String withReplyQuote(WaveIMessageDb db, String replyTo, String text) {

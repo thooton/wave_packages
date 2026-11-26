@@ -68,6 +68,7 @@ public final class WaveTapbacks {
     private static final int MENU_REACT = 0x5741_0001;
     private static final int MENU_REACTIONS = 0x5741_0002;
     private static final int MENU_EDIT_HISTORY = 0x5741_0003;
+    private static final int MENU_DOWNLOAD_FILES = 0x5741_0004;
     private static final String BADGE_TAG = "wave_tapbacks";
     private static final int MAX_BADGES = 3;
 
@@ -586,6 +587,12 @@ public final class WaveTapbacks {
 
             MessageItem mi = ((MessageListItem) v).getMessageItem();
             if (mi == null || mi.mAttachmentType != 0 /* TEXT */ || mi.mMessageUri == null) return false;
+            // A file with no preview (PDF, zip, ...): offer to download it.
+            List<String[]> files = WaveIMessageDb.get(a).filesFor(mi.mMessageUri);
+            if (!files.isEmpty()) {
+                confirmDownload(a, mi.mMessageUri, files);
+                return true;
+            }
             if (!reactions(a, mi.mMessageUri).isEmpty()) {
                 showWho(a, mi.mMessageUri);
                 return true;
@@ -603,6 +610,27 @@ public final class WaveTapbacks {
             Log.w(TAG, "tapback click", t);
             return false;
         }
+    }
+
+    /** "Download Report.pdf?" before fetching the message's files into Download. */
+    private static void confirmDownload(final Activity a, final Uri msgUri, List<String[]> files) {
+        StringBuilder names = new StringBuilder();
+        for (String[] f : files) {
+            if (names.length() > 0) names.append('\n');
+            names.append(TextUtils.isEmpty(f[1]) ? "file" : f[1]);
+        }
+        names.append("\n\nSaves to Download.");
+        new AlertDialog.Builder(a)
+                .setTitle(files.size() == 1 ? "Download file?" : "Download " + files.size() + " files?")
+                .setMessage(names)
+                .setPositiveButton("Download", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        WaveIMessageSave.downloadFiles(a, msgUri);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     /** Native Sonim Material AlertDialog showing who reacted. */
@@ -883,7 +911,16 @@ public final class WaveTapbacks {
             menu.removeItem(MENU_REACT);
             menu.removeItem(MENU_REACTIONS);
             menu.removeItem(MENU_EDIT_HISTORY);
+            menu.removeItem(MENU_DOWNLOAD_FILES);
             final WaveIMessageDb db = WaveIMessageDb.get(a);
+            int files = db.filesFor(mi.mMessageUri).size();
+            if (files > 0) {
+                menu.add(0, MENU_DOWNLOAD_FILES, 0, files == 1 ? "Download file" : "Download " + files + " files")
+                        .setOnMenuItemClickListener(item -> {
+                            WaveIMessageSave.downloadFiles(a, mi.mMessageUri);
+                            return true;
+                        });
+            }
             final WaveIMessageDb.Msg msg = db.byUri(mi.mMessageUri);
             if (msg == null || TextUtils.isEmpty(msg.appleId)) return;
             WaveIMessageDb.Info info = db.infoForUri(mi.mMessageUri);

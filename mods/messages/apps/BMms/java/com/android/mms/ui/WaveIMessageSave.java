@@ -63,6 +63,8 @@ public final class WaveIMessageSave {
                     cur.close();
                 }
             }
+            // Files that came with the photos (PDFs, zips, ...) aren't parts: download them too.
+            items.addAll(db.filesFor(msg));
             return start(a, items);
         } catch (Throwable t) {
             Log.w(TAG, "saveAll", t);
@@ -83,6 +85,25 @@ public final class WaveIMessageSave {
         } catch (Throwable t) {
             Log.w(TAG, "savePart", t);
             return false;
+        }
+    }
+
+    /**
+     * FEAT(imessage): "Download file" on an iMessage that came with files that have no preview
+     * (PDFs, zips, ...): downloads the originals from the server into Download.
+     */
+    public static void downloadFiles(Activity a, Uri msgUri) {
+        try {
+            List<String[]> items = WaveIMessageDb.get(a).filesFor(msgUri);
+            if (items.isEmpty()) return;
+            if (WaveIMessageHost.get(a.getApplicationContext()).mediaClient() == null) {
+                Toast.makeText(a, "iMessage isn't set up", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            start(a, items);
+        } catch (Throwable t) {
+            Log.w(TAG, "downloadFiles", t);
+            Toast.makeText(a, "Couldn't download", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -163,8 +184,8 @@ public final class WaveIMessageSave {
             Toast.makeText(a, "iMessage isn't set up; saving the preview", Toast.LENGTH_SHORT).show();
             return false;
         }
-        Toast.makeText(a, items.size() == 1 ? "Downloading full-size file\u2026"
-                : "Downloading " + items.size() + " full-size files\u2026", Toast.LENGTH_SHORT).show();
+        Toast.makeText(a, items.size() == 1 ? "Downloading " + displayName(items.get(0)[1]) + "\u2026"
+                : "Downloading " + items.size() + " files\u2026", Toast.LENGTH_SHORT).show();
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -206,6 +227,10 @@ public final class WaveIMessageSave {
             }
         }, "wave-imsg-save").start();
         return true;
+    }
+
+    private static String displayName(String name) {
+        return name == null || name.trim().isEmpty() ? "file" : name.trim();
     }
 
     private static String cleanName(String filename, String mime) {
