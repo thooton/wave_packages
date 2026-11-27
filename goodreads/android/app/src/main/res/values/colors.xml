@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sampled from goodreads.com's classic styles (goodreads.css): its white
+     pages, the beige of its header and the deeper beige of its rules, its
+     brown, its greys, the teal of its links, the green of Want to Read, and
+     the orange of its stars. -->
+<resources>
+    <color name="page">#FFFFFF</color>
+    <color name="beige">#F4F1EA</color>
+    <color name="beige_rule">#D6D0C4</color>
+    <color name="brown">#382110</color>
+    <color name="ink">#181818</color>
+    <color name="text">#333333</color>
+    <color name="muted">#767676</color>
+    <color name="rule">#D8D8D8</color>
+    <color name="link">#00635D</color>
+    <color name="green">#409D69</color>
+    <color name="green_dark">#3D9363</color>
+    <color name="green_wash">#E4F4DA</color>
+    <color name="star">#E87400</color>
+    <color name="star_off">#D8D8D8</color>
+    <color name="track">#EDE6D6</color>
+    <!-- The row under the d-pad: the site's highlight beige, a step deeper than the header's. -->
+    <color name="focus">#EDE6D6</color>
+    <color name="cover">#EBE2D7</color>
+</resources>

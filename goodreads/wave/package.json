@@ -1,0 +1,19 @@
+{
+  "id": "com.goodreads.xp3",
+  "type": "apk",
+  "name": "Goodreads",
+  "summary": "Discover books on Goodreads from the flip phone",
+  "description": "Browse Goodreads' popular and new books, genres and top lists, search for a book, read its description and community reviews, and keep a Want to Read list on the phone. No account needed.",
+  "author": "thooton",
+  "homepage": "https://github.com/thooton/wave_packages/tree/master/goodreads",
+  "requires": {
+    "device": [
+      "XP3800"
+    ],
+    "sdk": 27
+  },
+  "depends": [],
+  "conflicts": [],
+  "replaces": [],
+  "section": "reading-study"
+}

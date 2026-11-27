@@ -267,6 +267,39 @@ in `res/drawable-*`.
   paragraph ending on the diamond. Down and Up move two lines, Right and
   Left a screen; on the lists each press moves the same distance.
 
+## Goodreads: the classic goodreads.com, on a flip phone
+
+Goodreads takes its look from the classic goodreads.com rather than the
+family or the current app, since that is the Goodreads people picture. Its
+colours were sampled from the site's styles (`res/values/colors.xml`), its
+fonts are the site's own, and its icon is the classic "g" from the app's
+own vectors, in the brown on the header's beige.
+
+- **Beige chrome, white pages.** The header and tab bar in the site's
+  `#F4F1EA` over `#D6D0C4` rules, the status bar the same beige with dark
+  icons; pages white. The wordmark "goodreads" in Merriweather, "reads" in
+  its bold, brown `#382110`, as the site's logo sets it.
+- **Brown, teal, green, orange: each for one thing.** Brown for the
+  wordmark, the section headings (small bold capitals over a beige rule)
+  and the open tab; teal `#00635D` for links (See all, genres, a series);
+  green `#409D69` for Want to Read and nothing else; orange `#E87400` for
+  stars and the rating bars. Text is `#333333`, what follows it `#767676`.
+- **Merriweather for books and what people wrote, Lato for the rest.**
+  Titles in Merriweather Bold, descriptions and reviews in Merriweather,
+  everything of the interface (authors, counts, tabs, headings) in Lato.
+  Both are the cuts s.gr-assets.com serves, OFL, bundled as TTF.
+- **The book row.** A small cover on its beige placeholder at the left;
+  the title, "by" in grey and the author, five stars filled to the average
+  with "4.19 · 615,284 ratings", and a list's own note (#1, N people read
+  it), with hairlines between rows. The row under the d-pad is washed in
+  the site's highlight beige `#EDE6D6`.
+- **The book page as the site's phone layout has it.** Cover and head side
+  by side, the green Want to Read button across the screen (outlined with a
+  check once the book is on the list), the description, genres and facts,
+  then Readers also enjoyed and Community reviews with the five-bar spread
+  of ratings. Up and Down read it a fixed step at a time; Right and Left
+  turn a screen.
+
 ## Weather: CARROT on a flip phone
 
 Weather takes its look from CARROT Weather, whose colours it uses exactly

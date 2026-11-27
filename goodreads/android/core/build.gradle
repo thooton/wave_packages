@@ -1,0 +1,9 @@
+// Reading Goodreads: its GraphQL service (the one goodreads.com itself asks,
+// with the key every page of the site carries), its search suggestions, and
+// the few of its HTML pages that list books; the books, their reviews, and
+// the Want to Read shelf kept on the phone.
+apply from: rootProject.file("gradle/core.gradle")
+
+dependencies {
+    api project(":common:core")
+}
