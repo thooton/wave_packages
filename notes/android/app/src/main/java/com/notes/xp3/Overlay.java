@@ -130,6 +130,7 @@ abstract class Overlay {
         label.setSingleLine(true);
         label.setEllipsize(TextUtils.TruncateAt.END);
         if (medium) label.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        Rows.track(label, sp);
         return label;
     }
 

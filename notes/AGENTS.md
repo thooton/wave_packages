@@ -24,7 +24,7 @@ Change the mockup with the app when the look changes, and keep
 - `android/core`, package `com.notes.xp3.data`: `Note`, `Folder`,
   `Notebook` (every rule about notes and folders, its limits and Recently
   Deleted), `Text` (titles, previews, search and snippets), `Dates`
-  (Apple's sections and row dates), `Store` (`notes.json`, via the shared
+  (Pinned first, then one run; row dates), `Store` (`notes.json`, via the shared
   `Json` and `Disk`). Tests in `src/test` run via `:notes:core:selfTest`
   with the shared `Check` harness.
 - `android/app`: `MainActivity` (the page stack, every key, and the pages:

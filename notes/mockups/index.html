@@ -51,6 +51,14 @@
   .big { font-size: 22px; font-weight: 700; padding: 0 12px; height: 30px; line-height: 28px; }
   .sh { font-size: 13.5px; font-weight: 700; padding: 6px 12px 4px; }
   .card { background: var(--card); margin: 0 8px 4px; border-radius: 10px; overflow: hidden; }
+  /* Where no heading is wanted: under the title, and between Pinned and the rest (8dp with the card's 4). */
+  .gap { height: 4px; }
+  /* Lettering opened up toward San Francisco's (Roboto is narrower and set tighter): 0.04em, 0.05em
+     under 13sp, 0.02em on the large title. A note's own text keeps Roboto's spacing. */
+  .phone { letter-spacing: .04em; }
+  .phone .big { letter-spacing: .02em; }
+  .phone .s, .phone .f, .phone .toolbar, .phone .date, .phone .status { letter-spacing: .05em; }
+  .phone .body { letter-spacing: normal; }
   .row { position: relative; height: 40px; padding: 5px 10px 0; }
   .row + .row::before { content: ""; position: absolute; left: 10px; right: 0; top: 0; border-top: 1px solid var(--rule); }
   .row.focus::after { content: ""; position: absolute; inset: 3px; border-radius: 7px; background: var(--wash); z-index: 0; }
@@ -161,17 +169,14 @@
   <div class="card">
     <div class="row focus"><div class="t">Groceries</div><div class="s"><b>10:41 AM</b>Milk, eggs, bread, coffee</div></div>
   </div>
-  <div class="sh">Today</div>
+  <div class="gap"></div>
   <div class="card">
     <div class="row"><div class="t">Call the plumber</div><div class="s"><b>9:02 AM</b>Ask about Thursday morning</div></div>
     <div class="row"><div class="t">Gate code</div><div class="s"><b>8:15 AM</b>No additional text</div></div>
-  </div>
-  <div class="sh">Previous 7 Days</div>
-  <div class="card">
     <div class="row"><div class="t">Gift ideas</div><div class="s"><b>Tuesday</b>Mum: the blue scarf</div></div>
   </div>
   <div class="toolbar">9 Notes<span class="r"><svg class="i"><use href="#compose"/></svg></span></div>
-</div><figcaption><b>1. A folder's notes</b>, which open on launch. Pinned first, then by when each was last changed. The compose icon is what Menu's first choice does.</figcaption></figure>
+</div><figcaption><b>1. A folder's notes</b>, which open on launch. Pinned first, then every other note in one card, latest change first, with no date headings. The compose icon is what Menu's first choice does.</figcaption></figure>
 
 <!-- 2. A note being written -->
 <figure><div class="phone" style="background:#fff">
@@ -191,7 +196,7 @@
   <div class="status"><i></i><u></u>10:41</div>
   <div class="nav"></div>
   <div class="big">Folders</div>
-  <div class="sh">On My Phone</div>
+  <div class="gap"></div>
   <div class="card">
     <div class="frow focus"><svg class="ic"><use href="#folder"/></svg><span>Notes</span><span class="n">9</span><svg class="c"><use href="#chev"/></svg></div>
     <div class="frow"><svg class="ic"><use href="#folder"/></svg><span>Recipes</span><span class="n">3</span><svg class="c"><use href="#chev"/></svg></div>
@@ -243,7 +248,7 @@
   <div class="status"><i></i><u></u>10:41</div>
   <div class="nav"><svg><use href="#back"/></svg>Folders</div>
   <div class="big">Recently Deleted</div>
-  <div class="sh">Previous 7 Days</div>
+  <div class="gap"></div>
   <div class="card">
     <div class="row focus"><div class="t">Old gate code</div><div class="s"><b>Monday</b>1180#</div></div>
     <div class="row"><div class="t">Parking</div><div class="s"><b>Sunday</b>Level 3, row F</div></div>
@@ -282,7 +287,7 @@
   <div class="status"><i></i><u></u>10:41</div>
   <div class="nav"></div>
   <div class="big">Folders</div>
-  <div class="sh">On My Phone</div>
+  <div class="gap"></div>
   <div class="card">
     <div class="frow"><svg class="ic"><use href="#folder"/></svg><span>Notes</span><span class="n">9</span><svg class="c"><use href="#chev"/></svg></div>
     <div class="frow focus"><svg class="ic"><use href="#folder"/></svg><span>Recipes</span><span class="n">3</span><svg class="c"><use href="#chev"/></svg></div>

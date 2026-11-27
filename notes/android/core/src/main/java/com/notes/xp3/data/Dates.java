@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.TimeZone;
 
 /**
- * Apple Notes' dates, in US English: a list's sections, the date on a row,
+ * Apple Notes' dates, in US English: a list's runs, the date on a row,
  * and the date over an open note.
  */
 public final class Dates {
@@ -34,42 +34,19 @@ public final class Dates {
     }
 
     /**
-     * Notes (already latest first) under Apple's headings: Pinned (when
-     * `pinnedFirst`), Today, Yesterday, Previous 7 Days, Previous 30 Days,
-     * then this year's months by name and earlier years by number.
+     * Notes (already latest change first) as a list shows them: Pinned
+     * first (when `pinnedFirst` and any are), then every other note in one
+     * run with no heading (a null title), still latest change first. There
+     * are no date sections.
      */
-    public static List<Section> sections(List<Note> notes, boolean pinnedFirst, long now, TimeZone zone) {
+    public static List<Section> sections(List<Note> notes, boolean pinnedFirst) {
         List<Section> result = new ArrayList<Section>();
-        if (pinnedFirst) {
-            Section pinned = new Section(PINNED);
-            for (Note note : notes) if (note.pinned) pinned.notes.add(note);
-            if (!pinned.notes.isEmpty()) result.add(pinned);
-        }
-        Section current = null;
-        for (Note note : notes) {
-            if (pinnedFirst && note.pinned) continue;
-            String title = heading(note.modified, now, zone);
-            if (current == null || !current.title.equals(title)) {
-                current = new Section(title);
-                result.add(current);
-            }
-            current.notes.add(note);
-        }
+        Section pinned = new Section(PINNED);
+        Section rest = new Section(null);
+        for (Note note : notes) (pinnedFirst && note.pinned ? pinned : rest).notes.add(note);
+        if (!pinned.notes.isEmpty()) result.add(pinned);
+        if (!rest.notes.isEmpty()) result.add(rest);
         return result;
-    }
-
-    /** The heading a note changed at `time` goes under. */
-    public static String heading(long time, long now, TimeZone zone) {
-        int days = daysBetween(time, now, zone);
-        if (days <= 0) return "Today";
-        if (days == 1) return "Yesterday";
-        if (days <= 7) return "Previous 7 Days";
-        if (days <= 30) return "Previous 30 Days";
-        Calendar then = calendar(time, zone);
-        if (then.get(Calendar.YEAR) == calendar(now, zone).get(Calendar.YEAR)) {
-            return MONTHS[then.get(Calendar.MONTH)];
-        }
-        return Integer.toString(then.get(Calendar.YEAR));
     }
 
     /** A row's date: the time today, "Yesterday", the weekday this past week, else 11/2/26. */

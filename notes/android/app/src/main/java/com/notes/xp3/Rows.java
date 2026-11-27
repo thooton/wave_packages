@@ -48,7 +48,9 @@ final class Rows extends BaseAdapter {
     static final int FOLDER = 6;
     static final int ACTION = 7;
     static final int EMPTY = 8;
-    private static final int TYPES = 9;
+    /** A little space between the title and a card, or between two cards, where no heading is wanted. */
+    static final int GAP = 9;
+    private static final int TYPES = 10;
 
     /** What a row shows; which fields matter depends on its type. */
     static final class Row {
@@ -208,6 +210,7 @@ final class Rows extends BaseAdapter {
             case HEADING: return heading(row, convert);
             case CAPTION: return caption(row, convert);
             case EMPTY: return empty(row, convert);
+            case GAP: return gap(convert);
             case FOLDER:
             case ACTION: return folder(position, row, convert);
             default: return note(position, row, convert);
@@ -278,6 +281,13 @@ final class Rows extends BaseAdapter {
             view.setPadding(dp(12), dp(76), dp(12), 0);
         }
         view.setText(row.text);
+        return view;
+    }
+
+    private View gap(View convert) {
+        if (convert != null) return convert;
+        View view = new View(context);
+        view.setLayoutParams(new AbsListView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(8)));
         return view;
     }
 
@@ -408,7 +418,17 @@ final class Rows extends BaseAdapter {
         view.setSingleLine(true);
         view.setEllipsize(TextUtils.TruncateAt.END);
         if (face != null) view.setTypeface(face);
+        track(view, sp);
         return view;
+    }
+
+    /**
+     * Opens the lettering up toward San Francisco's: Roboto is narrower and
+     * set tighter than SF, which iOS also tracks out more the smaller the
+     * text. Every label around the notes gets this; a note's own text doesn't.
+     */
+    static void track(TextView view, float sp) {
+        view.setLetterSpacing(sp >= 20 ? 0.02f : sp >= 13 ? 0.04f : 0.05f);
     }
 
     private LinearLayout.LayoutParams below(int gap) {

@@ -133,12 +133,6 @@ public final class DataTests {
         });
 
         check.run("Dates", () -> {
-            check.same("today", "Today", Dates.heading(NOW - 10 * 60 * MINUTE, NOW, UTC));
-            check.same("yesterday", "Yesterday", Dates.heading(NOW - 11 * 60 * MINUTE, NOW, UTC));
-            check.same("week", "Previous 7 Days", Dates.heading(NOW - 7 * DAY, NOW, UTC));
-            check.same("month", "Previous 30 Days", Dates.heading(NOW - 30 * DAY, NOW, UTC));
-            check.same("this year", "September", Dates.heading(NOW - 60 * DAY, NOW, UTC));
-            check.same("last year", "2025", Dates.heading(NOW - 365 * DAY, NOW, UTC));
             check.same("time today", "10:41 AM", Dates.row(NOW, NOW, UTC, false));
             check.same("24 hours", "10:41", Dates.row(NOW, NOW, UTC, true));
             check.same("midnight", "12:00 AM", Dates.row(NOW - (10 * 60 + 41) * MINUTE, NOW, UTC, false));
@@ -147,7 +141,7 @@ public final class DataTests {
             check.same("short date", "11/2/26", Dates.row(NOW - 18 * DAY, NOW, UTC, false));
             check.same("full", "November 20, 2026 at 10:41 AM", Dates.full(NOW, UTC, false));
             TimeZone york = TimeZone.getTimeZone("America/New_York");
-            check.same("days follow the zone", "Yesterday", Dates.heading(NOW - 6 * 60 * MINUTE, NOW, york));
+            check.same("days follow the zone", "Yesterday", Dates.row(NOW - 6 * 60 * MINUTE, NOW, york, false));
 
             Notebook book = new Notebook();
             Note pinned = book.create(Notebook.NOTES, NOW - 40 * DAY);
@@ -157,13 +151,19 @@ public final class DataTests {
             book.setText(today.id, "Groceries", NOW);
             Note week = book.create(Notebook.NOTES, NOW);
             book.setText(week.id, "Trip", NOW - 3 * DAY);
-            List<Dates.Section> sections = Dates.sections(book.notesIn(Notebook.NOTES), true, NOW, UTC);
-            check.same("sections", 3, sections.size());
+            List<Dates.Section> sections = Dates.sections(book.notesIn(Notebook.NOTES), true);
+            check.same("pinned, then the rest", 2, sections.size());
             check.same("pinned first", "Pinned", sections.get(0).title);
-            check.same("then today", "Today", sections.get(1).title);
-            check.same("then the week", "Previous 7 Days", sections.get(2).title);
-            List<Dates.Section> flat = Dates.sections(book.notesIn(Notebook.NOTES), false, NOW, UTC);
-            check.same("unpinned grouping", "October", flat.get(2).title);
+            check.same("the pinned note", pinned.id, sections.get(0).notes.get(0).id);
+            check.ok("no date headings", sections.get(1).title == null);
+            check.same("latest change first", today.id, sections.get(1).notes.get(0).id);
+            check.same("then older", week.id, sections.get(1).notes.get(1).id);
+            List<Dates.Section> flat = Dates.sections(book.notesIn(Notebook.NOTES), false);
+            check.same("one run when not pinning", 1, flat.size());
+            check.same("all of them", 3, flat.get(0).notes.size());
+            check.same("by last change", pinned.id, flat.get(0).notes.get(2).id);
+            book.pin(pinned.id, false);
+            check.same("no pins, one run", 1, Dates.sections(book.notesIn(Notebook.NOTES), true).size());
         });
 
         check.run("Store round trip", () -> {

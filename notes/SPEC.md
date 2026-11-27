@@ -20,7 +20,10 @@ Apple Notes on iOS 17, light, as drawn in `mockups/index.html` (refined from
 large titles, Notes' yellow for icons, the caret and the d-pad's row (a
 yellow wash inset in the card), and Apple's bottom toolbar. The exact
 colours and sizes are in `../DESIGN.md` ("Notes") and
-`android/app/src/main/res/values/colors.xml`.
+`android/app/src/main/res/values/colors.xml`. Every label around the
+notes (titles, headings, rows, counts, menus, alerts, bars) is Roboto with
+its letters opened up toward San Francisco's: 0.04em, 0.05em under 13sp,
+0.02em on the large title (`Rows.track`). A note's own text is untouched.
 
 ## Data
 
@@ -47,16 +50,17 @@ colours and sizes are in `../DESIGN.md` ("Notes") and
 The pages form a stack; Back (or Left) pops one. Launch opens the folder
 last used, with Folders under it.
 
-- **Folders**: "Folders", the heading "On My Phone", a card of folders, each
+- **Folders**: "Folders", then (no heading) a card of folders, each
   with its icon, name, count of notes and a chevron, then Recently Deleted
   with a trash icon when it has notes. Toolbar: new-folder and compose icons.
-- **A folder**: "‹ Folders", the folder's name, then its notes in sections:
-  Pinned (if any), Today, Yesterday, Previous 7 Days, Previous 30 Days, then
-  each month of this year, then each earlier year, newest first. A row is
+- **A folder**: "‹ Folders", the folder's name, then Pinned (if any) with
+  its card, then every other note in one card with no heading, all by last
+  change, newest first. No date sections (Today, Previous 7 Days, ...). A row is
   the title, then the time (today), "Yesterday", the weekday (this week) or
   the date, and the preview. The toolbar counts the notes ("1 Note",
   "N Notes") and has the compose icon. An empty folder shows "No Notes".
-- **Recently Deleted**: the same, without Pinned or a compose icon.
+- **Recently Deleted**: the same, without Pinned or a compose icon: one card,
+  newest change first.
 - **A note**: a white page with "‹" and the folder's name, the full
   modified date centred, then the text, its first line large and bold.
   Typing edits it. A recently deleted note is read-only: OK or typing offers

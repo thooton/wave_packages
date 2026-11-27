@@ -356,8 +356,12 @@ family, as people know it from their iPhones. It was drawn first in
   name, past its icon). A note itself is a white page.
 - **Large titles and bold headings.** "‹ Folders" in a deepened Notes
   yellow (`#B88600`, 13sp), then the folder's name at 22sp bold, and the
-  date sections (Pinned, Today, Previous 7 Days, …) at 13.5sp bold, as iOS
-  sets them, setting aside rule 3's "never bold".
+  Pinned heading at 13.5sp bold, as iOS sets them, setting aside rule 3's
+  "never bold". There are no date sections and no "On My Phone": notes
+  follow in one card by last change, newest first, 8dp under the title.
+- **SF-like lettering.** Roboto is narrower and set tighter than San
+  Francisco, so every label outside a note's own text is tracked out:
+  0.04em, 0.05em under 13sp, 0.02em on the large title.
 - **Notes' yellow.** Icons, the back arrow and the caret are
   `#E0A500`; small yellow text is the deeper `#B88600` to be readable. The
   row under the d-pad, which iOS doesn't have, is a `#FFE9A6` wash 3dp

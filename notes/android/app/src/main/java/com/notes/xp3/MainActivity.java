@@ -352,6 +352,7 @@ public final class MainActivity extends BaseActivity implements Overlay.Host {
         view.setSingleLine(true);
         view.setEllipsize(TextUtils.TruncateAt.END);
         if (face != null) view.setTypeface(face);
+        Rows.track(view, sp);
         return view;
     }
 
@@ -545,7 +546,7 @@ public final class MainActivity extends BaseActivity implements Overlay.Host {
             return rows == null ? null : rows.selectedRow();
         }
 
-        /** Scrolls just enough to show the chosen row, and its heading too when it heads a section. */
+        /** Scrolls just enough to show the chosen row, and its heading (or gap) too when it heads a card. */
         void reveal(final int position) {
             if (list.getHeight() == 0) {
                 list.post(() -> {
@@ -570,7 +571,9 @@ public final class MainActivity extends BaseActivity implements Overlay.Host {
         }
 
         private int heading(int position) {
-            return position > 0 && rows.row(position - 1).type == Rows.HEADING ? position - 1 : position;
+            if (position <= 0) return position;
+            int above = rows.row(position - 1).type;
+            return above == Rows.HEADING || above == Rows.GAP ? position - 1 : position;
         }
 
         void move(int step) {
@@ -653,7 +656,7 @@ public final class MainActivity extends BaseActivity implements Overlay.Host {
             List<Rows.Row> list = new ArrayList<Rows.Row>();
             list.add(new Rows.Row(Rows.NAV, null));
             list.add(new Rows.Row(Rows.TITLE, "Folders"));
-            list.add(new Rows.Row(Rows.HEADING, "On My Phone"));
+            list.add(new Rows.Row(Rows.GAP, null));
             for (Folder folder : book.folders()) {
                 Rows.Row row = new Rows.Row(Rows.FOLDER, folder.name());
                 row.folder = folder.id;
@@ -775,8 +778,8 @@ public final class MainActivity extends BaseActivity implements Overlay.Host {
                 list.add(new Rows.Row(Rows.EMPTY, "No Notes"));
                 return list;
             }
-            for (Dates.Section section : Dates.sections(notes, !isDeleted(), now(), TimeZone.getDefault())) {
-                list.add(new Rows.Row(Rows.HEADING, section.title));
+            for (Dates.Section section : Dates.sections(notes, !isDeleted())) {
+                list.add(section.title == null ? new Rows.Row(Rows.GAP, null) : new Rows.Row(Rows.HEADING, section.title));
                 for (Note note : section.notes) {
                     Rows.Row row = new Rows.Row(Rows.NOTE, null);
                     row.note = note;
