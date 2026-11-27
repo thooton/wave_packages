@@ -1,7 +1,0 @@
-// The recommendation service's client, the books it answers with, the last
-// search kept on the phone, and the made-up answers of the sample mode.
-apply from: rootProject.file("gradle/core.gradle")
-
-dependencies {
-    api project(":common:core")
-}

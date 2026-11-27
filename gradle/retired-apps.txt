@@ -1,4 +1,5 @@
 # Removed package IDs: never configure or publish them from this repository.
+bookrecs
 hbsa
 installer
 launcher

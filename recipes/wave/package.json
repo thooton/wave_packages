@@ -3,7 +3,7 @@
   "type": "apk",
   "name": "Recipes",
   "summary": "Keep recipes and cook from them",
-  "description": "Write down recipes with their ingredients, steps and notes, and find them again by title or ingredient. Cook from a recipe with the keypad: change the servings and the amounts follow, and tick off ingredients and steps as you go. Works offline; the recipes stay on the phone.",
+  "description": "Write down recipes with their ingredients, steps and notes, and find them again by title or ingredient. Cook from a recipe with the keypad: change the servings and the amounts follow, and tick off ingredients and steps as you go. Works offline.",
   "author": "thooton",
   "homepage": "https://github.com/thooton/wave_packages/tree/master/recipes",
   "requires": {
