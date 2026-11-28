@@ -1646,15 +1646,8 @@
     :cond_0
     invoke-virtual {p0, v3}, Lcom/android/mms/transaction/SmsReceiverService;->sendFirstQueuedMessage(I)V
 
-    .line 544
     :cond_1
-    iget-object v0, p0, Lcom/android/mms/transaction/SmsReceiverService;->mToastHandler:Landroid/os/Handler;
-
-    new-instance v1, Lcom/android/mms/transaction/SmsReceiverService$3;
-
-    invoke-direct {v1, p0}, Lcom/android/mms/transaction/SmsReceiverService$3;-><init>(Lcom/android/mms/transaction/SmsReceiverService;)V
-
-    invoke-virtual {v0, v1}, Landroid/os/Handler;->post(Ljava/lang/Runnable;)Z
+    # FIX(send confirmation): skip the redundant success toast, not the send result.
 
     .line 551
     invoke-static {p0}, Lcom/android/mms/transaction/MessagingNotification;->nonBlockingUpdateSendFailedNotification(Landroid/content/Context;)V
