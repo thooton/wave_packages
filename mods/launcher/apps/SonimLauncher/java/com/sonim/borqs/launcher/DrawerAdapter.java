@@ -13,8 +13,8 @@ import java.util.ArrayList;
 
 /**
  * Launcher Improved: replaces the stock DrawerAdapter (same constructor, same drawer_item cells).
- * Adds the "moving" card: the entry being moved sits on a solid lavender card, as in the old
- * standalone Launcher. The list can be swapped (a folder's list is replaced on rebuild).
+ * Supports the lifted lavender "moving" card, and the dimmed-source / hovered-folder states used
+ * during Move (into folder). The list can be swapped (a folder's list is replaced on rebuild).
  */
 public class DrawerAdapter extends BaseAdapter {
     private static final int SELECTION = 0xFF9599E4;   // stock tray's lavender
@@ -22,6 +22,8 @@ public class DrawerAdapter extends BaseAdapter {
     private final Context mContext;
     private ArrayList mPacsForAdapter;
     private Object mMoving;
+    private Object mDimmed;
+    private Object mHover;
 
     public DrawerAdapter(Context context, ArrayList list) {
         mContext = context;
@@ -35,6 +37,12 @@ public class DrawerAdapter extends BaseAdapter {
 
     void setMoving(Object item) {
         mMoving = item;
+        notifyDataSetChanged();
+    }
+
+    void setPickerState(Object dimmed, Object hover) {
+        mDimmed = dimmed;
+        mHover = hover;
         notifyDataSetChanged();
     }
 
@@ -70,6 +78,10 @@ public class DrawerAdapter extends BaseAdapter {
         } else {
             holder = (ViewHolder) view.getTag();
         }
+        view.animate().cancel();
+        view.setTranslationX(0f);
+        view.setTranslationY(0f);
+
         Object item = mPacsForAdapter != null && i < mPacsForAdapter.size() ? mPacsForAdapter.get(i) : null;
         if (item instanceof LauncherActivity.AppsAndFolder) {
             LauncherActivity.AppsAndFolder af = (LauncherActivity.AppsAndFolder) item;
@@ -77,9 +89,11 @@ public class DrawerAdapter extends BaseAdapter {
             holder.icon.setImageDrawable(icon);
             holder.text.setText(af.getName());
         }
-        if (item != null && item == mMoving) {
+        float d = mContext.getResources().getDisplayMetrics().density;
+        boolean moving = item != null && item == mMoving;
+        boolean hover = item != null && item == mHover;
+        if (moving || hover) {
             GradientDrawable card = new GradientDrawable();
-            float d = mContext.getResources().getDisplayMetrics().density;
             card.setColor(SELECTION);
             card.setStroke(Math.round(2 * d), SELECTION);
             card.setCornerRadius(6 * d);
@@ -87,6 +101,16 @@ public class DrawerAdapter extends BaseAdapter {
         } else {
             view.setBackground(null);
         }
+        if (moving) {
+            view.setScaleX(WaveGridAnim.CARRY_SCALE);
+            view.setScaleY(WaveGridAnim.CARRY_SCALE);
+            view.setTranslationZ(6 * d);
+        } else {
+            view.setScaleX(1f);
+            view.setScaleY(1f);
+            view.setTranslationZ(0f);
+        }
+        view.setAlpha(item != null && item == mDimmed ? 0.3f : 1f);
         return view;
     }
 }

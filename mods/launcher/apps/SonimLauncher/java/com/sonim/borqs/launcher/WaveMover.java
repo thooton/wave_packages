@@ -6,11 +6,10 @@ import android.widget.GridView;
 import java.util.ArrayList;
 
 /**
- * Launcher Improved: an entry being moved through a grid (the tray's main screen or a folder), as
- * the old standalone Launcher's Move program did. The d-pad carries it, the other entries
- * shifting to make room: Left/Right one slot (wrapping across rows), Up/Down one row; past
- * either end it stops. Center, Enter or Menu puts it down (on release, so the same press
- * doesn't also launch or open the menu); Back puts everything back as it was.
+ * Launcher Improved: an entry being moved within its current screen (the tray or a folder).
+ * The d-pad carries it one slot at a time while other entries slide out of its way (FLIP
+ * animation via WaveGridAnim). Center, Enter or Menu puts it down (on release, so the press that
+ * chose Move doesn't drop it immediately); Back restores everything as it was.
  */
 final class WaveMover {
     interface Done {
@@ -34,8 +33,10 @@ final class WaveMover {
         this.item = item;
         this.original = new ArrayList(list);
         this.done = done;
+        grid.setClipChildren(false);
         adapter.setMoving(item);
         select(list.indexOf(item));
+        WaveGridAnim.lift(grid, list, item);
     }
 
     /** Every key while moving; true when it was ours. */
@@ -60,7 +61,7 @@ final class WaveMover {
             case KeyEvent.KEYCODE_MENU:
             case KeyEvent.KEYCODE_BACK:
                 // Only a press that started while moving counts: the release of the key that
-                // chose "Move" in the menu must not drop it straight away.
+                // chose Move in the menu must not drop it straight away.
                 if (down) {
                     if (e.getRepeatCount() == 0) downKey = code;
                 } else if (downKey == code) {
@@ -78,26 +79,32 @@ final class WaveMover {
     }
 
     private void step(int delta) {
-        int i = list.indexOf(item);
+        int i;
+        synchronized (list) {
+            i = list.indexOf(item);
+        }
         if (i < 0) {
             finish(true);
             return;
         }
         int j = Math.max(0, Math.min(list.size() - 1, i + delta));
         if (j != i) {
+            WaveGridAnim.Snapshot snap = WaveGridAnim.capture(grid, list);
             synchronized (list) {
                 list.remove(i);
                 list.add(j, item);
             }
             adapter.notifyDataSetChanged();
+            select(j);
+            WaveGridAnim.play(grid, list, snap, null, null, null);
+        } else {
+            select(j);
         }
-        select(j);
     }
 
     private void select(int i) {
         if (i < 0) return;
         grid.setSelection(i);
-        grid.smoothScrollToPosition(i);
     }
 
     /** Ends the move: kept (put down where it is) or not (everything back as it was). */
@@ -105,14 +112,17 @@ final class WaveMover {
         if (WaveTray.sMover != this) return;
         WaveTray.sMover = null;
         boolean changed = !original.equals(list);
+        WaveGridAnim.Snapshot snap = (!keep && changed) ? WaveGridAnim.capture(grid, list) : null;
         if (!keep && changed) {
             synchronized (list) {
                 list.clear();
                 list.addAll(original);
             }
         }
+        grid.setClipChildren(true);
         adapter.setMoving(null);
         select(list.indexOf(item));
+        WaveGridAnim.play(grid, list, snap, null, null, item);
         done.done(keep && changed);
     }
 }

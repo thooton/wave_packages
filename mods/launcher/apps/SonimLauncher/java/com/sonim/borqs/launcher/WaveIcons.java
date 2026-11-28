@@ -29,7 +29,8 @@ final class WaveIcons {
 
     /** Colours for folders by name; others get one from the palette by a hash of their name. */
     private static int colorFor(String name) {
-        switch (name.trim().toLowerCase(Locale.ROOT)) {
+        String key = name == null ? "" : name.trim().toLowerCase(Locale.ROOT);
+        switch (key) {
             case "reading": return 0xFF00897B;
             case "media": return 0xFFC2185B;
             case "daily": return 0xFF1E88E5;
@@ -45,7 +46,7 @@ final class WaveIcons {
             default:
                 int[] palette = {0xFF00897B, 0xFFC2185B, 0xFF1E88E5, 0xFF6D4C41, 0xFF546E7A, 0xFF3949AB,
                         0xFF8E24AA, 0xFF43A047, 0xFFE53935, 0xFFF4511E};
-                return palette[(name.trim().toLowerCase(Locale.ROOT).hashCode() & 0x7fffffff) % palette.length];
+                return palette[(key.hashCode() & 0x7fffffff) % palette.length];
         }
     }
 

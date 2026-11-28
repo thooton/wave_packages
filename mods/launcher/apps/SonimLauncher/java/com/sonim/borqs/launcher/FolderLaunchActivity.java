@@ -16,9 +16,8 @@ import java.util.ArrayList;
 /**
  * Launcher Improved: replaces the stock folder screen (FolderLaunchActivity + its
  * FolderDrawerClickListener). Same dialog, grid and keys, with the shared WaveMenu. It follows
- * the folder by name, so a
- * rebuild of the tray (an app installed or removed) or an edit keeps it current, and it closes
- * when the folder is gone or empty.
+ * the folder by name, so a rebuild of the tray (an app installed or removed) or an edit keeps it
+ * current, and it closes when the folder is gone or empty.
  */
 public class FolderLaunchActivity extends Activity implements AppListChangeListener {
     private static final String TAG = "WaveFolder";
@@ -27,6 +26,7 @@ public class FolderLaunchActivity extends Activity implements AppListChangeListe
     private ArrayList mApps;
     private DrawerAdapter mAdapter;
     private GridView mGrid;
+    private TextView mTitle;
     private String mFolderName;
 
     @Override
@@ -35,14 +35,14 @@ public class FolderLaunchActivity extends Activity implements AppListChangeListe
         mAccessArrayList = (AccessArrayList) getApplicationContext();
         setContentView(WaveR.LAYOUT_FOLDER_TRAY);
         mGrid = (GridView) findViewById(WaveR.ID_FOLDER_GRID);
-        TextView title = (TextView) findViewById(WaveR.ID_FOLDER_TITLE);
+        mTitle = (TextView) findViewById(WaveR.ID_FOLDER_TITLE);
         mFolderName = getIntent().getStringExtra("folder");
         mApps = currentList();
         if (mApps == null || mApps.isEmpty()) {
             finish();
             return;
         }
-        title.setText(mFolderName);
+        mTitle.setText(mFolderName);
         mAdapter = new DrawerAdapter(this, mApps);
         mGrid.setAdapter(mAdapter);
         mGrid.setOnItemClickListener((parent, view, i, id) -> launch(i));
@@ -57,6 +57,11 @@ public class FolderLaunchActivity extends Activity implements AppListChangeListe
             return f == null ? null : f.getAppListInsideFolder();
         }
         return mAccessArrayList.getAppsInsideFolder();
+    }
+
+    private void onFolderRenamed(String newName) {
+        mFolderName = newName;
+        if (mTitle != null) mTitle.setText(newName);
     }
 
     @Override
@@ -122,7 +127,7 @@ public class FolderLaunchActivity extends Activity implements AppListChangeListe
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         menu.clear();
-        return WaveMenu.prepareFolder(this, menu, mGrid, mApps, mAdapter, mFolderName);
+        return WaveMenu.prepareFolder(this, menu, mGrid, mApps, mAdapter, mFolderName, this::onFolderRenamed);
     }
 
     // ---- keys -----------------------------------------------------------------------------------------

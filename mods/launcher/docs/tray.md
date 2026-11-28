@@ -15,9 +15,9 @@ install/uninstall. A folder opens `FolderLaunchActivity` (a dialog, 2 columns) w
 |---|---|
 | `setAppsAndFolderList()` | now just `WaveTray.rebuild(this)`; the stock body is `waveStockSetAppsAndFolderList()` (fallback) |
 | `LauncherActivity$4.onReceive` | `WaveTray.onPackageEvent` first; true = handled (worker rebuild + swap on the UI thread) |
-| `dispatchKeyEvent` | `WaveTray.dispatchKey`: a move in progress takes the d-pad, Center/Enter/Menu/Back |
-| `onPrepareOptionsMenu` | clears and fills the current screen's menu with `WaveMenu`; uses the stock builder only in fallback |
-| `onPause` | a move in progress is put down |
+| `dispatchKeyEvent` | `WaveTray.dispatchKey`: an active move or Move (into folder) takes the d-pad, Center/Enter/Menu/Back |
+| `onPrepareOptionsMenu` | clears and fills the tray's menu with `WaveMenu`; returns false on Home (and in fallback) so the stock builder runs |
+| `onPause` | puts down a move in progress and cancels any Move (into folder) overlay |
 | `getFolderIcon(name)` | `WaveTray.folderIconHook`: drawn icon previewing the first four apps, for every folder (stock icon only in fallback) |
 | `updateAppTrayList()` | disabled PTT moves Calculator to the main tray only in stock fallback |
 | `LauncherActivity$2`, `onNewIntent` | opening the tray selects entry 0 (stock: 4) without also queuing a smooth scroll |
@@ -29,11 +29,19 @@ Java (`apps/SonimLauncher/java/com/sonim/borqs/launcher/`):
 * `WaveLayout`: the file format, matching against installed apps (`resolve`), and saving what's
   shown (`snapshot`). Pure Java, tested by `tools/test.sh`.
 * `WaveDefaults`: the first-run arrangement. Its `stock` line becomes Sonim's tray, read from `App_Tray`.
-* `WaveTray`: builds the list, handles package events, edits and saves the layout, and builds the Add apps picker.
-* `WaveMenu`: home, tray, and folder menus, prepared from the current selection.
-* `WaveMover`: carrying an entry through a grid (tray or folder).
-* `WaveIcons`: folder icons for every folder (colourful theme: coloured folder, red theme: white with red outline;
-  2x2 preview of the first apps).
+* `WaveNav`: pure-Java folder-picker navigation (`nearestFolder`, `nextFolder`) and delete-folder
+  message formatting. Tested by `tools/test.sh`.
+* `WaveTray`: builds the list, handles package events, edits and saves the layout, manages the
+  New/Edit folder sheet, Delete folder confirmation, Move outside, Remove, and Add new app picker.
+* `WaveMenu`: flat one-level menus for tray apps, tray folders, and folder apps; returns false on
+  Home so the stock Home menu runs.
+* `WaveMover`: carrying an entry within a grid (tray or folder) with FLIP animations.
+* `WaveFolderPicker`: Move (into folder) mode with a dimmed source cell, hovered target folder,
+  and scaled icon overlay that moves strictly between folders.
+* `WaveGridAnim`: one-shot `OnPreDrawListener` FLIP slide, scale-in, shrink-out, lift, and folder
+  bump animations for `GridView`.
+* `WaveIcons`: folder icons for every folder (colourful theme: coloured by folder name, red theme:
+  white with red outline; 2x2 preview of the first apps).
 
 After every build, `WaveTray` writes prefs `sonim_postion`/`stk_postion` (Applications/Tools
 indexes, or -1). It then calls the stock `setSTKApp()` and `setAppsAndFolderListForShorcut`, so
@@ -69,7 +77,7 @@ adb push tray.txt /data/local/tmp/ && adb shell su -c 'cp /data/local/tmp/tray.t
 
 ## Verifying (no install)
 * `tools/build.sh`: dexcheck + linkcheck.
-* `tools/test.sh`: format/resolve/snapshot.
+* `tools/test.sh`: format/resolve/snapshot/navigation host tests.
 * `tools/preview.sh`: real rendering as the shell user via `app_process`.
   The preview and ART verifier are hardware-only checks. Run these from
   `mods/launcher/` only on a reserved test phone and only after `tools/package.sh`
