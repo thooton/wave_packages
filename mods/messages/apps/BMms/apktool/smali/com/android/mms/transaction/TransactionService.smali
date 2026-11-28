@@ -1259,7 +1259,8 @@
     :cond_3
     iget-object v0, p0, Lcom/android/mms/transaction/TransactionService;->mConnMgr:Landroid/net/ConnectivityManager;
 
-    invoke-virtual {v0, p2}, Landroid/net/ConnectivityManager;->bindProcessToNetwork(Landroid/net/Network;)Z
+    # FIX(mms network binding): remember the owner so teardown can restore default routing
+    invoke-static {v0, p2, p1}, Lcom/android/mms/transaction/WaveMmsNetworkBinding;->bind(Landroid/net/ConnectivityManager;Landroid/net/Network;Ljava/lang/String;)V
 
     .line 282
     iget-object v0, p0, Lcom/android/mms/transaction/TransactionService;->mServiceHandler:Lcom/android/mms/transaction/TransactionService$ServiceHandler;
@@ -1517,6 +1518,9 @@
     .locals 5
 
     .prologue
+    # FIX(mms network binding): unregister can suppress onLost; clear explicitly on release
+    invoke-static {p0, p1}, Lcom/android/mms/transaction/WaveMmsNetworkBinding;->release(Landroid/content/Context;I)V
+
     # PERF(mms network): linger like AOSP MmsNetworkManager, so back-to-back MMS skip the bring-up
     invoke-static {p0, p1}, Lcom/android/mms/transaction/WavePerf;->lingerMmsNetwork(Landroid/content/Context;I)V
 

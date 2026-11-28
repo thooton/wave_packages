@@ -328,6 +328,13 @@
     .locals 4
 
     .prologue
+    # FIX(mms network binding): a vanished network can make subsequent socket() fail ENONET
+    iget-object v0, p0, Lcom/android/mms/transaction/TransactionService$2;->this$0:Lcom/android/mms/transaction/TransactionService;
+
+    iget-object v1, p0, Lcom/android/mms/transaction/TransactionService$2;->val$mSubId:Ljava/lang/String;
+
+    invoke-static {v0, p1, v1}, Lcom/android/mms/transaction/WaveMmsNetworkBinding;->lost(Landroid/content/Context;Landroid/net/Network;Ljava/lang/String;)V
+
     .line 219
     iget-object v0, p0, Lcom/android/mms/transaction/TransactionService$2;->this$0:Lcom/android/mms/transaction/TransactionService;
 
